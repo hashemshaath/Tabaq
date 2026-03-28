@@ -7,6 +7,7 @@ import {
   useUnfollowRestaurant,
   useCreateBooking,
   type CreateBookingRequest,
+  type Dish,
 } from '@workspace/api-client-react';
 import { useParams, Link } from 'wouter';
 import {
@@ -306,9 +307,9 @@ export function RestaurantDetailPage() {
                               : <ChevronDown className="w-4 h-4 text-muted-foreground" />
                             }
                           </button>
-                          {(!expandedSections.has(section.id) || expandedSections.size === 0) && (
+                          {!expandedSections.has(section.id) && (
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
-                              {section.items?.map((dish: any) => (
+                              {section.items?.map((dish: Dish) => (
                                 <Link key={dish.id} href={`/dishes/${dish.id}`}>
                                   <div className="flex gap-3 p-3 rounded-2xl border border-border/60 hover:bg-accent/30 hover:border-primary/20 transition-all group">
                                     <div className="w-18 h-18 shrink-0 rounded-xl overflow-hidden bg-muted">

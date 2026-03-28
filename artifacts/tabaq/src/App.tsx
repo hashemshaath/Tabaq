@@ -10,6 +10,7 @@ import { HomePage } from "@/pages/HomePage";
 import { DiscoveryPage } from "@/pages/DiscoveryPage";
 import { RestaurantDetailPage } from "@/pages/RestaurantDetailPage";
 import { DishDetailPage } from "@/pages/DishDetailPage";
+import { DishesPage } from "@/pages/DishesPage";
 import { SearchPage } from "@/pages/SearchPage";
 import { OffersPage } from "@/pages/OffersPage";
 import { LeaderboardPage } from "@/pages/LeaderboardPage";
@@ -36,6 +37,7 @@ function Router() {
           <Route path="/search" component={SearchPage} />
           <Route path="/restaurants" component={DiscoveryPage} />
           <Route path="/restaurants/:id" component={RestaurantDetailPage} />
+          <Route path="/dishes" component={DishesPage} />
           <Route path="/dishes/:id" component={DishDetailPage} />
           <Route path="/offers" component={OffersPage} />
           <Route path="/leaderboard" component={LeaderboardPage} />

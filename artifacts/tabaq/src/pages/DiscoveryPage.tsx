@@ -1,13 +1,14 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import { useLanguage } from '@/hooks/use-language';
 import {
   useListRestaurants,
   useListCategories,
   useListOccasions,
+  useListCitiesByCountry,
 } from '@workspace/api-client-react';
 import { RestaurantCard } from '@/components/RestaurantCard';
 import {
-  Filter, SlidersHorizontal, MapPin, ChevronDown, X, Star, Search
+  SlidersHorizontal, MapPin, X, Star, Search, Trophy,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link, useLocation } from 'wouter';
@@ -19,11 +20,11 @@ interface Filters {
   occasionId?: number;
   priceTier: PriceTier;
   minRating?: number;
-  hasParking?: boolean;
-  hasOutdoor?: boolean;
-  isHalal?: boolean;
+  cityId?: number;
   sortBy?: string;
 }
+
+const SAUDI_COUNTRY_ID = 1;
 
 export function DiscoveryPage() {
   const { t, lang } = useLanguage();
@@ -35,15 +36,16 @@ export function DiscoveryPage() {
     occasionId: params.get('occasion') ? Number(params.get('occasion')) : undefined,
     priceTier: (params.get('price') as PriceTier) || '',
     minRating: undefined,
+    cityId: params.get('cityId') ? Number(params.get('cityId')) : undefined,
     sortBy: 'featured',
   });
   const [showFilters, setShowFilters] = useState(false);
-  const [searchQ, setSearchQ] = useState('');
   const [page, setPage] = useState(0);
   const LIMIT = 12;
 
   const { data: categories } = useListCategories();
   const { data: occasions } = useListOccasions();
+  const { data: cities } = useListCitiesByCountry(SAUDI_COUNTRY_ID);
 
   const apiFilters: Record<string, string | number | boolean | undefined> = {
     limit: LIMIT,
@@ -53,11 +55,22 @@ export function DiscoveryPage() {
   if (filters.occasionId) apiFilters.occasionId = filters.occasionId;
   if (filters.priceTier) apiFilters.priceTier = filters.priceTier;
   if (filters.minRating) apiFilters.minRating = filters.minRating;
+  if (filters.cityId) apiFilters.cityId = filters.cityId;
 
   const { data, isLoading } = useListRestaurants(apiFilters, {
     query: {
       queryKey: ['restaurants', apiFilters],
     },
+  });
+
+  // Top-rated venues by selected city (minRating=4, limit=3)
+  const topRatedFilters: Record<string, string | number | boolean | undefined> = {
+    limit: 3,
+    minRating: 4,
+    ...(filters.cityId ? { cityId: filters.cityId } : {}),
+  };
+  const { data: topRatedData } = useListRestaurants(topRatedFilters, {
+    query: { queryKey: ['restaurants-top', topRatedFilters] },
   });
 
   const restaurants = data?.restaurants || [];
@@ -68,12 +81,15 @@ export function DiscoveryPage() {
     filters.occasionId,
     filters.priceTier,
     filters.minRating,
+    filters.cityId,
   ].filter(Boolean).length;
 
   const clearFilters = () => {
     setFilters({ priceTier: '', sortBy: 'featured' });
     setPage(0);
   };
+
+  const selectedCity = cities?.find(c => c.id === filters.cityId);
 
   const priceTiers: { value: PriceTier; labelEn: string; labelAr: string }[] = [
     { value: 'budget', labelEn: 'Budget', labelAr: 'اقتصادي' },
@@ -201,6 +217,28 @@ export function DiscoveryPage() {
                   ))}
                 </div>
               </div>
+
+              {/* City Filter */}
+              {cities && cities.length > 0 && (
+                <div>
+                  <label className="text-sm font-semibold text-foreground mb-2 block">
+                    <MapPin className="w-3.5 h-3.5 inline me-1" />
+                    {t('City', 'المدينة')}
+                  </label>
+                  <select
+                    value={filters.cityId ?? ''}
+                    onChange={e => { setFilters(f => ({ ...f, cityId: e.target.value ? Number(e.target.value) : undefined })); setPage(0); }}
+                    className="w-full h-10 px-3 rounded-xl border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  >
+                    <option value="">{t('All Cities', 'كل المدن')}</option>
+                    {cities.map(city => (
+                      <option key={city.id} value={city.id}>
+                        {lang === 'ar' ? city.nameAr : city.nameEn}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -240,6 +278,65 @@ export function DiscoveryPage() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        {/* Top-Rated Venues Section */}
+        {topRatedData && topRatedData.restaurants.length > 0 && (
+          <div className="mb-10">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Trophy className="w-5 h-5 text-amber-500" />
+                <h2 className="text-lg font-bold text-foreground">
+                  {selectedCity
+                    ? t(`Top-Rated in ${lang === 'ar' ? selectedCity.nameAr : selectedCity.nameEn}`, `الأعلى تقييماً في ${selectedCity.nameAr}`)
+                    : t('Top-Rated Venues', 'الأماكن الأعلى تقييماً')
+                  }
+                </h2>
+              </div>
+              <Link href="/restaurants" className="text-xs text-primary font-semibold hover:underline">
+                {t('View all', 'عرض الكل')}
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {topRatedData.restaurants.map((rest, idx) => (
+                <Link key={rest.id} href={`/restaurants/${rest.id}`}>
+                  <div className="relative rounded-2xl overflow-hidden border border-border/60 hover:border-primary/30 hover:shadow-md transition-all group cursor-pointer h-44">
+                    <img
+                      src={rest.coverImageUrl || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=600&h=400&fit=crop'}
+                      alt={lang === 'ar' ? rest.nameAr : rest.nameEn}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+                    <div className="absolute top-3 start-3 flex items-center gap-1.5">
+                      <span className="bg-amber-500 text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center">
+                        {idx + 1}
+                      </span>
+                    </div>
+                    <div className="absolute bottom-0 start-0 end-0 p-3">
+                      <h3 className="text-white font-semibold text-sm line-clamp-1">
+                        {lang === 'ar' ? rest.nameAr : rest.nameEn}
+                      </h3>
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                        <span className="text-white text-xs font-medium">{Number(rest.avgRating).toFixed(1)}</span>
+                        <span className="text-white/70 text-xs">({rest.reviewCount.toLocaleString()})</span>
+                        {(() => {
+                          const city = cities?.find(c => c.id === rest.cityId);
+                          return city ? (
+                            <span className="text-white/70 text-xs ms-auto flex items-center gap-0.5">
+                              <MapPin className="w-2.5 h-2.5" />
+                              {lang === 'ar' ? city.nameAr : city.nameEn}
+                            </span>
+                          ) : null;
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="flex justify-between items-center mb-6">
           <p className="text-muted-foreground font-medium text-sm">
             {isLoading
