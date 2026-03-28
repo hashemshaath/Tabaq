@@ -1,0 +1,52 @@
+I want to build a comprehensive food and dining platform called "طبق | Tabaq", inspired by Catchtable, but simplified and enhanced with modern features.
+
+The platform should focus on table reservations, exclusive offers, vouchers, coupons, and intelligent discovery of the best dishes, restaurants, cafes, hotel buffets, and venues suitable for various occasions such as personal events, business meetings, celebrations, outdoor events, and gifting dining experiences.
+
+Core user features:
+- Discover and rank dishes based on quality, popularity, and user reviews
+- Search for restaurants, cafes, hotel dining, and venues by country, city, and location
+- Book tables, purchase vouchers, and access exclusive offers
+- Gift dining experiences for occasions (birthdays, celebrations, etc.)
+- Advanced search with smart filters and a professional UI/UX
+
+Community features:
+- User profiles with social functionality (follow users and restaurants)
+- Track visits, reviews, and ratings
+- User ranking system similar to Google Maps (levels, points, credibility)
+- Verified badges for users and restaurants
+- Build a food-focused social community similar to X (Twitter), but dedicated to dining
+
+Authentication:
+- Primary registration via mobile number with OTP verification
+- Optional email registration and verification
+
+Business & provider features:
+- Restaurant profiles with full management of menus, offers, bookings, and availability
+- Ability to manage events, dining experiences, and promotions
+
+Admin & system features:
+- Full admin dashboard for managing users, restaurants, bookings, offers, notifications, and content
+- CRM system for managing customers and interactions
+- Referral system for invitations, earning points, managing rewards, and redemption through participating restaurants
+- Wallet system, invoices, and full payment integration
+
+Architecture:
+- Build the system using a professional microservices architecture
+- Each module should be independently controllable (enable/disable features)
+- Ensure scalability, modularity, and maintainability
+
+AI & SEO:
+- Intelligent system for content generation and SEO optimization
+- Auto-translation (Arabic/English)
+- AI-powered recommendations, content writing, and search optimization
+
+Design & UX:
+- Modern, responsive, and high-performance UI
+- Fully bilingual (Arabic RTL / English LTR)
+- Professional, intuitive, and seamless user experience
+
+Additional requirements:
+- Add advanced professional features that make the platform a market leader in food and dining discovery
+- Ensure high performance, scalability, and clean architecture
+
+First, create a clear product plan and break the work into structured tasks that can later be executed by agents.
