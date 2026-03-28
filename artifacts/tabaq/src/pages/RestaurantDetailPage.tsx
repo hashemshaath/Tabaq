@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useLanguage } from '@/hooks/use-language';
 import {
   useGetRestaurant,
@@ -18,7 +18,7 @@ import { ReviewCard } from '@/components/ReviewCard';
 import {
   Star, MapPin, Phone, Globe, Clock, CheckCircle2, Heart, HeartOff,
   Utensils, Info, Camera, MessageSquare, CalendarDays, Users,
-  ChevronLeft, ChevronRight, Tag, Leaf, Wifi,
+  ChevronLeft, ChevronRight, Tag, Leaf, Wifi, Bell, BellRing,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
@@ -66,6 +66,9 @@ function BookingSection({ restaurantId, restaurantNameEn, restaurantNameAr }: {
   const [step, setStep] = useState<'select' | 'confirm' | 'success'>('select');
   const [createdBooking, setCreatedBooking] = useState<{ referenceCode: string; date: string; time: string } | null>(null);
   const [error, setError] = useState('');
+  const [waitlistOpen, setWaitlistOpen] = useState(false);
+  const [waitlistPhone, setWaitlistPhone] = useState('');
+  const [waitlistSubmitted, setWaitlistSubmitted] = useState(false);
 
   const selectedDate = dates[selectedDateIdx];
   const dateKey = formatDateKey(selectedDate);
@@ -243,8 +246,63 @@ function BookingSection({ restaurantId, restaurantNameEn, restaurantNameAr }: {
             {[...Array(8)].map((_, i) => <div key={i} className="h-10 bg-muted animate-pulse rounded-xl" />)}
           </div>
         ) : slots.length === 0 ? (
-          <div className="text-center py-6 bg-secondary/30 rounded-2xl text-muted-foreground text-sm">
-            {t('No available times for this date and party size.', 'لا توجد أوقات متاحة لهذا التاريخ وعدد الأشخاص.')}
+          <div className="bg-secondary/30 rounded-2xl overflow-hidden">
+            <div className="text-center py-5 text-muted-foreground text-sm">
+              <CalendarDays className="w-8 h-8 mx-auto mb-2 text-muted-foreground/40" />
+              <p className="font-medium">{t('No available times for this date and party size.', 'لا توجد أوقات متاحة لهذا التاريخ وعدد الأشخاص.')}</p>
+              <p className="text-xs mt-1">{t('Try another date or join the waitlist to be notified.', 'جرّب تاريخاً آخر أو انضم لقائمة الانتظار لتلقي الإشعارات.')}</p>
+            </div>
+
+            {/* Inline Waitlist */}
+            {!waitlistSubmitted ? (
+              <div className="border-t border-border/50 p-4">
+                {!waitlistOpen ? (
+                  <button
+                    onClick={() => setWaitlistOpen(true)}
+                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-dashed border-primary/40 text-primary font-semibold text-sm hover:bg-primary/5 transition-all"
+                  >
+                    <Bell className="w-4 h-4" />
+                    {t('Join Waitlist — Get notified when available', 'انضم لقائمة الانتظار — احصل على إشعار عند التوفر')}
+                  </button>
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-sm font-semibold text-foreground flex items-center gap-2">
+                      <BellRing className="w-4 h-4 text-primary" />
+                      {t("We'll notify you when a slot opens", 'سنُشعرك عند توفر مقعد')}
+                    </p>
+                    <input
+                      type="tel"
+                      value={waitlistPhone}
+                      onChange={e => setWaitlistPhone(e.target.value)}
+                      placeholder={t('Your phone number (+966…)', 'رقم هاتفك (+966…)')}
+                      className="w-full h-11 px-4 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        className="flex-1"
+                        disabled={waitlistPhone.length < 8}
+                        onClick={() => { setWaitlistSubmitted(true); setWaitlistOpen(false); }}
+                      >
+                        {t('Notify Me', 'أشعرني')}
+                      </Button>
+                      <Button variant="outline" onClick={() => setWaitlistOpen(false)}>
+                        {t('Cancel', 'إلغاء')}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="border-t border-border/50 p-4">
+                <div className="flex items-center gap-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900/40 rounded-xl px-4 py-3">
+                  <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
+                  <div>
+                    <p className="text-sm font-bold text-green-700 dark:text-green-400">{t("You're on the waitlist!", 'أنت في قائمة الانتظار!')}</p>
+                    <p className="text-xs text-green-600/80 dark:text-green-500">{t("We'll text you as soon as a table becomes available.", 'سنُرسل لك رسالة فور توفر طاولة.')}</p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Search, MapPin, Globe, User, LogOut, ChevronDown, Tag, CalendarDays } from "lucide-react";
+import { Search, MapPin, Globe, User, LogOut, ChevronDown, Tag, CalendarDays, LayoutDashboard } from "lucide-react";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
@@ -14,7 +14,7 @@ export function Header() {
   const navLinks = [
     { href: "/", en: "Home", ar: "الرئيسية" },
     { href: "/restaurants", en: "Discovery", ar: "استكشف" },
-    { href: "/feed", en: "Feed", ar: "التغذية" },
+    { href: "/collections", en: "Collections", ar: "المجموعات" },
     { href: "/offers", en: "Offers", ar: "العروض" },
     { href: "/leaderboard", en: "Leaderboard", ar: "المتصدرين" },
   ];
@@ -123,6 +123,14 @@ export function Header() {
                     >
                       <Tag className="w-4 h-4 text-muted-foreground" />
                       {t("My Vouchers", "قسائمي")}
+                    </Link>
+                    <Link
+                      href="/console"
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors"
+                      onClick={() => setUserMenuOpen(false)}
+                    >
+                      <LayoutDashboard className="w-4 h-4 text-muted-foreground" />
+                      {t("Business Console", "لوحة الأعمال")}
                     </Link>
                     <hr className="border-border my-1" />
                     <button

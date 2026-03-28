@@ -5,15 +5,25 @@
 **Tabaq** (طبق) is a comprehensive food and dining platform for the Middle East (primarily Saudi Arabia) with full bilingual Arabic RTL / English LTR support.
 
 Features include:
-- Restaurant & dish discovery with rankings and filtering
-- Table reservations
+- Restaurant & dish discovery with smart sort pills (Featured, Top Rated, Trending, New, Award Winners)
+- Table reservations with inline waitlist when no slots available
 - Exclusive offers and vouchers
 - Gifting system
 - Social reviews and leaderboard/levels
-- Restaurant business console
+- Restaurant business console (`/console`) with overview, bookings, reviews, menu, settings tabs
+- Curated collections (`/collections`, `/collections/:id`) — 8 themed restaurant lists
+- Michelin-style award badges (Excellence, Top Rated, Fine Dining, Hidden Gem) on RestaurantCard
+- Trending/New indicators on restaurant cards
 - Payments and wallet
 - Admin CRM
-- AI-powered SEO and recommendations
+
+**Pages**: HomePage, DiscoveryPage, CollectionsPage (list + detail), RestaurantDetailPage, DishDetailPage, BookingsPage, VouchersPage, OffersPage, LeaderboardPage, ProfilePage, FeedPage, BusinessConsolePage, SignInPage, SearchPage, NotFound
+
+**Award badge logic** (client-side, `src/lib/awards.ts`):
+- Excellence: 4.8+ rating, 30+ reviews
+- Top Rated: 4.5+ rating, 15+ reviews
+- Fine Dining: fine_dining tier + 4.0+
+- Hidden Gem: 4.2+ rating, ≤8 reviews
 
 **Primary Market**: Saudi Arabia / GCC  
 **Currency default**: SAR  

@@ -8,7 +8,7 @@ import {
 } from '@workspace/api-client-react';
 import { RestaurantCard } from '@/components/RestaurantCard';
 import {
-  SlidersHorizontal, MapPin, X, Star, Search, Trophy,
+  SlidersHorizontal, MapPin, X, Star, Search, Trophy, Flame, Sparkles, Clock, Award,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link, useLocation } from 'wouter';
@@ -117,6 +117,41 @@ export function DiscoveryPage() {
           <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-5">
             {t('Explore Restaurants', 'استكشف المطاعم')}
           </h1>
+
+          {/* Sort Pills */}
+          <div className="flex gap-2 mb-4 overflow-x-auto pb-1 hide-scrollbar">
+            {[
+              { key: 'featured', icon: Sparkles, en: 'Featured', ar: 'مميز' },
+              { key: 'top-rated', icon: Star, en: 'Top Rated', ar: 'الأعلى تقييماً' },
+              { key: 'trending', icon: Flame, en: 'Trending', ar: 'شائع' },
+              { key: 'newest', icon: Clock, en: 'New', ar: 'الأحدث' },
+              { key: 'awards', icon: Award, en: 'Award Winners', ar: 'حائزو الجوائز' },
+            ].map(sort => {
+              const Icon = sort.icon;
+              const isActive = filters.sortBy === sort.key || (sort.key === 'awards' && filters.minRating === 4.5);
+              return (
+                <button
+                  key={sort.key}
+                  onClick={() => {
+                    if (sort.key === 'awards') {
+                      setFilters(f => ({ ...f, minRating: f.minRating === 4.5 ? undefined : 4.5, sortBy: 'featured' }));
+                    } else {
+                      setFilters(f => ({ ...f, sortBy: sort.key, minRating: undefined }));
+                    }
+                    setPage(0);
+                  }}
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold border shrink-0 transition-all ${
+                    isActive
+                      ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                      : 'bg-background border-border hover:border-primary/40 text-foreground'
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  {lang === 'ar' ? sort.ar : sort.en}
+                </button>
+              );
+            })}
+          </div>
 
           {/* Filter Pills Row */}
           <div className="flex flex-wrap gap-3 items-center">
