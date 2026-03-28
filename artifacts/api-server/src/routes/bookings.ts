@@ -8,13 +8,33 @@ import { awardPoints, POINTS } from "../lib/points.js";
 
 const router: IRouter = Router();
 
-// List bookings — auth required; non-admin users only see their own
+// List bookings — auth required
+// If restaurantId is provided and user owns that restaurant, return all bookings for it.
+// Otherwise, return only the requesting user's own bookings.
 router.get("/bookings", requireAuth, async (req, res) => {
   try {
     const userId = req.auth!.userId;
     const { restaurantId, status, from, to, limit = "20", offset = "0" } = req.query;
-    const conditions: SQL[] = [eq(bookingsTable.userId, userId)];
-    if (restaurantId) conditions.push(eq(bookingsTable.restaurantId, parseInt(restaurantId as string)));
+    const conditions: SQL[] = [];
+
+    if (restaurantId) {
+      const rid = parseInt(restaurantId as string);
+      // Check if caller owns this restaurant
+      const [restaurant] = await db.select({ ownerId: restaurantsTable.ownerId })
+        .from(restaurantsTable).where(eq(restaurantsTable.id, rid));
+      if (restaurant && restaurant.ownerId === userId) {
+        // Restaurant owner: see all bookings for their venue
+        conditions.push(eq(bookingsTable.restaurantId, rid));
+      } else {
+        // Other users: see only their own bookings for this restaurant
+        conditions.push(eq(bookingsTable.userId, userId));
+        conditions.push(eq(bookingsTable.restaurantId, rid));
+      }
+    } else {
+      // No restaurantId filter: return only the caller's own bookings
+      conditions.push(eq(bookingsTable.userId, userId));
+    }
+
     if (status) conditions.push(eq(bookingsTable.status, status as 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'no_show'));
     if (from) conditions.push(gte(bookingsTable.date, from as string));
     if (to) conditions.push(lte(bookingsTable.date, to as string));
@@ -67,7 +87,7 @@ router.post("/bookings", requireAuth, async (req, res) => {
     }
     const userId = req.auth!.userId;
 
-    // Server-side availability guard: check slot capacity at write time
+    // Server-side availability guard: check slot capacity atomically
     // Parse YYYY-MM-DD using local year/month/day to avoid timezone shift
     const [dateYear, dateMonth, dateDay] = (date as string).split('-').map(Number);
     const requestedDate = new Date(dateYear!, (dateMonth ?? 1) - 1, dateDay);
@@ -86,35 +106,57 @@ router.post("/bookings", requireAuth, async (req, res) => {
       return;
     }
 
-    // Count existing booked seats for this slot
-    const [{ bookedSeats }] = await db.select({
-      bookedSeats: sql<number>`COALESCE(SUM(${bookingsTable.partySize}), 0)`,
-    }).from(bookingsTable).where(and(
-      eq(bookingsTable.restaurantId, restaurantId),
-      eq(bookingsTable.date, date),
-      eq(bookingsTable.time, time),
-      sql`${bookingsTable.status} IN ('pending','confirmed')`,
-    ));
-
-    const remaining = SEAT_CAPACITY - Number(bookedSeats);
-    if (remaining < partySize) {
-      res.status(409).json({ error: "conflict", message: "No available seats for this time slot", remaining });
-      return;
-    }
-
     const referenceCode = `TBQ-${nanoid(8).toUpperCase()}`;
 
-    const [booking] = await db.insert(bookingsTable).values({
-      userId,
-      restaurantId,
-      date,
-      time,
-      partySize,
-      occasionId,
-      specialRequests,
-      referenceCode,
-      status: "pending",
-    }).returning();
+    // Acquire a per-slot advisory lock inside a transaction to prevent concurrent overbooking.
+    // Lock key: hash of (restaurantId, date string, time string) → bigint via pg hashtext
+    let booking: typeof bookingsTable.$inferSelect;
+    try {
+      const result = await db.transaction(async (tx) => {
+        // Advisory lock scoped to this transaction (auto-released on commit/rollback)
+        await tx.execute(sql`
+          SELECT pg_advisory_xact_lock(
+            hashtext(${`${restaurantId}:${date}:${time}`}::text)::bigint
+          )
+        `);
+
+        // Re-count inside the lock
+        const [{ bookedSeats }] = await tx.select({
+          bookedSeats: sql<number>`COALESCE(SUM(${bookingsTable.partySize}), 0)`,
+        }).from(bookingsTable).where(and(
+          eq(bookingsTable.restaurantId, restaurantId),
+          eq(bookingsTable.date, date),
+          eq(bookingsTable.time, time),
+          sql`${bookingsTable.status} IN ('pending','confirmed')`,
+        ));
+
+        const remaining = SEAT_CAPACITY - Number(bookedSeats);
+        if (remaining < partySize) {
+          throw Object.assign(new Error("no_capacity"), { remaining, statusCode: 409 });
+        }
+
+        const [created] = await tx.insert(bookingsTable).values({
+          userId,
+          restaurantId,
+          date,
+          time,
+          partySize,
+          occasionId,
+          specialRequests,
+          referenceCode,
+          status: "pending",
+        }).returning();
+        return created!;
+      });
+      booking = result;
+    } catch (err) {
+      if (err instanceof Error && err.message === "no_capacity") {
+        const e = err as Error & { remaining: number };
+        res.status(409).json({ error: "conflict", message: "No available seats for this time slot", remaining: e.remaining });
+        return;
+      }
+      throw err;
+    }
 
     const [restaurant] = await db.select().from(restaurantsTable)
       .where(eq(restaurantsTable.id, restaurantId));
@@ -185,21 +227,32 @@ router.patch("/bookings/:bookingId", requireAuth, async (req, res) => {
     const userId = req.auth!.userId;
     const { status } = req.body;
 
-    const [existing] = await db.select({ userId: bookingsTable.userId })
-      .from(bookingsTable).where(eq(bookingsTable.id, bookingId));
+    const [existing] = await db.select({
+      userId: bookingsTable.userId,
+      restaurantId: bookingsTable.restaurantId,
+    }).from(bookingsTable).where(eq(bookingsTable.id, bookingId));
     if (!existing) {
       res.status(404).json({ error: "not_found", message: "Booking not found" });
       return;
     }
 
-    // Users can only cancel their own bookings
-    if (status === "cancelled" && existing.userId !== userId) {
+    // Check if the caller owns the restaurant this booking belongs to
+    const [restaurant] = await db.select({ ownerId: restaurantsTable.ownerId })
+      .from(restaurantsTable).where(eq(restaurantsTable.id, existing.restaurantId));
+    const isRestaurantOwner = restaurant?.ownerId === userId;
+
+    // Users can cancel their own bookings
+    if (status === "cancelled" && existing.userId !== userId && !isRestaurantOwner) {
       res.status(403).json({ error: "forbidden", message: "You can only cancel your own bookings" });
       return;
     }
-    // For non-cancellation status changes (confirm, complete, no_show) — owner check still applies for now
-    if (status !== "cancelled" && existing.userId !== userId) {
+    // Only restaurant owners can confirm / complete / mark no_show
+    if (status !== "cancelled" && !isRestaurantOwner && existing.userId !== userId) {
       res.status(403).json({ error: "forbidden", message: "Not authorized to update this booking" });
+      return;
+    }
+    if (["confirmed", "completed", "no_show"].includes(status) && !isRestaurantOwner) {
+      res.status(403).json({ error: "forbidden", message: "Only restaurant owners can confirm, complete or mark no-show" });
       return;
     }
 
@@ -215,13 +268,13 @@ router.patch("/bookings/:bookingId", requireAuth, async (req, res) => {
       req.log.info({ bookingId, userId: existing.userId }, "NOTIFY: booking cancelled — send cancellation notice to user");
     }
 
-    const [restaurant] = await db.select().from(restaurantsTable)
+    const [bookingRestaurant] = await db.select().from(restaurantsTable)
       .where(eq(restaurantsTable.id, booking.restaurantId));
     res.json({
       ...booking,
-      restaurantNameEn: restaurant?.nameEn ?? "",
-      restaurantNameAr: restaurant?.nameAr ?? "",
-      restaurantCoverImageUrl: restaurant?.coverImageUrl ?? null,
+      restaurantNameEn: bookingRestaurant?.nameEn ?? "",
+      restaurantNameAr: bookingRestaurant?.nameAr ?? "",
+      restaurantCoverImageUrl: bookingRestaurant?.coverImageUrl ?? null,
     });
   } catch (err) {
     req.log.error({ err }, "Failed to update booking");
