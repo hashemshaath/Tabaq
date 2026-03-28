@@ -1,6 +1,6 @@
 import {
   pgTable, serial, text, integer, boolean, timestamp,
-  doublePrecision, pgEnum
+  doublePrecision, pgEnum, uniqueIndex
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -60,7 +60,9 @@ export const restaurantFollowsTable = pgTable("restaurant_follows", {
   userId: integer("user_id").notNull().references(() => usersTable.id),
   restaurantId: integer("restaurant_id").notNull().references(() => restaurantsTable.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (t) => [
+  uniqueIndex("restaurant_follows_unique").on(t.userId, t.restaurantId),
+]);
 
 export const openingHoursTable = pgTable("opening_hours", {
   id: serial("id").primaryKey(),

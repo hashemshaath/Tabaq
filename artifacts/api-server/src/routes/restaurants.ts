@@ -251,11 +251,17 @@ router.post("/restaurants/:restaurantId/follow", async (req, res) => {
   try {
     const restaurantId = parseInt(req.params.restaurantId, 10);
     const userId = 1; // TODO: from session
-    await db.insert(restaurantFollowsTable).values({ userId, restaurantId }).onConflictDoNothing();
-    await db.update(restaurantsTable)
-      .set({ followerCount: sql`${restaurantsTable.followerCount} + 1` })
-      .where(eq(restaurantsTable.id, restaurantId));
-    const [r] = await db.select({ followerCount: restaurantsTable.followerCount }).from(restaurantsTable).where(eq(restaurantsTable.id, restaurantId));
+    const inserted = await db.insert(restaurantFollowsTable)
+      .values({ userId, restaurantId })
+      .onConflictDoNothing()
+      .returning({ id: restaurantFollowsTable.id });
+    if (inserted.length > 0) {
+      await db.update(restaurantsTable)
+        .set({ followerCount: sql`${restaurantsTable.followerCount} + 1` })
+        .where(eq(restaurantsTable.id, restaurantId));
+    }
+    const [r] = await db.select({ followerCount: restaurantsTable.followerCount })
+      .from(restaurantsTable).where(eq(restaurantsTable.id, restaurantId));
     res.json({ isFollowing: true, followerCount: r?.followerCount ?? 0 });
   } catch (err) {
     req.log.error({ err }, "Failed to follow restaurant");
@@ -267,12 +273,16 @@ router.delete("/restaurants/:restaurantId/follow", async (req, res) => {
   try {
     const restaurantId = parseInt(req.params.restaurantId, 10);
     const userId = 1; // TODO: from session
-    await db.delete(restaurantFollowsTable)
-      .where(and(eq(restaurantFollowsTable.userId, userId), eq(restaurantFollowsTable.restaurantId, restaurantId)));
-    await db.update(restaurantsTable)
-      .set({ followerCount: sql`greatest(${restaurantsTable.followerCount} - 1, 0)` })
-      .where(eq(restaurantsTable.id, restaurantId));
-    const [r] = await db.select({ followerCount: restaurantsTable.followerCount }).from(restaurantsTable).where(eq(restaurantsTable.id, restaurantId));
+    const deleted = await db.delete(restaurantFollowsTable)
+      .where(and(eq(restaurantFollowsTable.userId, userId), eq(restaurantFollowsTable.restaurantId, restaurantId)))
+      .returning({ id: restaurantFollowsTable.id });
+    if (deleted.length > 0) {
+      await db.update(restaurantsTable)
+        .set({ followerCount: sql`greatest(${restaurantsTable.followerCount} - 1, 0)` })
+        .where(eq(restaurantsTable.id, restaurantId));
+    }
+    const [r] = await db.select({ followerCount: restaurantsTable.followerCount })
+      .from(restaurantsTable).where(eq(restaurantsTable.id, restaurantId));
     res.json({ isFollowing: false, followerCount: r?.followerCount ?? 0 });
   } catch (err) {
     req.log.error({ err }, "Failed to unfollow restaurant");

@@ -46,9 +46,16 @@ router.get("/dishes", async (req, res) => {
       .limit(parseInt(limit as string))
       .offset(parseInt(offset as string));
 
-    const total = await db.select({ count: sql<number>`count(*)` })
-      .from(dishesTable)
-      .where(and(...conditions));
+    const needsRestaurantJoin = !!cityId;
+    const totalQuery = needsRestaurantJoin
+      ? db.select({ count: sql<number>`count(*)` })
+          .from(dishesTable)
+          .innerJoin(restaurantsTable, eq(dishesTable.restaurantId, restaurantsTable.id))
+          .where(and(...conditions))
+      : db.select({ count: sql<number>`count(*)` })
+          .from(dishesTable)
+          .where(and(...conditions));
+    const total = await totalQuery;
 
     res.json({
       dishes,
