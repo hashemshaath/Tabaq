@@ -88,6 +88,27 @@ export const LogoutResponse = zod.object({
 });
 
 /**
+ * @summary Request an email verification link (authenticated)
+ */
+export const RequestEmailVerificationResponse = zod.object({
+  message: zod.string().optional(),
+  devVerifyUrl: zod.string().optional(),
+  devToken: zod.string().optional(),
+});
+
+/**
+ * @summary Confirm email via token from verification link
+ */
+export const ConfirmEmailVerificationQueryParams = zod.object({
+  token: zod.coerce.string(),
+});
+
+export const ConfirmEmailVerificationResponse = zod.object({
+  message: zod.string().optional(),
+  userId: zod.number().optional(),
+});
+
+/**
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({

@@ -166,6 +166,52 @@ paths:
                   message:
                     type: string
 
+  /auth/verify-email/request:
+    post:
+      operationId: requestEmailVerification
+      tags: [auth]
+      summary: Request an email verification link (authenticated)
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Verification link generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  devVerifyUrl:
+                    type: string
+                  devToken:
+                    type: string
+
+  /auth/verify-email/confirm:
+    get:
+      operationId: confirmEmailVerification
+      tags: [auth]
+      summary: Confirm email via token from verification link
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Email verified
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  userId:
+                    type: integer
+
   /healthz:
     get:
       operationId: healthCheck

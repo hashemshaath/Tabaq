@@ -1,9 +1,11 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { usersTable, otpRequestsTable } from "@workspace/db/schema";
+import { usersTable, otpRequestsTable, emailVerificationTokensTable } from "@workspace/db/schema";
 import { eq, and, isNull, gt, desc, gte } from "drizzle-orm";
 import { signToken, generateOtp, otpExpiresAt } from "../lib/auth.js";
 import { requireAuth } from "../middleware/requireAuth.js";
+import { awardPoints, POINTS } from "../lib/points.js";
+import crypto from "crypto";
 
 const router: IRouter = Router();
 
@@ -143,6 +145,89 @@ router.get("/auth/me", requireAuth, async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "Failed to fetch /me");
     res.status(500).json({ error: "internal_error", message: "Failed to fetch user" });
+  }
+});
+
+// Email verification — request a verification link (token-based)
+router.post("/auth/verify-email/request", requireAuth, async (req, res) => {
+  try {
+    const userId = req.auth!.userId;
+    const [user] = await db.select({ id: usersTable.id, email: usersTable.email, isEmailVerified: usersTable.isEmailVerified })
+      .from(usersTable).where(eq(usersTable.id, userId));
+
+    if (!user) {
+      res.status(404).json({ error: "not_found", message: "User not found" });
+      return;
+    }
+    if (user.isEmailVerified) {
+      res.status(400).json({ error: "already_verified", message: "Email already verified" });
+      return;
+    }
+    if (!user.email) {
+      res.status(400).json({ error: "no_email", message: "No email address on account" });
+      return;
+    }
+
+    const token = crypto.randomBytes(32).toString("hex");
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    await db.insert(emailVerificationTokensTable).values({ userId, token, expiresAt });
+
+    const verifyUrl = `${process.env["APP_URL"] ?? "https://tabaq.app"}/verify-email?token=${token}`;
+
+    req.log.info({ userId, verifyUrl }, "Email verification link generated");
+    res.json({
+      message: "Verification link generated",
+      ...(IS_DEV ? { devVerifyUrl: verifyUrl, devToken: token } : {}),
+    });
+  } catch (err) {
+    req.log.error({ err }, "Failed to request email verification");
+    res.status(500).json({ error: "internal_error", message: "Failed to request email verification" });
+  }
+});
+
+// Email verification — confirm via token from the link
+router.get("/auth/verify-email/confirm", async (req, res) => {
+  try {
+    const { token } = req.query as { token?: string };
+    if (!token) {
+      res.status(400).json({ error: "bad_request", message: "token required" });
+      return;
+    }
+
+    const now = new Date();
+    const [record] = await db.select()
+      .from(emailVerificationTokensTable)
+      .where(
+        and(
+          eq(emailVerificationTokensTable.token, token),
+          isNull(emailVerificationTokensTable.usedAt),
+          gt(emailVerificationTokensTable.expiresAt, now),
+        )
+      ).limit(1);
+
+    if (!record) {
+      res.status(400).json({ error: "invalid_token", message: "Invalid or expired verification link" });
+      return;
+    }
+
+    await db.update(emailVerificationTokensTable)
+      .set({ usedAt: now })
+      .where(eq(emailVerificationTokensTable.id, record.id));
+
+    const [user] = await db.update(usersTable)
+      .set({ isEmailVerified: true, updatedAt: now })
+      .where(eq(usersTable.id, record.userId))
+      .returning({ id: usersTable.id, isEmailVerified: usersTable.isEmailVerified, points: usersTable.points });
+
+    if (user) {
+      await awardPoints(record.userId, POINTS.EMAIL_VERIFIED);
+    }
+
+    res.json({ message: "Email verified successfully", userId: record.userId });
+  } catch (err) {
+    req.log.error({ err }, "Failed to confirm email verification");
+    res.status(500).json({ error: "internal_error", message: "Failed to confirm email verification" });
   }
 });
 

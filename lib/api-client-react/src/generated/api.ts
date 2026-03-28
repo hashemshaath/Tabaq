@@ -25,6 +25,8 @@ import type {
   BookingListResponse,
   Category,
   City,
+  ConfirmEmailVerification200,
+  ConfirmEmailVerificationParams,
   Country,
   CreateBookingRequest,
   CreateDishRequest,
@@ -69,6 +71,7 @@ import type {
   Offer,
   OfferListResponse,
   PurchaseVoucherRequest,
+  RequestEmailVerification200,
   RequestOtp200,
   RequestOtpBody,
   Restaurant,
@@ -430,6 +433,196 @@ export const useLogout = <
 > => {
   return useMutation(getLogoutMutationOptions(options));
 };
+
+/**
+ * @summary Request an email verification link (authenticated)
+ */
+export const getRequestEmailVerificationUrl = () => {
+  return `/api/auth/verify-email/request`;
+};
+
+export const requestEmailVerification = async (
+  options?: RequestInit,
+): Promise<RequestEmailVerification200> => {
+  return customFetch<RequestEmailVerification200>(
+    getRequestEmailVerificationUrl(),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getRequestEmailVerificationMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof requestEmailVerification>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof requestEmailVerification>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["requestEmailVerification"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof requestEmailVerification>>,
+    void
+  > = () => {
+    return requestEmailVerification(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RequestEmailVerificationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof requestEmailVerification>>
+>;
+
+export type RequestEmailVerificationMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Request an email verification link (authenticated)
+ */
+export const useRequestEmailVerification = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof requestEmailVerification>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof requestEmailVerification>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getRequestEmailVerificationMutationOptions(options));
+};
+
+/**
+ * @summary Confirm email via token from verification link
+ */
+export const getConfirmEmailVerificationUrl = (
+  params: ConfirmEmailVerificationParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/auth/verify-email/confirm?${stringifiedParams}`
+    : `/api/auth/verify-email/confirm`;
+};
+
+export const confirmEmailVerification = async (
+  params: ConfirmEmailVerificationParams,
+  options?: RequestInit,
+): Promise<ConfirmEmailVerification200> => {
+  return customFetch<ConfirmEmailVerification200>(
+    getConfirmEmailVerificationUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getConfirmEmailVerificationQueryKey = (
+  params?: ConfirmEmailVerificationParams,
+) => {
+  return [
+    `/api/auth/verify-email/confirm`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getConfirmEmailVerificationQueryOptions = <
+  TData = Awaited<ReturnType<typeof confirmEmailVerification>>,
+  TError = ErrorType<unknown>,
+>(
+  params: ConfirmEmailVerificationParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof confirmEmailVerification>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getConfirmEmailVerificationQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof confirmEmailVerification>>
+  > = ({ signal }) =>
+    confirmEmailVerification(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof confirmEmailVerification>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ConfirmEmailVerificationQueryResult = NonNullable<
+  Awaited<ReturnType<typeof confirmEmailVerification>>
+>;
+export type ConfirmEmailVerificationQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Confirm email via token from verification link
+ */
+
+export function useConfirmEmailVerification<
+  TData = Awaited<ReturnType<typeof confirmEmailVerification>>,
+  TError = ErrorType<unknown>,
+>(
+  params: ConfirmEmailVerificationParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof confirmEmailVerification>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getConfirmEmailVerificationQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Health check

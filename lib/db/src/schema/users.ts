@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, boolean, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, boolean, timestamp, uniqueIndex, numeric } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { citiesTable } from "./countries";
@@ -12,7 +12,9 @@ export const usersTable = pgTable("users", {
   avatarUrl: text("avatar_url"),
   bio: text("bio"),
   isVerified: boolean("is_verified").default(false).notNull(),
+  isEmailVerified: boolean("is_email_verified").default(false).notNull(),
   points: integer("points").default(0).notNull(),
+  credibilityScore: numeric("credibility_score", { precision: 5, scale: 2 }).default("0").notNull(),
   level: integer("level").default(1).notNull(),
   levelTitle: text("level_title").default("Food Explorer").notNull(),
   preferredLanguage: text("preferred_language").default("en").notNull(),
@@ -40,6 +42,15 @@ export const otpRequestsTable = pgTable("otp_requests", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const emailVerificationTokensTable = pgTable("email_verification_tokens", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id),
+  token: text("token").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const insertUserSchema = createInsertSchema(usersTable).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertUserFollowSchema = createInsertSchema(userFollowsTable).omit({ id: true, createdAt: true });
 
@@ -48,3 +59,4 @@ export type User = typeof usersTable.$inferSelect;
 export type InsertUserFollow = z.infer<typeof insertUserFollowSchema>;
 export type UserFollow = typeof userFollowsTable.$inferSelect;
 export type OtpRequest = typeof otpRequestsTable.$inferSelect;
+export type EmailVerificationToken = typeof emailVerificationTokensTable.$inferSelect;

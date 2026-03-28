@@ -779,6 +779,21 @@ export type Logout200 = {
   message?: string;
 };
 
+export type RequestEmailVerification200 = {
+  message?: string;
+  devVerifyUrl?: string;
+  devToken?: string;
+};
+
+export type ConfirmEmailVerificationParams = {
+  token: string;
+};
+
+export type ConfirmEmailVerification200 = {
+  message?: string;
+  userId?: number;
+};
+
 export type ListRestaurantsParams = {
   cityId?: number;
   countryId?: number;

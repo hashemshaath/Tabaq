@@ -313,10 +313,14 @@ router.get("/leaderboard", async (req, res) => {
   }
 });
 
-// Activity feed — reviews + bookings for a user, merged and sorted by date
-router.get("/users/:userId/activity", async (req, res) => {
+// Activity feed — reviews + bookings for a user; only accessible by the user themselves
+router.get("/users/:userId/activity", requireAuth, async (req, res) => {
   try {
     const userId = parseInt(req.params["userId"] as string, 10);
+    if (req.auth!.userId !== userId) {
+      res.status(403).json({ error: "forbidden", message: "Cannot view another user's activity feed" });
+      return;
+    }
     const { limit = "20", offset = "0" } = req.query;
     const lim = parseInt(limit as string);
     const off = parseInt(offset as string);
