@@ -31,7 +31,11 @@ function getDatesAhead(n: number): Date[] {
 }
 
 function formatDateKey(d: Date) {
-  return d.toISOString().split('T')[0];
+  // Use local year/month/day to avoid UTC-shift issues in GCC timezones
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 function formatDisplayDate(d: Date, lang: string) {

@@ -42,12 +42,15 @@ function VoucherPurchaseModal({
   const title = lang === 'ar' ? offer.titleAr : offer.titleEn;
   const restName = lang === 'ar' ? offer.restaurantNameAr : offer.restaurantNameEn;
 
+  const [giftError, setGiftError] = useState<string | null>(null);
+
   const giftVoucher = useGiftVoucher();
 
   const purchaseVoucher = usePurchaseVoucher({
     mutation: {
       onSuccess: (data) => {
         if (giftMode && (recipientPhone || recipientEmail)) {
+          setGiftError(null);
           giftVoucher.mutate(
             {
               voucherId: data.id,
@@ -63,6 +66,13 @@ function VoucherPurchaseModal({
                 setStep('success');
                 queryClient.invalidateQueries({ queryKey: ['vouchers'] });
                 onSuccess(data.code);
+              },
+              onError: () => {
+                // Purchase succeeded but gift delivery failed — show voucher code with a warning
+                setVoucherCode(data.code);
+                setGiftError(t('Voucher purchased, but gift notification could not be sent. Share the code manually.', 'تم شراء القسيمة، لكن لم نتمكن من إرسال إشعار الهدية. شارك الرمز يدوياً.'));
+                setStep('success');
+                queryClient.invalidateQueries({ queryKey: ['vouchers'] });
               },
             },
           );
@@ -105,7 +115,12 @@ function VoucherPurchaseModal({
                 <CheckCircle2 className="w-10 h-10 text-green-600" />
               </div>
               <h3 className="text-xl font-bold text-foreground mb-2">{t('Voucher is ready!', 'القسيمة جاهزة!')}</h3>
-              <p className="text-muted-foreground mb-6">{t('Use this code at the restaurant.', 'استخدم هذا الرمز في المطعم.')}</p>
+              <p className="text-muted-foreground mb-4">{t('Use this code at the restaurant.', 'استخدم هذا الرمز في المطعم.')}</p>
+              {giftError && (
+                <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-700 text-start">
+                  {giftError}
+                </div>
+              )}
               <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 mb-6">
                 <p className="text-xs text-muted-foreground mb-1">{t('Voucher Code', 'رمز القسيمة')}</p>
                 <p className="text-2xl font-bold font-mono text-primary tracking-wider">{voucherCode}</p>

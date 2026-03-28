@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { bookingsTable, restaurantsTable } from "@workspace/db/schema";
+import { bookingsTable, restaurantsTable, openingHoursTable } from "@workspace/db/schema";
 import { eq, and, sql, gte, lte, type SQL } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { requireAuth, optionalAuth } from "../middleware/requireAuth.js";
@@ -66,6 +66,42 @@ router.post("/bookings", requireAuth, async (req, res) => {
       return;
     }
     const userId = req.auth!.userId;
+
+    // Server-side availability guard: check slot capacity at write time
+    // Parse YYYY-MM-DD using local year/month/day to avoid timezone shift
+    const [dateYear, dateMonth, dateDay] = (date as string).split('-').map(Number);
+    const requestedDate = new Date(dateYear!, (dateMonth ?? 1) - 1, dateDay);
+    const dayOfWeek = requestedDate.getDay(); // local day-of-week (0=Sun)
+    const SEAT_CAPACITY = 40;
+
+    const [hours] = await db.select()
+      .from(openingHoursTable)
+      .where(and(
+        eq(openingHoursTable.restaurantId, restaurantId),
+        eq(openingHoursTable.dayOfWeek, dayOfWeek),
+      ));
+
+    if (!hours || hours.isClosed) {
+      res.status(400).json({ error: "bad_request", message: "Restaurant is closed on the requested date" });
+      return;
+    }
+
+    // Count existing booked seats for this slot
+    const [{ bookedSeats }] = await db.select({
+      bookedSeats: sql<number>`COALESCE(SUM(${bookingsTable.partySize}), 0)`,
+    }).from(bookingsTable).where(and(
+      eq(bookingsTable.restaurantId, restaurantId),
+      eq(bookingsTable.date, date),
+      eq(bookingsTable.time, time),
+      sql`${bookingsTable.status} IN ('pending','confirmed')`,
+    ));
+
+    const remaining = SEAT_CAPACITY - Number(bookedSeats);
+    if (remaining < partySize) {
+      res.status(409).json({ error: "conflict", message: "No available seats for this time slot", remaining });
+      return;
+    }
+
     const referenceCode = `TBQ-${nanoid(8).toUpperCase()}`;
 
     const [booking] = await db.insert(bookingsTable).values({
