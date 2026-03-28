@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { restaurantsTable, dishesTable, citiesTable, categoriesTable } from "@workspace/db/schema";
-import { eq, ilike, or, and, sql } from "drizzle-orm";
+import { restaurantsTable, dishesTable, citiesTable, venuesTable } from "@workspace/db/schema";
+import { eq, ilike, or, and, type SQL } from "drizzle-orm";
 
 const router: IRouter = Router();
 
@@ -14,8 +14,25 @@ router.get("/search", async (req, res) => {
     }
     const pattern = `%${q}%`;
     const lim = parseInt(limit as string);
+    const cityFilter = cityId ? parseInt(cityId as string) : null;
 
-    const [restaurants, dishes] = await Promise.all([
+    const restaurantConditions: SQL[] = [
+      eq(restaurantsTable.isActive, true),
+      or(ilike(restaurantsTable.nameEn, pattern), ilike(restaurantsTable.nameAr, pattern))!,
+    ];
+    if (cityFilter) restaurantConditions.push(eq(restaurantsTable.cityId, cityFilter));
+
+    const dishConditions: SQL[] = [
+      or(ilike(dishesTable.nameEn, pattern), ilike(dishesTable.nameAr, pattern))!,
+    ];
+    if (cityFilter) dishConditions.push(eq(restaurantsTable.cityId, cityFilter));
+
+    const venueConditions: SQL[] = [
+      eq(venuesTable.isActive, true),
+      or(ilike(venuesTable.nameEn, pattern), ilike(venuesTable.nameAr, pattern))!,
+    ];
+
+    const [restaurants, dishes, venues] = await Promise.all([
       (type === "all" || type === "restaurants") ? db.select({
         id: restaurantsTable.id,
         nameEn: restaurantsTable.nameEn,
@@ -27,12 +44,10 @@ router.get("/search", async (req, res) => {
         isVerified: restaurantsTable.isVerified,
         cityId: restaurantsTable.cityId,
       }).from(restaurantsTable)
-        .where(and(
-          eq(restaurantsTable.isActive, true),
-          or(ilike(restaurantsTable.nameEn, pattern), ilike(restaurantsTable.nameAr, pattern))
-        ))
+        .where(and(...restaurantConditions))
         .limit(lim)
         : Promise.resolve([]),
+
       (type === "all" || type === "dishes") ? db.select({
         id: dishesTable.id,
         nameEn: dishesTable.nameEn,
@@ -48,7 +63,22 @@ router.get("/search", async (req, res) => {
         cityId: restaurantsTable.cityId,
       }).from(dishesTable)
         .innerJoin(restaurantsTable, eq(dishesTable.restaurantId, restaurantsTable.id))
-        .where(or(ilike(dishesTable.nameEn, pattern), ilike(dishesTable.nameAr, pattern)))
+        .where(and(...dishConditions))
+        .limit(lim)
+        : Promise.resolve([]),
+
+      (type === "all" || type === "venues") ? db.select({
+        id: venuesTable.id,
+        nameEn: venuesTable.nameEn,
+        nameAr: venuesTable.nameAr,
+        restaurantId: venuesTable.restaurantId,
+        capacity: venuesTable.capacity,
+        isPrivate: venuesTable.isPrivate,
+        imageUrl: venuesTable.imageUrl,
+        pricePerHour: venuesTable.pricePerHour,
+        currency: venuesTable.currency,
+      }).from(venuesTable)
+        .where(and(...venueConditions))
         .limit(lim)
         : Promise.resolve([]),
     ]);
@@ -56,8 +86,10 @@ router.get("/search", async (req, res) => {
     res.json({
       restaurants: restaurants.map(r => ({ ...r, cuisineTypes: [] })),
       dishes,
+      venues,
       totalRestaurants: restaurants.length,
       totalDishes: dishes.length,
+      totalVenues: venues.length,
     });
   } catch (err) {
     req.log.error({ err }, "Search failed");
@@ -73,6 +105,13 @@ router.get("/search/autocomplete", async (req, res) => {
       return;
     }
     const pattern = `%${q}%`;
+    const cityFilter = cityId ? parseInt(cityId as string) : null;
+
+    const restaurantConditions: SQL[] = [
+      eq(restaurantsTable.isActive, true),
+      or(ilike(restaurantsTable.nameEn, pattern), ilike(restaurantsTable.nameAr, pattern))!,
+    ];
+    if (cityFilter) restaurantConditions.push(eq(restaurantsTable.cityId, cityFilter));
 
     const [restaurants, dishes, cities] = await Promise.all([
       db.select({
@@ -81,10 +120,9 @@ router.get("/search/autocomplete", async (req, res) => {
         labelAr: restaurantsTable.nameAr,
         imageUrl: restaurantsTable.coverImageUrl,
       }).from(restaurantsTable)
-        .where(and(
-          eq(restaurantsTable.isActive, true),
-          or(ilike(restaurantsTable.nameEn, pattern), ilike(restaurantsTable.nameAr, pattern))
-        )).limit(4),
+        .where(and(...restaurantConditions))
+        .limit(4),
+
       db.select({
         id: dishesTable.id,
         labelEn: dishesTable.nameEn,
@@ -93,6 +131,7 @@ router.get("/search/autocomplete", async (req, res) => {
       }).from(dishesTable)
         .where(or(ilike(dishesTable.nameEn, pattern), ilike(dishesTable.nameAr, pattern)))
         .limit(4),
+
       db.select({
         id: citiesTable.id,
         labelEn: citiesTable.nameEn,
@@ -105,7 +144,7 @@ router.get("/search/autocomplete", async (req, res) => {
     const suggestions = [
       ...restaurants.map(r => ({ type: "restaurant" as const, ...r })),
       ...dishes.map(d => ({ type: "dish" as const, ...d })),
-      ...cities.map(c => ({ type: "city" as const, ...c, imageUrl: undefined })),
+      ...cities.map(c => ({ type: "city" as const, ...c, imageUrl: undefined as string | undefined })),
     ];
 
     res.json({ suggestions });

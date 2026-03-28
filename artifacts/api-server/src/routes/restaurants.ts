@@ -5,7 +5,7 @@ import {
   restaurantFollowsTable, openingHoursTable, categoriesTable, occasionsTable,
   reviewsTable, offersTable, citiesTable
 } from "@workspace/db/schema";
-import { eq, and, gte, sql, inArray } from "drizzle-orm";
+import { eq, and, gte, sql, inArray, type SQL } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 const router: IRouter = Router();
@@ -34,12 +34,32 @@ router.get("/restaurants", async (req, res) => {
       .leftJoin(citiesTable, eq(restaurantsTable.cityId, citiesTable.id))
       .$dynamic();
 
-    const conditions = [eq(restaurantsTable.isActive, true)];
+    const conditions: SQL[] = [eq(restaurantsTable.isActive, true)];
     if (cityId) conditions.push(eq(restaurantsTable.cityId, parseInt(cityId as string)));
     if (countryId) conditions.push(eq(restaurantsTable.countryId, parseInt(countryId as string)));
     if (priceTier) conditions.push(eq(restaurantsTable.priceTier, priceTier as 'budget' | 'mid' | 'upscale' | 'fine_dining'));
     if (minRating) conditions.push(gte(restaurantsTable.avgRating, parseFloat(minRating as string)));
     if (featured === "true") conditions.push(eq(restaurantsTable.isFeatured, true));
+
+    if (categoryId) {
+      const catRestaurantIds = await db
+        .select({ restaurantId: restaurantCategoriesTable.restaurantId })
+        .from(restaurantCategoriesTable)
+        .where(eq(restaurantCategoriesTable.categoryId, parseInt(categoryId as string)));
+      if (catRestaurantIds.length) {
+        conditions.push(inArray(restaurantsTable.id, catRestaurantIds.map(r => r.restaurantId)));
+      }
+    }
+
+    if (occasionId) {
+      const occRestaurantIds = await db
+        .select({ restaurantId: restaurantOccasionsTable.restaurantId })
+        .from(restaurantOccasionsTable)
+        .where(eq(restaurantOccasionsTable.occasionId, parseInt(occasionId as string)));
+      if (occRestaurantIds.length) {
+        conditions.push(inArray(restaurantsTable.id, occRestaurantIds.map(r => r.restaurantId)));
+      }
+    }
 
     const restaurants = await query
       .where(and(...conditions))

@@ -11,6 +11,7 @@ router.get("/events", async (req, res) => {
     const conditions: SQL[] = [eq(eventsTable.isActive, true)];
     if (restaurantId) conditions.push(eq(eventsTable.restaurantId, parseInt(restaurantId as string)));
     if (from) conditions.push(gte(eventsTable.eventDate, new Date(from as string)));
+    if (cityId) conditions.push(eq(restaurantsTable.cityId, parseInt(cityId as string)));
 
     const events = await db.select({
       id: eventsTable.id,

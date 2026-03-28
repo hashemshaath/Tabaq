@@ -67,6 +67,9 @@ router.get("/dishes/trending", async (req, res) => {
   try {
     const { cityId, limit = "8" } = req.query;
 
+    const trendingConditions: SQL[] = [eq(dishesTable.isAvailable, true)];
+    if (cityId) trendingConditions.push(eq(restaurantsTable.cityId, parseInt(cityId as string)));
+
     const dishes = await db.select({
       id: dishesTable.id,
       nameEn: dishesTable.nameEn,
@@ -82,7 +85,7 @@ router.get("/dishes/trending", async (req, res) => {
       cityId: restaurantsTable.cityId,
     }).from(dishesTable)
       .innerJoin(restaurantsTable, eq(dishesTable.restaurantId, restaurantsTable.id))
-      .where(eq(dishesTable.isAvailable, true))
+      .where(and(...trendingConditions))
       .orderBy(desc(dishesTable.popularityScore))
       .limit(parseInt(limit as string));
 

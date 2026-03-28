@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { offersTable, vouchersTable, restaurantsTable } from "@workspace/db/schema";
+import { offersTable, vouchersTable, restaurantsTable, citiesTable } from "@workspace/db/schema";
 import { eq, and, sql, type SQL } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
@@ -13,6 +13,7 @@ router.get("/offers", async (req, res) => {
     const conditions: SQL[] = [];
     if (restaurantId) conditions.push(eq(offersTable.restaurantId, parseInt(restaurantId as string)));
     if (active === "true") conditions.push(eq(offersTable.isActive, true));
+    if (cityId) conditions.push(eq(restaurantsTable.cityId, parseInt(cityId as string)));
 
     const offers = await db.select({
       id: offersTable.id,
@@ -40,8 +41,21 @@ router.get("/offers", async (req, res) => {
       .limit(parseInt(limit as string))
       .offset(parseInt(offset as string));
 
-    const total = await db.select({ count: sql<number>`count(*)` })
-      .from(offersTable)
+    const countQuery = db.select({ count: sql<number>`count(*)` })
+      .from(offersTable);
+    if (cityId) {
+      const total = await countQuery
+        .innerJoin(restaurantsTable, eq(offersTable.restaurantId, restaurantsTable.id))
+        .where(conditions.length ? and(...conditions) : undefined);
+      res.json({
+        offers,
+        total: Number(total[0]?.count ?? 0),
+        offset: parseInt(offset as string),
+        limit: parseInt(limit as string),
+      });
+      return;
+    }
+    const total = await countQuery
       .where(conditions.length ? and(...conditions) : undefined);
 
     res.json({
