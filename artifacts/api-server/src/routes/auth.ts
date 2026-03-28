@@ -216,7 +216,7 @@ router.post("/auth/verify-email/request", requireAuth, async (req, res) => {
 
     const verifyUrl = `${process.env["APP_URL"] ?? "https://tabaq.app"}/verify-email?token=${token}`;
 
-    req.log.info({ userId, verifyUrl }, "Email verification link generated");
+    req.log.info({ userId }, "Email verification link generated");
     res.json({
       message: "Verification link generated",
       ...(IS_DEV ? { devVerifyUrl: verifyUrl, devToken: token } : {}),
