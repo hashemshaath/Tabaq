@@ -135,13 +135,27 @@ router.post("/offers", requireAuth, async (req, res) => {
   }
 });
 
-// List vouchers — auth required, users only see their own
+// List vouchers — auth required
+// Returns vouchers the user owns OR is the recipient of (received as a gift).
+// Each voucher includes a `role` field: "owner" or "recipient".
 router.get("/vouchers", requireAuth, async (req, res) => {
   try {
     const { status } = req.query;
     const userId = req.auth!.userId;
-    const conditions: SQL[] = [eq(vouchersTable.userId, userId)];
-    if (status) conditions.push(eq(vouchersTable.status, status as 'active' | 'used' | 'expired'));
+
+    // Visibility: user is the owner (userId) OR they are the resolved gift recipient
+    const visibilityCondition: SQL = or(
+      eq(vouchersTable.userId, userId),
+      eq(vouchersTable.recipientUserId, userId),
+    )!;
+
+    const statusCondition = status
+      ? eq(vouchersTable.status, status as 'active' | 'used' | 'expired')
+      : undefined;
+
+    const whereClause = statusCondition
+      ? and(visibilityCondition, statusCondition)!
+      : visibilityCondition;
 
     const vouchers = await db.select({
       id: vouchersTable.id,
@@ -155,8 +169,11 @@ router.get("/vouchers", requireAuth, async (req, res) => {
       validUntil: vouchersTable.validUntil,
       giftMessage: vouchersTable.giftMessage,
       isGift: vouchersTable.isGift,
+      gifterUserId: vouchersTable.gifterUserId,
+      recipientUserId: vouchersTable.recipientUserId,
       giftRecipientPhone: vouchersTable.giftRecipientPhone,
       giftRecipientEmail: vouchersTable.giftRecipientEmail,
+      giftDeliveryStatus: vouchersTable.giftDeliveryStatus,
       redeemedAt: vouchersTable.redeemedAt,
       createdAt: vouchersTable.createdAt,
       restaurantNameEn: restaurantsTable.nameEn,
@@ -164,9 +181,16 @@ router.get("/vouchers", requireAuth, async (req, res) => {
       restaurantCoverImageUrl: restaurantsTable.coverImageUrl,
     }).from(vouchersTable)
       .innerJoin(restaurantsTable, eq(vouchersTable.restaurantId, restaurantsTable.id))
-      .where(and(...conditions))
+      .where(whereClause)
       .orderBy(sql`${vouchersTable.createdAt} desc`);
-    res.json(vouchers);
+
+    // Annotate each voucher with the caller's role
+    const annotated = vouchers.map(v => ({
+      ...v,
+      role: v.userId === userId ? 'owner' : 'recipient',
+    }));
+
+    res.json(annotated);
   } catch (err) {
     req.log.error({ err }, "Failed to fetch vouchers");
     res.status(500).json({ error: "internal_error", message: "Failed to fetch vouchers" });
@@ -328,27 +352,33 @@ router.post("/vouchers/:voucherId/gift", requireAuth, async (req, res) => {
       return;
     }
 
-    // Recipient lookup: resolve phone/email to a registered user account if one exists
+    // Recipient lookup: resolve phone/email to a registered user account if one exists.
+    // We do NOT transfer userId — sender retains ownership so their dashboard still shows the voucher.
+    // recipientUserId is stored separately; when recipient logs in, the list endpoint checks both fields.
     const lookupConditions: SQL[] = [];
     if (recipientPhone) lookupConditions.push(eq(usersTable.phone, recipientPhone));
     if (recipientEmail) lookupConditions.push(eq(usersTable.email, recipientEmail));
 
-    let recipientUserId: number | null = null;
+    let resolvedRecipientId: number | null = null;
     if (lookupConditions.length > 0) {
       const [recipient] = await db.select({ id: usersTable.id })
         .from(usersTable)
         .where(or(...lookupConditions));
-      recipientUserId = recipient?.id ?? null;
+      resolvedRecipientId = recipient?.id ?? null;
     }
+
+    const deliveryStatus = resolvedRecipientId ? "delivered" : "pending";
 
     const [voucher] = await db.update(vouchersTable)
       .set({
         isGift: true,
+        gifterUserId: userId,
+        recipientUserId: resolvedRecipientId,
         giftRecipientPhone: recipientPhone ?? null,
         giftRecipientEmail: recipientEmail ?? null,
         giftMessage: giftMessage ?? null,
-        // If recipient has an account, link the voucher to them directly
-        ...(recipientUserId ? { userId: recipientUserId } : {}),
+        giftDeliveryStatus: deliveryStatus,
+        // userId stays as original sender — they keep dashboard visibility
       })
       .where(eq(vouchersTable.id, voucherId))
       .returning();
@@ -357,8 +387,8 @@ router.post("/vouchers/:voucherId/gift", requireAuth, async (req, res) => {
       .from(restaurantsTable).where(eq(restaurantsTable.id, voucher.restaurantId));
 
     // Notification stub: in production, send gift notification to recipient via phone/email/in-app
-    if (recipientUserId) {
-      req.log.info({ voucherId, recipientUserId }, "NOTIFY: gift voucher sent — deliver in-app notification to registered recipient");
+    if (resolvedRecipientId) {
+      req.log.info({ voucherId, recipientUserId: resolvedRecipientId }, "NOTIFY: gift voucher sent — deliver in-app notification to registered recipient");
     } else {
       req.log.info({ voucherId, recipientPhone, recipientEmail }, "NOTIFY: gift voucher sent — deliver via SMS/email to unregistered recipient");
     }
@@ -367,7 +397,8 @@ router.post("/vouchers/:voucherId/gift", requireAuth, async (req, res) => {
       ...voucher,
       restaurantNameEn: restaurant?.nameEn ?? "",
       restaurantNameAr: restaurant?.nameAr ?? "",
-      recipientResolved: recipientUserId !== null,
+      recipientResolved: resolvedRecipientId !== null,
+      deliveryStatus,
     });
   } catch (err) {
     req.log.error({ err }, "Failed to gift voucher");

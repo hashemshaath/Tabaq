@@ -87,6 +87,29 @@ function VoucherCard({ voucher, lang, t, onRedeem }: {
           </p>
         )}
 
+        {/* Gift delivery status for sender */}
+        {voucher.isGift && voucher.role === 'owner' && (
+          <div className={`mt-3 rounded-lg px-3 py-2 text-xs flex items-center gap-1.5 ${
+            voucher.giftDeliveryStatus === 'delivered'
+              ? 'bg-green-50 text-green-700'
+              : 'bg-amber-50 text-amber-700'
+          }`}>
+            <Gift className="w-3.5 h-3.5" />
+            {voucher.giftDeliveryStatus === 'delivered'
+              ? t('Gift delivered to registered recipient', 'تم تسليم الهدية للمستلم المسجل')
+              : t('Gift pending — recipient not yet registered', 'الهدية معلقة — المستلم لم يسجل بعد')
+            }
+          </div>
+        )}
+
+        {/* Received gift banner */}
+        {voucher.isGift && voucher.role === 'recipient' && (
+          <div className="mt-3 bg-pink-50 rounded-lg px-3 py-2 text-xs text-pink-700 flex items-center gap-1.5">
+            <Gift className="w-3.5 h-3.5" />
+            {t('You received this as a gift', 'لقد تلقيت هذا كهدية')}
+          </div>
+        )}
+
         {isActive && (
           <div className="mt-4 flex gap-3">
             <Button

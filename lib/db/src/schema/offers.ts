@@ -38,8 +38,11 @@ export const vouchersTable = pgTable("vouchers", {
   validUntil: timestamp("valid_until").notNull(),
   giftMessage: text("gift_message"),
   isGift: boolean("is_gift").default(false).notNull(),
+  gifterUserId: integer("gifter_user_id").references(() => usersTable.id),
+  recipientUserId: integer("recipient_user_id").references(() => usersTable.id),
   giftRecipientPhone: text("gift_recipient_phone"),
   giftRecipientEmail: text("gift_recipient_email"),
+  giftDeliveryStatus: text("gift_delivery_status").default("pending"),
   redeemedAt: timestamp("redeemed_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

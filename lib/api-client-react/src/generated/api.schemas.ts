@@ -585,8 +585,18 @@ export interface Voucher {
   validUntil?: string;
   giftMessage?: string;
   isGift: boolean;
+  /** Set when the voucher is a gift. Sender userId — separate from voucher owner for gift tracking. */
+  gifterUserId?: number;
+  /** Resolved recipient account ID, if recipient is a registered user. */
+  recipientUserId?: number;
+  giftRecipientPhone?: string;
+  giftRecipientEmail?: string;
+  /** "pending" | "delivered" — delivery status of gift notification. */
+  giftDeliveryStatus?: string;
   redeemedAt?: string;
   createdAt: string;
+  /** "owner" | "recipient" — caller's relationship to this voucher (returned by list endpoint). */
+  role?: string;
 }
 
 export interface PurchaseVoucherRequest {

@@ -170,7 +170,7 @@ router.post("/bookings", requireAuth, async (req, res) => {
           occasionId,
           specialRequests,
           referenceCode,
-          status: "pending",
+          status: "confirmed",
         }).returning();
         return created!;
       });
