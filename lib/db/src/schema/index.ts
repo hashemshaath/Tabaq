@@ -7,3 +7,5 @@ export * from "./bookings";
 export * from "./offers";
 export * from "./reviews";
 export * from "./events";
+export * from "./venues";
+export * from "./tags";

@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { dishesTable, restaurantsTable, reviewsTable } from "@workspace/db/schema";
-import { eq, and, sql, desc } from "drizzle-orm";
+import { dishesTable, restaurantsTable, reviewsTable, restaurantCategoriesTable } from "@workspace/db/schema";
+import { eq, and, sql, desc, inArray, type SQL } from "drizzle-orm";
 
 const router: IRouter = Router();
 
@@ -10,8 +10,17 @@ router.get("/dishes", async (req, res) => {
   try {
     const { restaurantId, categoryId, cityId, sortBy = "rating", limit = "20", offset = "0" } = req.query;
 
-    const conditions = [eq(dishesTable.isAvailable, true)];
+    const conditions: SQL[] = [eq(dishesTable.isAvailable, true)];
     if (restaurantId) conditions.push(eq(dishesTable.restaurantId, parseInt(restaurantId as string)));
+    if (cityId) conditions.push(eq(restaurantsTable.cityId, parseInt(cityId as string)));
+    if (categoryId) {
+      const catRestaurants = await db.select({ restaurantId: restaurantCategoriesTable.restaurantId })
+        .from(restaurantCategoriesTable)
+        .where(eq(restaurantCategoriesTable.categoryId, parseInt(categoryId as string)));
+      if (catRestaurants.length) {
+        conditions.push(inArray(dishesTable.restaurantId, catRestaurants.map(r => r.restaurantId)));
+      }
+    }
 
     const orderCol = sortBy === "popularity"
       ? desc(dishesTable.popularityScore)

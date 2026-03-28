@@ -8,7 +8,9 @@ import { eq, and, sql, desc, type SQL } from "drizzle-orm";
 
 const router: IRouter = Router();
 
-async function enrichReview(review: any, userId: number) {
+type ReviewRow = typeof reviewsTable.$inferSelect;
+
+async function enrichReview(review: ReviewRow, userId: number) {
   const [user] = await db.select({
     nameEn: usersTable.nameEn,
     nameAr: usersTable.nameAr,
