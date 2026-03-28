@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/context/AuthContext";
-import { useGetUser } from "@workspace/api-client-react";
+import { useGetUser, getGetUserQueryKey } from "@workspace/api-client-react";
 import { LoginModal } from "@/components/auth/LoginModal";
 import { User, Settings, ShieldCheck, MapPin, Calendar, Star, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,8 +11,9 @@ export function ProfilePage() {
   const { user: authUser, isLoading: authLoading } = useAuth();
   const [loginOpen, setLoginOpen] = useState(false);
 
-  const { data, isLoading } = useGetUser(authUser?.id ?? 0, {
-    query: { enabled: !!authUser },
+  const userId = authUser?.id ?? 0;
+  const { data, isLoading } = useGetUser(userId, {
+    query: { queryKey: getGetUserQueryKey(userId), enabled: !!authUser },
   });
 
   if (authLoading) {

@@ -22,6 +22,34 @@ function calcLevel(points: number): { level: number; levelTitle: string } {
 const OTP_RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const OTP_RATE_LIMIT_MAX = 3;
 
+// Verify-attempt throttling: max 5 failed attempts per identifier within 10 min window
+// then lock out for 10 min. Stored in memory (resets on server restart — acceptable for MVP).
+const VERIFY_ATTEMPT_MAX = 5;
+const VERIFY_ATTEMPT_WINDOW_MS = 10 * 60 * 1000;
+
+const verifyAttempts = new Map<string, { count: number; windowStart: number }>();
+
+function checkVerifyAttempt(key: string): { allowed: boolean; remaining: number } {
+  const now = Date.now();
+  const entry = verifyAttempts.get(key);
+
+  if (!entry || now - entry.windowStart > VERIFY_ATTEMPT_WINDOW_MS) {
+    verifyAttempts.set(key, { count: 0, windowStart: now });
+    return { allowed: true, remaining: VERIFY_ATTEMPT_MAX };
+  }
+  const remaining = VERIFY_ATTEMPT_MAX - entry.count;
+  return { allowed: remaining > 0, remaining };
+}
+
+function recordVerifyFailure(key: string): void {
+  const entry = verifyAttempts.get(key);
+  if (entry) entry.count += 1;
+}
+
+function clearVerifyAttempts(key: string): void {
+  verifyAttempts.delete(key);
+}
+
 router.post("/auth/request-otp", async (req, res) => {
   try {
     const { phone, email } = req.body as { phone?: string; email?: string };
@@ -79,6 +107,16 @@ router.post("/auth/verify-otp", async (req, res) => {
       return;
     }
 
+    const attemptKey = phone ?? email!;
+    const attempt = checkVerifyAttempt(attemptKey);
+    if (!attempt.allowed) {
+      res.status(429).json({
+        error: "otp_attempt_limit",
+        message: "Too many failed verification attempts. Please request a new code.",
+      });
+      return;
+    }
+
     const now = new Date();
     const [otp] = await db.select().from(otpRequestsTable).where(
       and(
@@ -90,6 +128,7 @@ router.post("/auth/verify-otp", async (req, res) => {
     ).orderBy(desc(otpRequestsTable.createdAt)).limit(1);
 
     if (!otp) {
+      recordVerifyFailure(attemptKey);
       res.status(401).json({ error: "invalid_otp", message: "Invalid or expired OTP" });
       return;
     }
@@ -97,6 +136,8 @@ router.post("/auth/verify-otp", async (req, res) => {
     await db.update(otpRequestsTable)
       .set({ usedAt: now })
       .where(eq(otpRequestsTable.id, otp.id));
+
+    clearVerifyAttempts(attemptKey);
 
     let user = await db.select().from(usersTable).where(
       phone ? eq(usersTable.phone, phone) : eq(usersTable.email, email!)

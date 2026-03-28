@@ -3,9 +3,10 @@ import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { X, Phone, KeyRound, Loader2, ChevronRight } from "lucide-react";
+import { X, Phone, Mail, KeyRound, Loader2, ChevronRight } from "lucide-react";
 
-type Step = "phone" | "otp";
+type Step = "identifier" | "otp";
+type AuthMode = "phone" | "email";
 
 interface LoginModalProps {
   open: boolean;
@@ -15,8 +16,9 @@ interface LoginModalProps {
 export function LoginModal({ open, onClose }: LoginModalProps) {
   const { t, lang } = useLanguage();
   const { login } = useAuth();
-  const [step, setStep] = useState<Step>("phone");
-  const [phone, setPhone] = useState("");
+  const [step, setStep] = useState<Step>("identifier");
+  const [authMode, setAuthMode] = useState<AuthMode>("phone");
+  const [identifier, setIdentifier] = useState("");
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [devCode, setDevCode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -25,16 +27,21 @@ export function LoginModal({ open, onClose }: LoginModalProps) {
 
   if (!open) return null;
 
-  const handlePhoneSubmit = async (e: React.FormEvent) => {
+  const isEmail = authMode === "email";
+
+  const handleIdentifierSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (!phone.trim()) return;
+    if (!identifier.trim()) return;
     setLoading(true);
     try {
+      const body = isEmail
+        ? { email: identifier.trim() }
+        : { phone: identifier.trim() };
       const res = await fetch("/api/auth/request-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: phone.trim() }),
+        body: JSON.stringify(body),
         credentials: "include",
       });
       const data = await res.json();
@@ -83,15 +90,23 @@ export function LoginModal({ open, onClose }: LoginModalProps) {
     setError(null);
     setLoading(true);
     try {
+      const body = isEmail
+        ? { email: identifier.trim(), code }
+        : { phone: identifier.trim(), code };
       const res = await fetch("/api/auth/verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: phone.trim(), code }),
+        body: JSON.stringify(body),
         credentials: "include",
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.message || t("Invalid code", "رمز غير صحيح"));
+        if (data.error === "otp_attempt_limit") {
+          setError(t("Too many failed attempts. Please request a new code.", "محاولات فاشلة كثيرة. يرجى طلب رمز جديد."));
+          handleBack();
+        } else {
+          setError(data.message || t("Invalid code", "رمز غير صحيح"));
+        }
         return;
       }
       login(data.token, data.user);
@@ -104,11 +119,29 @@ export function LoginModal({ open, onClose }: LoginModalProps) {
   };
 
   const handleBack = () => {
-    setStep("phone");
+    setStep("identifier");
     setOtp(["", "", "", "", "", ""]);
     setDevCode(null);
     setError(null);
   };
+
+  const switchMode = (mode: AuthMode) => {
+    setAuthMode(mode);
+    setIdentifier("");
+    setError(null);
+  };
+
+  const identifierLabel = isEmail
+    ? t("Email Address", "عنوان البريد الإلكتروني")
+    : t("Phone Number", "رقم الهاتف");
+
+  const identifierPlaceholder = isEmail
+    ? t("you@example.com", "you@example.com")
+    : t("+966 5X XXX XXXX", "+966 5X XXX XXXX");
+
+  const sentTo = isEmail
+    ? t(`Code sent to ${identifier}`, `تم إرسال الرمز إلى ${identifier}`)
+    : t(`Code sent to ${identifier}`, `تم إرسال الرمز إلى ${identifier}`);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -121,38 +154,65 @@ export function LoginModal({ open, onClose }: LoginModalProps) {
           <X className="w-5 h-5" />
         </button>
 
-        {/* Logo / Title */}
         <div className="text-center mb-8">
           <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
-            {step === "phone" ? (
-              <Phone className="w-8 h-8 text-primary" />
+            {step === "identifier" ? (
+              isEmail ? <Mail className="w-8 h-8 text-primary" /> : <Phone className="w-8 h-8 text-primary" />
             ) : (
               <KeyRound className="w-8 h-8 text-primary" />
             )}
           </div>
           <h2 className="text-2xl font-bold text-foreground">
-            {step === "phone"
+            {step === "identifier"
               ? t("Sign In to Tabaq", "تسجيل الدخول إلى طبق")
               : t("Enter Verification Code", "أدخل رمز التحقق")}
           </h2>
           <p className="text-muted-foreground mt-2 text-sm">
-            {step === "phone"
-              ? t("Enter your phone number to continue", "أدخل رقم هاتفك للمتابعة")
-              : t(`Code sent to ${phone}`, `تم إرسال الرمز إلى ${phone}`)}
+            {step === "identifier"
+              ? t("Sign in or create an account to continue", "سجّل دخولك أو أنشئ حسابًا للمتابعة")
+              : sentTo}
           </p>
         </div>
 
-        {step === "phone" ? (
-          <form onSubmit={handlePhoneSubmit} className="space-y-4">
+        {step === "identifier" ? (
+          <form onSubmit={handleIdentifierSubmit} className="space-y-4">
+            {/* Phone / Email toggle */}
+            <div className="flex rounded-xl border border-border overflow-hidden mb-1">
+              <button
+                type="button"
+                onClick={() => switchMode("phone")}
+                className={`flex-1 py-2 text-sm font-medium flex items-center justify-center gap-1.5 transition-colors ${
+                  authMode === "phone"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-background text-muted-foreground hover:bg-muted"
+                }`}
+              >
+                <Phone className="w-4 h-4" />
+                {t("Phone", "هاتف")}
+              </button>
+              <button
+                type="button"
+                onClick={() => switchMode("email")}
+                className={`flex-1 py-2 text-sm font-medium flex items-center justify-center gap-1.5 transition-colors ${
+                  authMode === "email"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-background text-muted-foreground hover:bg-muted"
+                }`}
+              >
+                <Mail className="w-4 h-4" />
+                {t("Email", "بريد")}
+              </button>
+            </div>
+
             <div>
               <label className="text-sm font-medium text-foreground mb-1.5 block">
-                {t("Phone Number", "رقم الهاتف")}
+                {identifierLabel}
               </label>
               <Input
-                type="tel"
-                placeholder={t("+966 5X XXX XXXX", "٩٦٦+ 5X XXX XXXX")}
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                type={isEmail ? "email" : "tel"}
+                placeholder={identifierPlaceholder}
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
                 className="rounded-xl text-base h-12"
                 autoFocus
                 dir="ltr"
@@ -166,7 +226,7 @@ export function LoginModal({ open, onClose }: LoginModalProps) {
             <Button
               type="submit"
               className="w-full h-12 rounded-xl text-base font-semibold gap-2"
-              disabled={loading || !phone.trim()}
+              disabled={loading || !identifier.trim()}
             >
               {loading ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -233,7 +293,7 @@ export function LoginModal({ open, onClose }: LoginModalProps) {
               onClick={handleBack}
               className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors text-center"
             >
-              {t("← Change phone number", "← تغيير رقم الهاتف")}
+              {t("← Change contact", "← تغيير معلومات الاتصال")}
             </button>
           </form>
         )}
