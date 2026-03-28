@@ -30,6 +30,16 @@ export const userFollowsTable = pgTable("user_follows", {
   uniqueIndex("user_follows_unique").on(t.followerId, t.followingId),
 ]);
 
+export const otpRequestsTable = pgTable("otp_requests", {
+  id: serial("id").primaryKey(),
+  phone: text("phone"),
+  email: text("email"),
+  code: text("code").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const insertUserSchema = createInsertSchema(usersTable).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertUserFollowSchema = createInsertSchema(userFollowsTable).omit({ id: true, createdAt: true });
 
@@ -37,3 +47,4 @@ export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof usersTable.$inferSelect;
 export type InsertUserFollow = z.infer<typeof insertUserFollowSchema>;
 export type UserFollow = typeof userFollowsTable.$inferSelect;
+export type OtpRequest = typeof otpRequestsTable.$inferSelect;

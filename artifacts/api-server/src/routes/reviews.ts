@@ -5,6 +5,7 @@ import {
   restaurantsTable, dishesTable
 } from "@workspace/db/schema";
 import { eq, and, sql, desc, type SQL } from "drizzle-orm";
+import { requireAuth, optionalAuth } from "../middleware/requireAuth.js";
 
 const router: IRouter = Router();
 
@@ -71,9 +72,9 @@ router.get("/reviews", async (req, res) => {
 });
 
 // Create review
-router.post("/reviews", async (req, res) => {
+router.post("/reviews", requireAuth, async (req, res) => {
   try {
-    const userId = 1; // TODO: from session
+    const userId = req.auth!.userId;
     const { restaurantId, dishId, ratingOverall, photoUrls = [], ...rest } = req.body;
     if (!ratingOverall) {
       res.status(400).json({ error: "bad_request", message: "ratingOverall is required" });
@@ -111,7 +112,7 @@ router.post("/reviews", async (req, res) => {
 // Get review
 router.get("/reviews/:reviewId", async (req, res) => {
   try {
-    const reviewId = parseInt(req.params.reviewId, 10);
+    const reviewId = parseInt(req.params["reviewId"] as string, 10);
     const [review] = await db.select().from(reviewsTable).where(eq(reviewsTable.id, reviewId));
     if (!review) {
       res.status(404).json({ error: "not_found", message: "Review not found" });
@@ -128,7 +129,7 @@ router.get("/reviews/:reviewId", async (req, res) => {
 // Delete review
 router.delete("/reviews/:reviewId", async (req, res) => {
   try {
-    const reviewId = parseInt(req.params.reviewId, 10);
+    const reviewId = parseInt(req.params["reviewId"] as string, 10);
     await db.delete(reviewPhotosTable).where(eq(reviewPhotosTable.reviewId, reviewId));
     await db.delete(reviewLikesTable).where(eq(reviewLikesTable.reviewId, reviewId));
     await db.delete(reviewsTable).where(eq(reviewsTable.id, reviewId));
@@ -140,10 +141,10 @@ router.delete("/reviews/:reviewId", async (req, res) => {
 });
 
 // Like review
-router.post("/reviews/:reviewId/like", async (req, res) => {
+router.post("/reviews/:reviewId/like", requireAuth, async (req, res) => {
   try {
-    const reviewId = parseInt(req.params.reviewId, 10);
-    const userId = 1; // TODO: from session
+    const reviewId = parseInt(req.params["reviewId"] as string, 10);
+    const userId = req.auth!.userId;
 
     const existing = await db.select().from(reviewLikesTable)
       .where(and(eq(reviewLikesTable.reviewId, reviewId), eq(reviewLikesTable.userId, userId)));

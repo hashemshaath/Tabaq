@@ -108,7 +108,7 @@ router.get("/dishes/trending", async (req, res) => {
 // Get dish detail
 router.get("/dishes/:dishId", async (req, res) => {
   try {
-    const dishId = parseInt(req.params.dishId, 10);
+    const dishId = parseInt(req.params["dishId"] as string, 10);
     if (isNaN(dishId)) {
       res.status(400).json({ error: "bad_request", message: "Invalid dishId" });
       return;
@@ -180,7 +180,7 @@ router.get("/dishes/:dishId", async (req, res) => {
 // Get restaurant dishes
 router.get("/restaurants/:restaurantId/dishes", async (req, res) => {
   try {
-    const restaurantId = parseInt(req.params.restaurantId, 10);
+    const restaurantId = parseInt(req.params["restaurantId"] as string, 10);
     const dishes = await db.select().from(dishesTable)
       .where(eq(dishesTable.restaurantId, restaurantId));
     res.json(dishes);
@@ -193,7 +193,7 @@ router.get("/restaurants/:restaurantId/dishes", async (req, res) => {
 // Create dish
 router.post("/restaurants/:restaurantId/dishes", async (req, res) => {
   try {
-    const restaurantId = parseInt(req.params.restaurantId, 10);
+    const restaurantId = parseInt(req.params["restaurantId"] as string, 10);
     const [dish] = await db.insert(dishesTable)
       .values({ ...req.body, restaurantId })
       .returning();

@@ -45,7 +45,7 @@ router.get("/events", async (req, res) => {
 
 router.get("/events/:eventId", async (req, res) => {
   try {
-    const eventId = parseInt(req.params.eventId, 10);
+    const eventId = parseInt(req.params["eventId"] as string, 10);
     const [event] = await db.select({
       id: eventsTable.id,
       restaurantId: eventsTable.restaurantId,

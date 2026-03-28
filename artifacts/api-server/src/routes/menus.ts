@@ -8,7 +8,7 @@ const router: IRouter = Router();
 // Get menus for a restaurant
 router.get("/restaurants/:restaurantId/menus", async (req, res) => {
   try {
-    const restaurantId = parseInt(req.params.restaurantId, 10);
+    const restaurantId = parseInt(req.params["restaurantId"] as string, 10);
     const menus = await db.select().from(menusTable)
       .where(eq(menusTable.restaurantId, restaurantId));
 
@@ -36,7 +36,7 @@ router.get("/restaurants/:restaurantId/menus", async (req, res) => {
 // Create menu
 router.post("/restaurants/:restaurantId/menus", async (req, res) => {
   try {
-    const restaurantId = parseInt(req.params.restaurantId, 10);
+    const restaurantId = parseInt(req.params["restaurantId"] as string, 10);
     const [menu] = await db.insert(menusTable)
       .values({ ...req.body, restaurantId })
       .returning();

@@ -17,7 +17,7 @@ router.get("/countries", async (req, res) => {
 
 router.get("/countries/:countryId/cities", async (req, res) => {
   try {
-    const countryId = parseInt(req.params.countryId, 10);
+    const countryId = parseInt(req.params["countryId"] as string, 10);
     if (isNaN(countryId)) {
       res.status(400).json({ error: "bad_request", message: "Invalid countryId" });
       return;

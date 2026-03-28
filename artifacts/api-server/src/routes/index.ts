@@ -1,20 +1,22 @@
 import { Router, type IRouter } from "express";
-import healthRouter from "./health";
-import countriesRouter from "./countries";
-import categoriesRouter from "./categories";
-import restaurantsRouter from "./restaurants";
-import dishesRouter from "./dishes";
-import menusRouter from "./menus";
-import bookingsRouter from "./bookings";
-import offersRouter from "./offers";
-import reviewsRouter from "./reviews";
-import usersRouter from "./users";
-import searchRouter from "./search";
-import eventsRouter from "./events";
+import healthRouter from "./health.js";
+import authRouter from "./auth.js";
+import countriesRouter from "./countries.js";
+import categoriesRouter from "./categories.js";
+import restaurantsRouter from "./restaurants.js";
+import dishesRouter from "./dishes.js";
+import menusRouter from "./menus.js";
+import bookingsRouter from "./bookings.js";
+import offersRouter from "./offers.js";
+import reviewsRouter from "./reviews.js";
+import usersRouter from "./users.js";
+import searchRouter from "./search.js";
+import eventsRouter from "./events.js";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(authRouter);
 router.use(countriesRouter);
 router.use(categoriesRouter);
 router.use(restaurantsRouter);

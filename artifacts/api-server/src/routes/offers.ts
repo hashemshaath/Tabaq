@@ -73,7 +73,7 @@ router.get("/offers", async (req, res) => {
 // Get offer
 router.get("/offers/:offerId", async (req, res) => {
   try {
-    const offerId = parseInt(req.params.offerId, 10);
+    const offerId = parseInt(req.params["offerId"] as string, 10);
     const [offer] = await db.select({
       id: offersTable.id,
       restaurantId: offersTable.restaurantId,
@@ -197,7 +197,7 @@ router.post("/vouchers", async (req, res) => {
 // Get voucher
 router.get("/vouchers/:voucherId", async (req, res) => {
   try {
-    const voucherId = parseInt(req.params.voucherId, 10);
+    const voucherId = parseInt(req.params["voucherId"] as string, 10);
     const [voucher] = await db.select({
       id: vouchersTable.id,
       code: vouchersTable.code,
@@ -231,7 +231,7 @@ router.get("/vouchers/:voucherId", async (req, res) => {
 // Gift voucher
 router.post("/vouchers/:voucherId/gift", async (req, res) => {
   try {
-    const voucherId = parseInt(req.params.voucherId, 10);
+    const voucherId = parseInt(req.params["voucherId"] as string, 10);
     const { recipientPhone, recipientEmail, giftMessage } = req.body;
     const [voucher] = await db.update(vouchersTable)
       .set({ isGift: true, giftRecipientPhone: recipientPhone, giftRecipientEmail: recipientEmail, giftMessage })

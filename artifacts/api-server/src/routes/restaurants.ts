@@ -7,6 +7,7 @@ import {
 } from "@workspace/db/schema";
 import { eq, and, gte, sql, inArray, count, type SQL } from "drizzle-orm";
 import { nanoid } from "nanoid";
+import { requireAuth, optionalAuth } from "../middleware/requireAuth.js";
 
 const router: IRouter = Router();
 
@@ -141,7 +142,7 @@ router.get("/restaurants/featured", async (req, res) => {
 // Get restaurant detail
 router.get("/restaurants/:restaurantId", async (req, res) => {
   try {
-    const restaurantId = parseInt(req.params.restaurantId, 10);
+    const restaurantId = parseInt(req.params["restaurantId"] as string, 10);
     if (isNaN(restaurantId)) {
       res.status(400).json({ error: "bad_request", message: "Invalid restaurantId" });
       return;
@@ -234,7 +235,7 @@ router.post("/restaurants", async (req, res) => {
 // Update restaurant
 router.put("/restaurants/:restaurantId", async (req, res) => {
   try {
-    const restaurantId = parseInt(req.params.restaurantId, 10);
+    const restaurantId = parseInt(req.params["restaurantId"] as string, 10);
     const [restaurant] = await db.update(restaurantsTable)
       .set({ ...req.body, updatedAt: new Date() })
       .where(eq(restaurantsTable.id, restaurantId))
@@ -251,10 +252,10 @@ router.put("/restaurants/:restaurantId", async (req, res) => {
 });
 
 // Follow / unfollow restaurant
-router.post("/restaurants/:restaurantId/follow", async (req, res) => {
+router.post("/restaurants/:restaurantId/follow", requireAuth, async (req, res) => {
   try {
-    const restaurantId = parseInt(req.params.restaurantId, 10);
-    const userId = 1; // TODO: from session
+    const restaurantId = parseInt(req.params["restaurantId"] as string, 10);
+    const userId = req.auth!.userId;
     const inserted = await db.insert(restaurantFollowsTable)
       .values({ userId, restaurantId })
       .onConflictDoNothing()
@@ -273,10 +274,10 @@ router.post("/restaurants/:restaurantId/follow", async (req, res) => {
   }
 });
 
-router.delete("/restaurants/:restaurantId/follow", async (req, res) => {
+router.delete("/restaurants/:restaurantId/follow", requireAuth, async (req, res) => {
   try {
-    const restaurantId = parseInt(req.params.restaurantId, 10);
-    const userId = 1; // TODO: from session
+    const restaurantId = parseInt(req.params["restaurantId"] as string, 10);
+    const userId = req.auth!.userId;
     const deleted = await db.delete(restaurantFollowsTable)
       .where(and(eq(restaurantFollowsTable.userId, userId), eq(restaurantFollowsTable.restaurantId, restaurantId)))
       .returning({ id: restaurantFollowsTable.id });
@@ -297,7 +298,7 @@ router.delete("/restaurants/:restaurantId/follow", async (req, res) => {
 // Availability — derived from opening hours and existing bookings
 router.get("/restaurants/:restaurantId/availability", async (req, res) => {
   try {
-    const restaurantId = parseInt(req.params.restaurantId, 10);
+    const restaurantId = parseInt(req.params["restaurantId"] as string, 10);
     const { date, partySize } = req.query;
     const requestedDate = date ? new Date(date as string) : new Date();
     const dayOfWeek = requestedDate.getDay();

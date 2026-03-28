@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { usersTable, userFollowsTable, reviewsTable, bookingsTable, restaurantsTable } from "@workspace/db/schema";
 import { eq, and, sql, desc, type SQL } from "drizzle-orm";
+import { requireAuth, optionalAuth } from "../middleware/requireAuth.js";
 
 const router: IRouter = Router();
 
@@ -13,7 +14,6 @@ function calcLevel(points: number): { level: number; levelTitle: string; nextLev
   return { level: 5, levelTitle: "Master Chef", nextLevelPoints: 10000 };
 }
 
-// Create user
 router.post("/users", async (req, res) => {
   try {
     const { phone, email, nameEn, nameAr, preferredLanguage = "en", cityId } = req.body;
@@ -29,10 +29,9 @@ router.post("/users", async (req, res) => {
   }
 });
 
-// Get user profile
-router.get("/users/:userId", async (req, res) => {
+router.get("/users/:userId", optionalAuth, async (req, res) => {
   try {
-    const userId = parseInt(req.params.userId, 10);
+    const userId = parseInt(req.params["userId"] as string, 10);
     const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
     if (!user) {
       res.status(404).json({ error: "not_found", message: "User not found" });
@@ -46,13 +45,22 @@ router.get("/users/:userId", async (req, res) => {
       db.select({ count: sql<number>`count(*)` }).from(userFollowsTable).where(eq(userFollowsTable.followerId, userId)),
     ]);
 
+    let isFollowing = false;
+    const viewerId = req.auth?.userId;
+    if (viewerId && viewerId !== userId) {
+      const [follow] = await db.select({ id: userFollowsTable.id })
+        .from(userFollowsTable)
+        .where(and(eq(userFollowsTable.followerId, viewerId), eq(userFollowsTable.followingId, userId)));
+      isFollowing = !!follow;
+    }
+
     res.json({
       user,
       reviewCount: Number(reviewCount[0]?.count ?? 0),
       bookingCount: Number(bookingCount[0]?.count ?? 0),
       followerCount: Number(followerCount[0]?.count ?? 0),
       followingCount: Number(followingCount[0]?.count ?? 0),
-      isFollowing: false,
+      isFollowing,
     });
   } catch (err) {
     req.log.error({ err }, "Failed to fetch user");
@@ -60,12 +68,16 @@ router.get("/users/:userId", async (req, res) => {
   }
 });
 
-// Update user
-router.put("/users/:userId", async (req, res) => {
+router.put("/users/:userId", requireAuth, async (req, res) => {
   try {
-    const userId = parseInt(req.params.userId, 10);
+    const userId = parseInt(req.params["userId"] as string, 10);
+    if (req.auth!.userId !== userId) {
+      res.status(403).json({ error: "forbidden", message: "Cannot update another user's profile" });
+      return;
+    }
+    const { nameEn, nameAr, bio, avatarUrl, preferredLanguage, cityId } = req.body;
     const [user] = await db.update(usersTable)
-      .set({ ...req.body, updatedAt: new Date() })
+      .set({ nameEn, nameAr, bio, avatarUrl, preferredLanguage, cityId, updatedAt: new Date() })
       .where(eq(usersTable.id, userId))
       .returning();
     if (!user) {
@@ -79,11 +91,14 @@ router.put("/users/:userId", async (req, res) => {
   }
 });
 
-// Follow user
-router.post("/users/:userId/follow", async (req, res) => {
+router.post("/users/:userId/follow", requireAuth, async (req, res) => {
   try {
-    const followingId = parseInt(req.params.userId, 10);
-    const followerId = 1; // TODO: from session
+    const followingId = parseInt(req.params["userId"] as string, 10);
+    const followerId = req.auth!.userId;
+    if (followerId === followingId) {
+      res.status(400).json({ error: "bad_request", message: "Cannot follow yourself" });
+      return;
+    }
     await db.insert(userFollowsTable).values({ followerId, followingId }).onConflictDoNothing();
     const [cnt] = await db.select({ count: sql<number>`count(*)` })
       .from(userFollowsTable).where(eq(userFollowsTable.followingId, followingId));
@@ -94,11 +109,10 @@ router.post("/users/:userId/follow", async (req, res) => {
   }
 });
 
-// Unfollow user
-router.delete("/users/:userId/follow", async (req, res) => {
+router.delete("/users/:userId/follow", requireAuth, async (req, res) => {
   try {
-    const followingId = parseInt(req.params.userId, 10);
-    const followerId = 1; // TODO: from session
+    const followingId = parseInt(req.params["userId"] as string, 10);
+    const followerId = req.auth!.userId;
     await db.delete(userFollowsTable)
       .where(and(eq(userFollowsTable.followerId, followerId), eq(userFollowsTable.followingId, followingId)));
     const [cnt] = await db.select({ count: sql<number>`count(*)` })
@@ -110,10 +124,9 @@ router.delete("/users/:userId/follow", async (req, res) => {
   }
 });
 
-// Get followers
 router.get("/users/:userId/followers", async (req, res) => {
   try {
-    const userId = parseInt(req.params.userId, 10);
+    const userId = parseInt(req.params["userId"] as string, 10);
     const followers = await db.select({
       id: usersTable.id,
       nameEn: usersTable.nameEn,
@@ -138,10 +151,9 @@ router.get("/users/:userId/followers", async (req, res) => {
   }
 });
 
-// Get following
 router.get("/users/:userId/following", async (req, res) => {
   try {
-    const userId = parseInt(req.params.userId, 10);
+    const userId = parseInt(req.params["userId"] as string, 10);
     const following = await db.select({
       id: usersTable.id,
       nameEn: usersTable.nameEn,
@@ -166,29 +178,46 @@ router.get("/users/:userId/following", async (req, res) => {
   }
 });
 
-// Get user reviews
 router.get("/users/:userId/reviews", async (req, res) => {
   try {
-    const userId = parseInt(req.params.userId, 10);
-    const reviews = await db.select().from(reviewsTable)
+    const userId = parseInt(req.params["userId"] as string, 10);
+    const reviews = await db.select({
+      id: reviewsTable.id,
+      restaurantId: reviewsTable.restaurantId,
+      dishId: reviewsTable.dishId,
+      userId: reviewsTable.userId,
+      ratingOverall: reviewsTable.ratingOverall,
+      ratingFood: reviewsTable.ratingFood,
+      ratingService: reviewsTable.ratingService,
+      ratingAmbiance: reviewsTable.ratingAmbiance,
+      textEn: reviewsTable.textEn,
+      textAr: reviewsTable.textAr,
+      visitDate: reviewsTable.visitDate,
+      likeCount: reviewsTable.likeCount,
+      createdAt: reviewsTable.createdAt,
+      userNameEn: usersTable.nameEn,
+      userNameAr: usersTable.nameAr,
+      userAvatarUrl: usersTable.avatarUrl,
+      userLevel: usersTable.level,
+      userLevelTitle: usersTable.levelTitle,
+    }).from(reviewsTable)
+      .innerJoin(usersTable, eq(reviewsTable.userId, usersTable.id))
       .where(eq(reviewsTable.userId, userId))
       .orderBy(desc(reviewsTable.createdAt));
-    res.json(reviews.map(r => ({
-      ...r,
-      userNameEn: "User", userNameAr: "مستخدم",
-      userAvatarUrl: null, userLevel: 1, userLevelTitle: "Food Explorer",
-      photoUrls: [], isLiked: false,
-    })));
+    res.json(reviews.map(r => ({ ...r, photoUrls: [], isLiked: false })));
   } catch (err) {
     req.log.error({ err }, "Failed to fetch user reviews");
     res.status(500).json({ error: "internal_error", message: "Failed to fetch user reviews" });
   }
 });
 
-// Get user bookings
-router.get("/users/:userId/bookings", async (req, res) => {
+router.get("/users/:userId/bookings", requireAuth, async (req, res) => {
   try {
-    const userId = parseInt(req.params.userId, 10);
+    const userId = parseInt(req.params["userId"] as string, 10);
+    if (req.auth!.userId !== userId) {
+      res.status(403).json({ error: "forbidden", message: "Cannot view another user's bookings" });
+      return;
+    }
     const { status } = req.query;
     const conditions: SQL[] = [eq(bookingsTable.userId, userId)];
     if (status === "upcoming") conditions.push(sql`${bookingsTable.date} >= CURRENT_DATE`);
@@ -221,10 +250,9 @@ router.get("/users/:userId/bookings", async (req, res) => {
   }
 });
 
-// Get user leaderboard rank
 router.get("/users/:userId/leaderboard-rank", async (req, res) => {
   try {
-    const userId = parseInt(req.params.userId, 10);
+    const userId = parseInt(req.params["userId"] as string, 10);
     const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
     if (!user) {
       res.status(404).json({ error: "not_found", message: "User not found" });
@@ -252,7 +280,6 @@ router.get("/users/:userId/leaderboard-rank", async (req, res) => {
   }
 });
 
-// Leaderboard
 router.get("/leaderboard", async (req, res) => {
   try {
     const { limit = "20" } = req.query;

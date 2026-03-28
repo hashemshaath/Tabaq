@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { bookingsTable, restaurantsTable } from "@workspace/db/schema";
 import { eq, and, sql, gte, lte, type SQL } from "drizzle-orm";
 import { nanoid } from "nanoid";
+import { requireAuth, optionalAuth } from "../middleware/requireAuth.js";
 
 const router: IRouter = Router();
 
@@ -55,14 +56,14 @@ router.get("/bookings", async (req, res) => {
 });
 
 // Create booking
-router.post("/bookings", async (req, res) => {
+router.post("/bookings", requireAuth, async (req, res) => {
   try {
     const { restaurantId, date, time, partySize, occasionId, specialRequests } = req.body;
     if (!restaurantId || !date || !time || !partySize) {
       res.status(400).json({ error: "bad_request", message: "Missing required fields" });
       return;
     }
-    const userId = 1; // TODO: from session
+    const userId = req.auth!.userId;
     const referenceCode = `TBQ-${nanoid(8).toUpperCase()}`;
 
     const [booking] = await db.insert(bookingsTable).values({
@@ -95,7 +96,7 @@ router.post("/bookings", async (req, res) => {
 // Get booking
 router.get("/bookings/:bookingId", async (req, res) => {
   try {
-    const bookingId = parseInt(req.params.bookingId, 10);
+    const bookingId = parseInt(req.params["bookingId"] as string, 10);
     const [booking] = await db.select({
       id: bookingsTable.id,
       userId: bookingsTable.userId,
@@ -129,7 +130,7 @@ router.get("/bookings/:bookingId", async (req, res) => {
 // Update booking status
 router.patch("/bookings/:bookingId", async (req, res) => {
   try {
-    const bookingId = parseInt(req.params.bookingId, 10);
+    const bookingId = parseInt(req.params["bookingId"] as string, 10);
     const { status } = req.body;
     const [booking] = await db.update(bookingsTable)
       .set({ status, updatedAt: new Date() })
