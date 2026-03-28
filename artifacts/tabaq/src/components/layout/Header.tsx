@@ -16,6 +16,7 @@ export function Header() {
   const navLinks = [
     { href: "/", en: "Home", ar: "الرئيسية" },
     { href: "/restaurants", en: "Discovery", ar: "استكشف" },
+    { href: "/feed", en: "Feed", ar: "التغذية" },
     { href: "/offers", en: "Offers", ar: "العروض" },
     { href: "/leaderboard", en: "Leaderboard", ar: "المتصدرين" },
   ];

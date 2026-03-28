@@ -18,6 +18,7 @@ export const reviewsTable = pgTable("reviews", {
   textEn: text("text_en"),
   textAr: text("text_ar"),
   likeCount: integer("like_count").default(0).notNull(),
+  commentCount: integer("comment_count").default(0).notNull(),
   visitDate: text("visit_date"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -38,11 +39,22 @@ export const reviewLikesTable = pgTable("review_likes", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const insertReviewSchema = createInsertSchema(reviewsTable).omit({ id: true, createdAt: true, likeCount: true });
+export const reviewCommentsTable = pgTable("review_comments", {
+  id: serial("id").primaryKey(),
+  reviewId: integer("review_id").notNull().references(() => reviewsTable.id),
+  userId: integer("user_id").notNull().references(() => usersTable.id),
+  text: text("text").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertReviewSchema = createInsertSchema(reviewsTable).omit({ id: true, createdAt: true, likeCount: true, commentCount: true });
 export const insertReviewPhotoSchema = createInsertSchema(reviewPhotosTable).omit({ id: true });
 export const insertReviewLikeSchema = createInsertSchema(reviewLikesTable).omit({ id: true, createdAt: true });
+export const insertReviewCommentSchema = createInsertSchema(reviewCommentsTable).omit({ id: true, createdAt: true });
 
 export type InsertReview = z.infer<typeof insertReviewSchema>;
 export type Review = typeof reviewsTable.$inferSelect;
 export type InsertReviewPhoto = z.infer<typeof insertReviewPhotoSchema>;
 export type ReviewPhoto = typeof reviewPhotosTable.$inferSelect;
+export type InsertReviewComment = z.infer<typeof insertReviewCommentSchema>;
+export type ReviewComment = typeof reviewCommentsTable.$inferSelect;

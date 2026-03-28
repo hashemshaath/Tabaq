@@ -5,17 +5,22 @@ import {
   useGetRestaurantMenus,
   useFollowRestaurant,
   useUnfollowRestaurant,
+  useDeleteReview,
+  getGetRestaurantQueryKey,
   type Dish,
 } from '@workspace/api-client-react';
 import { useParams, Link } from 'wouter';
 import { BookingModal } from '@/components/BookingModal';
+import { ReviewComposerModal } from '@/components/ReviewComposerModal';
+import { ReviewCard } from '@/components/ReviewCard';
 import {
   Star, MapPin, Phone, Globe, Clock, CheckCircle2, Heart, HeartOff,
   Utensils, Info, Camera, MessageSquare, ChevronDown, ChevronUp,
-  Leaf, Wheat, Flame, Coffee, Tag,
+  Leaf, Wheat, Flame, Coffee, Tag, PenLine,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
+import { useQueryClient } from '@tanstack/react-query';
 import { formatPrice } from '@/lib/utils';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -40,8 +45,11 @@ export function RestaurantDetailPage() {
   const [isFollowing, setIsFollowing] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Set<number>>(new Set());
   const [showBooking, setShowBooking] = useState(false);
+  const [showReviewComposer, setShowReviewComposer] = useState(false);
   const { mutate: followRestaurant } = useFollowRestaurant();
   const { mutate: unfollowRestaurant } = useUnfollowRestaurant();
+  const queryClient = useQueryClient();
+  const deleteReview = useDeleteReview();
 
   React.useEffect(() => {
     if (data) setIsFollowing(data.isFollowing ?? false);
@@ -383,46 +391,56 @@ export function RestaurantDetailPage() {
             {/* Tab: Reviews */}
             {activeTab === 'reviews' && (
               <div className="space-y-4">
+                {/* Write Review CTA */}
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    {recentReviews.length} {t('reviews', 'تقييم')}
+                  </p>
+                  {user ? (
+                    <Button
+                      size="sm"
+                      onClick={() => setShowReviewComposer(true)}
+                      className="flex items-center gap-2"
+                    >
+                      <PenLine className="w-4 h-4" />
+                      {t('Write a Review', 'اكتب تقييماً')}
+                    </Button>
+                  ) : (
+                    <p className="text-xs text-muted-foreground italic">
+                      {t('Sign in to write a review', 'سجّل دخولك لكتابة تقييم')}
+                    </p>
+                  )}
+                </div>
+
                 {recentReviews.length > 0 ? (
                   recentReviews.map(review => (
-                    <div key={review.id} className="bg-card border border-border/60 rounded-2xl p-5">
-                      <div className="flex items-start gap-3 mb-3">
-                        <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-                          <span className="text-primary font-bold text-sm">
-                            {(review.userNameEn || 'U')[0].toUpperCase()}
-                          </span>
-                        </div>
-                        <div className="flex-grow">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <p className="font-bold text-foreground text-sm">
-                                {lang === 'ar' ? (review.userNameAr || review.userNameEn) : review.userNameEn}
-                              </p>
-                              <p className="text-xs text-muted-foreground">{review.userLevelTitle}</p>
-                            </div>
-                            <div className="flex items-center gap-1 bg-secondary px-2 py-1 rounded-lg">
-                              <Star className="w-3 h-3 fill-primary text-primary" />
-                              <span className="text-xs font-bold">{Number(review.ratingOverall).toFixed(1)}</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      {(lang === 'ar' ? review.textAr : review.textEn) && (
-                        <p className="text-muted-foreground text-sm leading-relaxed">
-                          {lang === 'ar' ? review.textAr : review.textEn}
-                        </p>
-                      )}
-                      {review.visitDate && (
-                        <p className="text-xs text-muted-foreground mt-3">
-                          {t('Visited', 'زيارة')}: {new Date(review.visitDate).toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'en-US', { month: 'long', year: 'numeric' })}
-                        </p>
-                      )}
-                    </div>
+                    <ReviewCard
+                      key={review.id}
+                      review={review}
+                      onDelete={(reviewId) => {
+                        deleteReview.mutate({ reviewId }, {
+                          onSuccess: () => {
+                            queryClient.invalidateQueries({ queryKey: getGetRestaurantQueryKey(Number(id)) });
+                          },
+                        });
+                      }}
+                    />
                   ))
                 ) : (
                   <div className="text-center py-12 text-muted-foreground">
                     <MessageSquare className="w-10 h-10 mx-auto mb-3 opacity-30" />
                     <p>{t('No reviews yet. Be the first!', 'لا توجد تقييمات بعد. كن الأول!')}</p>
+                    {user && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-4"
+                        onClick={() => setShowReviewComposer(true)}
+                      >
+                        <PenLine className="w-4 h-4 me-2" />
+                        {t('Write the first review', 'اكتب أول تقييم')}
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>
@@ -596,6 +614,20 @@ export function RestaurantDetailPage() {
           restaurantNameEn={restaurant.nameEn}
           restaurantNameAr={restaurant.nameAr}
           onClose={() => setShowBooking(false)}
+        />
+      )}
+
+      {/* Review Composer Modal */}
+      {showReviewComposer && restaurant && (
+        <ReviewComposerModal
+          restaurantId={restaurant.id}
+          restaurantNameEn={restaurant.nameEn}
+          restaurantNameAr={restaurant.nameAr}
+          onClose={() => setShowReviewComposer(false)}
+          onSuccess={() => {
+            setShowReviewComposer(false);
+            queryClient.invalidateQueries({ queryKey: getGetRestaurantQueryKey(Number(id)) });
+          }}
         />
       )}
     </div>

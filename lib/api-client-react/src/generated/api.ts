@@ -79,6 +79,11 @@ import type {
   RestaurantDetail,
   RestaurantListResponse,
   Review,
+  ReviewComment,
+  ReviewCommentListResponse,
+  CreateReviewCommentRequest,
+  FeedReview,
+  FeedResponse,
   ReviewListResponse,
   SearchParams,
   SearchResponse,
@@ -5406,5 +5411,218 @@ export function useGetEvent<
     queryKey: QueryKey;
   };
 
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+// ============================================================
+// Review Comments API
+// ============================================================
+
+export const getListReviewCommentsUrl = (reviewId: number) => `/api/reviews/${reviewId}/comments`;
+
+export const listReviewComments = async (reviewId: number, options?: RequestInit): Promise<ReviewCommentListResponse> => {
+  return customFetch<ReviewCommentListResponse>(getListReviewCommentsUrl(reviewId), { ...options, method: 'GET' });
+};
+
+export const getListReviewCommentsQueryKey = (reviewId: number) =>
+  [`/api/reviews/${reviewId}/comments`] as const;
+
+export const getListReviewCommentsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listReviewComments>>,
+  TError = ErrorType<unknown>,
+>(reviewId: number, options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof listReviewComments>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+  const queryKey = queryOptions?.queryKey ?? getListReviewCommentsQueryKey(reviewId);
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listReviewComments>>> = () =>
+    listReviewComments(reviewId, requestOptions);
+  return { queryKey, queryFn, enabled: !!reviewId, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listReviewComments>>, TError, TData
+  >;
+};
+
+export function useListReviewComments<
+  TData = Awaited<ReturnType<typeof listReviewComments>>,
+  TError = ErrorType<unknown>,
+>(reviewId: number, options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof listReviewComments>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListReviewCommentsQueryOptions(reviewId, options);
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getAddReviewCommentUrl = (reviewId: number) => `/api/reviews/${reviewId}/comments`;
+
+export const addReviewComment = async (
+  reviewId: number,
+  createReviewCommentRequest: CreateReviewCommentRequest,
+  options?: RequestInit,
+): Promise<ReviewComment> => {
+  return customFetch<ReviewComment>(getAddReviewCommentUrl(reviewId), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createReviewCommentRequest),
+  });
+};
+
+export const getAddReviewCommentMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof addReviewComment>>,
+    TError,
+    { reviewId: number; data: BodyType<CreateReviewCommentRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof addReviewComment>>,
+  TError,
+  { reviewId: number; data: BodyType<CreateReviewCommentRequest> },
+  TContext
+> => {
+  const { mutation: mutationOptions, request: requestOptions } = options ?? {};
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof addReviewComment>>,
+    { reviewId: number; data: BodyType<CreateReviewCommentRequest> }
+  > = (props) => {
+    const { reviewId, data } = props;
+    return addReviewComment(reviewId, data, requestOptions);
+  };
+  return { mutationFn, ...mutationOptions };
+};
+
+export const useAddReviewComment = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof addReviewComment>>,
+    TError,
+    { reviewId: number; data: BodyType<CreateReviewCommentRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof addReviewComment>>,
+  TError,
+  { reviewId: number; data: BodyType<CreateReviewCommentRequest> },
+  TContext
+> => {
+  const mutationOptions = getAddReviewCommentMutationOptions(options);
+  return useMutation(mutationOptions);
+};
+
+export const getDeleteReviewCommentUrl = (reviewId: number, commentId: number) =>
+  `/api/reviews/${reviewId}/comments/${commentId}`;
+
+export const deleteReviewComment = async (reviewId: number, commentId: number, options?: RequestInit): Promise<void> => {
+  return customFetch<void>(getDeleteReviewCommentUrl(reviewId, commentId), { ...options, method: 'DELETE' });
+};
+
+export const getDeleteReviewCommentMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteReviewComment>>,
+    TError,
+    { reviewId: number; commentId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteReviewComment>>,
+  TError,
+  { reviewId: number; commentId: number },
+  TContext
+> => {
+  const { mutation: mutationOptions, request: requestOptions } = options ?? {};
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteReviewComment>>,
+    { reviewId: number; commentId: number }
+  > = (props) => {
+    const { reviewId, commentId } = props;
+    return deleteReviewComment(reviewId, commentId, requestOptions);
+  };
+  return { mutationFn, ...mutationOptions };
+};
+
+export const useDeleteReviewComment = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteReviewComment>>,
+    TError,
+    { reviewId: number; commentId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteReviewComment>>,
+  TError,
+  { reviewId: number; commentId: number },
+  TContext
+> => {
+  const mutationOptions = getDeleteReviewCommentMutationOptions(options);
+  return useMutation(mutationOptions);
+};
+
+// ============================================================
+// Social Feed API
+// ============================================================
+
+export type GetFeedParams = {
+  limit?: number;
+  offset?: number;
+};
+
+export const getGetFeedUrl = (params?: GetFeedParams) => {
+  const searchParams = new URLSearchParams();
+  if (params?.limit !== undefined) searchParams.set('limit', String(params.limit));
+  if (params?.offset !== undefined) searchParams.set('offset', String(params.offset));
+  const query = searchParams.toString();
+  return `/api/feed${query ? `?${query}` : ''}`;
+};
+
+export const getFeed = async (params?: GetFeedParams, options?: RequestInit): Promise<FeedResponse> => {
+  return customFetch<FeedResponse>(getGetFeedUrl(params), { ...options, method: 'GET' });
+};
+
+export const getGetFeedQueryKey = (params?: GetFeedParams) =>
+  [`/api/feed`, ...(params ? [params] : [])] as const;
+
+export const getGetFeedQueryOptions = <
+  TData = Awaited<ReturnType<typeof getFeed>>,
+  TError = ErrorType<unknown>,
+>(params?: GetFeedParams, options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof getFeed>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+  const queryKey = queryOptions?.queryKey ?? getGetFeedQueryKey(params);
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getFeed>>> = () => getFeed(params, requestOptions);
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getFeed>>, TError, TData
+  >;
+};
+
+export function useGetFeed<
+  TData = Awaited<ReturnType<typeof getFeed>>,
+  TError = ErrorType<unknown>,
+>(params?: GetFeedParams, options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof getFeed>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetFeedQueryOptions(params, options);
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
   return { ...query, queryKey: queryOptions.queryKey };
 }

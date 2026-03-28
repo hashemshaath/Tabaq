@@ -230,8 +230,14 @@ export interface Review {
   userAvatarUrl?: string;
   userLevel?: number;
   userLevelTitle?: string;
+  /** True when the reviewer has a credibility score >= 70 */
+  userIsVerified?: boolean;
   restaurantId?: number;
+  restaurantNameEn?: string;
+  restaurantNameAr?: string;
   dishId?: number;
+  dishNameEn?: string;
+  dishNameAr?: string;
   /**
    * @minimum 1
    * @maximum 5
@@ -261,9 +267,44 @@ export interface Review {
   textAr?: string;
   photoUrls?: string[];
   likeCount: number;
+  commentCount?: number;
   isLiked: boolean;
   visitDate?: string;
   createdAt: string;
+}
+
+export interface ReviewComment {
+  id: number;
+  reviewId: number;
+  userId: number;
+  text: string;
+  createdAt: string;
+  userNameEn?: string;
+  userNameAr?: string;
+  userAvatarUrl?: string;
+  userLevelTitle?: string;
+}
+
+export interface ReviewCommentListResponse {
+  comments: ReviewComment[];
+}
+
+export interface CreateReviewCommentRequest {
+  text: string;
+}
+
+export interface FeedReview extends Review {
+  restaurantNameEn?: string;
+  restaurantNameAr?: string;
+  dishNameEn?: string;
+  dishNameAr?: string;
+}
+
+export interface FeedResponse {
+  reviews: FeedReview[];
+  total: number;
+  offset: number;
+  limit: number;
 }
 
 export interface RatingBreakdown {
