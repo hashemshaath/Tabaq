@@ -172,7 +172,7 @@ router.post("/auth/verify-otp", async (req, res) => {
     res.cookie("tabaq_token", token, {
       httpOnly: true,
       secure: !IS_DEV,
-      sameSite: "lax",
+      sameSite: "strict",
       maxAge: 30 * 24 * 60 * 60 * 1000,
     });
 

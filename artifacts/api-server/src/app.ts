@@ -26,7 +26,33 @@ app.use(
     },
   }),
 );
-app.use(cors({ origin: true, credentials: true }));
+const ALLOWED_ORIGINS = [
+  // Replit workspace proxy domain
+  process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : null,
+  // Production deployment domain
+  process.env.REPLIT_DEPLOYMENT_URL ?? null,
+  // Local dev
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "http://localhost:80",
+].filter(Boolean) as string[];
+
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+      if (ALLOWED_ORIGINS.some((allowed) => origin === allowed || origin.endsWith(".replit.dev"))) {
+        callback(null, true);
+      } else {
+        callback(new Error(`CORS: origin '${origin}' not allowed`));
+      }
+    },
+    credentials: true,
+  }),
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
