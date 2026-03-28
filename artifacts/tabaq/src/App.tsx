@@ -16,6 +16,7 @@ import { OffersPage } from "@/pages/OffersPage";
 import { LeaderboardPage } from "@/pages/LeaderboardPage";
 import { ProfilePage } from "@/pages/ProfilePage";
 import { BookingsPage } from "@/pages/BookingsPage";
+import { VouchersPage } from "@/pages/VouchersPage";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -43,6 +44,7 @@ function Router() {
           <Route path="/leaderboard" component={LeaderboardPage} />
           <Route path="/profile" component={ProfilePage} />
           <Route path="/bookings" component={BookingsPage} />
+          <Route path="/vouchers" component={VouchersPage} />
           <Route component={NotFound} />
         </Switch>
       </main>

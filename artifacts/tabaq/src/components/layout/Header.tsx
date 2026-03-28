@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Search, MapPin, Globe, User, LogOut, ChevronDown } from "lucide-react";
+import { Search, MapPin, Globe, User, LogOut, ChevronDown, Tag } from "lucide-react";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/context/AuthContext";
 import { LoginModal } from "@/components/auth/LoginModal";
@@ -117,6 +117,14 @@ export function Header() {
                       >
                         <MapPin className="w-4 h-4 text-muted-foreground" />
                         {t("My Bookings", "حجوزاتي")}
+                      </Link>
+                      <Link
+                        href="/vouchers"
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors"
+                        onClick={() => setUserMenuOpen(false)}
+                      >
+                        <Tag className="w-4 h-4 text-muted-foreground" />
+                        {t("My Vouchers", "قسائمي")}
                       </Link>
                       <hr className="border-border my-1" />
                       <button

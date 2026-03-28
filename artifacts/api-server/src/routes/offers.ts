@@ -1,8 +1,10 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { offersTable, vouchersTable, restaurantsTable, citiesTable } from "@workspace/db/schema";
-import { eq, and, sql, type SQL } from "drizzle-orm";
+import { offersTable, vouchersTable, restaurantsTable } from "@workspace/db/schema";
+import { eq, and, sql, lte, gte, type SQL } from "drizzle-orm";
 import { nanoid } from "nanoid";
+import { requireAuth, optionalAuth } from "../middleware/requireAuth.js";
+import { awardPoints, POINTS } from "../lib/points.js";
 
 const router: IRouter = Router();
 
@@ -12,7 +14,11 @@ router.get("/offers", async (req, res) => {
     const { restaurantId, cityId, active, limit = "20", offset = "0" } = req.query;
     const conditions: SQL[] = [];
     if (restaurantId) conditions.push(eq(offersTable.restaurantId, parseInt(restaurantId as string)));
-    if (active === "true") conditions.push(eq(offersTable.isActive, true));
+    if (active === "true") {
+      conditions.push(eq(offersTable.isActive, true));
+      conditions.push(lte(offersTable.validFrom, new Date()));
+      conditions.push(gte(offersTable.validUntil, new Date()));
+    }
     if (cityId) conditions.push(eq(restaurantsTable.cityId, parseInt(cityId as string)));
 
     const offers = await db.select({
@@ -38,29 +44,19 @@ router.get("/offers", async (req, res) => {
     }).from(offersTable)
       .innerJoin(restaurantsTable, eq(offersTable.restaurantId, restaurantsTable.id))
       .where(conditions.length ? and(...conditions) : undefined)
+      .orderBy(sql`${offersTable.validUntil} asc`)
       .limit(parseInt(limit as string))
       .offset(parseInt(offset as string));
 
     const countQuery = db.select({ count: sql<number>`count(*)` })
-      .from(offersTable);
-    if (cityId) {
-      const total = await countQuery
-        .innerJoin(restaurantsTable, eq(offersTable.restaurantId, restaurantsTable.id))
-        .where(conditions.length ? and(...conditions) : undefined);
-      res.json({
-        offers,
-        total: Number(total[0]?.count ?? 0),
-        offset: parseInt(offset as string),
-        limit: parseInt(limit as string),
-      });
-      return;
-    }
-    const total = await countQuery
+      .from(offersTable)
+      .innerJoin(restaurantsTable, eq(offersTable.restaurantId, restaurantsTable.id))
       .where(conditions.length ? and(...conditions) : undefined);
+    const [{ count }] = await countQuery;
 
     res.json({
       offers,
-      total: Number(total[0]?.count ?? 0),
+      total: Number(count ?? 0),
       offset: parseInt(offset as string),
       limit: parseInt(limit as string),
     });
@@ -109,8 +105,8 @@ router.get("/offers/:offerId", async (req, res) => {
   }
 });
 
-// Create offer
-router.post("/offers", async (req, res) => {
+// Create offer — restaurant staff only (auth required; restaurant-level authz deferred to Task #6)
+router.post("/offers", requireAuth, async (req, res) => {
   try {
     const { restaurantId, titleEn, titleAr, originalPrice, validFrom, validUntil, ...rest } = req.body;
     if (!restaurantId || !titleEn || !titleAr || !originalPrice || !validFrom || !validUntil) {
@@ -120,18 +116,20 @@ router.post("/offers", async (req, res) => {
     const [offer] = await db.insert(offersTable).values({
       restaurantId, titleEn, titleAr, originalPrice, validFrom: new Date(validFrom), validUntil: new Date(validUntil), ...rest,
     }).returning();
-    res.status(201).json({ ...offer, restaurantNameEn: "", restaurantNameAr: "", restaurantCoverImageUrl: null });
+    const [restaurant] = await db.select({ nameEn: restaurantsTable.nameEn, nameAr: restaurantsTable.nameAr, coverImageUrl: restaurantsTable.coverImageUrl })
+      .from(restaurantsTable).where(eq(restaurantsTable.id, restaurantId));
+    res.status(201).json({ ...offer, restaurantNameEn: restaurant?.nameEn ?? "", restaurantNameAr: restaurant?.nameAr ?? "", restaurantCoverImageUrl: restaurant?.coverImageUrl ?? null });
   } catch (err) {
     req.log.error({ err }, "Failed to create offer");
     res.status(500).json({ error: "internal_error", message: "Failed to create offer" });
   }
 });
 
-// List vouchers
-router.get("/vouchers", async (req, res) => {
+// List vouchers — auth required, users only see their own
+router.get("/vouchers", requireAuth, async (req, res) => {
   try {
     const { status } = req.query;
-    const userId = 1; // TODO: from session
+    const userId = req.auth!.userId;
     const conditions: SQL[] = [eq(vouchersTable.userId, userId)];
     if (status) conditions.push(eq(vouchersTable.status, status as 'active' | 'used' | 'expired'));
 
@@ -147,13 +145,17 @@ router.get("/vouchers", async (req, res) => {
       validUntil: vouchersTable.validUntil,
       giftMessage: vouchersTable.giftMessage,
       isGift: vouchersTable.isGift,
+      giftRecipientPhone: vouchersTable.giftRecipientPhone,
+      giftRecipientEmail: vouchersTable.giftRecipientEmail,
       redeemedAt: vouchersTable.redeemedAt,
       createdAt: vouchersTable.createdAt,
       restaurantNameEn: restaurantsTable.nameEn,
       restaurantNameAr: restaurantsTable.nameAr,
+      restaurantCoverImageUrl: restaurantsTable.coverImageUrl,
     }).from(vouchersTable)
       .innerJoin(restaurantsTable, eq(vouchersTable.restaurantId, restaurantsTable.id))
-      .where(and(...conditions));
+      .where(and(...conditions))
+      .orderBy(sql`${vouchersTable.createdAt} desc`);
     res.json(vouchers);
   } catch (err) {
     req.log.error({ err }, "Failed to fetch vouchers");
@@ -161,8 +163,8 @@ router.get("/vouchers", async (req, res) => {
   }
 });
 
-// Purchase voucher
-router.post("/vouchers", async (req, res) => {
+// Purchase voucher — auth required
+router.post("/vouchers", requireAuth, async (req, res) => {
   try {
     const { offerId } = req.body;
     if (!offerId) {
@@ -174,8 +176,18 @@ router.post("/vouchers", async (req, res) => {
       res.status(404).json({ error: "not_found", message: "Offer not found" });
       return;
     }
-    const userId = 1; // TODO: from session
+    if (!offer.isActive) {
+      res.status(400).json({ error: "bad_request", message: "This offer is no longer active" });
+      return;
+    }
+    if (offer.remainingCapacity !== null && offer.remainingCapacity <= 0) {
+      res.status(400).json({ error: "bad_request", message: "This offer is sold out" });
+      return;
+    }
+
+    const userId = req.auth!.userId;
     const code = `VCH-${nanoid(10).toUpperCase()}`;
+
     const [voucher] = await db.insert(vouchersTable).values({
       code,
       offerId,
@@ -187,17 +199,32 @@ router.post("/vouchers", async (req, res) => {
       isGift: false,
       status: "active",
     }).returning();
-    res.status(201).json({ ...voucher, restaurantNameEn: "", restaurantNameAr: "" });
+
+    // Decrement remaining capacity
+    if (offer.remainingCapacity !== null) {
+      await db.update(offersTable)
+        .set({ remainingCapacity: offer.remainingCapacity - 1 })
+        .where(eq(offersTable.id, offerId));
+    }
+
+    // Award points for purchasing a voucher
+    await awardPoints(userId, POINTS.VOUCHER_PURCHASED ?? 50);
+
+    const [restaurant] = await db.select({ nameEn: restaurantsTable.nameEn, nameAr: restaurantsTable.nameAr, coverImageUrl: restaurantsTable.coverImageUrl })
+      .from(restaurantsTable).where(eq(restaurantsTable.id, offer.restaurantId));
+
+    res.status(201).json({ ...voucher, restaurantNameEn: restaurant?.nameEn ?? "", restaurantNameAr: restaurant?.nameAr ?? "", restaurantCoverImageUrl: restaurant?.coverImageUrl ?? null });
   } catch (err) {
     req.log.error({ err }, "Failed to purchase voucher");
     res.status(500).json({ error: "internal_error", message: "Failed to purchase voucher" });
   }
 });
 
-// Get voucher
-router.get("/vouchers/:voucherId", async (req, res) => {
+// Get voucher — auth required, owner only
+router.get("/vouchers/:voucherId", requireAuth, async (req, res) => {
   try {
     const voucherId = parseInt(req.params["voucherId"] as string, 10);
+    const userId = req.auth!.userId;
     const [voucher] = await db.select({
       id: vouchersTable.id,
       code: vouchersTable.code,
@@ -210,15 +237,22 @@ router.get("/vouchers/:voucherId", async (req, res) => {
       validUntil: vouchersTable.validUntil,
       giftMessage: vouchersTable.giftMessage,
       isGift: vouchersTable.isGift,
+      giftRecipientPhone: vouchersTable.giftRecipientPhone,
+      giftRecipientEmail: vouchersTable.giftRecipientEmail,
       redeemedAt: vouchersTable.redeemedAt,
       createdAt: vouchersTable.createdAt,
       restaurantNameEn: restaurantsTable.nameEn,
       restaurantNameAr: restaurantsTable.nameAr,
+      restaurantCoverImageUrl: restaurantsTable.coverImageUrl,
     }).from(vouchersTable)
       .innerJoin(restaurantsTable, eq(vouchersTable.restaurantId, restaurantsTable.id))
       .where(eq(vouchersTable.id, voucherId));
     if (!voucher) {
       res.status(404).json({ error: "not_found", message: "Voucher not found" });
+      return;
+    }
+    if (voucher.userId !== userId) {
+      res.status(403).json({ error: "forbidden", message: "You can only view your own vouchers" });
       return;
     }
     res.json(voucher);
@@ -228,20 +262,42 @@ router.get("/vouchers/:voucherId", async (req, res) => {
   }
 });
 
-// Gift voucher
-router.post("/vouchers/:voucherId/gift", async (req, res) => {
+// Gift voucher — auth required, owner only
+router.post("/vouchers/:voucherId/gift", requireAuth, async (req, res) => {
   try {
     const voucherId = parseInt(req.params["voucherId"] as string, 10);
+    const userId = req.auth!.userId;
     const { recipientPhone, recipientEmail, giftMessage } = req.body;
-    const [voucher] = await db.update(vouchersTable)
-      .set({ isGift: true, giftRecipientPhone: recipientPhone, giftRecipientEmail: recipientEmail, giftMessage })
-      .where(eq(vouchersTable.id, voucherId))
-      .returning();
-    if (!voucher) {
+
+    if (!recipientPhone && !recipientEmail) {
+      res.status(400).json({ error: "bad_request", message: "Recipient phone or email is required" });
+      return;
+    }
+
+    const [existing] = await db.select({ userId: vouchersTable.userId, status: vouchersTable.status })
+      .from(vouchersTable).where(eq(vouchersTable.id, voucherId));
+    if (!existing) {
       res.status(404).json({ error: "not_found", message: "Voucher not found" });
       return;
     }
-    res.json({ ...voucher, restaurantNameEn: "", restaurantNameAr: "" });
+    if (existing.userId !== userId) {
+      res.status(403).json({ error: "forbidden", message: "You can only gift your own vouchers" });
+      return;
+    }
+    if (existing.status !== "active") {
+      res.status(400).json({ error: "bad_request", message: "Only active vouchers can be gifted" });
+      return;
+    }
+
+    const [voucher] = await db.update(vouchersTable)
+      .set({ isGift: true, giftRecipientPhone: recipientPhone ?? null, giftRecipientEmail: recipientEmail ?? null, giftMessage: giftMessage ?? null })
+      .where(eq(vouchersTable.id, voucherId))
+      .returning();
+
+    const [restaurant] = await db.select({ nameEn: restaurantsTable.nameEn, nameAr: restaurantsTable.nameAr })
+      .from(restaurantsTable).where(eq(restaurantsTable.id, voucher.restaurantId));
+
+    res.json({ ...voucher, restaurantNameEn: restaurant?.nameEn ?? "", restaurantNameAr: restaurant?.nameAr ?? "" });
   } catch (err) {
     req.log.error({ err }, "Failed to gift voucher");
     res.status(500).json({ error: "internal_error", message: "Failed to gift voucher" });

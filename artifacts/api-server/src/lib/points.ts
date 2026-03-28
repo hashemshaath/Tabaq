@@ -5,6 +5,7 @@ import { eq, sql, count, avg } from "drizzle-orm";
 export const POINTS = {
   REVIEW_WRITTEN: 20,
   BOOKING_MADE: 10,
+  VOUCHER_PURCHASED: 50,
   REVIEW_LIKED_RECEIVED: 2,
   EMAIL_VERIFIED: 15,
 } as const;

@@ -5,11 +5,10 @@ import {
   useGetRestaurantMenus,
   useFollowRestaurant,
   useUnfollowRestaurant,
-  useCreateBooking,
-  type CreateBookingRequest,
   type Dish,
 } from '@workspace/api-client-react';
 import { useParams, Link } from 'wouter';
+import { BookingModal } from '@/components/BookingModal';
 import {
   Star, MapPin, Phone, Globe, Clock, CheckCircle2, Heart, HeartOff,
   Utensils, Info, Camera, MessageSquare, ChevronDown, ChevronUp,
@@ -41,13 +40,8 @@ export function RestaurantDetailPage() {
   const [isFollowing, setIsFollowing] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Set<number>>(new Set());
   const [showBooking, setShowBooking] = useState(false);
-  const [bookingDate, setBookingDate] = useState('');
-  const [bookingTime, setBookingTime] = useState('');
-  const [partySize, setPartySize] = useState(2);
-
   const { mutate: followRestaurant } = useFollowRestaurant();
   const { mutate: unfollowRestaurant } = useUnfollowRestaurant();
-  const { mutate: createBooking, isPending: isBooking } = useCreateBooking();
 
   React.useEffect(() => {
     if (data) setIsFollowing(data.isFollowing ?? false);
@@ -61,27 +55,6 @@ export function RestaurantDetailPage() {
     } else {
       followRestaurant({ restaurantId }, { onSuccess: () => setIsFollowing(true) });
     }
-  };
-
-  const handleBook = () => {
-    createBooking(
-      {
-        data: {
-          restaurantId: Number(id),
-          date: bookingDate,
-          time: bookingTime,
-          partySize: partySize,
-        } as CreateBookingRequest,
-      },
-      {
-        onSuccess: () => {
-          setShowBooking(false);
-          setBookingDate('');
-          setBookingTime('');
-        },
-        onError: (err) => alert(err.message || 'Booking failed'),
-      }
-    );
   };
 
   const toggleSection = (sectionId: number) => {
@@ -616,58 +589,14 @@ export function RestaurantDetailPage() {
         </div>
       </div>
 
-      {/* Booking Dialog */}
-      {showBooking && (
-        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={e => e.target === e.currentTarget && setShowBooking(false)}>
-          <div className="bg-card w-full max-w-lg rounded-3xl shadow-2xl p-6 md:p-8 animate-in zoom-in-95 duration-200">
-            <h2 className="text-2xl font-bold mb-6">{t('Book a Table', 'احجز طاولة')} — {name}</h2>
-            <div className="space-y-5">
-              <div>
-                <label className="block text-sm font-semibold mb-2 text-foreground">{t('Date', 'التاريخ')}</label>
-                <input
-                  type="date"
-                  className="w-full h-12 px-4 rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  value={bookingDate}
-                  min={new Date().toISOString().split('T')[0]}
-                  onChange={e => setBookingDate(e.target.value)}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold mb-2 text-foreground">{t('Time', 'الوقت')}</label>
-                  <select
-                    className="w-full h-12 px-4 rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                    value={bookingTime}
-                    onChange={e => setBookingTime(e.target.value)}
-                  >
-                    <option value="">{t('Select time', 'اختر الوقت')}</option>
-                    {['12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00'].map(t => (
-                      <option key={t} value={t}>{t}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold mb-2 text-foreground">{t('Guests', 'عدد الأشخاص')}</label>
-                  <select
-                    className="w-full h-12 px-4 rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                    value={partySize}
-                    onChange={e => setPartySize(Number(e.target.value))}
-                  >
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 10, 12].map(n => (
-                      <option key={n} value={n}>{n} {t('guests', 'أشخاص')}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-            <div className="flex justify-end gap-3 mt-8">
-              <Button variant="ghost" onClick={() => setShowBooking(false)}>{t('Cancel', 'إلغاء')}</Button>
-              <Button onClick={handleBook} disabled={!bookingDate || !bookingTime || isBooking}>
-                {isBooking ? t('Confirming...', 'جاري التأكيد...') : t('Confirm Booking', 'تأكيد الحجز')}
-              </Button>
-            </div>
-          </div>
-        </div>
+      {/* Booking Modal */}
+      {showBooking && restaurant && (
+        <BookingModal
+          restaurantId={restaurant.id}
+          restaurantNameEn={restaurant.nameEn}
+          restaurantNameAr={restaurant.nameAr}
+          onClose={() => setShowBooking(false)}
+        />
       )}
     </div>
   );
