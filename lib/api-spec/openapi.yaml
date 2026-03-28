@@ -1591,8 +1591,13 @@ components:
           type: string
         isVerified:
           type: boolean
+        isEmailVerified:
+          type: boolean
         points:
           type: integer
+        credibilityScore:
+          type: string
+          description: Numeric credibility score 0–100 (stored as decimal string)
         level:
           type: integer
         levelTitle:
@@ -1611,6 +1616,7 @@ components:
         - level
         - levelTitle
         - isVerified
+        - isEmailVerified
         - preferredLanguage
         - createdAt
 

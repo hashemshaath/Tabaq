@@ -49,7 +49,12 @@ export const VerifyOtpResponse = zod.object({
     avatarUrl: zod.string().optional(),
     bio: zod.string().optional(),
     isVerified: zod.boolean(),
+    isEmailVerified: zod.boolean(),
     points: zod.number(),
+    credibilityScore: zod
+      .string()
+      .optional()
+      .describe("Numeric credibility score 0–100 (stored as decimal string)"),
     level: zod.number(),
     levelTitle: zod.string(),
     preferredLanguage: zod.enum(["en", "ar"]),
@@ -71,7 +76,12 @@ export const GetMeResponse = zod.object({
     avatarUrl: zod.string().optional(),
     bio: zod.string().optional(),
     isVerified: zod.boolean(),
+    isEmailVerified: zod.boolean(),
     points: zod.number(),
+    credibilityScore: zod
+      .string()
+      .optional()
+      .describe("Numeric credibility score 0–100 (stored as decimal string)"),
     level: zod.number(),
     levelTitle: zod.string(),
     preferredLanguage: zod.enum(["en", "ar"]),
@@ -1337,7 +1347,12 @@ export const GetUserResponse = zod.object({
     avatarUrl: zod.string().optional(),
     bio: zod.string().optional(),
     isVerified: zod.boolean(),
+    isEmailVerified: zod.boolean(),
     points: zod.number(),
+    credibilityScore: zod
+      .string()
+      .optional()
+      .describe("Numeric credibility score 0–100 (stored as decimal string)"),
     level: zod.number(),
     levelTitle: zod.string(),
     preferredLanguage: zod.enum(["en", "ar"]),
@@ -1376,7 +1391,12 @@ export const UpdateUserResponse = zod.object({
   avatarUrl: zod.string().optional(),
   bio: zod.string().optional(),
   isVerified: zod.boolean(),
+  isEmailVerified: zod.boolean(),
   points: zod.number(),
+  credibilityScore: zod
+    .string()
+    .optional()
+    .describe("Numeric credibility score 0–100 (stored as decimal string)"),
   level: zod.number(),
   levelTitle: zod.string(),
   preferredLanguage: zod.enum(["en", "ar"]),

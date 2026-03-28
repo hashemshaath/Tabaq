@@ -154,8 +154,15 @@ router.post("/auth/verify-otp", async (req, res) => {
         cityId: cityId ?? null,
         level: levelInfo.level,
         levelTitle: levelInfo.levelTitle,
+        isEmailVerified: !!email,
       }).returning();
       user = created!;
+    } else if (email && !user.isEmailVerified) {
+      const [updated] = await db.update(usersTable)
+        .set({ isEmailVerified: true, updatedAt: new Date() })
+        .where(eq(usersTable.id, user.id))
+        .returning();
+      user = updated!;
     }
 
     const token = signToken({ userId: user.id, phone: user.phone, email: user.email });

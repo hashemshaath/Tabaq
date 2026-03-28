@@ -64,7 +64,10 @@ export interface User {
   avatarUrl?: string;
   bio?: string;
   isVerified: boolean;
+  isEmailVerified: boolean;
   points: number;
+  /** Numeric credibility score 0–100 (stored as decimal string) */
+  credibilityScore?: string;
   level: number;
   levelTitle: string;
   preferredLanguage: UserPreferredLanguage;
