@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { restaurantsTable, dishesTable, citiesTable, venuesTable } from "@workspace/db/schema";
+import { restaurantsTable, dishesTable, citiesTable, venuesTable, categoriesTable } from "@workspace/db/schema";
 import { eq, ilike, or, and, type SQL } from "drizzle-orm";
 
 const router: IRouter = Router();
@@ -113,7 +113,7 @@ router.get("/search/autocomplete", async (req, res) => {
     ];
     if (cityFilter) restaurantConditions.push(eq(restaurantsTable.cityId, cityFilter));
 
-    const [restaurants, dishes, cities] = await Promise.all([
+    const [restaurants, dishes, cities, categories] = await Promise.all([
       db.select({
         id: restaurantsTable.id,
         labelEn: restaurantsTable.nameEn,
@@ -139,12 +139,21 @@ router.get("/search/autocomplete", async (req, res) => {
       }).from(citiesTable)
         .where(or(ilike(citiesTable.nameEn, pattern), ilike(citiesTable.nameAr, pattern)))
         .limit(3),
+
+      db.select({
+        id: categoriesTable.id,
+        labelEn: categoriesTable.nameEn,
+        labelAr: categoriesTable.nameAr,
+      }).from(categoriesTable)
+        .where(or(ilike(categoriesTable.nameEn, pattern), ilike(categoriesTable.nameAr, pattern)))
+        .limit(3),
     ]);
 
     const suggestions = [
       ...restaurants.map(r => ({ type: "restaurant" as const, ...r })),
       ...dishes.map(d => ({ type: "dish" as const, ...d })),
       ...cities.map(c => ({ type: "city" as const, ...c, imageUrl: undefined as string | undefined })),
+      ...categories.map(c => ({ type: "category" as const, id: c.id, labelEn: c.labelEn, labelAr: c.labelAr, imageUrl: undefined as string | undefined })),
     ];
 
     res.json({ suggestions });
