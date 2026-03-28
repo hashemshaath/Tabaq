@@ -180,13 +180,31 @@ router.post("/vouchers", requireAuth, async (req, res) => {
       res.status(400).json({ error: "bad_request", message: "This offer is no longer active" });
       return;
     }
-    if (offer.remainingCapacity !== null && offer.remainingCapacity <= 0) {
-      res.status(400).json({ error: "bad_request", message: "This offer is sold out" });
+
+    const now = new Date();
+    if (offer.validFrom && now < offer.validFrom) {
+      res.status(400).json({ error: "bad_request", message: "This offer has not started yet" });
+      return;
+    }
+    if (offer.validUntil && now > offer.validUntil) {
+      res.status(400).json({ error: "bad_request", message: "This offer has expired" });
       return;
     }
 
     const userId = req.auth!.userId;
     const code = `VCH-${nanoid(10).toUpperCase()}`;
+
+    // Atomically decrement capacity — only proceed if remaining > 0
+    if (offer.remainingCapacity !== null) {
+      const updated = await db.update(offersTable)
+        .set({ remainingCapacity: sql`${offersTable.remainingCapacity} - 1` })
+        .where(and(eq(offersTable.id, offerId), sql`${offersTable.remainingCapacity} > 0`))
+        .returning({ remainingCapacity: offersTable.remainingCapacity });
+      if (updated.length === 0) {
+        res.status(400).json({ error: "bad_request", message: "This offer is sold out" });
+        return;
+      }
+    }
 
     const [voucher] = await db.insert(vouchersTable).values({
       code,
@@ -199,13 +217,6 @@ router.post("/vouchers", requireAuth, async (req, res) => {
       isGift: false,
       status: "active",
     }).returning();
-
-    // Decrement remaining capacity
-    if (offer.remainingCapacity !== null) {
-      await db.update(offersTable)
-        .set({ remainingCapacity: offer.remainingCapacity - 1 })
-        .where(eq(offersTable.id, offerId));
-    }
 
     // Award points for purchasing a voucher
     await awardPoints(userId, POINTS.VOUCHER_PURCHASED ?? 50);

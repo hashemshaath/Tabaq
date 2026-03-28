@@ -8,9 +8,8 @@ import { formatPrice } from '@/lib/utils';
 
 const STATUS_CONFIG: Record<string, { labelEn: string; labelAr: string; icon: React.ElementType; className: string }> = {
   active: { labelEn: 'Active', labelAr: 'نشطة', icon: CheckCircle2, className: 'text-green-600 bg-green-50' },
-  redeemed: { labelEn: 'Redeemed', labelAr: 'مستخدمة', icon: CheckCircle2, className: 'text-blue-600 bg-blue-50' },
+  used: { labelEn: 'Used', labelAr: 'مستخدمة', icon: CheckCircle2, className: 'text-blue-600 bg-blue-50' },
   expired: { labelEn: 'Expired', labelAr: 'منتهية', icon: XCircle, className: 'text-gray-500 bg-gray-50' },
-  cancelled: { labelEn: 'Cancelled', labelAr: 'ملغاة', icon: XCircle, className: 'text-red-600 bg-red-50' },
 };
 
 function VoucherCard({ voucher, lang, t }: {

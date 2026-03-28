@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLanguage } from '@/hooks/use-language';
-import { useListOffers, usePurchaseVoucher, type Offer } from '@workspace/api-client-react';
+import { useListOffers, usePurchaseVoucher, useGiftVoucher, type Offer } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Tag, Clock, CheckCircle2, X, Gift, Users } from 'lucide-react';
 import { formatPrice } from '@/lib/utils';
@@ -42,16 +42,41 @@ function VoucherPurchaseModal({
   const title = lang === 'ar' ? offer.titleAr : offer.titleEn;
   const restName = lang === 'ar' ? offer.restaurantNameAr : offer.restaurantNameEn;
 
+  const giftVoucher = useGiftVoucher();
+
   const purchaseVoucher = usePurchaseVoucher({
     mutation: {
       onSuccess: (data) => {
-        setVoucherCode(data.code);
-        setStep('success');
-        queryClient.invalidateQueries({ queryKey: ['vouchers'] });
-        onSuccess(data.code);
+        if (giftMode && (recipientPhone || recipientEmail)) {
+          giftVoucher.mutate(
+            {
+              voucherId: data.id,
+              data: {
+                recipientPhone: recipientPhone || undefined,
+                recipientEmail: recipientEmail || undefined,
+                giftMessage: giftMessage || undefined,
+              },
+            },
+            {
+              onSettled: () => {
+                setVoucherCode(data.code);
+                setStep('success');
+                queryClient.invalidateQueries({ queryKey: ['vouchers'] });
+                onSuccess(data.code);
+              },
+            },
+          );
+        } else {
+          setVoucherCode(data.code);
+          setStep('success');
+          queryClient.invalidateQueries({ queryKey: ['vouchers'] });
+          onSuccess(data.code);
+        }
       },
     },
   });
+
+  const isPending = purchaseVoucher.isPending || giftVoucher.isPending;
 
   const handlePurchase = () => {
     purchaseVoucher.mutate({ data: { offerId: offer.id } });
@@ -177,9 +202,9 @@ function VoucherPurchaseModal({
               <Button
                 className="w-full rounded-xl py-6 text-base"
                 onClick={handlePurchase}
-                disabled={!user || purchaseVoucher.isPending}
+                disabled={!user || isPending}
               >
-                {purchaseVoucher.isPending
+                {isPending
                   ? t('Processing...', 'جاري المعالجة...')
                   : giftMode
                   ? t('Send Gift Voucher', 'إرسال قسيمة هدية')

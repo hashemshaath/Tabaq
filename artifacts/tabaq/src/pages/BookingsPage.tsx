@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLanguage } from '@/hooks/use-language';
 import { useListBookings, useUpdateBookingStatus } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -6,6 +6,7 @@ import { CalendarDays, Clock, Users, CheckCircle2, XCircle, AlertCircle, QrCode,
 import { Link } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { BookingModal } from '@/components/BookingModal';
+import QRCode from 'qrcode';
 
 const STATUS_CONFIG: Record<string, { labelEn: string; labelAr: string; icon: React.ElementType; className: string }> = {
   confirmed: { labelEn: 'Confirmed', labelAr: 'مؤكد', icon: CheckCircle2, className: 'text-green-600 bg-green-50' },
@@ -15,17 +16,14 @@ const STATUS_CONFIG: Record<string, { labelEn: string; labelAr: string; icon: Re
   no_show: { labelEn: 'No Show', labelAr: 'لم يحضر', icon: XCircle, className: 'text-gray-600 bg-gray-50' },
 };
 
-function QRCodeDisplay({ value, size = 160 }: { value: string; size?: number }) {
-  const url = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(value)}&format=svg&qzone=1&color=1a1a1a`;
-  return (
-    <img
-      src={url}
-      alt={`QR code for ${value}`}
-      width={size}
-      height={size}
-      className="rounded-xl"
-    />
-  );
+function QRCodeDisplay({ value, size = 180 }: { value: string; size?: number }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    QRCode.toCanvas(canvas, value, { width: size, margin: 1, color: { dark: '#1a1a1a', light: '#ffffff' } });
+  }, [value, size]);
+  return <canvas ref={canvasRef} className="rounded-xl" />;
 }
 
 function BookingCard({ booking, lang, t, onCancel }: {
