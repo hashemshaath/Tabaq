@@ -106,6 +106,32 @@ router.post("/bookings", requireAuth, async (req, res) => {
       return;
     }
 
+    // Validate requested time against opening hours window and 30-min slot alignment
+    if (!hours.openTime || !hours.closeTime) {
+      res.status(400).json({ error: "bad_request", message: "Restaurant hours not configured for this day" });
+      return;
+    }
+    const [reqH, reqM] = (time as string).split(':').map(Number);
+    const requestedMinutes = (reqH ?? 0) * 60 + (reqM ?? 0);
+
+    if (reqM !== 0 && reqM !== 30) {
+      res.status(400).json({ error: "bad_request", message: "Booking time must be on a 30-minute slot (e.g. 12:00 or 12:30)" });
+      return;
+    }
+
+    const [openH, openM] = hours.openTime.split(':').map(Number);
+    const [closeH, closeM] = hours.closeTime.split(':').map(Number);
+    const openMinutes = (openH ?? 0) * 60 + (openM ?? 0);
+    const closeMinutes = (closeH ?? 0) * 60 + (closeM ?? 0);
+
+    if (requestedMinutes < openMinutes || requestedMinutes >= closeMinutes) {
+      res.status(400).json({
+        error: "bad_request",
+        message: `Booking time must be between ${hours.openTime} and ${hours.closeTime}`,
+      });
+      return;
+    }
+
     const referenceCode = `TBQ-${nanoid(8).toUpperCase()}`;
 
     // Acquire a per-slot advisory lock inside a transaction to prevent concurrent overbooking.

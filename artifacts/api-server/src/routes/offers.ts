@@ -353,15 +353,15 @@ router.post("/vouchers/:voucherId/redeem", requireAuth, async (req, res) => {
       return;
     }
 
-    // Allow redemption by the voucher owner or the restaurant owner
+    // Redemption is a restaurant-side (POS) action — only the restaurant owner can mark a voucher as used.
+    // The customer presents the voucher code to the restaurant; the restaurant confirms/scans it.
     const [restaurant] = await db.select({ ownerId: restaurantsTable.ownerId })
       .from(restaurantsTable).where(eq(restaurantsTable.id, existing.restaurantId));
 
-    const isOwner = existing.userId === userId;
     const isRestaurantOwner = restaurant?.ownerId === userId;
 
-    if (!isOwner && !isRestaurantOwner) {
-      res.status(403).json({ error: "forbidden", message: "Not authorized to redeem this voucher" });
+    if (!isRestaurantOwner) {
+      res.status(403).json({ error: "forbidden", message: "Only the restaurant owner can redeem vouchers" });
       return;
     }
 
