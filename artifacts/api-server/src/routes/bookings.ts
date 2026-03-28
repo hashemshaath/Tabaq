@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { bookingsTable, restaurantsTable } from "@workspace/db/schema";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, type SQL } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 const router: IRouter = Router();
@@ -10,9 +10,9 @@ const router: IRouter = Router();
 router.get("/bookings", async (req, res) => {
   try {
     const { restaurantId, status, from, to, limit = "20", offset = "0" } = req.query;
-    const conditions: any[] = [];
+    const conditions: SQL[] = [];
     if (restaurantId) conditions.push(eq(bookingsTable.restaurantId, parseInt(restaurantId as string)));
-    if (status) conditions.push(eq(bookingsTable.status, status as any));
+    if (status) conditions.push(eq(bookingsTable.status, status as 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'no_show'));
 
     const bookings = await db.select({
       id: bookingsTable.id,

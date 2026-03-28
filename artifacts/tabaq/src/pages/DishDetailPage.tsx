@@ -10,7 +10,7 @@ export function DishDetailPage() {
   const { id } = useParams();
   const { t, lang } = useLanguage();
   
-  const { data, isLoading } = useGetDish(Number(id), { query: { enabled: !!id } });
+  const { data, isLoading } = useGetDish(Number(id), { query: { enabled: !!id, queryKey: ['dish', id] } });
 
   if (isLoading) {
     return <div className="min-h-screen bg-background flex items-center justify-center"><div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>;

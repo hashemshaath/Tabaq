@@ -6,6 +6,29 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
   size?: "default" | "sm" | "lg" | "icon";
 }
 
+export function buttonVariants({ variant = "default", size = "default", className = "" }: { variant?: ButtonProps["variant"]; size?: ButtonProps["size"]; className?: string } = {}) {
+  const variants = {
+    default: "bg-primary text-primary-foreground shadow-lg shadow-primary/20 hover:bg-primary/90",
+    destructive: "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
+    outline: "border-2 border-input bg-background hover:bg-accent hover:text-accent-foreground",
+    secondary: "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
+    ghost: "hover:bg-accent hover:text-accent-foreground",
+    link: "text-primary underline-offset-4 hover:underline",
+  }
+  const sizes = {
+    default: "h-11 px-6 py-2 rounded-xl",
+    sm: "h-9 px-4 rounded-lg text-sm",
+    lg: "h-14 px-8 rounded-2xl text-lg",
+    icon: "h-11 w-11 rounded-xl flex items-center justify-center",
+  }
+  return cn(
+    "inline-flex items-center justify-center whitespace-nowrap text-sm font-semibold transition-all duration-200 active:scale-95 disabled:pointer-events-none disabled:opacity-50",
+    variants[variant ?? "default"],
+    sizes[size ?? "default"],
+    className
+  )
+}
+
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = "default", size = "default", ...props }, ref) => {
     const variants = {

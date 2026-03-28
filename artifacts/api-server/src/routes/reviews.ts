@@ -4,7 +4,7 @@ import {
   reviewsTable, reviewPhotosTable, reviewLikesTable, usersTable,
   restaurantsTable, dishesTable
 } from "@workspace/db/schema";
-import { eq, and, sql, desc } from "drizzle-orm";
+import { eq, and, sql, desc, type SQL } from "drizzle-orm";
 
 const router: IRouter = Router();
 
@@ -40,7 +40,7 @@ async function enrichReview(review: any, userId: number) {
 router.get("/reviews", async (req, res) => {
   try {
     const { restaurantId, dishId, userId, limit = "20", offset = "0" } = req.query;
-    const conditions: any[] = [];
+    const conditions: SQL[] = [];
     if (restaurantId) conditions.push(eq(reviewsTable.restaurantId, parseInt(restaurantId as string)));
     if (dishId) conditions.push(eq(reviewsTable.dishId, parseInt(dishId as string)));
     if (userId) conditions.push(eq(reviewsTable.userId, parseInt(userId as string)));

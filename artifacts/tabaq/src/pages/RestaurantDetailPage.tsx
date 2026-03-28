@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 export function RestaurantDetailPage() {
   const { id } = useParams();
   const { t, lang } = useLanguage();
-  const { data, isLoading } = useGetRestaurant(Number(id), { query: { enabled: !!id } });
+  const { data, isLoading } = useGetRestaurant(Number(id), { query: { enabled: !!id, queryKey: ['restaurant', id] } });
   
   const [showBooking, setShowBooking] = useState(false);
   const [bookingDate, setBookingDate] = useState('');

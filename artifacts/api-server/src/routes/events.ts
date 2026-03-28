@@ -1,14 +1,14 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { eventsTable, restaurantsTable } from "@workspace/db/schema";
-import { eq, and, gte, sql } from "drizzle-orm";
+import { eq, and, gte, sql, type SQL } from "drizzle-orm";
 
 const router: IRouter = Router();
 
 router.get("/events", async (req, res) => {
   try {
     const { restaurantId, cityId, from, limit = "20" } = req.query;
-    const conditions: any[] = [eq(eventsTable.isActive, true)];
+    const conditions: SQL[] = [eq(eventsTable.isActive, true)];
     if (restaurantId) conditions.push(eq(eventsTable.restaurantId, parseInt(restaurantId as string)));
     if (from) conditions.push(gte(eventsTable.eventDate, new Date(from as string)));
 

@@ -37,7 +37,7 @@ router.get("/restaurants", async (req, res) => {
     const conditions = [eq(restaurantsTable.isActive, true)];
     if (cityId) conditions.push(eq(restaurantsTable.cityId, parseInt(cityId as string)));
     if (countryId) conditions.push(eq(restaurantsTable.countryId, parseInt(countryId as string)));
-    if (priceTier) conditions.push(eq(restaurantsTable.priceTier, priceTier as any));
+    if (priceTier) conditions.push(eq(restaurantsTable.priceTier, priceTier as 'budget' | 'mid' | 'upscale' | 'fine_dining'));
     if (minRating) conditions.push(gte(restaurantsTable.avgRating, parseFloat(minRating as string)));
     if (featured === "true") conditions.push(eq(restaurantsTable.isFeatured, true));
 

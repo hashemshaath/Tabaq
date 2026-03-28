@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { offersTable, vouchersTable, restaurantsTable } from "@workspace/db/schema";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, type SQL } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 const router: IRouter = Router();
@@ -10,7 +10,7 @@ const router: IRouter = Router();
 router.get("/offers", async (req, res) => {
   try {
     const { restaurantId, cityId, active, limit = "20", offset = "0" } = req.query;
-    const conditions: any[] = [];
+    const conditions: SQL[] = [];
     if (restaurantId) conditions.push(eq(offersTable.restaurantId, parseInt(restaurantId as string)));
     if (active === "true") conditions.push(eq(offersTable.isActive, true));
 
@@ -118,8 +118,8 @@ router.get("/vouchers", async (req, res) => {
   try {
     const { status } = req.query;
     const userId = 1; // TODO: from session
-    const conditions: any[] = [eq(vouchersTable.userId, userId)];
-    if (status) conditions.push(eq(vouchersTable.status, status as any));
+    const conditions: SQL[] = [eq(vouchersTable.userId, userId)];
+    if (status) conditions.push(eq(vouchersTable.status, status as 'active' | 'used' | 'expired'));
 
     const vouchers = await db.select({
       id: vouchersTable.id,

@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { usersTable, userFollowsTable, reviewsTable, bookingsTable, restaurantsTable } from "@workspace/db/schema";
-import { eq, and, sql, desc } from "drizzle-orm";
+import { eq, and, sql, desc, type SQL } from "drizzle-orm";
 
 const router: IRouter = Router();
 
@@ -190,7 +190,7 @@ router.get("/users/:userId/bookings", async (req, res) => {
   try {
     const userId = parseInt(req.params.userId, 10);
     const { status } = req.query;
-    const conditions: any[] = [eq(bookingsTable.userId, userId)];
+    const conditions: SQL[] = [eq(bookingsTable.userId, userId)];
     if (status === "upcoming") conditions.push(sql`${bookingsTable.date} >= CURRENT_DATE`);
     else if (status === "past") conditions.push(sql`${bookingsTable.date} < CURRENT_DATE`);
     else if (status === "cancelled") conditions.push(eq(bookingsTable.status, "cancelled"));
@@ -233,9 +233,10 @@ router.get("/users/:userId/leaderboard-rank", async (req, res) => {
     const levelInfo = calcLevel(user.points);
     const [reviewCount] = await db.select({ count: sql<number>`count(*)` })
       .from(reviewsTable).where(eq(reviewsTable.userId, userId));
-    const [rankResult] = await db.execute<{ rank: bigint }>(
+    const rankRows = await db.execute<{ rank: bigint }>(
       sql`SELECT COUNT(*) + 1 as rank FROM users WHERE points > ${user.points}`
     );
+    const rankResult = rankRows.rows[0];
     res.json({
       userId,
       points: user.points,

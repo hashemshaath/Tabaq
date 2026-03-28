@@ -20,7 +20,7 @@ export function SearchPage() {
     return () => clearTimeout(handler);
   }, [query]);
 
-  const { data, isLoading } = useSearch({ q: debouncedQuery, type: 'all' }, { query: { enabled: debouncedQuery.length > 2 } });
+  const { data, isLoading } = useSearch({ q: debouncedQuery, type: 'all' }, { query: { enabled: debouncedQuery.length > 2, queryKey: ['search', debouncedQuery] } });
 
   return (
     <div className="min-h-screen bg-background pt-10 pb-20">
