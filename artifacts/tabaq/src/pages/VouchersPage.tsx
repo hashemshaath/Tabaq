@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useLanguage } from '@/hooks/use-language';
-import { useListVouchers, type Voucher } from '@workspace/api-client-react';
-import { Tag, Clock, CheckCircle2, XCircle, Gift, Copy, Check } from 'lucide-react';
+import { useListVouchers, useRedeemVoucher, type Voucher } from '@workspace/api-client-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { Tag, Clock, CheckCircle2, XCircle, Gift, Copy, Check, ScanLine } from 'lucide-react';
 import { Link } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { formatPrice } from '@/lib/utils';
@@ -12,14 +13,15 @@ const STATUS_CONFIG: Record<string, { labelEn: string; labelAr: string; icon: Re
   expired: { labelEn: 'Expired', labelAr: 'منتهية', icon: XCircle, className: 'text-gray-500 bg-gray-50' },
 };
 
-function VoucherCard({ voucher, lang, t }: {
+function VoucherCard({ voucher, lang, t, onRedeem }: {
   voucher: Voucher;
   lang: string;
   t: (en: string, ar: string) => string;
+  onRedeem: (id: number, code: string) => void;
 }) {
   const [copied, setCopied] = useState(false);
   const restName = lang === 'ar' ? voucher.restaurantNameAr : voucher.restaurantNameEn;
-  const status = STATUS_CONFIG[voucher.status] ?? STATUS_CONFIG.active;
+  const status = STATUS_CONFIG[voucher.status] ?? STATUS_CONFIG.expired;
   const StatusIcon = status.icon;
   const isActive = voucher.status === 'active';
 
@@ -85,6 +87,55 @@ function VoucherCard({ voucher, lang, t }: {
             &ldquo;{voucher.giftMessage}&rdquo;
           </p>
         )}
+
+        {isActive && (
+          <div className="mt-4 flex gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2"
+              onClick={() => onRedeem(voucher.id, voucher.code)}
+            >
+              <ScanLine className="w-4 h-4" />
+              {t('Redeem at Restaurant', 'استرداد في المطعم')}
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function RedeemConfirmModal({ voucherId, voucherCode, onConfirm, onCancel, isPending, error, lang, t }: {
+  voucherId: number;
+  voucherCode: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+  isPending: boolean;
+  error: boolean;
+  lang: string;
+  t: (en: string, ar: string) => string;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onCancel}>
+      <div className="bg-background rounded-3xl p-6 max-w-sm w-full shadow-2xl" onClick={e => e.stopPropagation()}>
+        <h3 className="text-xl font-bold text-foreground mb-2">{t('Redeem Voucher', 'استرداد القسيمة')}</h3>
+        <p className="text-muted-foreground text-sm mb-4">
+          {t('Show the staff this screen to redeem your voucher. This action cannot be undone.', 'أظهر هذه الشاشة للموظف لاسترداد قسيمتك. هذا الإجراء لا يمكن التراجع عنه.')}
+        </p>
+        <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 mb-5 text-center">
+          <p className="text-xs text-muted-foreground mb-1">{t('Voucher Code', 'رمز القسيمة')}</p>
+          <p className="text-2xl font-bold font-mono text-primary tracking-wider">{voucherCode}</p>
+        </div>
+        {error && (
+          <p className="text-sm text-destructive mb-3">{t('Redemption failed. Please try again.', 'فشل الاسترداد. حاول مرة أخرى.')}</p>
+        )}
+        <div className="flex gap-3">
+          <Button variant="outline" className="flex-1" onClick={onCancel} disabled={isPending}>{t('Cancel', 'إلغاء')}</Button>
+          <Button className="flex-1" onClick={onConfirm} disabled={isPending}>
+            {isPending ? t('Redeeming...', 'جاري الاسترداد...') : t('Confirm Redemption', 'تأكيد الاسترداد')}
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -92,10 +143,37 @@ function VoucherCard({ voucher, lang, t }: {
 
 export function VouchersPage() {
   const { t, lang } = useLanguage();
+  const queryClient = useQueryClient();
   const [tab, setTab] = useState<'active' | 'used'>('active');
+  const [redeemTarget, setRedeemTarget] = useState<{ id: number; code: string } | null>(null);
+  const [redeemError, setRedeemError] = useState(false);
+
   const { data, isLoading } = useListVouchers(undefined, {
     query: { queryKey: ['vouchers'] },
   });
+
+  const redeemVoucher = useRedeemVoucher({
+    mutation: {
+      onSuccess: () => {
+        setRedeemTarget(null);
+        setRedeemError(false);
+        queryClient.invalidateQueries({ queryKey: ['vouchers'] });
+      },
+      onError: () => {
+        setRedeemError(true);
+      },
+    },
+  });
+
+  const handleRedeemOpen = (id: number, code: string) => {
+    setRedeemError(false);
+    setRedeemTarget({ id, code });
+  };
+
+  const handleRedeemConfirm = () => {
+    if (!redeemTarget) return;
+    redeemVoucher.mutate({ voucherId: redeemTarget.id });
+  };
 
   const allVouchers = data ?? [];
   const activeVouchers = allVouchers.filter(v => v.status === 'active');
@@ -164,11 +242,24 @@ export function VouchersPage() {
         ) : (
           <div className="space-y-4">
             {displayed.map(voucher => (
-              <VoucherCard key={voucher.id} voucher={voucher} lang={lang} t={t} />
+              <VoucherCard key={voucher.id} voucher={voucher} lang={lang} t={t} onRedeem={handleRedeemOpen} />
             ))}
           </div>
         )}
       </div>
+
+      {redeemTarget && (
+        <RedeemConfirmModal
+          voucherId={redeemTarget.id}
+          voucherCode={redeemTarget.code}
+          onConfirm={handleRedeemConfirm}
+          onCancel={() => { setRedeemTarget(null); setRedeemError(false); }}
+          isPending={redeemVoucher.isPending}
+          error={redeemError}
+          lang={lang}
+          t={t}
+        />
+      )}
     </div>
   );
 }

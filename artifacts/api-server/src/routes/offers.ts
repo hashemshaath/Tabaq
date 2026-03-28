@@ -105,7 +105,7 @@ router.get("/offers/:offerId", async (req, res) => {
   }
 });
 
-// Create offer — restaurant staff only (auth required; restaurant-level authz deferred to Task #6)
+// Create offer — restaurant owner only
 router.post("/offers", requireAuth, async (req, res) => {
   try {
     const { restaurantId, titleEn, titleAr, originalPrice, validFrom, validUntil, ...rest } = req.body;
@@ -113,12 +113,22 @@ router.post("/offers", requireAuth, async (req, res) => {
       res.status(400).json({ error: "bad_request", message: "Missing required fields" });
       return;
     }
+    const userId = req.auth!.userId;
+    // Verify caller owns the restaurant
+    const [restaurant] = await db.select({ nameEn: restaurantsTable.nameEn, nameAr: restaurantsTable.nameAr, coverImageUrl: restaurantsTable.coverImageUrl, ownerId: restaurantsTable.ownerId })
+      .from(restaurantsTable).where(eq(restaurantsTable.id, restaurantId));
+    if (!restaurant) {
+      res.status(404).json({ error: "not_found", message: "Restaurant not found" });
+      return;
+    }
+    if (restaurant.ownerId !== userId) {
+      res.status(403).json({ error: "forbidden", message: "You are not the owner of this restaurant" });
+      return;
+    }
     const [offer] = await db.insert(offersTable).values({
       restaurantId, titleEn, titleAr, originalPrice, validFrom: new Date(validFrom), validUntil: new Date(validUntil), ...rest,
     }).returning();
-    const [restaurant] = await db.select({ nameEn: restaurantsTable.nameEn, nameAr: restaurantsTable.nameAr, coverImageUrl: restaurantsTable.coverImageUrl })
-      .from(restaurantsTable).where(eq(restaurantsTable.id, restaurantId));
-    res.status(201).json({ ...offer, restaurantNameEn: restaurant?.nameEn ?? "", restaurantNameAr: restaurant?.nameAr ?? "", restaurantCoverImageUrl: restaurant?.coverImageUrl ?? null });
+    res.status(201).json({ ...offer, restaurantNameEn: restaurant.nameEn ?? "", restaurantNameAr: restaurant.nameAr ?? "", restaurantCoverImageUrl: restaurant.coverImageUrl ?? null });
   } catch (err) {
     req.log.error({ err }, "Failed to create offer");
     res.status(500).json({ error: "internal_error", message: "Failed to create offer" });
@@ -219,7 +229,13 @@ router.post("/vouchers", requireAuth, async (req, res) => {
     }).returning();
 
     // Award points for purchasing a voucher
-    await awardPoints(userId, POINTS.VOUCHER_PURCHASED ?? 50);
+    await awardPoints(userId, POINTS.VOUCHER_PURCHASED);
+
+    // Notification stubs: in production these trigger push/SMS/email events
+    req.log.info({ voucherId: voucher.id, userId, offerId }, "NOTIFY: voucher purchased — send confirmation to user");
+    if (offer.validUntil) {
+      req.log.info({ voucherId: voucher.id, validUntil: offer.validUntil }, "NOTIFY: schedule offer expiry reminder 24h before validUntil");
+    }
 
     const [restaurant] = await db.select({ nameEn: restaurantsTable.nameEn, nameAr: restaurantsTable.nameAr, coverImageUrl: restaurantsTable.coverImageUrl })
       .from(restaurantsTable).where(eq(restaurantsTable.id, offer.restaurantId));
@@ -308,10 +324,75 @@ router.post("/vouchers/:voucherId/gift", requireAuth, async (req, res) => {
     const [restaurant] = await db.select({ nameEn: restaurantsTable.nameEn, nameAr: restaurantsTable.nameAr })
       .from(restaurantsTable).where(eq(restaurantsTable.id, voucher.restaurantId));
 
+    // Notification stub: in production, send gift notification to recipient via phone/email
+    req.log.info({ voucherId, recipientPhone, recipientEmail }, "NOTIFY: gift voucher sent — deliver to recipient");
+
     res.json({ ...voucher, restaurantNameEn: restaurant?.nameEn ?? "", restaurantNameAr: restaurant?.nameAr ?? "" });
   } catch (err) {
     req.log.error({ err }, "Failed to gift voucher");
     res.status(500).json({ error: "internal_error", message: "Failed to gift voucher" });
+  }
+});
+
+// Redeem voucher — auth required; called by restaurant staff at point-of-service
+router.post("/vouchers/:voucherId/redeem", requireAuth, async (req, res) => {
+  try {
+    const voucherId = parseInt(req.params["voucherId"] as string, 10);
+    const userId = req.auth!.userId;
+
+    const [existing] = await db.select({
+      id: vouchersTable.id,
+      userId: vouchersTable.userId,
+      restaurantId: vouchersTable.restaurantId,
+      status: vouchersTable.status,
+      validUntil: vouchersTable.validUntil,
+    }).from(vouchersTable).where(eq(vouchersTable.id, voucherId));
+
+    if (!existing) {
+      res.status(404).json({ error: "not_found", message: "Voucher not found" });
+      return;
+    }
+
+    // Allow redemption by the voucher owner or the restaurant owner
+    const [restaurant] = await db.select({ ownerId: restaurantsTable.ownerId })
+      .from(restaurantsTable).where(eq(restaurantsTable.id, existing.restaurantId));
+
+    const isOwner = existing.userId === userId;
+    const isRestaurantOwner = restaurant?.ownerId === userId;
+
+    if (!isOwner && !isRestaurantOwner) {
+      res.status(403).json({ error: "forbidden", message: "Not authorized to redeem this voucher" });
+      return;
+    }
+
+    if (existing.status !== "active") {
+      res.status(400).json({ error: "bad_request", message: `Voucher is already ${existing.status}` });
+      return;
+    }
+
+    if (existing.validUntil && new Date() > existing.validUntil) {
+      await db.update(vouchersTable).set({ status: "expired" }).where(eq(vouchersTable.id, voucherId));
+      res.status(400).json({ error: "bad_request", message: "Voucher has expired" });
+      return;
+    }
+
+    const [voucher] = await db.update(vouchersTable)
+      .set({ status: "used", redeemedAt: new Date() })
+      .where(and(eq(vouchersTable.id, voucherId), eq(vouchersTable.status, "active")))
+      .returning();
+
+    if (!voucher) {
+      res.status(409).json({ error: "conflict", message: "Voucher was already redeemed" });
+      return;
+    }
+
+    // Notification stub: in production, trigger an event to the notification service
+    req.log.info({ voucherId, userId }, "NOTIFY: voucher redeemed — send confirmation to owner");
+
+    res.json({ ...voucher, message: "Voucher successfully redeemed" });
+  } catch (err) {
+    req.log.error({ err }, "Failed to redeem voucher");
+    res.status(500).json({ error: "internal_error", message: "Failed to redeem voucher" });
   }
 });
 

@@ -86,6 +86,10 @@ router.post("/bookings", requireAuth, async (req, res) => {
     // Award points for making a booking
     await awardPoints(userId, POINTS.BOOKING_MADE);
 
+    // Notification stubs: in production these trigger push/SMS/email events
+    req.log.info({ bookingId: booking.id, userId, referenceCode }, "NOTIFY: booking confirmation — send to user");
+    req.log.info({ bookingId: booking.id, restaurantId }, "NOTIFY: new reservation alert — send to restaurant");
+
     res.status(201).json({
       ...booking,
       restaurantNameEn: restaurant?.nameEn ?? "",
@@ -167,6 +171,13 @@ router.patch("/bookings/:bookingId", requireAuth, async (req, res) => {
       .set({ status, updatedAt: new Date() })
       .where(eq(bookingsTable.id, bookingId))
       .returning();
+
+    // Notification stubs
+    if (status === "confirmed") {
+      req.log.info({ bookingId, userId: existing.userId }, "NOTIFY: booking confirmed — send confirmation to user");
+    } else if (status === "cancelled") {
+      req.log.info({ bookingId, userId: existing.userId }, "NOTIFY: booking cancelled — send cancellation notice to user");
+    }
 
     const [restaurant] = await db.select().from(restaurantsTable)
       .where(eq(restaurantsTable.id, booking.restaurantId));

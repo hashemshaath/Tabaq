@@ -58,7 +58,7 @@ function VoucherPurchaseModal({
               },
             },
             {
-              onSettled: () => {
+              onSuccess: () => {
                 setVoucherCode(data.code);
                 setStep('success');
                 queryClient.invalidateQueries({ queryKey: ['vouchers'] });
@@ -222,7 +222,6 @@ export function OffersPage() {
   const { t, lang } = useLanguage();
   const { data, isLoading } = useListOffers({ active: true });
   const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
-  const [successCode, setSuccessCode] = useState<string | null>(null);
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -323,7 +322,7 @@ export function OffersPage() {
         <VoucherPurchaseModal
           offer={selectedOffer}
           onClose={() => setSelectedOffer(null)}
-          onSuccess={(code) => { setSuccessCode(code); }}
+          onSuccess={() => { setSelectedOffer(null); }}
         />
       )}
     </div>

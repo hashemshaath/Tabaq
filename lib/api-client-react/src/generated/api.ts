@@ -3364,6 +3364,85 @@ export const useGiftVoucher = <
 };
 
 /**
+ * @summary Redeem a voucher at point-of-service
+ */
+export const getRedeemVoucherUrl = (voucherId: number) => {
+  return `/api/vouchers/${voucherId}/redeem`;
+};
+
+export const redeemVoucher = async (
+  voucherId: number,
+  options?: RequestInit,
+): Promise<Voucher> => {
+  return customFetch<Voucher>(getRedeemVoucherUrl(voucherId), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getRedeemVoucherMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof redeemVoucher>>,
+    TError,
+    { voucherId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof redeemVoucher>>,
+  TError,
+  { voucherId: number },
+  TContext
+> => {
+  const mutationKey = ["redeemVoucher"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof redeemVoucher>>,
+    { voucherId: number }
+  > = (props) => {
+    const { voucherId } = props ?? {};
+    return redeemVoucher(voucherId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RedeemVoucherMutationResult = NonNullable<
+  Awaited<ReturnType<typeof redeemVoucher>>
+>;
+export type RedeemVoucherMutationError = ErrorType<unknown>;
+
+export const useRedeemVoucher = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof redeemVoucher>>,
+    TError,
+    { voucherId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof redeemVoucher>>,
+  TError,
+  { voucherId: number },
+  TContext
+> => {
+  return useMutation(getRedeemVoucherMutationOptions(options));
+};
+
+/**
  * @summary List reviews
  */
 export const getListReviewsUrl = (params?: ListReviewsParams) => {
