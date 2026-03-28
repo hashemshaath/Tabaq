@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { usersTable, otpRequestsTable } from "@workspace/db/schema";
-import { eq, and, isNull, gt } from "drizzle-orm";
+import { eq, and, isNull, gt, desc, gte } from "drizzle-orm";
 import { signToken, generateOtp, otpExpiresAt } from "../lib/auth.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 
@@ -17,11 +17,24 @@ function calcLevel(points: number): { level: number; levelTitle: string } {
   return { level: 5, levelTitle: "Master Chef" };
 }
 
+const OTP_RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const OTP_RATE_LIMIT_MAX = 3;
+
 router.post("/auth/request-otp", async (req, res) => {
   try {
     const { phone, email } = req.body as { phone?: string; email?: string };
     if (!phone && !email) {
       res.status(400).json({ error: "bad_request", message: "phone or email required" });
+      return;
+    }
+
+    const windowStart = new Date(Date.now() - OTP_RATE_LIMIT_WINDOW_MS);
+    const recentCondition = phone
+      ? and(eq(otpRequestsTable.phone, phone), gte(otpRequestsTable.createdAt, windowStart))
+      : and(eq(otpRequestsTable.email, email!), gte(otpRequestsTable.createdAt, windowStart));
+    const recent = await db.select({ id: otpRequestsTable.id }).from(otpRequestsTable).where(recentCondition);
+    if (recent.length >= OTP_RATE_LIMIT_MAX) {
+      res.status(429).json({ error: "rate_limited", message: "Too many OTP requests. Please wait a minute." });
       return;
     }
 
@@ -72,7 +85,7 @@ router.post("/auth/verify-otp", async (req, res) => {
         isNull(otpRequestsTable.usedAt),
         gt(otpRequestsTable.expiresAt, now),
       )
-    ).orderBy(otpRequestsTable.createdAt).limit(1);
+    ).orderBy(desc(otpRequestsTable.createdAt)).limit(1);
 
     if (!otp) {
       res.status(401).json({ error: "invalid_otp", message: "Invalid or expired OTP" });

@@ -7,7 +7,7 @@ import {
 } from "@workspace/db/schema";
 import { eq, and, gte, sql, inArray, count, type SQL } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import { requireAuth, optionalAuth } from "../middleware/requireAuth.js";
+import { requireAuth } from "../middleware/requireAuth.js";
 
 const router: IRouter = Router();
 

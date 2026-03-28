@@ -8,6 +8,86 @@
 import * as zod from "zod";
 
 /**
+ * Sends a one-time password to the provided phone or email. In dev mode, the code is returned in the response.
+ * @summary Request an OTP code
+ */
+export const RequestOtpBody = zod.object({
+  phone: zod.string().optional(),
+  email: zod.string().email().optional(),
+});
+
+export const RequestOtpResponse = zod.object({
+  message: zod.string().optional(),
+  devCode: zod.string().optional().describe("Only present in development mode"),
+});
+
+/**
+ * Verifies the OTP code and creates or fetches the user, returning a JWT token.
+ * @summary Verify OTP and sign in
+ */
+export const verifyOtpBodyCodeMin = 6;
+export const verifyOtpBodyCodeMax = 6;
+
+export const VerifyOtpBody = zod.object({
+  phone: zod.string().optional(),
+  email: zod.string().optional(),
+  code: zod.string().min(verifyOtpBodyCodeMin).max(verifyOtpBodyCodeMax),
+  nameEn: zod.string().optional(),
+  nameAr: zod.string().optional(),
+  preferredLanguage: zod.enum(["en", "ar"]).optional(),
+  cityId: zod.number().optional(),
+});
+
+export const VerifyOtpResponse = zod.object({
+  token: zod.string(),
+  user: zod.object({
+    id: zod.number(),
+    phone: zod.string().optional(),
+    email: zod.string().optional(),
+    nameEn: zod.string().optional(),
+    nameAr: zod.string().optional(),
+    avatarUrl: zod.string().optional(),
+    bio: zod.string().optional(),
+    isVerified: zod.boolean(),
+    points: zod.number(),
+    level: zod.number(),
+    levelTitle: zod.string(),
+    preferredLanguage: zod.enum(["en", "ar"]),
+    cityId: zod.number().optional(),
+    createdAt: zod.coerce.date(),
+  }),
+});
+
+/**
+ * @summary Get the currently authenticated user
+ */
+export const GetMeResponse = zod.object({
+  user: zod.object({
+    id: zod.number(),
+    phone: zod.string().optional(),
+    email: zod.string().optional(),
+    nameEn: zod.string().optional(),
+    nameAr: zod.string().optional(),
+    avatarUrl: zod.string().optional(),
+    bio: zod.string().optional(),
+    isVerified: zod.boolean(),
+    points: zod.number(),
+    level: zod.number(),
+    levelTitle: zod.string(),
+    preferredLanguage: zod.enum(["en", "ar"]),
+    cityId: zod.number().optional(),
+    createdAt: zod.coerce.date(),
+  }),
+});
+
+/**
+ * @summary Log out (clears session cookie)
+ */
+export const LogoutResponse = zod.object({
+  message: zod.string().optional(),
+});
+
+/**
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({

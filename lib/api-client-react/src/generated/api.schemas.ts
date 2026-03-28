@@ -703,6 +703,82 @@ export interface CreateEventRequest {
   totalCapacity?: number;
 }
 
+/**
+ * Bad request
+ */
+export type BadRequestResponse = ErrorResponse;
+
+/**
+ * Unauthorized
+ */
+export type UnauthorizedResponse = ErrorResponse;
+
+/**
+ * Forbidden
+ */
+export type ForbiddenResponse = ErrorResponse;
+
+/**
+ * Not found
+ */
+export type NotFoundResponse = ErrorResponse;
+
+/**
+ * Too many requests
+ */
+export type TooManyRequestsResponse = ErrorResponse;
+
+/**
+ * Internal server error
+ */
+export type InternalErrorResponse = ErrorResponse;
+
+export type RequestOtpBody = {
+  phone?: string;
+  email?: string;
+};
+
+export type RequestOtp200 = {
+  message?: string;
+  /** Only present in development mode */
+  devCode?: string;
+};
+
+export type VerifyOtpBodyPreferredLanguage =
+  (typeof VerifyOtpBodyPreferredLanguage)[keyof typeof VerifyOtpBodyPreferredLanguage];
+
+export const VerifyOtpBodyPreferredLanguage = {
+  en: "en",
+  ar: "ar",
+} as const;
+
+export type VerifyOtpBody = {
+  phone?: string;
+  email?: string;
+  /**
+   * @minLength 6
+   * @maxLength 6
+   */
+  code: string;
+  nameEn?: string;
+  nameAr?: string;
+  preferredLanguage?: VerifyOtpBodyPreferredLanguage;
+  cityId?: number;
+};
+
+export type VerifyOtp200 = {
+  token: string;
+  user: User;
+};
+
+export type GetMe200 = {
+  user: User;
+};
+
+export type Logout200 = {
+  message?: string;
+};
+
 export type ListRestaurantsParams = {
   cityId?: number;
   countryId?: number;
