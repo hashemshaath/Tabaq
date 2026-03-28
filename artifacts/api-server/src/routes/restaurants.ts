@@ -3,9 +3,9 @@ import { db } from "@workspace/db";
 import {
   restaurantsTable, restaurantCategoriesTable, restaurantOccasionsTable,
   restaurantFollowsTable, openingHoursTable, categoriesTable, occasionsTable,
-  reviewsTable, offersTable, citiesTable
+  reviewsTable, offersTable, citiesTable, bookingsTable
 } from "@workspace/db/schema";
-import { eq, and, gte, sql, inArray, type SQL } from "drizzle-orm";
+import { eq, and, gte, sql, inArray, count, type SQL } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 const router: IRouter = Router();
@@ -48,6 +48,8 @@ router.get("/restaurants", async (req, res) => {
         .where(eq(restaurantCategoriesTable.categoryId, parseInt(categoryId as string)));
       if (catRestaurantIds.length) {
         conditions.push(inArray(restaurantsTable.id, catRestaurantIds.map(r => r.restaurantId)));
+      } else {
+        conditions.push(sql`1 = 0`);
       }
     }
 
@@ -58,6 +60,8 @@ router.get("/restaurants", async (req, res) => {
         .where(eq(restaurantOccasionsTable.occasionId, parseInt(occasionId as string)));
       if (occRestaurantIds.length) {
         conditions.push(inArray(restaurantsTable.id, occRestaurantIds.map(r => r.restaurantId)));
+      } else {
+        conditions.push(sql`1 = 0`);
       }
     }
 
@@ -290,23 +294,61 @@ router.delete("/restaurants/:restaurantId/follow", async (req, res) => {
   }
 });
 
-// Availability
+// Availability — derived from opening hours and existing bookings
 router.get("/restaurants/:restaurantId/availability", async (req, res) => {
   try {
+    const restaurantId = parseInt(req.params.restaurantId, 10);
     const { date, partySize } = req.query;
-    const slots = [
-      { time: "12:00", available: true, capacity: 4 },
-      { time: "12:30", available: true, capacity: 4 },
-      { time: "13:00", available: false, capacity: 0 },
-      { time: "13:30", available: true, capacity: 6 },
-      { time: "14:00", available: true, capacity: 4 },
-      { time: "19:00", available: true, capacity: 8 },
-      { time: "19:30", available: true, capacity: 6 },
-      { time: "20:00", available: false, capacity: 0 },
-      { time: "20:30", available: true, capacity: 4 },
-      { time: "21:00", available: true, capacity: 4 },
-    ];
-    res.json({ date, slots });
+    const requestedDate = date ? new Date(date as string) : new Date();
+    const dayOfWeek = requestedDate.getDay();
+    const requestedParty = partySize ? parseInt(partySize as string) : 2;
+    const dateStr = requestedDate.toISOString().split("T")[0];
+
+    const [hours] = await db.select()
+      .from(openingHoursTable)
+      .where(and(
+        eq(openingHoursTable.restaurantId, restaurantId),
+        eq(openingHoursTable.dayOfWeek, dayOfWeek),
+      ));
+
+    if (!hours || hours.isClosed || !hours.openTime || !hours.closeTime) {
+      res.json({ date: dateStr, slots: [] });
+      return;
+    }
+
+    const bookingsForDay = await db.select({
+      time: bookingsTable.time,
+      partySize: bookingsTable.partySize,
+    }).from(bookingsTable).where(and(
+      eq(bookingsTable.restaurantId, restaurantId),
+      eq(bookingsTable.date, dateStr),
+      sql`${bookingsTable.status} IN ('pending','confirmed')`,
+    ));
+
+    const bookedBySlot: Record<string, number> = {};
+    for (const b of bookingsForDay) {
+      const t = b.time ?? "";
+      bookedBySlot[t] = (bookedBySlot[t] ?? 0) + (b.partySize ?? 0);
+    }
+
+    const [openH, openM] = hours.openTime.split(":").map(Number);
+    const [closeH, closeM] = hours.closeTime.split(":").map(Number);
+    const openMinutes = (openH ?? 0) * 60 + (openM ?? 0);
+    const closeMinutes = (closeH ?? 0) * 60 + (closeM ?? 0);
+    const SLOT_INTERVAL = 30;
+    const SEAT_CAPACITY = 40;
+
+    const slots: { time: string; available: boolean; remainingCapacity: number }[] = [];
+    for (let m = openMinutes; m < closeMinutes; m += SLOT_INTERVAL) {
+      const h = String(Math.floor(m / 60)).padStart(2, "0");
+      const min = String(m % 60).padStart(2, "0");
+      const time = `${h}:${min}`;
+      const booked = bookedBySlot[time] ?? 0;
+      const remaining = SEAT_CAPACITY - booked;
+      slots.push({ time, available: remaining >= requestedParty, remainingCapacity: Math.max(remaining, 0) });
+    }
+
+    res.json({ date: dateStr, slots });
   } catch (err) {
     req.log.error({ err }, "Failed to fetch availability");
     res.status(500).json({ error: "internal_error", message: "Failed to fetch availability" });

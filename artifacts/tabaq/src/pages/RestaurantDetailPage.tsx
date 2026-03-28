@@ -50,7 +50,6 @@ export function RestaurantDetailPage() {
     <div className="min-h-screen bg-background">
       {/* Cover Header */}
       <div className="relative h-[40vh] md:h-[50vh] bg-muted w-full">
-        {/* Unsplash beautiful dark moody food photo for detail header */}
         <img 
           src={restaurant.coverImageUrl || "https://images.unsplash.com/photo-1550966871-3ed3cdb5ed0c?w=1920&h=1080&fit=crop"} 
           alt={name} 
@@ -120,7 +119,6 @@ export function RestaurantDetailPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {[1,2,3,4].map(i => (
                   <div key={i} className="flex gap-4 p-4 rounded-2xl border border-border/50 hover:bg-accent/50 transition-colors">
-                    {/* Unsplash abstract food plate */}
                     <img src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&h=200&fit=crop" className="w-20 h-20 rounded-xl object-cover" alt="Dish" />
                     <div>
                       <h4 className="font-bold text-foreground">Premium Signature Dish {i}</h4>

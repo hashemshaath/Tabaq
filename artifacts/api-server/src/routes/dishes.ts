@@ -19,6 +19,8 @@ router.get("/dishes", async (req, res) => {
         .where(eq(restaurantCategoriesTable.categoryId, parseInt(categoryId as string)));
       if (catRestaurants.length) {
         conditions.push(inArray(dishesTable.restaurantId, catRestaurants.map(r => r.restaurantId)));
+      } else {
+        conditions.push(sql`1 = 0`);
       }
     }
 
