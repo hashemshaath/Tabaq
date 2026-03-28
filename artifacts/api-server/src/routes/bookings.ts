@@ -3,7 +3,7 @@ import { db } from "@workspace/db";
 import { bookingsTable, restaurantsTable, openingHoursTable } from "@workspace/db/schema";
 import { eq, and, sql, gte, lte, type SQL } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import { requireAuth, optionalAuth } from "../middleware/requireAuth.js";
+import { requireAuth } from "../middleware/requireAuth.js";
 import { awardPoints, POINTS } from "../lib/points.js";
 
 const router: IRouter = Router();

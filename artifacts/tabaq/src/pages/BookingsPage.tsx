@@ -5,7 +5,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import { CalendarDays, Clock, Users, CheckCircle2, XCircle, AlertCircle, QrCode, X } from 'lucide-react';
 import { Link } from 'wouter';
 import { Button } from '@/components/ui/button';
-import { BookingModal } from '@/components/BookingModal';
 import QRCode from 'qrcode';
 
 const STATUS_CONFIG: Record<string, { labelEn: string; labelAr: string; icon: React.ElementType; className: string }> = {
@@ -142,8 +141,6 @@ export function BookingsPage() {
   const { t, lang } = useLanguage();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
-  const [showNewBooking, setShowNewBooking] = useState(false);
-
   const { data, isLoading } = useListBookings({ limit: 50, offset: 0 }, {
     query: { queryKey: ['bookings'] },
   });
@@ -239,14 +236,6 @@ export function BookingsPage() {
         )}
       </div>
 
-      {showNewBooking && (
-        <BookingModal
-          restaurantId={0}
-          restaurantNameEn="Select Restaurant"
-          restaurantNameAr="اختر مطعماً"
-          onClose={() => setShowNewBooking(false)}
-        />
-      )}
     </div>
   );
 }
