@@ -1,8 +1,13 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useLocation, Link } from 'wouter';
 import { useLanguage } from '@/hooks/use-language';
-import { useSearch, useAutocomplete } from '@workspace/api-client-react';
-import { Search, Loader2, Utensils, MapPin, X, Building2 } from 'lucide-react';
+import {
+  useSearch,
+  useAutocomplete,
+  type AutocompleteSuggestion,
+  AutocompleteSuggestionType,
+} from '@workspace/api-client-react';
+import { Search, Loader2, Utensils, MapPin, X, Building2, ChefHat } from 'lucide-react';
 import { RestaurantCard } from '@/components/RestaurantCard';
 import { DishCard } from '@/components/DishCard';
 
@@ -52,11 +57,15 @@ export function SearchPage() {
 
   const suggestions = autocompleteData?.suggestions || [];
 
-  const handleSuggestionClick = (suggestion: { type: string; id: number; labelEn: string }) => {
+  const handleSuggestionClick = (suggestion: AutocompleteSuggestion) => {
     setShowAutocomplete(false);
-    if (suggestion.type === 'restaurant') setLocation(`/restaurants/${suggestion.id}`);
-    else if (suggestion.type === 'dish') setLocation(`/dishes/${suggestion.id}`);
-    else if (suggestion.type === 'city') {
+    if (suggestion.type === AutocompleteSuggestionType.restaurant) {
+      setLocation(`/restaurants/${suggestion.id}`);
+    } else if (suggestion.type === AutocompleteSuggestionType.dish) {
+      setLocation(`/dishes/${suggestion.id}`);
+    } else if (suggestion.type === AutocompleteSuggestionType.category) {
+      setLocation(`/restaurants?categoryId=${suggestion.id}`);
+    } else if (suggestion.type === AutocompleteSuggestionType.city) {
       setQuery(suggestion.labelEn);
       setDebouncedQuery(suggestion.labelEn);
     }
@@ -104,10 +113,22 @@ export function SearchPage() {
                 ref={autocompleteRef}
                 className="absolute top-full left-0 right-0 mt-2 bg-card border border-border rounded-2xl shadow-xl z-50 overflow-hidden"
               >
-                {suggestions.map((s: any, idx: number) => {
+                {suggestions.map((s: AutocompleteSuggestion, idx: number) => {
                   const label = lang === 'ar' ? s.labelAr : s.labelEn;
-                  const Icon = s.type === 'restaurant' ? Building2 : s.type === 'dish' ? Utensils : MapPin;
-                  const typeLabel = s.type === 'restaurant' ? t('Restaurant', 'مطعم') : s.type === 'dish' ? t('Dish', 'طبق') : t('City', 'مدينة');
+                  const Icon = s.type === AutocompleteSuggestionType.restaurant
+                    ? Building2
+                    : s.type === AutocompleteSuggestionType.dish
+                    ? Utensils
+                    : s.type === AutocompleteSuggestionType.category
+                    ? ChefHat
+                    : MapPin;
+                  const typeLabel = s.type === AutocompleteSuggestionType.restaurant
+                    ? t('Restaurant', 'مطعم')
+                    : s.type === AutocompleteSuggestionType.dish
+                    ? t('Dish', 'طبق')
+                    : s.type === AutocompleteSuggestionType.category
+                    ? t('Cuisine', 'مطبخ')
+                    : t('City', 'مدينة');
                   return (
                     <button
                       key={`${s.type}-${s.id}-${idx}`}
