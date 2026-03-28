@@ -1,22 +1,45 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Tabaq | طبق - Food & Dining Platform API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: countries
+    description: Country and city operations
+  - name: categories
+    description: Cuisine categories and tags
+  - name: restaurants
+    description: Restaurant operations
+  - name: dishes
+    description: Dish operations
+  - name: menus
+    description: Menu management
+  - name: bookings
+    description: Table reservation operations
+  - name: offers
+    description: Offers and deals operations
+  - name: vouchers
+    description: Voucher and coupon operations
+  - name: reviews
+    description: Review and rating operations
+  - name: users
+    description: User profile operations
+  - name: search
+    description: Search and discovery operations
+  - name: events
+    description: Dining events operations
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +47,1208 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # ─── Countries & Cities ───────────────────────────────────────────────────
+  /countries:
+    get:
+      operationId: listCountries
+      tags: [countries]
+      summary: List all countries
+      responses:
+        "200":
+          description: List of countries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Country"
+
+  /countries/{countryId}/cities:
+    get:
+      operationId: listCitiesByCountry
+      tags: [countries]
+      summary: List cities in a country
+      parameters:
+        - name: countryId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of cities
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/City"
+
+  # ─── Categories ───────────────────────────────────────────────────────────
+  /categories:
+    get:
+      operationId: listCategories
+      tags: [categories]
+      summary: List cuisine categories
+      responses:
+        "200":
+          description: List of categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Category"
+
+  /occasions:
+    get:
+      operationId: listOccasions
+      tags: [categories]
+      summary: List occasion types
+      responses:
+        "200":
+          description: List of occasions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Occasion"
+
+  # ─── Restaurants ──────────────────────────────────────────────────────────
+  /restaurants:
+    get:
+      operationId: listRestaurants
+      tags: [restaurants]
+      summary: List and filter restaurants
+      parameters:
+        - name: cityId
+          in: query
+          schema:
+            type: integer
+        - name: countryId
+          in: query
+          schema:
+            type: integer
+        - name: categoryId
+          in: query
+          schema:
+            type: integer
+        - name: occasionId
+          in: query
+          schema:
+            type: integer
+        - name: priceTier
+          in: query
+          schema:
+            type: string
+            enum: [budget, mid, upscale, fine_dining]
+        - name: minRating
+          in: query
+          schema:
+            type: number
+        - name: featured
+          in: query
+          schema:
+            type: boolean
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: List of restaurants
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RestaurantListResponse"
+    post:
+      operationId: createRestaurant
+      tags: [restaurants]
+      summary: Create a new restaurant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRestaurantRequest"
+      responses:
+        "201":
+          description: Restaurant created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Restaurant"
+
+  /restaurants/featured:
+    get:
+      operationId: getFeaturedRestaurants
+      tags: [restaurants]
+      summary: Get featured restaurants for homepage
+      parameters:
+        - name: cityId
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 8
+      responses:
+        "200":
+          description: Featured restaurants
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RestaurantCard"
+
+  /restaurants/{restaurantId}:
+    get:
+      operationId: getRestaurant
+      tags: [restaurants]
+      summary: Get restaurant details
+      parameters:
+        - name: restaurantId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Restaurant details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RestaurantDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    put:
+      operationId: updateRestaurant
+      tags: [restaurants]
+      summary: Update restaurant details
+      parameters:
+        - name: restaurantId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateRestaurantRequest"
+      responses:
+        "200":
+          description: Updated restaurant
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Restaurant"
+
+  /restaurants/{restaurantId}/follow:
+    post:
+      operationId: followRestaurant
+      tags: [restaurants]
+      summary: Follow a restaurant
+      parameters:
+        - name: restaurantId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Follow status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FollowStatusResponse"
+    delete:
+      operationId: unfollowRestaurant
+      tags: [restaurants]
+      summary: Unfollow a restaurant
+      parameters:
+        - name: restaurantId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Unfollow status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FollowStatusResponse"
+
+  /restaurants/{restaurantId}/availability:
+    get:
+      operationId: getRestaurantAvailability
+      tags: [restaurants]
+      summary: Get available time slots for a date
+      parameters:
+        - name: restaurantId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: partySize
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Available time slots
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AvailabilityResponse"
+
+  # ─── Menus ────────────────────────────────────────────────────────────────
+  /restaurants/{restaurantId}/menus:
+    get:
+      operationId: getRestaurantMenus
+      tags: [menus]
+      summary: Get menus for a restaurant
+      parameters:
+        - name: restaurantId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Restaurant menus
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Menu"
+    post:
+      operationId: createMenu
+      tags: [menus]
+      summary: Create a menu for a restaurant
+      parameters:
+        - name: restaurantId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMenuRequest"
+      responses:
+        "201":
+          description: Menu created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Menu"
+
+  # ─── Dishes ───────────────────────────────────────────────────────────────
+  /dishes:
+    get:
+      operationId: listDishes
+      tags: [dishes]
+      summary: List and filter dishes
+      parameters:
+        - name: restaurantId
+          in: query
+          schema:
+            type: integer
+        - name: categoryId
+          in: query
+          schema:
+            type: integer
+        - name: cityId
+          in: query
+          schema:
+            type: integer
+        - name: dietaryTag
+          in: query
+          schema:
+            type: string
+            enum: [halal, vegetarian, vegan, gluten_free]
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            enum: [rating, popularity, newest]
+            default: rating
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: List of dishes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DishListResponse"
+
+  /dishes/trending:
+    get:
+      operationId: getTrendingDishes
+      tags: [dishes]
+      summary: Get trending dishes for homepage
+      parameters:
+        - name: cityId
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 8
+      responses:
+        "200":
+          description: Trending dishes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DishCard"
+
+  /dishes/{dishId}:
+    get:
+      operationId: getDish
+      tags: [dishes]
+      summary: Get dish details
+      parameters:
+        - name: dishId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Dish details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DishDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /restaurants/{restaurantId}/dishes:
+    get:
+      operationId: getRestaurantDishes
+      tags: [dishes]
+      summary: Get dishes for a restaurant
+      parameters:
+        - name: restaurantId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Restaurant dishes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Dish"
+    post:
+      operationId: createDish
+      tags: [dishes]
+      summary: Create a dish for a restaurant
+      parameters:
+        - name: restaurantId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDishRequest"
+      responses:
+        "201":
+          description: Dish created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dish"
+
+  # ─── Bookings ─────────────────────────────────────────────────────────────
+  /bookings:
+    get:
+      operationId: listBookings
+      tags: [bookings]
+      summary: List bookings (for current user or restaurant)
+      parameters:
+        - name: restaurantId
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, confirmed, cancelled, completed, no_show]
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: List of bookings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookingListResponse"
+    post:
+      operationId: createBooking
+      tags: [bookings]
+      summary: Create a table reservation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBookingRequest"
+      responses:
+        "201":
+          description: Booking created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Booking"
+        "422":
+          description: Validation error or slot unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /bookings/{bookingId}:
+    get:
+      operationId: getBooking
+      tags: [bookings]
+      summary: Get booking details
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Booking details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Booking"
+    patch:
+      operationId: updateBookingStatus
+      tags: [bookings]
+      summary: Update booking status (confirm/cancel)
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateBookingStatusRequest"
+      responses:
+        "200":
+          description: Updated booking
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Booking"
+
+  # ─── Offers ───────────────────────────────────────────────────────────────
+  /offers:
+    get:
+      operationId: listOffers
+      tags: [offers]
+      summary: List available offers
+      parameters:
+        - name: restaurantId
+          in: query
+          schema:
+            type: integer
+        - name: cityId
+          in: query
+          schema:
+            type: integer
+        - name: active
+          in: query
+          schema:
+            type: boolean
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: List of offers
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OfferListResponse"
+    post:
+      operationId: createOffer
+      tags: [offers]
+      summary: Create an offer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOfferRequest"
+      responses:
+        "201":
+          description: Offer created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Offer"
+
+  /offers/{offerId}:
+    get:
+      operationId: getOffer
+      tags: [offers]
+      summary: Get offer details
+      parameters:
+        - name: offerId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Offer details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Offer"
+
+  # ─── Vouchers ─────────────────────────────────────────────────────────────
+  /vouchers:
+    get:
+      operationId: listVouchers
+      tags: [vouchers]
+      summary: List vouchers (user's owned vouchers)
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, used, expired]
+      responses:
+        "200":
+          description: List of vouchers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Voucher"
+    post:
+      operationId: purchaseVoucher
+      tags: [vouchers]
+      summary: Purchase a voucher
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PurchaseVoucherRequest"
+      responses:
+        "201":
+          description: Voucher purchased
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Voucher"
+
+  /vouchers/{voucherId}:
+    get:
+      operationId: getVoucher
+      tags: [vouchers]
+      summary: Get voucher details
+      parameters:
+        - name: voucherId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Voucher details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Voucher"
+
+  /vouchers/{voucherId}/gift:
+    post:
+      operationId: giftVoucher
+      tags: [vouchers]
+      summary: Gift a voucher to someone
+      parameters:
+        - name: voucherId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GiftVoucherRequest"
+      responses:
+        "200":
+          description: Voucher gifted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Voucher"
+
+  # ─── Reviews ──────────────────────────────────────────────────────────────
+  /reviews:
+    get:
+      operationId: listReviews
+      tags: [reviews]
+      summary: List reviews
+      parameters:
+        - name: restaurantId
+          in: query
+          schema:
+            type: integer
+        - name: dishId
+          in: query
+          schema:
+            type: integer
+        - name: userId
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: List of reviews
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReviewListResponse"
+    post:
+      operationId: createReview
+      tags: [reviews]
+      summary: Create a review
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateReviewRequest"
+      responses:
+        "201":
+          description: Review created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Review"
+
+  /reviews/{reviewId}:
+    get:
+      operationId: getReview
+      tags: [reviews]
+      summary: Get review details
+      parameters:
+        - name: reviewId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Review details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Review"
+    delete:
+      operationId: deleteReview
+      tags: [reviews]
+      summary: Delete a review
+      parameters:
+        - name: reviewId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /reviews/{reviewId}/like:
+    post:
+      operationId: likeReview
+      tags: [reviews]
+      summary: Like a review
+      parameters:
+        - name: reviewId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Like status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LikeStatusResponse"
+
+  # ─── Users ────────────────────────────────────────────────────────────────
+  /users:
+    post:
+      operationId: createUser
+      tags: [users]
+      summary: Create or register a user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserRequest"
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /users/{userId}:
+    get:
+      operationId: getUser
+      tags: [users]
+      summary: Get user profile
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    put:
+      operationId: updateUser
+      tags: [users]
+      summary: Update user profile
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserRequest"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /users/{userId}/follow:
+    post:
+      operationId: followUser
+      tags: [users]
+      summary: Follow a user
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Follow status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FollowStatusResponse"
+    delete:
+      operationId: unfollowUser
+      tags: [users]
+      summary: Unfollow a user
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Unfollow status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FollowStatusResponse"
+
+  /users/{userId}/followers:
+    get:
+      operationId: getUserFollowers
+      tags: [users]
+      summary: Get user's followers
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of followers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserCard"
+
+  /users/{userId}/following:
+    get:
+      operationId: getUserFollowing
+      tags: [users]
+      summary: Get users this user follows
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of following
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserCard"
+
+  /users/{userId}/reviews:
+    get:
+      operationId: getUserReviews
+      tags: [users]
+      summary: Get reviews written by a user
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: User reviews
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Review"
+
+  /users/{userId}/bookings:
+    get:
+      operationId: getUserBookings
+      tags: [users]
+      summary: Get bookings for a user
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [upcoming, past, cancelled]
+      responses:
+        "200":
+          description: User bookings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Booking"
+
+  /users/{userId}/leaderboard-rank:
+    get:
+      operationId: getUserLeaderboardRank
+      tags: [users]
+      summary: Get user's points, level, and rank
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Leaderboard rank info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeaderboardRank"
+
+  /leaderboard:
+    get:
+      operationId: getLeaderboard
+      tags: [users]
+      summary: Get top users leaderboard
+      parameters:
+        - name: cityId
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: Leaderboard list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LeaderboardEntry"
+
+  # ─── Search ───────────────────────────────────────────────────────────────
+  /search:
+    get:
+      operationId: search
+      tags: [search]
+      summary: Search restaurants, dishes, and venues
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [all, restaurants, dishes, venues]
+            default: all
+        - name: cityId
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchResponse"
+
+  /search/autocomplete:
+    get:
+      operationId: autocomplete
+      tags: [search]
+      summary: Autocomplete search suggestions
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: cityId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Autocomplete suggestions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AutocompleteResponse"
+
+  # ─── Events ───────────────────────────────────────────────────────────────
+  /events:
+    get:
+      operationId: listEvents
+      tags: [events]
+      summary: List dining events
+      parameters:
+        - name: restaurantId
+          in: query
+          schema:
+            type: integer
+        - name: cityId
+          in: query
+          schema:
+            type: integer
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: List of events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Event"
+    post:
+      operationId: createEvent
+      tags: [events]
+      summary: Create a dining event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateEventRequest"
+      responses:
+        "201":
+          description: Event created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Event"
+
+  /events/{eventId}:
+    get:
+      operationId: getEvent
+      tags: [events]
+      summary: Get event details
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Event details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Event"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +1259,1370 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+      required:
+        - error
+
+    # ─── Geo ──────────────────────────────────────────────────────────────
+    Country:
+      type: object
+      properties:
+        id:
+          type: integer
+        nameEn:
+          type: string
+        nameAr:
+          type: string
+        code:
+          type: string
+        flag:
+          type: string
+      required:
+        - id
+        - nameEn
+        - nameAr
+        - code
+
+    City:
+      type: object
+      properties:
+        id:
+          type: integer
+        nameEn:
+          type: string
+        nameAr:
+          type: string
+        countryId:
+          type: integer
+        latitude:
+          type: number
+        longitude:
+          type: number
+      required:
+        - id
+        - nameEn
+        - nameAr
+        - countryId
+
+    # ─── Categories ───────────────────────────────────────────────────────
+    Category:
+      type: object
+      properties:
+        id:
+          type: integer
+        nameEn:
+          type: string
+        nameAr:
+          type: string
+        icon:
+          type: string
+        slug:
+          type: string
+      required:
+        - id
+        - nameEn
+        - nameAr
+        - slug
+
+    Occasion:
+      type: object
+      properties:
+        id:
+          type: integer
+        nameEn:
+          type: string
+        nameAr:
+          type: string
+        icon:
+          type: string
+        slug:
+          type: string
+      required:
+        - id
+        - nameEn
+        - nameAr
+        - slug
+
+    # ─── Users ────────────────────────────────────────────────────────────
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        phone:
+          type: string
+        email:
+          type: string
+        nameEn:
+          type: string
+        nameAr:
+          type: string
+        avatarUrl:
+          type: string
+        bio:
+          type: string
+        isVerified:
+          type: boolean
+        points:
+          type: integer
+        level:
+          type: integer
+        levelTitle:
+          type: string
+        preferredLanguage:
+          type: string
+          enum: [en, ar]
+        cityId:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - points
+        - level
+        - levelTitle
+        - isVerified
+        - preferredLanguage
+        - createdAt
+
+    UserCard:
+      type: object
+      properties:
+        id:
+          type: integer
+        nameEn:
+          type: string
+        nameAr:
+          type: string
+        avatarUrl:
+          type: string
+        isVerified:
+          type: boolean
+        level:
+          type: integer
+        levelTitle:
+          type: string
+        reviewCount:
+          type: integer
+      required:
+        - id
+        - isVerified
+        - level
+        - levelTitle
+        - reviewCount
+
+    UserProfile:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        reviewCount:
+          type: integer
+        bookingCount:
+          type: integer
+        followerCount:
+          type: integer
+        followingCount:
+          type: integer
+        isFollowing:
+          type: boolean
+      required:
+        - user
+        - reviewCount
+        - bookingCount
+        - followerCount
+        - followingCount
+        - isFollowing
+
+    CreateUserRequest:
+      type: object
+      properties:
+        phone:
+          type: string
+        email:
+          type: string
+        nameEn:
+          type: string
+        nameAr:
+          type: string
+        preferredLanguage:
+          type: string
+          enum: [en, ar]
+          default: en
+        cityId:
+          type: integer
+      required:
+        - preferredLanguage
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        nameEn:
+          type: string
+        nameAr:
+          type: string
+        bio:
+          type: string
+        avatarUrl:
+          type: string
+        preferredLanguage:
+          type: string
+          enum: [en, ar]
+        cityId:
+          type: integer
+
+    LeaderboardRank:
+      type: object
+      properties:
+        userId:
+          type: integer
+        points:
+          type: integer
+        level:
+          type: integer
+        levelTitle:
+          type: string
+        rank:
+          type: integer
+        reviewCount:
+          type: integer
+        nextLevelPoints:
+          type: integer
+      required:
+        - userId
+        - points
+        - level
+        - levelTitle
+        - rank
+        - reviewCount
+        - nextLevelPoints
+
+    LeaderboardEntry:
+      type: object
+      properties:
+        rank:
+          type: integer
+        user:
+          $ref: "#/components/schemas/UserCard"
+        points:
+          type: integer
+        reviewCount:
+          type: integer
+      required:
+        - rank
+        - user
+        - points
+        - reviewCount
+
+    # ─── Restaurants ──────────────────────────────────────────────────────
+    Restaurant:
+      type: object
+      properties:
+        id:
+          type: integer
+        nameEn:
+          type: string
+        nameAr:
+          type: string
+        descriptionEn:
+          type: string
+        descriptionAr:
+          type: string
+        slug:
+          type: string
+        coverImageUrl:
+          type: string
+        logoUrl:
+          type: string
+        priceTier:
+          type: string
+          enum: [budget, mid, upscale, fine_dining]
+        avgRating:
+          type: number
+        reviewCount:
+          type: integer
+        followerCount:
+          type: integer
+        isVerified:
+          type: boolean
+        isFeatured:
+          type: boolean
+        cityId:
+          type: integer
+        countryId:
+          type: integer
+        address:
+          type: string
+        latitude:
+          type: number
+        longitude:
+          type: number
+        phone:
+          type: string
+        website:
+          type: string
+        instagramHandle:
+          type: string
+        hasParking:
+          type: boolean
+        hasOutdoorSeating:
+          type: boolean
+        hasPrivateRoom:
+          type: boolean
+        isHalal:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - nameEn
+        - nameAr
+        - slug
+        - priceTier
+        - avgRating
+        - reviewCount
+        - followerCount
+        - isVerified
+        - isFeatured
+        - cityId
+        - countryId
+        - createdAt
+
+    RestaurantCard:
+      type: object
+      properties:
+        id:
+          type: integer
+        nameEn:
+          type: string
+        nameAr:
+          type: string
+        coverImageUrl:
+          type: string
+        priceTier:
+          type: string
+          enum: [budget, mid, upscale, fine_dining]
+        avgRating:
+          type: number
+        reviewCount:
+          type: integer
+        isVerified:
+          type: boolean
+        cityId:
+          type: integer
+        cuisineTypes:
+          type: array
+          items:
+            type: string
+      required:
+        - id
+        - nameEn
+        - nameAr
+        - priceTier
+        - avgRating
+        - reviewCount
+        - isVerified
+        - cityId
+        - cuisineTypes
+
+    RestaurantDetail:
+      type: object
+      properties:
+        restaurant:
+          $ref: "#/components/schemas/Restaurant"
+        categories:
+          type: array
+          items:
+            $ref: "#/components/schemas/Category"
+        occasions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Occasion"
+        openingHours:
+          type: array
+          items:
+            $ref: "#/components/schemas/OpeningHour"
+        recentReviews:
+          type: array
+          items:
+            $ref: "#/components/schemas/Review"
+        ratingBreakdown:
+          $ref: "#/components/schemas/RatingBreakdown"
+        isFollowing:
+          type: boolean
+        activeOffers:
+          type: array
+          items:
+            $ref: "#/components/schemas/Offer"
+      required:
+        - restaurant
+        - categories
+        - occasions
+        - openingHours
+        - recentReviews
+        - ratingBreakdown
+        - isFollowing
+        - activeOffers
+
+    RestaurantListResponse:
+      type: object
+      properties:
+        restaurants:
+          type: array
+          items:
+            $ref: "#/components/schemas/RestaurantCard"
+        total:
+          type: integer
+        offset:
+          type: integer
+        limit:
+          type: integer
+      required:
+        - restaurants
+        - total
+        - offset
+        - limit
+
+    CreateRestaurantRequest:
+      type: object
+      properties:
+        nameEn:
+          type: string
+        nameAr:
+          type: string
+        descriptionEn:
+          type: string
+        descriptionAr:
+          type: string
+        priceTier:
+          type: string
+          enum: [budget, mid, upscale, fine_dining]
+        cityId:
+          type: integer
+        countryId:
+          type: integer
+        address:
+          type: string
+        phone:
+          type: string
+        categoryIds:
+          type: array
+          items:
+            type: integer
+        occasionIds:
+          type: array
+          items:
+            type: integer
+      required:
+        - nameEn
+        - nameAr
+        - priceTier
+        - cityId
+        - countryId
+
+    UpdateRestaurantRequest:
+      type: object
+      properties:
+        nameEn:
+          type: string
+        nameAr:
+          type: string
+        descriptionEn:
+          type: string
+        descriptionAr:
+          type: string
+        coverImageUrl:
+          type: string
+        logoUrl:
+          type: string
+        address:
+          type: string
+        phone:
+          type: string
+        website:
+          type: string
+        hasParking:
+          type: boolean
+        hasOutdoorSeating:
+          type: boolean
+        hasPrivateRoom:
+          type: boolean
+        isHalal:
+          type: boolean
+
+    OpeningHour:
+      type: object
+      properties:
+        id:
+          type: integer
+        restaurantId:
+          type: integer
+        dayOfWeek:
+          type: integer
+          minimum: 0
+          maximum: 6
+        openTime:
+          type: string
+        closeTime:
+          type: string
+        isClosed:
+          type: boolean
+      required:
+        - id
+        - restaurantId
+        - dayOfWeek
+        - isClosed
+
+    RatingBreakdown:
+      type: object
+      properties:
+        overall:
+          type: number
+        food:
+          type: number
+        service:
+          type: number
+        ambiance:
+          type: number
+        value:
+          type: number
+        count:
+          type: integer
+      required:
+        - overall
+        - food
+        - service
+        - ambiance
+        - value
+        - count
+
+    AvailabilityResponse:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        slots:
+          type: array
+          items:
+            $ref: "#/components/schemas/TimeSlot"
+      required:
+        - date
+        - slots
+
+    TimeSlot:
+      type: object
+      properties:
+        time:
+          type: string
+        available:
+          type: boolean
+        capacity:
+          type: integer
+      required:
+        - time
+        - available
+        - capacity
+
+    FollowStatusResponse:
+      type: object
+      properties:
+        isFollowing:
+          type: boolean
+        followerCount:
+          type: integer
+      required:
+        - isFollowing
+        - followerCount
+
+    # ─── Menus ────────────────────────────────────────────────────────────
+    Menu:
+      type: object
+      properties:
+        id:
+          type: integer
+        restaurantId:
+          type: integer
+        nameEn:
+          type: string
+        nameAr:
+          type: string
+        type:
+          type: string
+          enum: [food, drinks, desserts, set_menu, buffet]
+        isActive:
+          type: boolean
+        sections:
+          type: array
+          items:
+            $ref: "#/components/schemas/MenuSection"
+      required:
+        - id
+        - restaurantId
+        - nameEn
+        - nameAr
+        - type
+        - isActive
+        - sections
+
+    MenuSection:
+      type: object
+      properties:
+        id:
+          type: integer
+        menuId:
+          type: integer
+        nameEn:
+          type: string
+        nameAr:
+          type: string
+        displayOrder:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Dish"
+      required:
+        - id
+        - menuId
+        - nameEn
+        - nameAr
+        - displayOrder
+        - items
+
+    CreateMenuRequest:
+      type: object
+      properties:
+        nameEn:
+          type: string
+        nameAr:
+          type: string
+        type:
+          type: string
+          enum: [food, drinks, desserts, set_menu, buffet]
+      required:
+        - nameEn
+        - nameAr
+        - type
+
+    # ─── Dishes ───────────────────────────────────────────────────────────
+    Dish:
+      type: object
+      properties:
+        id:
+          type: integer
+        restaurantId:
+          type: integer
+        nameEn:
+          type: string
+        nameAr:
+          type: string
+        descriptionEn:
+          type: string
+        descriptionAr:
+          type: string
+        price:
+          type: number
+        currency:
+          type: string
+        imageUrl:
+          type: string
+        avgRating:
+          type: number
+        reviewCount:
+          type: integer
+        popularityScore:
+          type: number
+        isAvailable:
+          type: boolean
+        isHalal:
+          type: boolean
+        isVegetarian:
+          type: boolean
+        isVegan:
+          type: boolean
+        isGlutenFree:
+          type: boolean
+        calories:
+          type: integer
+      required:
+        - id
+        - restaurantId
+        - nameEn
+        - nameAr
+        - avgRating
+        - reviewCount
+        - popularityScore
+        - isAvailable
+
+    DishCard:
+      type: object
+      properties:
+        id:
+          type: integer
+        nameEn:
+          type: string
+        nameAr:
+          type: string
+        imageUrl:
+          type: string
+        price:
+          type: number
+        currency:
+          type: string
+        avgRating:
+          type: number
+        reviewCount:
+          type: integer
+        restaurantNameEn:
+          type: string
+        restaurantNameAr:
+          type: string
+        restaurantId:
+          type: integer
+        cityId:
+          type: integer
+      required:
+        - id
+        - nameEn
+        - nameAr
+        - avgRating
+        - reviewCount
+        - restaurantNameEn
+        - restaurantNameAr
+        - restaurantId
+        - cityId
+
+    DishDetail:
+      type: object
+      properties:
+        dish:
+          $ref: "#/components/schemas/Dish"
+        restaurant:
+          $ref: "#/components/schemas/RestaurantCard"
+        recentReviews:
+          type: array
+          items:
+            $ref: "#/components/schemas/Review"
+        similarDishes:
+          type: array
+          items:
+            $ref: "#/components/schemas/DishCard"
+      required:
+        - dish
+        - restaurant
+        - recentReviews
+        - similarDishes
+
+    DishListResponse:
+      type: object
+      properties:
+        dishes:
+          type: array
+          items:
+            $ref: "#/components/schemas/DishCard"
+        total:
+          type: integer
+        offset:
+          type: integer
+        limit:
+          type: integer
+      required:
+        - dishes
+        - total
+        - offset
+        - limit
+
+    CreateDishRequest:
+      type: object
+      properties:
+        nameEn:
+          type: string
+        nameAr:
+          type: string
+        descriptionEn:
+          type: string
+        descriptionAr:
+          type: string
+        price:
+          type: number
+        currency:
+          type: string
+          default: SAR
+        imageUrl:
+          type: string
+        menuSectionId:
+          type: integer
+        isHalal:
+          type: boolean
+        isVegetarian:
+          type: boolean
+        isVegan:
+          type: boolean
+        isGlutenFree:
+          type: boolean
+        calories:
+          type: integer
+      required:
+        - nameEn
+        - nameAr
+
+    # ─── Bookings ─────────────────────────────────────────────────────────
+    Booking:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        restaurantId:
+          type: integer
+        restaurantNameEn:
+          type: string
+        restaurantNameAr:
+          type: string
+        restaurantCoverImageUrl:
+          type: string
+        date:
+          type: string
+          format: date
+        time:
+          type: string
+        partySize:
+          type: integer
+        status:
+          type: string
+          enum: [pending, confirmed, cancelled, completed, no_show]
+        occasionId:
+          type: integer
+        specialRequests:
+          type: string
+        referenceCode:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - userId
+        - restaurantId
+        - restaurantNameEn
+        - restaurantNameAr
+        - date
+        - time
+        - partySize
+        - status
+        - referenceCode
+        - createdAt
+
+    CreateBookingRequest:
+      type: object
+      properties:
+        restaurantId:
+          type: integer
+        date:
+          type: string
+          format: date
+        time:
+          type: string
+        partySize:
+          type: integer
+        occasionId:
+          type: integer
+        specialRequests:
+          type: string
+      required:
+        - restaurantId
+        - date
+        - time
+        - partySize
+
+    UpdateBookingStatusRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [confirmed, cancelled, completed, no_show]
+      required:
+        - status
+
+    BookingListResponse:
+      type: object
+      properties:
+        bookings:
+          type: array
+          items:
+            $ref: "#/components/schemas/Booking"
+        total:
+          type: integer
+        offset:
+          type: integer
+        limit:
+          type: integer
+      required:
+        - bookings
+        - total
+        - offset
+        - limit
+
+    # ─── Offers ───────────────────────────────────────────────────────────
+    Offer:
+      type: object
+      properties:
+        id:
+          type: integer
+        restaurantId:
+          type: integer
+        restaurantNameEn:
+          type: string
+        restaurantNameAr:
+          type: string
+        restaurantCoverImageUrl:
+          type: string
+        titleEn:
+          type: string
+        titleAr:
+          type: string
+        descriptionEn:
+          type: string
+        descriptionAr:
+          type: string
+        discountPercent:
+          type: number
+        originalPrice:
+          type: number
+        discountedPrice:
+          type: number
+        currency:
+          type: string
+        validFrom:
+          type: string
+          format: date-time
+        validUntil:
+          type: string
+          format: date-time
+        totalCapacity:
+          type: integer
+        remainingCapacity:
+          type: integer
+        isActive:
+          type: boolean
+        imageUrl:
+          type: string
+      required:
+        - id
+        - restaurantId
+        - restaurantNameEn
+        - restaurantNameAr
+        - titleEn
+        - titleAr
+        - isActive
+
+    OfferListResponse:
+      type: object
+      properties:
+        offers:
+          type: array
+          items:
+            $ref: "#/components/schemas/Offer"
+        total:
+          type: integer
+        offset:
+          type: integer
+        limit:
+          type: integer
+      required:
+        - offers
+        - total
+        - offset
+        - limit
+
+    CreateOfferRequest:
+      type: object
+      properties:
+        restaurantId:
+          type: integer
+        titleEn:
+          type: string
+        titleAr:
+          type: string
+        descriptionEn:
+          type: string
+        descriptionAr:
+          type: string
+        discountPercent:
+          type: number
+        originalPrice:
+          type: number
+        currency:
+          type: string
+          default: SAR
+        validFrom:
+          type: string
+          format: date-time
+        validUntil:
+          type: string
+          format: date-time
+        totalCapacity:
+          type: integer
+      required:
+        - restaurantId
+        - titleEn
+        - titleAr
+        - originalPrice
+        - validFrom
+        - validUntil
+
+    # ─── Vouchers ─────────────────────────────────────────────────────────
+    Voucher:
+      type: object
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+        offerId:
+          type: integer
+        userId:
+          type: integer
+        restaurantId:
+          type: integer
+        restaurantNameEn:
+          type: string
+        restaurantNameAr:
+          type: string
+        value:
+          type: number
+        currency:
+          type: string
+        status:
+          type: string
+          enum: [active, used, expired]
+        validUntil:
+          type: string
+          format: date-time
+        giftMessage:
+          type: string
+        isGift:
+          type: boolean
+        redeemedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - code
+        - restaurantId
+        - restaurantNameEn
+        - restaurantNameAr
+        - value
+        - currency
+        - status
+        - isGift
+        - createdAt
+
+    PurchaseVoucherRequest:
+      type: object
+      properties:
+        offerId:
+          type: integer
+      required:
+        - offerId
+
+    GiftVoucherRequest:
+      type: object
+      properties:
+        recipientPhone:
+          type: string
+        recipientEmail:
+          type: string
+        giftMessage:
+          type: string
+
+    # ─── Reviews ──────────────────────────────────────────────────────────
+    Review:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        userNameEn:
+          type: string
+        userNameAr:
+          type: string
+        userAvatarUrl:
+          type: string
+        userLevel:
+          type: integer
+        userLevelTitle:
+          type: string
+        restaurantId:
+          type: integer
+        dishId:
+          type: integer
+        ratingOverall:
+          type: number
+          minimum: 1
+          maximum: 5
+        ratingFood:
+          type: number
+          minimum: 1
+          maximum: 5
+        ratingService:
+          type: number
+          minimum: 1
+          maximum: 5
+        ratingAmbiance:
+          type: number
+          minimum: 1
+          maximum: 5
+        ratingValue:
+          type: number
+          minimum: 1
+          maximum: 5
+        textEn:
+          type: string
+        textAr:
+          type: string
+        photoUrls:
+          type: array
+          items:
+            type: string
+        likeCount:
+          type: integer
+        isLiked:
+          type: boolean
+        visitDate:
+          type: string
+          format: date
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - userId
+        - userNameEn
+        - ratingOverall
+        - likeCount
+        - isLiked
+        - createdAt
+
+    CreateReviewRequest:
+      type: object
+      properties:
+        restaurantId:
+          type: integer
+        dishId:
+          type: integer
+        ratingOverall:
+          type: number
+          minimum: 1
+          maximum: 5
+        ratingFood:
+          type: number
+          minimum: 1
+          maximum: 5
+        ratingService:
+          type: number
+          minimum: 1
+          maximum: 5
+        ratingAmbiance:
+          type: number
+          minimum: 1
+          maximum: 5
+        ratingValue:
+          type: number
+          minimum: 1
+          maximum: 5
+        textEn:
+          type: string
+        textAr:
+          type: string
+        photoUrls:
+          type: array
+          items:
+            type: string
+        visitDate:
+          type: string
+          format: date
+      required:
+        - ratingOverall
+
+    ReviewListResponse:
+      type: object
+      properties:
+        reviews:
+          type: array
+          items:
+            $ref: "#/components/schemas/Review"
+        total:
+          type: integer
+        offset:
+          type: integer
+        limit:
+          type: integer
+      required:
+        - reviews
+        - total
+        - offset
+        - limit
+
+    LikeStatusResponse:
+      type: object
+      properties:
+        isLiked:
+          type: boolean
+        likeCount:
+          type: integer
+      required:
+        - isLiked
+        - likeCount
+
+    # ─── Search ───────────────────────────────────────────────────────────
+    SearchResponse:
+      type: object
+      properties:
+        restaurants:
+          type: array
+          items:
+            $ref: "#/components/schemas/RestaurantCard"
+        dishes:
+          type: array
+          items:
+            $ref: "#/components/schemas/DishCard"
+        totalRestaurants:
+          type: integer
+        totalDishes:
+          type: integer
+      required:
+        - restaurants
+        - dishes
+        - totalRestaurants
+        - totalDishes
+
+    AutocompleteResponse:
+      type: object
+      properties:
+        suggestions:
+          type: array
+          items:
+            $ref: "#/components/schemas/AutocompleteSuggestion"
+      required:
+        - suggestions
+
+    AutocompleteSuggestion:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [restaurant, dish, city, category]
+        id:
+          type: integer
+        labelEn:
+          type: string
+        labelAr:
+          type: string
+        imageUrl:
+          type: string
+      required:
+        - type
+        - id
+        - labelEn
+        - labelAr
+
+    # ─── Events ───────────────────────────────────────────────────────────
+    Event:
+      type: object
+      properties:
+        id:
+          type: integer
+        restaurantId:
+          type: integer
+        restaurantNameEn:
+          type: string
+        restaurantNameAr:
+          type: string
+        titleEn:
+          type: string
+        titleAr:
+          type: string
+        descriptionEn:
+          type: string
+        descriptionAr:
+          type: string
+        imageUrl:
+          type: string
+        eventDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+        ticketPrice:
+          type: number
+        currency:
+          type: string
+        totalCapacity:
+          type: integer
+        remainingCapacity:
+          type: integer
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - restaurantId
+        - restaurantNameEn
+        - restaurantNameAr
+        - titleEn
+        - titleAr
+        - eventDate
+        - isActive
+        - createdAt
+
+    CreateEventRequest:
+      type: object
+      properties:
+        restaurantId:
+          type: integer
+        titleEn:
+          type: string
+        titleAr:
+          type: string
+        descriptionEn:
+          type: string
+        descriptionAr:
+          type: string
+        imageUrl:
+          type: string
+        eventDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+        ticketPrice:
+          type: number
+        currency:
+          type: string
+          default: SAR
+        totalCapacity:
+          type: integer
+      required:
+        - restaurantId
+        - titleEn
+        - titleAr
+        - eventDate

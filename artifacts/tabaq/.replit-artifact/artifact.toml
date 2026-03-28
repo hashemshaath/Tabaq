@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Tabaq | طبق"
+version = "1.0.0"
+id = "artifacts/tabaq"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 20148
+
+[services.development]
+run = "pnpm --filter @workspace/tabaq run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/tabaq", "run", "build" ]
+publicDir = "artifacts/tabaq/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "20148"
+BASE_PATH = "/"

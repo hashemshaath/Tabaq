@@ -1,0 +1,19 @@
+packages:
+  "framer-motion": "For premium smooth page transitions and micro-interactions"
+  "clsx": "Utility for constructing className strings conditionally"
+  "tailwind-merge": "Utility to cleanly merge Tailwind classes"
+  "date-fns": "For elegant date formatting in bookings"
+  "qrcode.react": "To render the booking confirmation QR codes"
+
+images:
+  - path: "artifacts/tabaq/public/images/hero-bg.png"
+    description: "Dark moody premium food photography background, warm ambient lighting, elegant table setting with Middle Eastern cuisine, negative space in the center for text overlay"
+    aspect_ratio: "16:9"
+  - path: "artifacts/tabaq/public/images/logo.png"
+    description: "Elegant minimalist modern Arabic calligraphy logo mark for a premium food platform called 'Tabaq', warm terracotta color on transparent background"
+    aspect_ratio: "1:1"
+
+notes:
+  - "Assuming Orval hooks are cleanly exported from @workspace/api-client-react"
+  - "RTL support is handled via the HTML dir attribute and Tailwind's logical properties (ps-, pe-, ms-, me-)"
+  - "Bilingual text uses a simple custom useLanguage hook"
