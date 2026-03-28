@@ -102,10 +102,12 @@ router.post("/auth/verify-otp", async (req, res) => {
       cityId?: number;
     };
 
-    if (!code || (!phone && !email)) {
-      res.status(400).json({ error: "bad_request", message: "phone/email and code required" });
+    if (!code || (!phone && !email) || (phone && email)) {
+      res.status(400).json({ error: "bad_request", message: "Provide exactly one of phone or email, plus code" });
       return;
     }
+
+    const otpType: "phone" | "email" = phone ? "phone" : "email";
 
     const attemptKey = phone ?? email!;
     const attempt = checkVerifyAttempt(attemptKey);
@@ -154,10 +156,10 @@ router.post("/auth/verify-otp", async (req, res) => {
         cityId: cityId ?? null,
         level: levelInfo.level,
         levelTitle: levelInfo.levelTitle,
-        isEmailVerified: !!email,
+        isEmailVerified: otpType === "email",
       }).returning();
       user = created!;
-    } else if (email && !user.isEmailVerified) {
+    } else if (otpType === "email" && !user.isEmailVerified) {
       const [updated] = await db.update(usersTable)
         .set({ isEmailVerified: true, updatedAt: new Date() })
         .where(eq(usersTable.id, user.id))

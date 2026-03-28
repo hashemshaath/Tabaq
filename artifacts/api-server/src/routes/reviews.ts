@@ -26,10 +26,14 @@ async function enrichReview(review: ReviewRow, viewerUserId: number | null) {
 
   let isLiked = false;
   if (viewerUserId) {
-    const liked = await db.select({ id: reviewLikesTable.id })
+    const [liked] = await db.select({ id: reviewLikesTable.id })
       .from(reviewLikesTable)
-      .where(and(eq(reviewLikesTable.reviewId, review.id), eq(reviewLikesTable.userId, viewerUserId)));
-    isLiked = liked.length > 0;
+      .where(and(
+        eq(reviewLikesTable.reviewId, review.id),
+        eq(reviewLikesTable.userId, viewerUserId),
+        eq(reviewLikesTable.isActive, true),
+      ));
+    isLiked = !!liked;
   }
 
   return {
@@ -188,23 +192,43 @@ router.post("/reviews/:reviewId/like", requireAuth, async (req, res) => {
       return;
     }
 
-    const existing = await db.select().from(reviewLikesTable)
+    const [existing] = await db.select({
+      id: reviewLikesTable.id,
+      isActive: reviewLikesTable.isActive,
+      pointsAwarded: reviewLikesTable.pointsAwarded,
+    }).from(reviewLikesTable)
       .where(and(eq(reviewLikesTable.reviewId, reviewId), eq(reviewLikesTable.userId, userId)));
 
     let isLiked: boolean;
-    if (existing.length > 0) {
-      await db.delete(reviewLikesTable)
-        .where(and(eq(reviewLikesTable.reviewId, reviewId), eq(reviewLikesTable.userId, userId)));
+    if (existing && existing.isActive) {
+      // Unlike: soft-toggle off, decrement count (do NOT deduct points)
+      await db.update(reviewLikesTable)
+        .set({ isActive: false })
+        .where(eq(reviewLikesTable.id, existing.id));
       await db.update(reviewsTable)
         .set({ likeCount: sql`greatest(${reviewsTable.likeCount} - 1, 0)` })
         .where(eq(reviewsTable.id, reviewId));
       isLiked = false;
-    } else {
-      await db.insert(reviewLikesTable).values({ reviewId, userId });
+    } else if (existing && !existing.isActive) {
+      // Re-like after unlike: toggle back on, increment count, NO new points
+      await db.update(reviewLikesTable)
+        .set({ isActive: true })
+        .where(eq(reviewLikesTable.id, existing.id));
       await db.update(reviewsTable)
         .set({ likeCount: sql`${reviewsTable.likeCount} + 1` })
         .where(eq(reviewsTable.id, reviewId));
-      // Award points to the review author for receiving a like
+      isLiked = true;
+    } else {
+      // First ever like by this user for this review — award points once
+      await db.insert(reviewLikesTable).values({
+        reviewId,
+        userId,
+        isActive: true,
+        pointsAwarded: true,
+      });
+      await db.update(reviewsTable)
+        .set({ likeCount: sql`${reviewsTable.likeCount} + 1` })
+        .where(eq(reviewsTable.id, reviewId));
       await awardPoints(review.userId, POINTS.REVIEW_LIKED_RECEIVED);
       isLiked = true;
     }

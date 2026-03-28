@@ -33,6 +33,8 @@ export const reviewLikesTable = pgTable("review_likes", {
   id: serial("id").primaryKey(),
   reviewId: integer("review_id").notNull().references(() => reviewsTable.id),
   userId: integer("user_id").notNull().references(() => usersTable.id),
+  isActive: boolean("is_active").default(true).notNull(),
+  pointsAwarded: boolean("points_awarded").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
