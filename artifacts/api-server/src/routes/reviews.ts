@@ -6,12 +6,13 @@ import {
 } from "@workspace/db/schema";
 import { eq, and, sql, desc, type SQL } from "drizzle-orm";
 import { requireAuth, optionalAuth } from "../middleware/requireAuth.js";
+import { awardPoints, POINTS } from "../lib/points.js";
 
 const router: IRouter = Router();
 
 type ReviewRow = typeof reviewsTable.$inferSelect;
 
-async function enrichReview(review: ReviewRow, userId: number) {
+async function enrichReview(review: ReviewRow, viewerUserId: number | null) {
   const [user] = await db.select({
     nameEn: usersTable.nameEn,
     nameAr: usersTable.nameAr,
@@ -23,9 +24,13 @@ async function enrichReview(review: ReviewRow, userId: number) {
   const photos = await db.select({ photoUrl: reviewPhotosTable.photoUrl })
     .from(reviewPhotosTable).where(eq(reviewPhotosTable.reviewId, review.id));
 
-  const liked = await db.select({ id: reviewLikesTable.id })
-    .from(reviewLikesTable)
-    .where(and(eq(reviewLikesTable.reviewId, review.id), eq(reviewLikesTable.userId, userId)));
+  let isLiked = false;
+  if (viewerUserId) {
+    const liked = await db.select({ id: reviewLikesTable.id })
+      .from(reviewLikesTable)
+      .where(and(eq(reviewLikesTable.reviewId, review.id), eq(reviewLikesTable.userId, viewerUserId)));
+    isLiked = liked.length > 0;
+  }
 
   return {
     ...review,
@@ -35,12 +40,12 @@ async function enrichReview(review: ReviewRow, userId: number) {
     userLevel: user?.level ?? 1,
     userLevelTitle: user?.levelTitle ?? "Food Explorer",
     photoUrls: photos.map(p => p.photoUrl),
-    isLiked: liked.length > 0,
+    isLiked,
   };
 }
 
 // List reviews
-router.get("/reviews", async (req, res) => {
+router.get("/reviews", optionalAuth, async (req, res) => {
   try {
     const { restaurantId, dishId, userId, limit = "20", offset = "0" } = req.query;
     const conditions: SQL[] = [];
@@ -58,7 +63,8 @@ router.get("/reviews", async (req, res) => {
       .from(reviewsTable)
       .where(conditions.length ? and(...conditions) : undefined);
 
-    const enriched = await Promise.all(reviews.map(r => enrichReview(r, 1)));
+    const viewerUserId = req.auth?.userId ?? null;
+    const enriched = await Promise.all(reviews.map(r => enrichReview(r, viewerUserId)));
     res.json({
       reviews: enriched,
       total: Number(total[0]?.count ?? 0),
@@ -101,6 +107,9 @@ router.post("/reviews", requireAuth, async (req, res) => {
       `);
     }
 
+    // Award points to the reviewer
+    await awardPoints(userId, POINTS.REVIEW_WRITTEN);
+
     const enriched = await enrichReview(review, userId);
     res.status(201).json(enriched);
   } catch (err) {
@@ -109,8 +118,8 @@ router.post("/reviews", requireAuth, async (req, res) => {
   }
 });
 
-// Get review
-router.get("/reviews/:reviewId", async (req, res) => {
+// Get single review
+router.get("/reviews/:reviewId", optionalAuth, async (req, res) => {
   try {
     const reviewId = parseInt(req.params["reviewId"] as string, 10);
     const [review] = await db.select().from(reviewsTable).where(eq(reviewsTable.id, reviewId));
@@ -118,7 +127,8 @@ router.get("/reviews/:reviewId", async (req, res) => {
       res.status(404).json({ error: "not_found", message: "Review not found" });
       return;
     }
-    const enriched = await enrichReview(review, 1);
+    const viewerUserId = req.auth?.userId ?? null;
+    const enriched = await enrichReview(review, viewerUserId);
     res.json(enriched);
   } catch (err) {
     req.log.error({ err }, "Failed to fetch review");
@@ -126,13 +136,38 @@ router.get("/reviews/:reviewId", async (req, res) => {
   }
 });
 
-// Delete review
-router.delete("/reviews/:reviewId", async (req, res) => {
+// Delete review — only the owner can delete
+router.delete("/reviews/:reviewId", requireAuth, async (req, res) => {
   try {
     const reviewId = parseInt(req.params["reviewId"] as string, 10);
+    const userId = req.auth!.userId;
+
+    const [review] = await db.select({ userId: reviewsTable.userId, restaurantId: reviewsTable.restaurantId })
+      .from(reviewsTable).where(eq(reviewsTable.id, reviewId));
+    if (!review) {
+      res.status(404).json({ error: "not_found", message: "Review not found" });
+      return;
+    }
+    if (review.userId !== userId) {
+      res.status(403).json({ error: "forbidden", message: "You can only delete your own reviews" });
+      return;
+    }
+
     await db.delete(reviewPhotosTable).where(eq(reviewPhotosTable.reviewId, reviewId));
     await db.delete(reviewLikesTable).where(eq(reviewLikesTable.reviewId, reviewId));
     await db.delete(reviewsTable).where(eq(reviewsTable.id, reviewId));
+
+    // Recompute restaurant avg rating
+    if (review.restaurantId) {
+      await db.execute(sql`
+        UPDATE restaurants SET
+          avg_rating = COALESCE((SELECT AVG(rating_overall::numeric) FROM reviews WHERE restaurant_id = ${review.restaurantId}), 0),
+          review_count = (SELECT COUNT(*) FROM reviews WHERE restaurant_id = ${review.restaurantId}),
+          updated_at = NOW()
+        WHERE id = ${review.restaurantId}
+      `);
+    }
+
     res.status(204).send();
   } catch (err) {
     req.log.error({ err }, "Failed to delete review");
@@ -140,11 +175,18 @@ router.delete("/reviews/:reviewId", async (req, res) => {
   }
 });
 
-// Like review
+// Like / unlike review
 router.post("/reviews/:reviewId/like", requireAuth, async (req, res) => {
   try {
     const reviewId = parseInt(req.params["reviewId"] as string, 10);
     const userId = req.auth!.userId;
+
+    const [review] = await db.select({ userId: reviewsTable.userId })
+      .from(reviewsTable).where(eq(reviewsTable.id, reviewId));
+    if (!review) {
+      res.status(404).json({ error: "not_found", message: "Review not found" });
+      return;
+    }
 
     const existing = await db.select().from(reviewLikesTable)
       .where(and(eq(reviewLikesTable.reviewId, reviewId), eq(reviewLikesTable.userId, userId)));
@@ -162,6 +204,8 @@ router.post("/reviews/:reviewId/like", requireAuth, async (req, res) => {
       await db.update(reviewsTable)
         .set({ likeCount: sql`${reviewsTable.likeCount} + 1` })
         .where(eq(reviewsTable.id, reviewId));
+      // Award points to the review author for receiving a like
+      await awardPoints(review.userId, POINTS.REVIEW_LIKED_RECEIVED);
       isLiked = true;
     }
 

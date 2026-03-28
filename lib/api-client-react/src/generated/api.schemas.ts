@@ -907,6 +907,32 @@ export const GetUserBookingsStatus = {
   cancelled: "cancelled",
 } as const;
 
+export type GetUserActivityParams = {
+  limit?: number;
+  offset?: number;
+};
+
+export type GetUserActivity200EventsItemType =
+  (typeof GetUserActivity200EventsItemType)[keyof typeof GetUserActivity200EventsItemType];
+
+export const GetUserActivity200EventsItemType = {
+  review: "review",
+  booking: "booking",
+} as const;
+
+export type GetUserActivity200EventsItemData = { [key: string]: unknown };
+
+export type GetUserActivity200EventsItem = {
+  type?: GetUserActivity200EventsItemType;
+  createdAt?: string;
+  data?: GetUserActivity200EventsItemData;
+};
+
+export type GetUserActivity200 = {
+  events?: GetUserActivity200EventsItem[];
+  total?: number;
+};
+
 export type GetLeaderboardParams = {
   cityId?: number;
   limit?: number;

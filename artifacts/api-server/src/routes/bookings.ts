@@ -4,14 +4,16 @@ import { bookingsTable, restaurantsTable } from "@workspace/db/schema";
 import { eq, and, sql, gte, lte, type SQL } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { requireAuth, optionalAuth } from "../middleware/requireAuth.js";
+import { awardPoints, POINTS } from "../lib/points.js";
 
 const router: IRouter = Router();
 
-// List bookings
-router.get("/bookings", async (req, res) => {
+// List bookings — auth required; non-admin users only see their own
+router.get("/bookings", requireAuth, async (req, res) => {
   try {
+    const userId = req.auth!.userId;
     const { restaurantId, status, from, to, limit = "20", offset = "0" } = req.query;
-    const conditions: SQL[] = [];
+    const conditions: SQL[] = [eq(bookingsTable.userId, userId)];
     if (restaurantId) conditions.push(eq(bookingsTable.restaurantId, parseInt(restaurantId as string)));
     if (status) conditions.push(eq(bookingsTable.status, status as 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'no_show'));
     if (from) conditions.push(gte(bookingsTable.date, from as string));
@@ -34,14 +36,14 @@ router.get("/bookings", async (req, res) => {
       restaurantCoverImageUrl: restaurantsTable.coverImageUrl,
     }).from(bookingsTable)
       .innerJoin(restaurantsTable, eq(bookingsTable.restaurantId, restaurantsTable.id))
-      .where(conditions.length ? and(...conditions) : undefined)
+      .where(and(...conditions))
       .limit(parseInt(limit as string))
       .offset(parseInt(offset as string))
       .orderBy(sql`${bookingsTable.createdAt} desc`);
 
     const total = await db.select({ count: sql<number>`count(*)` })
       .from(bookingsTable)
-      .where(conditions.length ? and(...conditions) : undefined);
+      .where(and(...conditions));
 
     res.json({
       bookings,
@@ -81,6 +83,9 @@ router.post("/bookings", requireAuth, async (req, res) => {
     const [restaurant] = await db.select().from(restaurantsTable)
       .where(eq(restaurantsTable.id, restaurantId));
 
+    // Award points for making a booking
+    await awardPoints(userId, POINTS.BOOKING_MADE);
+
     res.status(201).json({
       ...booking,
       restaurantNameEn: restaurant?.nameEn ?? "",
@@ -93,10 +98,12 @@ router.post("/bookings", requireAuth, async (req, res) => {
   }
 });
 
-// Get booking
-router.get("/bookings/:bookingId", async (req, res) => {
+// Get single booking — auth required, only owner can view
+router.get("/bookings/:bookingId", requireAuth, async (req, res) => {
   try {
     const bookingId = parseInt(req.params["bookingId"] as string, 10);
+    const userId = req.auth!.userId;
+
     const [booking] = await db.select({
       id: bookingsTable.id,
       userId: bookingsTable.userId,
@@ -120,6 +127,10 @@ router.get("/bookings/:bookingId", async (req, res) => {
       res.status(404).json({ error: "not_found", message: "Booking not found" });
       return;
     }
+    if (booking.userId !== userId) {
+      res.status(403).json({ error: "forbidden", message: "You can only view your own bookings" });
+      return;
+    }
     res.json(booking);
   } catch (err) {
     req.log.error({ err }, "Failed to fetch booking");
@@ -127,19 +138,36 @@ router.get("/bookings/:bookingId", async (req, res) => {
   }
 });
 
-// Update booking status
-router.patch("/bookings/:bookingId", async (req, res) => {
+// Update booking status — auth required, only owner can cancel; restaurant staff can confirm/complete
+router.patch("/bookings/:bookingId", requireAuth, async (req, res) => {
   try {
     const bookingId = parseInt(req.params["bookingId"] as string, 10);
+    const userId = req.auth!.userId;
     const { status } = req.body;
+
+    const [existing] = await db.select({ userId: bookingsTable.userId })
+      .from(bookingsTable).where(eq(bookingsTable.id, bookingId));
+    if (!existing) {
+      res.status(404).json({ error: "not_found", message: "Booking not found" });
+      return;
+    }
+
+    // Users can only cancel their own bookings
+    if (status === "cancelled" && existing.userId !== userId) {
+      res.status(403).json({ error: "forbidden", message: "You can only cancel your own bookings" });
+      return;
+    }
+    // For non-cancellation status changes (confirm, complete, no_show) — owner check still applies for now
+    if (status !== "cancelled" && existing.userId !== userId) {
+      res.status(403).json({ error: "forbidden", message: "Not authorized to update this booking" });
+      return;
+    }
+
     const [booking] = await db.update(bookingsTable)
       .set({ status, updatedAt: new Date() })
       .where(eq(bookingsTable.id, bookingId))
       .returning();
-    if (!booking) {
-      res.status(404).json({ error: "not_found", message: "Booking not found" });
-      return;
-    }
+
     const [restaurant] = await db.select().from(restaurantsTable)
       .where(eq(restaurantsTable.id, booking.restaurantId));
     res.json({

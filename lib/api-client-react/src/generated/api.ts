@@ -46,6 +46,8 @@ import type {
   GetMe200,
   GetRestaurantAvailabilityParams,
   GetTrendingDishesParams,
+  GetUserActivity200,
+  GetUserActivityParams,
   GetUserBookingsParams,
   GiftVoucherRequest,
   HealthStatus,
@@ -4475,6 +4477,121 @@ export function useGetUserLeaderboardRank<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetUserLeaderboardRankQueryOptions(userId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get user activity feed (reviews + bookings merged)
+ */
+export const getGetUserActivityUrl = (
+  userId: number,
+  params?: GetUserActivityParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/users/${userId}/activity?${stringifiedParams}`
+    : `/api/users/${userId}/activity`;
+};
+
+export const getUserActivity = async (
+  userId: number,
+  params?: GetUserActivityParams,
+  options?: RequestInit,
+): Promise<GetUserActivity200> => {
+  return customFetch<GetUserActivity200>(
+    getGetUserActivityUrl(userId, params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetUserActivityQueryKey = (
+  userId: number,
+  params?: GetUserActivityParams,
+) => {
+  return [
+    `/api/users/${userId}/activity`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getGetUserActivityQueryOptions = <
+  TData = Awaited<ReturnType<typeof getUserActivity>>,
+  TError = ErrorType<unknown>,
+>(
+  userId: number,
+  params?: GetUserActivityParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getUserActivity>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetUserActivityQueryKey(userId, params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getUserActivity>>> = ({
+    signal,
+  }) => getUserActivity(userId, params, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!userId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getUserActivity>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetUserActivityQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getUserActivity>>
+>;
+export type GetUserActivityQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get user activity feed (reviews + bookings merged)
+ */
+
+export function useGetUserActivity<
+  TData = Awaited<ReturnType<typeof getUserActivity>>,
+  TError = ErrorType<unknown>,
+>(
+  userId: number,
+  params?: GetUserActivityParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getUserActivity>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetUserActivityQueryOptions(userId, params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

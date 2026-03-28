@@ -1539,6 +1539,34 @@ export const GetUserLeaderboardRankResponse = zod.object({
 });
 
 /**
+ * @summary Get user activity feed (reviews + bookings merged)
+ */
+export const GetUserActivityParams = zod.object({
+  userId: zod.coerce.number(),
+});
+
+export const getUserActivityQueryLimitDefault = 20;
+export const getUserActivityQueryOffsetDefault = 0;
+
+export const GetUserActivityQueryParams = zod.object({
+  limit: zod.coerce.number().default(getUserActivityQueryLimitDefault),
+  offset: zod.coerce.number().default(getUserActivityQueryOffsetDefault),
+});
+
+export const GetUserActivityResponse = zod.object({
+  events: zod
+    .array(
+      zod.object({
+        type: zod.enum(["review", "booking"]).optional(),
+        createdAt: zod.coerce.date().optional(),
+        data: zod.object({}).passthrough().optional(),
+      }),
+    )
+    .optional(),
+  total: zod.number().optional(),
+});
+
+/**
  * @summary Get top users leaderboard
  */
 export const getLeaderboardQueryLimitDefault = 20;

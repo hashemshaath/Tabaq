@@ -313,4 +313,59 @@ router.get("/leaderboard", async (req, res) => {
   }
 });
 
+// Activity feed — reviews + bookings for a user, merged and sorted by date
+router.get("/users/:userId/activity", async (req, res) => {
+  try {
+    const userId = parseInt(req.params["userId"] as string, 10);
+    const { limit = "20", offset = "0" } = req.query;
+    const lim = parseInt(limit as string);
+    const off = parseInt(offset as string);
+
+    const reviews = await db.select({
+      id: reviewsTable.id,
+      restaurantId: reviewsTable.restaurantId,
+      ratingOverall: reviewsTable.ratingOverall,
+      textEn: reviewsTable.textEn,
+      textAr: reviewsTable.textAr,
+      likeCount: reviewsTable.likeCount,
+      createdAt: reviewsTable.createdAt,
+      restaurantNameEn: restaurantsTable.nameEn,
+      restaurantNameAr: restaurantsTable.nameAr,
+    }).from(reviewsTable)
+      .leftJoin(restaurantsTable, eq(reviewsTable.restaurantId, restaurantsTable.id))
+      .where(eq(reviewsTable.userId, userId))
+      .orderBy(desc(reviewsTable.createdAt))
+      .limit(lim + off);
+
+    const bookings = await db.select({
+      id: bookingsTable.id,
+      restaurantId: bookingsTable.restaurantId,
+      date: bookingsTable.date,
+      time: bookingsTable.time,
+      partySize: bookingsTable.partySize,
+      status: bookingsTable.status,
+      referenceCode: bookingsTable.referenceCode,
+      createdAt: bookingsTable.createdAt,
+      restaurantNameEn: restaurantsTable.nameEn,
+      restaurantNameAr: restaurantsTable.nameAr,
+    }).from(bookingsTable)
+      .innerJoin(restaurantsTable, eq(bookingsTable.restaurantId, restaurantsTable.id))
+      .where(eq(bookingsTable.userId, userId))
+      .orderBy(desc(bookingsTable.createdAt))
+      .limit(lim + off);
+
+    const reviewEvents = reviews.map(r => ({ type: "review" as const, createdAt: r.createdAt, data: r }));
+    const bookingEvents = bookings.map(b => ({ type: "booking" as const, createdAt: b.createdAt, data: b }));
+
+    const merged = [...reviewEvents, ...bookingEvents]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(off, off + lim);
+
+    res.json({ events: merged, total: reviewEvents.length + bookingEvents.length });
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch user activity");
+    res.status(500).json({ error: "internal_error", message: "Failed to fetch user activity" });
+  }
+});
+
 export default router;
