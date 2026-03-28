@@ -119,6 +119,7 @@ export function RestaurantDetailPage() {
 
   const tabs: { id: Tab; label: string; labelAr: string; icon: React.ReactNode }[] = [
     { id: 'menu', label: 'Menu', labelAr: 'المنيو', icon: <Utensils className="w-4 h-4" /> },
+    { id: 'photos', label: 'Photos', labelAr: 'الصور', icon: <Camera className="w-4 h-4" /> },
     { id: 'reviews', label: 'Reviews', labelAr: 'التقييمات', icon: <MessageSquare className="w-4 h-4" /> },
     { id: 'info', label: 'Info', labelAr: 'معلومات', icon: <Info className="w-4 h-4" /> },
   ];
@@ -360,6 +361,52 @@ export function RestaurantDetailPage() {
               </div>
             )}
 
+            {/* Tab: Photos */}
+            {activeTab === 'photos' && (
+              <div>
+                {menuData && menuData.flatMap(m => m.sections).flatMap(s => s.items || []).filter(d => d.imageUrl).length > 0 ? (
+                  <>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      {t('Dish photos from the menu', 'صور الأطباق من المنيو')}
+                    </p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                      {restaurant.coverImageUrl && (
+                        <div className="col-span-2 rounded-2xl overflow-hidden aspect-video">
+                          <img
+                            src={restaurant.coverImageUrl}
+                            alt={name}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      )}
+                      {menuData
+                        .flatMap(m => m.sections)
+                        .flatMap(s => (s.items || []) as Dish[])
+                        .filter(d => d.imageUrl)
+                        .map(dish => (
+                          <Link key={dish.id} href={`/dishes/${dish.id}`}>
+                            <div className="rounded-2xl overflow-hidden aspect-square group cursor-pointer">
+                              <img
+                                src={dish.imageUrl!}
+                                alt={lang === 'ar' ? dish.nameAr : dish.nameEn}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              />
+                            </div>
+                          </Link>
+                        ))
+                      }
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center py-16 text-muted-foreground">
+                    <Camera className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                    <p className="font-semibold">{t('No photos yet', 'لا توجد صور بعد')}</p>
+                    <p className="text-sm mt-1">{t('Photos will appear here when added.', 'ستظهر الصور هنا عند إضافتها.')}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Tab: Reviews */}
             {activeTab === 'reviews' && (
               <div className="space-y-4">
@@ -470,6 +517,48 @@ export function RestaurantDetailPage() {
                     </div>
                   )}
                 </div>
+
+                {/* Location Map */}
+                {restaurant.latitude && restaurant.longitude ? (
+                  <div className="bg-card border border-border/60 rounded-2xl overflow-hidden">
+                    <div className="flex items-center gap-2 p-4 border-b border-border/40">
+                      <MapPin className="w-4 h-4 text-primary" />
+                      <h3 className="font-bold text-foreground">{t('Location', 'الموقع')}</h3>
+                    </div>
+                    <iframe
+                      title={`Map of ${name}`}
+                      src={`https://www.openstreetmap.org/export/embed.html?bbox=${restaurant.longitude - 0.01}%2C${restaurant.latitude - 0.008}%2C${restaurant.longitude + 0.01}%2C${restaurant.latitude + 0.008}&layer=mapnik&marker=${restaurant.latitude}%2C${restaurant.longitude}`}
+                      className="w-full h-56 border-0"
+                      loading="lazy"
+                      referrerPolicy="no-referrer"
+                    />
+                    <div className="p-3">
+                      <a
+                        href={`https://www.openstreetmap.org/?mlat=${restaurant.latitude}&mlon=${restaurant.longitude}#map=16/${restaurant.latitude}/${restaurant.longitude}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-primary hover:underline"
+                      >
+                        {t('Open in maps', 'فتح في الخريطة')}
+                      </a>
+                    </div>
+                  </div>
+                ) : restaurant.address ? (
+                  <div className="bg-card border border-border/60 rounded-2xl p-5">
+                    <div className="flex items-center gap-2 mb-3">
+                      <MapPin className="w-4 h-4 text-primary" />
+                      <h3 className="font-bold text-foreground">{t('Location', 'الموقع')}</h3>
+                    </div>
+                    <a
+                      href={`https://www.openstreetmap.org/search?query=${encodeURIComponent(restaurant.address)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-primary hover:underline"
+                    >
+                      {restaurant.address}
+                    </a>
+                  </div>
+                ) : null}
               </div>
             )}
           </div>

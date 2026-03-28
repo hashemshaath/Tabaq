@@ -5,8 +5,9 @@ import {
   useGetTrendingDishes,
   useListOccasions,
   useListCategories,
+  useListRestaurants,
 } from '@workspace/api-client-react';
-import { Search, ChevronRight, TrendingUp, Star, Coffee, Utensils, Wine, Cake, Compass, Heart, Users } from 'lucide-react';
+import { Search, ChevronRight, TrendingUp, Star, Coffee, Utensils, Wine, Cake, Compass, Heart, Users, Trophy, MapPin } from 'lucide-react';
 import { RestaurantCard } from '@/components/RestaurantCard';
 import { DishCard } from '@/components/DishCard';
 import { Link, useLocation } from 'wouter';
@@ -22,6 +23,10 @@ export function HomePage() {
   const { data: trending, isLoading: isLoadingTrending } = useGetTrendingDishes({ limit: 6 });
   const { data: occasions } = useListOccasions();
   const { data: categories } = useListCategories();
+  const { data: topRatedData } = useListRestaurants(
+    { minRating: 4.5, limit: 3 },
+    { query: { queryKey: ['restaurants-top-rated-home'] } },
+  );
 
   const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -171,6 +176,54 @@ export function HomePage() {
           </div>
         )}
       </section>
+
+      {/* Top-Rated Venues by City */}
+      {topRatedData && topRatedData.restaurants.length > 0 && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-14">
+          <div className="flex justify-between items-end mb-6">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <Trophy className="w-5 h-5 text-amber-500" />
+                <span className="text-amber-600 font-semibold text-sm">{t('Editor\'s Choice', 'اختيار المحررين')}</span>
+              </div>
+              <h2 className="text-2xl md:text-3xl font-bold text-foreground">{t('Top-Rated Venues', 'الأماكن الأعلى تقييماً')}</h2>
+              <p className="text-muted-foreground text-sm mt-1">{t('Highest-rated restaurants in Saudi Arabia', 'أعلى المطاعم تقييماً في المملكة العربية السعودية')}</p>
+            </div>
+            <Link href="/restaurants?minRating=4.5" className="text-primary font-semibold hover:underline text-sm hidden sm:flex items-center gap-1">
+              {t('View all', 'عرض الكل')} <ChevronRight className="w-4 h-4" />
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {topRatedData.restaurants.map((rest, idx) => (
+              <Link key={rest.id} href={`/restaurants/${rest.id}`}>
+                <div className="relative rounded-2xl overflow-hidden border border-border/60 hover:border-primary/30 hover:shadow-xl transition-all group cursor-pointer h-48">
+                  <img
+                    src={rest.coverImageUrl || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=600&h=400&fit=crop'}
+                    alt={lang === 'ar' ? rest.nameAr : rest.nameEn}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/75 to-transparent" />
+                  <div className="absolute top-3 start-3">
+                    <span className="bg-amber-500 text-white text-xs font-bold w-7 h-7 rounded-full flex items-center justify-center shadow-lg">
+                      {idx + 1}
+                    </span>
+                  </div>
+                  <div className="absolute bottom-0 start-0 end-0 p-3">
+                    <h3 className="text-white font-bold text-sm line-clamp-1">
+                      {lang === 'ar' ? rest.nameAr : rest.nameEn}
+                    </h3>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                      <span className="text-white text-xs font-semibold">{Number(rest.avgRating).toFixed(1)}</span>
+                      <span className="text-white/60 text-xs">({rest.reviewCount.toLocaleString()})</span>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Trending Dishes */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-14">

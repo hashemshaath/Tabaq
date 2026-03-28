@@ -21,6 +21,9 @@ interface Filters {
   priceTier: PriceTier;
   minRating?: number;
   cityId?: number;
+  hasParking?: boolean;
+  hasOutdoorSeating?: boolean;
+  openNow?: boolean;
   sortBy?: string;
 }
 
@@ -56,6 +59,9 @@ export function DiscoveryPage() {
   if (filters.priceTier) apiFilters.priceTier = filters.priceTier;
   if (filters.minRating) apiFilters.minRating = filters.minRating;
   if (filters.cityId) apiFilters.cityId = filters.cityId;
+  if (filters.hasParking) apiFilters.hasParking = true;
+  if (filters.hasOutdoorSeating) apiFilters.hasOutdoorSeating = true;
+  if (filters.openNow) apiFilters.openNow = true;
 
   const { data, isLoading } = useListRestaurants(apiFilters, {
     query: {
@@ -82,6 +88,9 @@ export function DiscoveryPage() {
     filters.priceTier,
     filters.minRating,
     filters.cityId,
+    filters.hasParking,
+    filters.hasOutdoorSeating,
+    filters.openNow,
   ].filter(Boolean).length;
 
   const clearFilters = () => {
@@ -239,6 +248,30 @@ export function DiscoveryPage() {
                   </select>
                 </div>
               )}
+
+              {/* Amenities & Features */}
+              <div>
+                <label className="text-sm font-semibold text-foreground mb-2 block">{t('Features & Availability', 'المميزات والتوفر')}</label>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { key: 'openNow' as const, labelEn: 'Open Now', labelAr: 'مفتوح الآن' },
+                    { key: 'hasParking' as const, labelEn: 'Parking', labelAr: 'مواقف' },
+                    { key: 'hasOutdoorSeating' as const, labelEn: 'Outdoor Seating', labelAr: 'جلسات خارجية' },
+                  ].map(opt => (
+                    <button
+                      key={opt.key}
+                      onClick={() => { setFilters(f => ({ ...f, [opt.key]: !f[opt.key] || undefined })); setPage(0); }}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                        filters[opt.key]
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-background border-border hover:border-primary/40'
+                      }`}
+                    >
+                      {lang === 'ar' ? opt.labelAr : opt.labelEn}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
         </div>

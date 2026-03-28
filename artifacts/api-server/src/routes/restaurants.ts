@@ -16,7 +16,8 @@ router.get("/restaurants", async (req, res) => {
   try {
     const {
       cityId, countryId, categoryId, occasionId, priceTier,
-      minRating, featured, limit = "20", offset = "0"
+      minRating, featured, hasParking, hasOutdoorSeating, openNow,
+      limit = "20", offset = "0"
     } = req.query;
 
     let query = db.select({
@@ -41,6 +42,27 @@ router.get("/restaurants", async (req, res) => {
     if (priceTier) conditions.push(eq(restaurantsTable.priceTier, priceTier as 'budget' | 'mid' | 'upscale' | 'fine_dining'));
     if (minRating) conditions.push(gte(restaurantsTable.avgRating, parseFloat(minRating as string)));
     if (featured === "true") conditions.push(eq(restaurantsTable.isFeatured, true));
+    if (hasParking === "true") conditions.push(eq(restaurantsTable.hasParking, true));
+    if (hasOutdoorSeating === "true") conditions.push(eq(restaurantsTable.hasOutdoorSeating, true));
+    if (openNow === "true") {
+      const now = new Date();
+      const currentDay = now.getDay();
+      const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      const openRestaurantIds = await db
+        .select({ restaurantId: openingHoursTable.restaurantId })
+        .from(openingHoursTable)
+        .where(and(
+          eq(openingHoursTable.dayOfWeek, currentDay),
+          eq(openingHoursTable.isClosed, false),
+          sql`${openingHoursTable.openTime} <= ${currentTime}`,
+          sql`${openingHoursTable.closeTime} >= ${currentTime}`,
+        ));
+      if (openRestaurantIds.length) {
+        conditions.push(inArray(restaurantsTable.id, openRestaurantIds.map(r => r.restaurantId)));
+      } else {
+        conditions.push(sql`1 = 0`);
+      }
+    }
 
     if (categoryId) {
       const catRestaurantIds = await db

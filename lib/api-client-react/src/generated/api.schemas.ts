@@ -805,6 +805,9 @@ export type ListRestaurantsParams = {
   priceTier?: ListRestaurantsPriceTier;
   minRating?: number;
   featured?: boolean;
+  hasParking?: boolean;
+  hasOutdoorSeating?: boolean;
+  openNow?: boolean;
   limit?: number;
   offset?: number;
 };

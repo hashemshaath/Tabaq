@@ -79,11 +79,17 @@ router.get("/dishes/trending", async (req, res) => {
     const trendingConditions: SQL[] = [eq(dishesTable.isAvailable, true)];
     if (cityId) trendingConditions.push(eq(restaurantsTable.cityId, parseInt(cityId as string)));
 
-    // Quality score = (avgRating * 20) + (popularityScore * 0.5) + (log(reviewCount+1) * 10)
+    // Quality score = rating weight + popularity bonus + log-review volume + recency decay bonus
+    // Recency: dishes with reviews in the last 30 days get up to +15 pts, decaying by age
     const qualityScoreExpr = sql<number>`
       (COALESCE(${dishesTable.avgRating}::numeric, 0) * 20)
       + (COALESCE(${dishesTable.popularityScore}::numeric, 0) * 0.5)
       + (LN(COALESCE(${dishesTable.reviewCount}, 0) + 1) * 10)
+      + COALESCE((
+        SELECT GREATEST(0, 15 - EXTRACT(DAY FROM NOW() - MAX(r.created_at))::numeric * 0.5)
+        FROM reviews r WHERE r.dish_id = ${dishesTable.id}
+        AND r.created_at > NOW() - INTERVAL '30 days'
+      ), 0)
     `;
 
     const dishes = await db.select({

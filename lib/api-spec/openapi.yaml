@@ -329,6 +329,18 @@ paths:
           in: query
           schema:
             type: boolean
+        - name: hasParking
+          in: query
+          schema:
+            type: boolean
+        - name: hasOutdoorSeating
+          in: query
+          schema:
+            type: boolean
+        - name: openNow
+          in: query
+          schema:
+            type: boolean
         - name: limit
           in: query
           schema:
