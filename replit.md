@@ -17,7 +17,7 @@ Features include:
 - Payments and wallet
 - Admin CRM
 
-**Pages**: HomePage, DiscoveryPage, CollectionsPage (list + detail), RestaurantDetailPage, DishDetailPage, BookingsPage, VouchersPage, OffersPage, LeaderboardPage, ProfilePage, FeedPage, BusinessConsolePage, SignInPage, SearchPage, NotFound
+**Pages**: HomePage, DiscoveryPage, CollectionsPage (list + detail), RestaurantDetailPage, DishDetailPage, BookingsPage, VouchersPage, OffersPage, LeaderboardPage, ProfilePage, FeedPage, BusinessConsolePage (`/console`), UserDashboardPage (`/dashboard`), PartnerLandingPage (`/partners`), AdminPanelPage (`/admin`), SignInPage, SearchPage, NotFound
 
 **Award badge logic** (client-side, `src/lib/awards.ts`):
 - Excellence: 4.8+ rating, 30+ reviews
@@ -27,7 +27,7 @@ Features include:
 
 **Primary Market**: Saudi Arabia / GCC  
 **Currency default**: SAR  
-**Fonts**: Cairo (Arabic), Inter (English) via Google Fonts
+**Fonts**: Cairo (Arabic), DM Sans (English body/UI), Sora (English display headings h1/h2 + `.font-display`) via Google Fonts. Sora applied globally to h1/h2 in LTR via CSS; Cairo for all RTL.
 
 ## Tech Stack
 

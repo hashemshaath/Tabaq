@@ -1,6 +1,9 @@
 import React, { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Search, MapPin, Globe, User, LogOut, ChevronDown, Tag, CalendarDays, LayoutDashboard } from "lucide-react";
+import {
+  Search, MapPin, Globe, User, LogOut, ChevronDown, Tag,
+  CalendarDays, LayoutDashboard, Trophy, Star, Shield, Utensils, ArrowRight
+} from "lucide-react";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
@@ -25,35 +28,52 @@ export function Header() {
       : user.nameEn || user.nameAr
     : null;
 
+  const isActive = (href: string) =>
+    href === "/" ? location === "/" : location.startsWith(href);
+
   return (
     <header className="sticky top-0 z-50 w-full glass-panel border-b border-border/50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
 
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-3 transition-transform hover:scale-105 active:scale-95">
+        <Link href="/" className="flex items-center gap-3 transition-transform hover:scale-105 active:scale-95 shrink-0">
           <img src={`${import.meta.env.BASE_URL}images/logo.png`} alt="Tabaq" className="w-10 h-10 object-contain" />
-          <span className="text-2xl font-bold tracking-tight text-primary">
+          <span className="text-2xl font-bold tracking-tight text-primary font-display">
             {t("Tabaq", "طبق")}
           </span>
         </Link>
 
         {/* Desktop Nav */}
-        <nav className="hidden md:flex items-center gap-8">
+        <nav className="hidden lg:flex items-center gap-7">
           {navLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
               className={cn(
                 "text-sm font-semibold transition-colors hover:text-primary relative py-2",
-                location === link.href ? "text-primary" : "text-muted-foreground"
+                isActive(link.href) ? "text-primary" : "text-muted-foreground"
               )}
             >
               {t(link.en, link.ar)}
-              {location === link.href && (
+              {isActive(link.href) && (
                 <span className="absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-full" />
               )}
             </Link>
           ))}
+          {/* For Partners link */}
+          <Link
+            href="/partners"
+            className={cn(
+              "text-sm font-semibold transition-colors hover:text-primary relative py-2 flex items-center gap-1",
+              isActive("/partners") ? "text-primary" : "text-muted-foreground"
+            )}
+          >
+            <Utensils className="w-3.5 h-3.5" />
+            {t("For Partners", "للشركاء")}
+            {isActive("/partners") && (
+              <span className="absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-full" />
+            )}
+          </Link>
         </nav>
 
         {/* Actions */}
@@ -99,39 +119,102 @@ export function Header() {
               {userMenuOpen && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setUserMenuOpen(false)} />
-                  <div className="absolute end-0 top-12 z-50 bg-popover border border-border rounded-2xl shadow-xl py-2 w-48 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="absolute end-0 top-12 z-50 bg-popover border border-border rounded-2xl shadow-xl py-2 w-56 animate-in fade-in zoom-in-95 duration-150">
+
+                    {/* User section header */}
+                    <div className="px-4 py-2 border-b border-border mb-1">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("My Account", "حسابي")}</p>
+                    </div>
+
                     <Link
-                      href="/profile"
+                      href="/dashboard"
                       className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors"
                       onClick={() => setUserMenuOpen(false)}
                     >
-                      <User className="w-4 h-4 text-muted-foreground" />
-                      {t("My Profile", "ملفي الشخصي")}
+                      <div className="w-7 h-7 bg-primary/10 rounded-lg flex items-center justify-center">
+                        <User className="w-3.5 h-3.5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-foreground leading-none">{t("My Dashboard", "لوحتي")}</p>
+                        <p className="text-xs text-muted-foreground">{t("Profile, points & history", "الملف والنقاط والتاريخ")}</p>
+                      </div>
                     </Link>
+
                     <Link
                       href="/bookings"
                       className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors"
                       onClick={() => setUserMenuOpen(false)}
                     >
-                      <CalendarDays className="w-4 h-4 text-muted-foreground" />
-                      {t("My Bookings", "حجوزاتي")}
+                      <div className="w-7 h-7 bg-blue-50 rounded-lg flex items-center justify-center">
+                        <CalendarDays className="w-3.5 h-3.5 text-blue-600" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-foreground leading-none">{t("My Bookings", "حجوزاتي")}</p>
+                        <p className="text-xs text-muted-foreground">{t("Upcoming & past", "القادمة والسابقة")}</p>
+                      </div>
                     </Link>
+
                     <Link
                       href="/vouchers"
                       className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors"
                       onClick={() => setUserMenuOpen(false)}
                     >
-                      <Tag className="w-4 h-4 text-muted-foreground" />
-                      {t("My Vouchers", "قسائمي")}
+                      <div className="w-7 h-7 bg-purple-50 rounded-lg flex items-center justify-center">
+                        <Tag className="w-3.5 h-3.5 text-purple-600" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-foreground leading-none">{t("My Vouchers", "قسائمي")}</p>
+                        <p className="text-xs text-muted-foreground">{t("Offers & promotions", "العروض والترقيات")}</p>
+                      </div>
                     </Link>
+
+                    <Link
+                      href="/leaderboard"
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors"
+                      onClick={() => setUserMenuOpen(false)}
+                    >
+                      <div className="w-7 h-7 bg-amber-50 rounded-lg flex items-center justify-center">
+                        <Trophy className="w-3.5 h-3.5 text-amber-600" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-foreground leading-none">{t("Leaderboard", "المتصدرون")}</p>
+                        <p className="text-xs text-muted-foreground">{t("Rank & rewards", "الترتيب والمكافآت")}</p>
+                      </div>
+                    </Link>
+
+                    {/* Business section */}
+                    <div className="px-4 py-2 border-t border-b border-border mt-1 mb-1">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("Business", "الأعمال")}</p>
+                    </div>
+
                     <Link
                       href="/console"
                       className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors"
                       onClick={() => setUserMenuOpen(false)}
                     >
-                      <LayoutDashboard className="w-4 h-4 text-muted-foreground" />
-                      {t("Business Console", "لوحة الأعمال")}
+                      <div className="w-7 h-7 bg-green-50 rounded-lg flex items-center justify-center">
+                        <LayoutDashboard className="w-3.5 h-3.5 text-green-600" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-foreground leading-none">{t("Business Console", "لوحة الأعمال")}</p>
+                        <p className="text-xs text-muted-foreground">{t("Manage your restaurant", "إدارة مطعمك")}</p>
+                      </div>
                     </Link>
+
+                    <Link
+                      href="/admin"
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors"
+                      onClick={() => setUserMenuOpen(false)}
+                    >
+                      <div className="w-7 h-7 bg-red-50 rounded-lg flex items-center justify-center">
+                        <Shield className="w-3.5 h-3.5 text-red-600" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-foreground leading-none">{t("Admin Panel", "لوحة الإدارة")}</p>
+                        <p className="text-xs text-muted-foreground">{t("Platform management", "إدارة المنصة")}</p>
+                      </div>
+                    </Link>
+
                     <hr className="border-border my-1" />
                     <button
                       onClick={() => { logout(); setUserMenuOpen(false); }}
@@ -145,13 +228,22 @@ export function Header() {
               )}
             </div>
           ) : (
-            <Link
-              href="/signin"
-              className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
-            >
-              <User className="w-4 h-4" />
-              {t("Sign In", "دخول")}
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link
+                href="/partners"
+                className="hidden sm:flex items-center gap-1.5 px-4 py-2 rounded-full border border-border text-sm font-semibold hover:border-primary hover:text-primary transition-colors"
+              >
+                <Utensils className="w-3.5 h-3.5" />
+                {t("For Restaurants", "للمطاعم")}
+              </Link>
+              <Link
+                href="/signin"
+                className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
+              >
+                <User className="w-4 h-4" />
+                {t("Sign In", "دخول")}
+              </Link>
+            </div>
           )}
         </div>
       </div>

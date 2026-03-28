@@ -20,6 +20,9 @@ import { VouchersPage } from "@/pages/VouchersPage";
 import { SignInPage } from "@/pages/SignInPage";
 import { CollectionsPage } from "@/pages/CollectionsPage";
 import { BusinessConsolePage } from "@/pages/BusinessConsolePage";
+import { PartnerLandingPage } from "@/pages/PartnerLandingPage";
+import { AdminPanelPage } from "@/pages/AdminPanelPage";
+import { UserDashboardPage } from "@/pages/UserDashboardPage";
 import FeedPage from "@/pages/FeedPage";
 import NotFound from "@/pages/not-found";
 
@@ -56,6 +59,9 @@ function Router() {
               <Route path="/collections/:id" component={CollectionsPage} />
               <Route path="/collections" component={CollectionsPage} />
               <Route path="/console" component={BusinessConsolePage} />
+              <Route path="/dashboard" component={UserDashboardPage} />
+              <Route path="/partners" component={PartnerLandingPage} />
+              <Route path="/admin" component={AdminPanelPage} />
               <Route component={NotFound} />
             </Switch>
           </main>
