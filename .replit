@@ -17,6 +17,27 @@ env = { "CI" = "true" }
 [workflows]
 runButton = "Project"
 
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Start application"
+
+[[workflows.workflow]]
+name = "Start application"
+author = "agent"
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "PORT=20148 BASE_PATH=/ pnpm --filter @workspace/tabaq run dev & PORT=8080 pnpm --filter @workspace/api-server run dev"
+waitForPort = 20148
+
 [agent]
 stack = "PNPM_WORKSPACE"
 expertMode = true
@@ -33,3 +54,4 @@ channel = "stable-25_05"
 [userenv.shared]
 JWT_EXPIRES_IN = "30d"
 OTP_EXPIRY_MINUTES = "10"
+JWT_SECRET = "c77cdd5a7b94b574e0adc000aec729f278d6cfd1480243ea92e01a0144f3c637107ce50792ec3cd573cf5861dbfb3f92a5896fe4cc1815b87ec2c5bbf05fc1f8"
