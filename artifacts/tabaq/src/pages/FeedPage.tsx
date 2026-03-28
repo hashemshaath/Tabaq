@@ -88,8 +88,8 @@ export default function FeedPage() {
             <p className="text-muted-foreground text-sm mb-6">
               {t('Follow food critics and see their latest reviews.', 'تابع نقاد الطعام وشاهد تقييماتهم الأخيرة.')}
             </p>
-            <Link href="/">
-              <Button>{t('Go Home', 'الرئيسية')}</Button>
+            <Link href="/signin">
+              <Button>{t('Sign In', 'تسجيل الدخول')}</Button>
             </Link>
           </div>
         )}

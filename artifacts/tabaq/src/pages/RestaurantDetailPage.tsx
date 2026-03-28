@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useLanguage } from '@/hooks/use-language';
 import {
   useGetRestaurant,
@@ -6,17 +6,19 @@ import {
   useFollowRestaurant,
   useUnfollowRestaurant,
   useDeleteReview,
+  useGetRestaurantAvailability,
+  useCreateBooking,
+  useListOccasions,
   getGetRestaurantQueryKey,
   type Dish,
 } from '@workspace/api-client-react';
 import { useParams, Link } from 'wouter';
-import { BookingModal } from '@/components/BookingModal';
-import { ReviewComposerModal } from '@/components/ReviewComposerModal';
+import { InlineReviewComposer } from '@/components/InlineReviewComposer';
 import { ReviewCard } from '@/components/ReviewCard';
 import {
   Star, MapPin, Phone, Globe, Clock, CheckCircle2, Heart, HeartOff,
-  Utensils, Info, Camera, MessageSquare, ChevronDown, ChevronUp,
-  Leaf, Wheat, Flame, Coffee, Tag, PenLine,
+  Utensils, Info, Camera, MessageSquare, CalendarDays, Users,
+  ChevronLeft, ChevronRight, Tag, Leaf, Wifi,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
@@ -25,18 +27,289 @@ import { formatPrice } from '@/lib/utils';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const DAYS_AR = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+const PARTY_SIZES = [1, 2, 3, 4, 5, 6, 7, 8, 10, 12];
 
-type Tab = 'menu' | 'photos' | 'reviews' | 'info';
+type Tab = 'menu' | 'book' | 'reviews' | 'photos' | 'info';
+
+function getDatesAhead(n: number): Date[] {
+  const today = new Date();
+  return Array.from({ length: n }, (_, i) => {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    return d;
+  });
+}
+
+function formatDateKey(d: Date) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function BookingSection({ restaurantId, restaurantNameEn, restaurantNameAr }: {
+  restaurantId: number;
+  restaurantNameEn: string;
+  restaurantNameAr: string;
+}) {
+  const { t, lang } = useLanguage();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const restaurantName = lang === 'ar' ? restaurantNameAr : restaurantNameEn;
+
+  const dates = useMemo(() => getDatesAhead(14), []);
+  const [selectedDateIdx, setSelectedDateIdx] = useState(0);
+  const [selectedTime, setSelectedTime] = useState('');
+  const [partySize, setPartySize] = useState(2);
+  const [occasionId, setOccasionId] = useState<number | undefined>();
+  const [specialRequests, setSpecialRequests] = useState('');
+  const [step, setStep] = useState<'select' | 'confirm' | 'success'>('select');
+  const [createdBooking, setCreatedBooking] = useState<{ referenceCode: string; date: string; time: string } | null>(null);
+  const [error, setError] = useState('');
+
+  const selectedDate = dates[selectedDateIdx];
+  const dateKey = formatDateKey(selectedDate);
+
+  const { data: availabilityData, isLoading: availLoading } = useGetRestaurantAvailability(
+    restaurantId,
+    { date: dateKey, partySize },
+    { query: { queryKey: ['availability', restaurantId, dateKey, partySize] } }
+  );
+  const { data: occasionsData } = useListOccasions();
+  const occasions = occasionsData ?? [];
+  const slots = availabilityData?.slots ?? [];
+
+  const createBooking = useCreateBooking({
+    mutation: {
+      onSuccess: data => {
+        setCreatedBooking({ referenceCode: data.referenceCode, date: data.date, time: data.time });
+        setStep('success');
+        queryClient.invalidateQueries({ queryKey: ['bookings'] });
+      },
+      onError: () => setError(t('Failed to create booking. Please try again.', 'فشل إنشاء الحجز. حاول مرة أخرى.')),
+    },
+  });
+
+  const handleConfirm = () => {
+    if (!selectedTime) { setError(t('Please select a time slot.', 'الرجاء اختيار وقت.')); return; }
+    setError(''); setStep('confirm');
+  };
+
+  const handleBook = () => {
+    if (!user) return;
+    createBooking.mutate({ data: { restaurantId, date: dateKey, time: selectedTime, partySize, occasionId, specialRequests: specialRequests || undefined } });
+  };
+
+  if (!user) {
+    return (
+      <div className="bg-secondary/30 rounded-2xl p-8 text-center">
+        <CalendarDays className="w-14 h-14 text-muted-foreground/30 mx-auto mb-4" />
+        <h3 className="text-lg font-bold text-foreground mb-2">{t('Sign in to book a table', 'سجّل دخولك لحجز طاولة')}</h3>
+        <p className="text-muted-foreground mb-5">{t('Create a free account to start booking at your favourite restaurants.', 'أنشئ حساباً مجانياً لحجز طاولات في مطاعمك المفضلة.')}</p>
+        <Link href="/signin">
+          <Button size="lg">{t('Sign In', 'تسجيل الدخول')}</Button>
+        </Link>
+      </div>
+    );
+  }
+
+  if (step === 'success' && createdBooking) {
+    return (
+      <div className="text-center py-8">
+        <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+          <CheckCircle2 className="w-12 h-12 text-green-600" />
+        </div>
+        <h3 className="text-2xl font-bold text-foreground mb-2">{t("You're all set!", 'أنت مستعد!')}</h3>
+        <p className="text-muted-foreground mb-6">{t('Your table has been reserved at', 'تم حجز طاولتك في')} {restaurantName}.</p>
+
+        <div className="max-w-xs mx-auto bg-secondary/30 rounded-2xl p-5 text-start mb-6 space-y-3">
+          <div className="flex items-center gap-3">
+            <CalendarDays className="w-5 h-5 text-primary shrink-0" />
+            <span className="font-medium">{createdBooking.date}</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <Clock className="w-5 h-5 text-primary shrink-0" />
+            <span className="font-medium">{createdBooking.time}</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <Users className="w-5 h-5 text-primary shrink-0" />
+            <span className="font-medium">{partySize} {t('guests', 'أشخاص')}</span>
+          </div>
+        </div>
+
+        <div className="max-w-xs mx-auto bg-primary/5 border border-primary/20 rounded-2xl p-5 mb-6">
+          <p className="text-xs text-muted-foreground mb-1">{t('Booking Reference', 'رقم الحجز')}</p>
+          <p className="text-2xl font-black font-mono text-primary tracking-widest">{createdBooking.referenceCode}</p>
+        </div>
+
+        <div className="flex gap-3 justify-center">
+          <Link href="/bookings">
+            <Button variant="outline">{t('My Bookings', 'حجوزاتي')}</Button>
+          </Link>
+          <Button onClick={() => { setStep('select'); setSelectedTime(''); setCreatedBooking(null); }}>
+            {t('Book Another', 'حجز آخر')}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === 'confirm') {
+    return (
+      <div className="max-w-lg">
+        <h3 className="text-xl font-bold text-foreground mb-5">{t('Confirm Your Reservation', 'تأكيد حجزك')}</h3>
+        <div className="bg-secondary/30 rounded-2xl p-5 mb-6">
+          <div className="space-y-3 text-sm">
+            {[
+              { label: t('Restaurant', 'المطعم'), value: restaurantName },
+              { label: t('Date', 'التاريخ'), value: dateKey },
+              { label: t('Time', 'الوقت'), value: selectedTime },
+              { label: t('Guests', 'الأشخاص'), value: String(partySize) },
+              ...(occasionId ? [{ label: t('Occasion', 'المناسبة'), value: lang === 'ar' ? occasions.find(o => o.id === occasionId)?.nameAr ?? '' : occasions.find(o => o.id === occasionId)?.nameEn ?? '' }] : []),
+              ...(specialRequests ? [{ label: t('Special Requests', 'طلبات خاصة'), value: specialRequests }] : []),
+            ].map(({ label, value }) => (
+              <div key={label} className="flex justify-between gap-4">
+                <span className="text-muted-foreground shrink-0">{label}</span>
+                <span className="font-semibold text-end">{value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        {error && <p className="text-sm text-destructive mb-4">{error}</p>}
+        <div className="flex gap-3">
+          <Button variant="outline" className="flex-1" onClick={() => setStep('select')}>
+            <ChevronLeft className="w-4 h-4 me-1" /> {t('Back', 'رجوع')}
+          </Button>
+          <Button className="flex-1" onClick={handleBook} disabled={createBooking.isPending}>
+            {createBooking.isPending ? t('Booking...', 'جاري الحجز...') : t('Confirm Booking', 'تأكيد الحجز')}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-7">
+      <div>
+        <h3 className="text-xl font-bold text-foreground mb-1">{t('Reserve a Table', 'احجز طاولة')}</h3>
+        <p className="text-muted-foreground text-sm">{t('Select your party size, date and preferred time.', 'اختر عدد الأشخاص والتاريخ والوقت المناسب.')}</p>
+      </div>
+
+      {/* Party Size */}
+      <div>
+        <label className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+          <Users className="w-4 h-4 text-primary" /> {t('Party Size', 'عدد الأشخاص')}
+        </label>
+        <div className="flex flex-wrap gap-2">
+          {PARTY_SIZES.map(size => (
+            <button
+              key={size}
+              onClick={() => { setPartySize(size); setSelectedTime(''); }}
+              className={`w-12 h-12 rounded-xl text-sm font-bold border transition-all ${partySize === size ? 'bg-primary text-primary-foreground border-primary shadow-md' : 'border-border hover:border-primary/50 text-foreground'}`}
+            >
+              {size}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Date */}
+      <div>
+        <label className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+          <CalendarDays className="w-4 h-4 text-primary" /> {t('Select Date', 'اختر التاريخ')}
+        </label>
+        <div className="flex gap-2 overflow-x-auto pb-1 hide-scrollbar">
+          {dates.map((d, idx) => (
+            <button
+              key={idx}
+              onClick={() => { setSelectedDateIdx(idx); setSelectedTime(''); }}
+              className={`shrink-0 flex flex-col items-center px-3.5 py-2.5 rounded-xl border text-xs transition-all ${selectedDateIdx === idx ? 'bg-primary text-primary-foreground border-primary shadow-md' : 'border-border hover:border-primary/40'}`}
+            >
+              <span className="font-medium">{d.toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'en-SA', { weekday: 'short' })}</span>
+              <span className="text-base font-bold">{d.getDate()}</span>
+              <span className="opacity-70">{d.toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'en-SA', { month: 'short' })}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Time Slots */}
+      <div>
+        <label className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+          <Clock className="w-4 h-4 text-primary" /> {t('Select Time', 'اختر الوقت')}
+        </label>
+        {availLoading ? (
+          <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+            {[...Array(8)].map((_, i) => <div key={i} className="h-10 bg-muted animate-pulse rounded-xl" />)}
+          </div>
+        ) : slots.length === 0 ? (
+          <div className="text-center py-6 bg-secondary/30 rounded-2xl text-muted-foreground text-sm">
+            {t('No available times for this date and party size.', 'لا توجد أوقات متاحة لهذا التاريخ وعدد الأشخاص.')}
+          </div>
+        ) : (
+          <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+            {slots.map(slot => (
+              <button
+                key={slot.time}
+                onClick={() => setSelectedTime(slot.time)}
+                disabled={!slot.available}
+                className={`py-2.5 rounded-xl text-sm font-semibold border transition-all ${
+                  selectedTime === slot.time ? 'bg-primary text-primary-foreground border-primary shadow-md' :
+                  slot.available ? 'border-border hover:border-primary/50 text-foreground hover:bg-secondary/50' :
+                  'border-border/30 text-muted-foreground/40 cursor-not-allowed bg-muted/30'
+                }`}
+              >
+                {slot.time}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Occasion */}
+      {occasions.length > 0 && (
+        <div>
+          <label className="text-sm font-semibold text-foreground mb-2 block">{t('Occasion (Optional)', 'المناسبة (اختياري)')}</label>
+          <select
+            value={occasionId ?? ''}
+            onChange={e => setOccasionId(e.target.value ? Number(e.target.value) : undefined)}
+            className="w-full h-11 px-3 rounded-xl border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+            <option value="">{t('No special occasion', 'بدون مناسبة')}</option>
+            {occasions.map(o => <option key={o.id} value={o.id}>{lang === 'ar' ? o.nameAr : o.nameEn}</option>)}
+          </select>
+        </div>
+      )}
+
+      {/* Special Requests */}
+      <div>
+        <label className="text-sm font-semibold text-foreground mb-2 block">{t('Special Requests (Optional)', 'طلبات خاصة (اختياري)')}</label>
+        <textarea
+          value={specialRequests}
+          onChange={e => setSpecialRequests(e.target.value)}
+          placeholder={t('Dietary requirements, seating preferences, celebrations…', 'متطلبات غذائية، تفضيلات الجلوس، احتفالات…')}
+          className="w-full min-h-[80px] px-3 py-2.5 rounded-xl border border-input bg-background text-foreground text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/20"
+        />
+      </div>
+
+      {error && <p className="text-sm text-destructive bg-destructive/10 rounded-xl px-4 py-3">{error}</p>}
+
+      <Button className="w-full py-6 text-base font-bold" onClick={handleConfirm} disabled={!selectedTime}>
+        {t('Continue to Confirm', 'متابعة للتأكيد')}
+        <ChevronRight className="w-5 h-5 ms-2" />
+      </Button>
+    </div>
+  );
+}
 
 export function RestaurantDetailPage() {
   const { id } = useParams();
   const { t, lang } = useLanguage();
   const { user } = useAuth();
 
-  const { data, isLoading, refetch } = useGetRestaurant(Number(id), {
+  const { data, isLoading } = useGetRestaurant(Number(id), {
     query: { enabled: !!id, queryKey: ['restaurant', id] },
   });
-
   const { data: menuData } = useGetRestaurantMenus(Number(id), {
     query: { enabled: !!id, queryKey: ['restaurant-menus', id] },
   });
@@ -44,8 +317,7 @@ export function RestaurantDetailPage() {
   const [activeTab, setActiveTab] = useState<Tab>('menu');
   const [isFollowing, setIsFollowing] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Set<number>>(new Set());
-  const [showBooking, setShowBooking] = useState(false);
-  const [showReviewComposer, setShowReviewComposer] = useState(false);
+
   const { mutate: followRestaurant } = useFollowRestaurant();
   const { mutate: unfollowRestaurant } = useUnfollowRestaurant();
   const queryClient = useQueryClient();
@@ -68,16 +340,19 @@ export function RestaurantDetailPage() {
   const toggleSection = (sectionId: number) => {
     setExpandedSections(prev => {
       const next = new Set(prev);
-      if (next.has(sectionId)) next.delete(sectionId);
-      else next.add(sectionId);
+      if (next.has(sectionId)) next.delete(sectionId); else next.add(sectionId);
       return next;
     });
   };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-background">
+        <div className="h-[45vh] bg-muted animate-pulse" />
+        <div className="max-w-7xl mx-auto px-4 py-8 space-y-4">
+          <div className="h-8 bg-muted animate-pulse rounded w-64" />
+          <div className="h-4 bg-muted animate-pulse rounded w-48" />
+        </div>
       </div>
     );
   }
@@ -90,70 +365,63 @@ export function RestaurantDetailPage() {
   const name = lang === 'ar' ? restaurant.nameAr : restaurant.nameEn;
   const description = lang === 'ar' ? restaurant.descriptionAr : restaurant.descriptionEn;
   const today = new Date().getDay();
+  const fallback = 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=1920&h=1080&fit=crop';
 
-  const priceTierLabel = {
-    budget: t('Budget', 'اقتصادي'),
-    mid: t('Mid-Range', 'متوسط'),
-    upscale: t('Upscale', 'راقٍ'),
-    fine_dining: t('Fine Dining', 'فاخر'),
-  }[restaurant.priceTier as string] ?? restaurant.priceTier;
+  const priceTierLabel = ({ budget: t('Budget', 'اقتصادي'), mid: t('Mid-Range', 'متوسط'), upscale: t('Upscale', 'راقٍ'), fine_dining: t('Fine Dining', 'فاخر') } as Record<string, string>)[restaurant.priceTier as string] ?? restaurant.priceTier;
 
   const tabs: { id: Tab; label: string; labelAr: string; icon: React.ReactNode }[] = [
     { id: 'menu', label: 'Menu', labelAr: 'المنيو', icon: <Utensils className="w-4 h-4" /> },
-    { id: 'photos', label: 'Photos', labelAr: 'الصور', icon: <Camera className="w-4 h-4" /> },
+    { id: 'book', label: 'Book', labelAr: 'حجز', icon: <CalendarDays className="w-4 h-4" /> },
     { id: 'reviews', label: 'Reviews', labelAr: 'التقييمات', icon: <MessageSquare className="w-4 h-4" /> },
+    { id: 'photos', label: 'Photos', labelAr: 'الصور', icon: <Camera className="w-4 h-4" /> },
     { id: 'info', label: 'Info', labelAr: 'معلومات', icon: <Info className="w-4 h-4" /> },
   ];
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Cover Header */}
+    <div className="min-h-screen bg-background pb-16">
+      {/* Cover */}
       <div className="relative h-[45vh] md:h-[55vh] bg-muted w-full">
         <img
-          src={restaurant.coverImageUrl || 'https://images.unsplash.com/photo-1550966871-3ed3cdb5ed0c?w=1920&h=1080&fit=crop'}
+          src={restaurant.coverImageUrl || fallback}
           alt={name}
           className="w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
-
-        {/* Breadcrumb */}
         <div className="absolute top-4 start-4 z-10">
-          <Link href="/restaurants" className="text-white/80 text-sm hover:text-white transition-colors bg-black/30 backdrop-blur-sm px-3 py-1.5 rounded-full">
-            ← {t('Restaurants', 'المطاعم')}
+          <Link href="/restaurants" className="text-white/80 text-sm hover:text-white bg-black/30 backdrop-blur-sm px-3 py-1.5 rounded-full flex items-center gap-1.5 transition-colors">
+            <ChevronLeft className="w-4 h-4" /> {t('Restaurants', 'المطاعم')}
           </Link>
         </div>
 
         <div className="absolute bottom-0 w-full">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-6 flex flex-col md:flex-row md:items-end justify-between gap-6">
-            <div className="flex items-end gap-6">
-              {/* Logo */}
+            <div className="flex items-end gap-5">
               <div className="w-20 h-20 md:w-28 md:h-28 rounded-2xl bg-white p-1.5 shadow-2xl shrink-0 translate-y-8 md:translate-y-14 z-10 border border-border">
                 <img
-                  src={restaurant.logoUrl || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=200&h=200&fit=crop'}
+                  src={restaurant.logoUrl || fallback}
                   alt="Logo"
                   className="w-full h-full rounded-xl object-cover"
+                  onError={e => { (e.target as HTMLImageElement).src = fallback; }}
                 />
               </div>
-
               <div className="text-white pb-2">
                 <h1 className="text-2xl md:text-4xl font-bold flex items-center gap-3 flex-wrap">
                   {name}
                   {restaurant.isVerified && <CheckCircle2 className="w-5 h-5 text-primary shrink-0" />}
                 </h1>
-                <div className="flex flex-wrap items-center gap-3 mt-2 text-white/80 text-sm font-medium">
+                <div className="flex flex-wrap items-center gap-2 mt-2 text-sm">
                   <span className="flex items-center gap-1.5 bg-black/40 backdrop-blur-sm px-3 py-1 rounded-full">
                     <Star className="w-4 h-4 text-primary fill-primary" />
-                    <span className="text-white font-bold">{Number(restaurant.avgRating)?.toFixed(1) || 'NEW'}</span>
+                    <span className="font-bold">{Number(restaurant.avgRating)?.toFixed(1) || 'NEW'}</span>
                     <span className="opacity-70">({restaurant.reviewCount || 0})</span>
                   </span>
                   {restaurant.address && (
                     <span className="flex items-center gap-1.5 bg-black/30 backdrop-blur-sm px-3 py-1 rounded-full">
-                      <MapPin className="w-3.5 h-3.5" />
-                      {restaurant.address}
+                      <MapPin className="w-3.5 h-3.5" /> {restaurant.address}
                     </span>
                   )}
                   {categories.length > 0 && (
-                    <span className="bg-primary/80 backdrop-blur-sm px-3 py-1 rounded-full text-white text-xs">
+                    <span className="bg-primary/80 backdrop-blur-sm px-3 py-1 rounded-full text-xs">
                       {lang === 'ar' ? categories[0].nameAr : categories[0].nameEn}
                     </span>
                   )}
@@ -162,7 +430,12 @@ export function RestaurantDetailPage() {
             </div>
 
             <div className="flex gap-3 pb-2 z-10">
-              <Button onClick={() => setShowBooking(true)} size="lg" className="font-bold px-6 shadow-lg">
+              <Button
+                onClick={() => setActiveTab('book')}
+                size="lg"
+                className="font-bold px-6 shadow-lg"
+              >
+                <CalendarDays className="w-4 h-4 me-2" />
                 {t('Book a Table', 'احجز طاولة')}
               </Button>
               <Button
@@ -172,67 +445,57 @@ export function RestaurantDetailPage() {
                 className="w-12 h-12 shrink-0 rounded-2xl border border-border"
                 title={isFollowing ? t('Unfollow', 'إلغاء المتابعة') : t('Follow', 'متابعة')}
               >
-                {isFollowing
-                  ? <HeartOff className="w-5 h-5 text-destructive" />
-                  : <Heart className="w-5 h-5 text-primary" />
-                }
+                {isFollowing ? <HeartOff className="w-5 h-5 text-destructive" /> : <Heart className="w-5 h-5 text-primary" />}
               </Button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Stats Bar */}
+      {/* Stats */}
       <div className="bg-card border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 mt-10 md:mt-16 flex flex-wrap gap-x-8 gap-y-3">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 mt-10 md:mt-16 flex flex-wrap gap-x-8 gap-y-2 text-sm">
           {ratingBreakdown && ratingBreakdown.count > 0 && (
-            <div className="flex items-center gap-2 text-sm">
+            <div className="flex items-center gap-2">
               <Star className="w-4 h-4 fill-primary text-primary" />
               <span className="font-bold">{ratingBreakdown.overall.toFixed(1)}</span>
               <span className="text-muted-foreground">({ratingBreakdown.count} {t('reviews', 'تقييم')})</span>
             </div>
           )}
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span className="font-medium text-foreground">{priceTierLabel}</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span>{restaurant.followerCount ?? 0} {t('followers', 'متابع')}</span>
-          </div>
+          <span className="font-medium text-foreground">{priceTierLabel}</span>
+          <span className="text-muted-foreground">{restaurant.followerCount ?? 0} {t('followers', 'متابع')}</span>
+          {restaurant.isHalal && <span className="text-green-600 font-medium bg-green-50 px-2 py-0.5 rounded-md">{t('Halal', 'حلال')}</span>}
         </div>
       </div>
 
       {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-20">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-          {/* Main Content */}
           <div className="lg:col-span-2">
-
             {/* Active Offers Banner */}
             {activeOffers.length > 0 && (
-              <div className="mb-6 space-y-2">
+              <div className="mb-5 space-y-2">
                 {activeOffers.map(offer => (
-                  <div key={offer.id} className="flex items-center gap-3 bg-primary/10 border border-primary/20 rounded-2xl p-4">
-                    <Tag className="w-5 h-5 text-primary shrink-0" />
-                    <div>
-                      <p className="font-bold text-foreground text-sm">{lang === 'ar' ? offer.titleAr : offer.titleEn}</p>
-                      {offer.discountPercent && (
-                        <p className="text-primary text-xs font-medium">{offer.discountPercent}% {t('discount', 'خصم')}</p>
-                      )}
+                  <Link key={offer.id} href="/offers">
+                    <div className="flex items-center gap-3 bg-primary/10 border border-primary/20 rounded-2xl p-4 hover:bg-primary/15 transition-colors cursor-pointer">
+                      <Tag className="w-5 h-5 text-primary shrink-0" />
+                      <div className="flex-1">
+                        <p className="font-bold text-foreground text-sm">{lang === 'ar' ? offer.titleAr : offer.titleEn}</p>
+                        {offer.discountPercent && (
+                          <p className="text-primary text-xs font-medium">{offer.discountPercent}% {t('off — tap to view', 'خصم — اضغط لعرض')}</p>
+                        )}
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-primary" />
                     </div>
-                  </div>
+                  </Link>
                 ))}
               </div>
             )}
 
-            {/* Description */}
             {description && (
-              <p className="text-muted-foreground text-base leading-relaxed mb-6 text-balance">
-                {description}
-              </p>
+              <p className="text-muted-foreground leading-relaxed mb-5 text-balance">{description}</p>
             )}
 
-            {/* Category Tags */}
             <div className="flex flex-wrap gap-2 mb-6">
               {categories.map(cat => (
                 <Link key={cat.id} href={`/restaurants?categoryId=${cat.id}`}>
@@ -243,25 +506,22 @@ export function RestaurantDetailPage() {
               ))}
               {occasions.map(occ => (
                 <span key={occ.id} className="px-3 py-1.5 rounded-full bg-accent/50 text-accent-foreground text-sm font-medium">
-                  {lang === 'ar' ? occ.nameAr : occ.nameEn}
+                  {occ.icon} {lang === 'ar' ? occ.nameAr : occ.nameEn}
                 </span>
               ))}
             </div>
 
             {/* Tabs */}
-            <div className="border-b border-border flex gap-0 mb-6 overflow-x-auto">
+            <div className="border-b border-border flex gap-0 mb-6 overflow-x-auto hide-scrollbar">
               {tabs.map(tab => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-5 py-3 text-sm font-semibold whitespace-nowrap border-b-2 transition-all ${
-                    activeTab === tab.id
-                      ? 'border-primary text-primary'
-                      : 'border-transparent text-muted-foreground hover:text-foreground'
-                  }`}
+                  className={`flex items-center gap-2 px-5 py-3 text-sm font-semibold whitespace-nowrap border-b-2 transition-all ${activeTab === tab.id ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
                 >
                   {tab.icon}
                   {lang === 'ar' ? tab.labelAr : tab.label}
+                  {tab.id === 'book' && <span className="text-[10px] bg-primary text-white rounded-full px-1.5 py-0.5 font-bold leading-none">{t('NEW', 'جديد')}</span>}
                 </button>
               ))}
             </div>
@@ -269,74 +529,107 @@ export function RestaurantDetailPage() {
             {/* Tab: Menu */}
             {activeTab === 'menu' && (
               <div className="space-y-6">
-                {menuData && menuData.length > 0 ? (
-                  menuData.map(menu => (
-                    <div key={menu.id}>
-                      <h3 className="text-lg font-bold mb-4 text-foreground">
-                        {lang === 'ar' ? menu.nameAr : menu.nameEn}
-                      </h3>
-                      {menu.sections?.map(section => (
-                        <div key={section.id} className="mb-4">
-                          <button
-                            className="w-full flex justify-between items-center py-2 px-0 text-start"
-                            onClick={() => toggleSection(section.id)}
-                          >
-                            <h4 className="font-semibold text-foreground text-base">
-                              {lang === 'ar' ? section.nameAr : section.nameEn}
-                            </h4>
-                            {expandedSections.has(section.id)
-                              ? <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                              : <ChevronUp className="w-4 h-4 text-muted-foreground" />
-                            }
-                          </button>
-                          {!expandedSections.has(section.id) && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
-                              {section.items?.map((dish: Dish) => (
-                                <Link key={dish.id} href={`/dishes/${dish.id}`}>
-                                  <div className="flex gap-3 p-3 rounded-2xl border border-border/60 hover:bg-accent/30 hover:border-primary/20 transition-all group">
-                                    <div className="w-18 h-18 shrink-0 rounded-xl overflow-hidden bg-muted">
-                                      <img
-                                        src={dish.imageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&h=200&fit=crop'}
-                                        alt={lang === 'ar' ? dish.nameAr : dish.nameEn}
-                                        className="w-full h-full object-cover"
-                                        style={{ width: '72px', height: '72px' }}
-                                      />
-                                    </div>
-                                    <div className="flex-grow min-w-0">
-                                      <div className="flex justify-between items-start gap-1">
-                                        <h5 className="font-semibold text-foreground text-sm line-clamp-1 group-hover:text-primary transition-colors">
-                                          {lang === 'ar' ? dish.nameAr : dish.nameEn}
-                                        </h5>
-                                        {dish.price && (
-                                          <span className="text-primary font-bold text-sm shrink-0 ms-1">
-                                            {formatPrice(dish.price, dish.currency, lang)}
-                                          </span>
-                                        )}
-                                      </div>
-                                      {(lang === 'ar' ? dish.descriptionAr : dish.descriptionEn) && (
-                                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                                          {lang === 'ar' ? dish.descriptionAr : dish.descriptionEn}
-                                        </p>
+                {menuData && menuData.length > 0 ? menuData.map(menu => (
+                  <div key={menu.id}>
+                    <h3 className="text-lg font-bold mb-4">{lang === 'ar' ? menu.nameAr : menu.nameEn}</h3>
+                    {menu.sections?.map(section => (
+                      <div key={section.id} className="mb-4">
+                        <button
+                          className="w-full flex justify-between items-center py-2 px-0 text-start"
+                          onClick={() => toggleSection(section.id)}
+                        >
+                          <h4 className="font-semibold text-foreground">{lang === 'ar' ? section.nameAr : section.nameEn}</h4>
+                          {expandedSections.has(section.id) ? <ChevronLeft className="w-4 h-4 text-muted-foreground rotate-90" /> : <ChevronRight className="w-4 h-4 text-muted-foreground rotate-90" />}
+                        </button>
+                        {!expandedSections.has(section.id) && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+                            {section.items?.map((dish: Dish) => (
+                              <Link key={dish.id} href={`/dishes/${dish.id}`}>
+                                <div className="flex gap-3 p-3 rounded-2xl border border-border/60 hover:bg-accent/30 hover:border-primary/20 transition-all group">
+                                  <div className="w-[72px] h-[72px] shrink-0 rounded-xl overflow-hidden bg-muted">
+                                    <img
+                                      src={dish.imageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&h=200&fit=crop'}
+                                      alt={lang === 'ar' ? dish.nameAr : dish.nameEn}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  </div>
+                                  <div className="flex-grow min-w-0">
+                                    <div className="flex justify-between items-start gap-1">
+                                      <h5 className="font-semibold text-foreground text-sm line-clamp-1 group-hover:text-primary transition-colors">
+                                        {lang === 'ar' ? dish.nameAr : dish.nameEn}
+                                      </h5>
+                                      {dish.price && (
+                                        <span className="text-primary font-bold text-sm shrink-0 ms-1">
+                                          {formatPrice(dish.price, dish.currency, lang)}
+                                        </span>
                                       )}
-                                      <div className="flex items-center gap-2 mt-1.5">
-                                        {dish.isHalal && <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-md font-medium">{t('Halal', 'حلال')}</span>}
-                                        {dish.isVegetarian && <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-md font-medium flex items-center gap-0.5"><Leaf className="w-2.5 h-2.5" />{t('Veg', 'نباتي')}</span>}
-                                        {dish.calories && <span className="text-[10px] text-muted-foreground">{dish.calories} kcal</span>}
-                                      </div>
+                                    </div>
+                                    {(lang === 'ar' ? dish.descriptionAr : dish.descriptionEn) && (
+                                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                                        {lang === 'ar' ? dish.descriptionAr : dish.descriptionEn}
+                                      </p>
+                                    )}
+                                    <div className="flex items-center gap-2 mt-1.5">
+                                      {dish.isHalal && <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-md font-medium">Halal</span>}
+                                      {dish.isVegetarian && <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-md font-medium flex items-center gap-0.5"><Leaf className="w-2.5 h-2.5" />Veg</span>}
+                                      {dish.calories && <span className="text-[10px] text-muted-foreground">{dish.calories} kcal</span>}
                                     </div>
                                   </div>
-                                </Link>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-12 text-muted-foreground">
+                                </div>
+                              </Link>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )) : (
+                  <div className="text-center py-16 text-muted-foreground">
                     <Utensils className="w-10 h-10 mx-auto mb-3 opacity-30" />
                     <p>{t('Menu not available yet.', 'المنيو غير متوفر حالياً.')}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Tab: Book */}
+            {activeTab === 'book' && (
+              <BookingSection
+                restaurantId={Number(id)}
+                restaurantNameEn={restaurant.nameEn}
+                restaurantNameAr={restaurant.nameAr}
+              />
+            )}
+
+            {/* Tab: Reviews */}
+            {activeTab === 'reviews' && (
+              <div className="space-y-5">
+                <InlineReviewComposer
+                  restaurantId={Number(id)}
+                  restaurantNameEn={restaurant.nameEn}
+                  restaurantNameAr={restaurant.nameAr}
+                  invalidateKey={getGetRestaurantQueryKey(Number(id))}
+                />
+
+                {recentReviews.length > 0 ? (
+                  <div className="space-y-4 mt-2">
+                    <p className="text-sm text-muted-foreground font-medium">{recentReviews.length} {t('reviews', 'تقييم')}</p>
+                    {recentReviews.map(review => (
+                      <ReviewCard
+                        key={review.id}
+                        review={review}
+                        onDelete={reviewId => {
+                          deleteReview.mutate({ reviewId }, {
+                            onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetRestaurantQueryKey(Number(id)) }),
+                          });
+                        }}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                    <p className="text-sm">{t('No reviews yet. Be the first!', 'لا توجد تقييمات بعد. كن الأول!')}</p>
                   </div>
                 )}
               </div>
@@ -346,101 +639,33 @@ export function RestaurantDetailPage() {
             {activeTab === 'photos' && (
               <div>
                 {menuData && menuData.flatMap(m => m.sections).flatMap(s => s.items || []).filter(d => d.imageUrl).length > 0 ? (
-                  <>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      {t('Dish photos from the menu', 'صور الأطباق من المنيو')}
-                    </p>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                      {restaurant.coverImageUrl && (
-                        <div className="col-span-2 rounded-2xl overflow-hidden aspect-video">
-                          <img
-                            src={restaurant.coverImageUrl}
-                            alt={name}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                      )}
-                      {menuData
-                        .flatMap(m => m.sections)
-                        .flatMap(s => (s.items || []) as Dish[])
-                        .filter(d => d.imageUrl)
-                        .map(dish => (
-                          <Link key={dish.id} href={`/dishes/${dish.id}`}>
-                            <div className="rounded-2xl overflow-hidden aspect-square group cursor-pointer">
-                              <img
-                                src={dish.imageUrl!}
-                                alt={lang === 'ar' ? dish.nameAr : dish.nameEn}
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                              />
-                            </div>
-                          </Link>
-                        ))
-                      }
-                    </div>
-                  </>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {restaurant.coverImageUrl && (
+                      <div className="col-span-2 rounded-2xl overflow-hidden aspect-video">
+                        <img src={restaurant.coverImageUrl} alt={name} className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                    {menuData
+                      .flatMap(m => m.sections)
+                      .flatMap(s => (s.items || []) as Dish[])
+                      .filter(d => d.imageUrl)
+                      .map(dish => (
+                        <Link key={dish.id} href={`/dishes/${dish.id}`}>
+                          <div className="rounded-2xl overflow-hidden aspect-square group cursor-pointer">
+                            <img
+                              src={dish.imageUrl!}
+                              alt={lang === 'ar' ? dish.nameAr : dish.nameEn}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            />
+                          </div>
+                        </Link>
+                      ))
+                    }
+                  </div>
                 ) : (
                   <div className="text-center py-16 text-muted-foreground">
                     <Camera className="w-12 h-12 mx-auto mb-3 opacity-30" />
                     <p className="font-semibold">{t('No photos yet', 'لا توجد صور بعد')}</p>
-                    <p className="text-sm mt-1">{t('Photos will appear here when added.', 'ستظهر الصور هنا عند إضافتها.')}</p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Tab: Reviews */}
-            {activeTab === 'reviews' && (
-              <div className="space-y-4">
-                {/* Write Review CTA */}
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-muted-foreground">
-                    {recentReviews.length} {t('reviews', 'تقييم')}
-                  </p>
-                  {user ? (
-                    <Button
-                      size="sm"
-                      onClick={() => setShowReviewComposer(true)}
-                      className="flex items-center gap-2"
-                    >
-                      <PenLine className="w-4 h-4" />
-                      {t('Write a Review', 'اكتب تقييماً')}
-                    </Button>
-                  ) : (
-                    <p className="text-xs text-muted-foreground italic">
-                      {t('Sign in to write a review', 'سجّل دخولك لكتابة تقييم')}
-                    </p>
-                  )}
-                </div>
-
-                {recentReviews.length > 0 ? (
-                  recentReviews.map(review => (
-                    <ReviewCard
-                      key={review.id}
-                      review={review}
-                      onDelete={(reviewId) => {
-                        deleteReview.mutate({ reviewId }, {
-                          onSuccess: () => {
-                            queryClient.invalidateQueries({ queryKey: getGetRestaurantQueryKey(Number(id)) });
-                          },
-                        });
-                      }}
-                    />
-                  ))
-                ) : (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <MessageSquare className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                    <p>{t('No reviews yet. Be the first!', 'لا توجد تقييمات بعد. كن الأول!')}</p>
-                    {user && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="mt-4"
-                        onClick={() => setShowReviewComposer(true)}
-                      >
-                        <PenLine className="w-4 h-4 me-2" />
-                        {t('Write the first review', 'اكتب أول تقييم')}
-                      </Button>
-                    )}
                   </div>
                 )}
               </div>
@@ -448,188 +673,140 @@ export function RestaurantDetailPage() {
 
             {/* Tab: Info */}
             {activeTab === 'info' && (
-              <div className="space-y-6">
-                {/* Opening Hours */}
+              <div className="space-y-5">
                 {openingHours.length > 0 && (
                   <div className="bg-card border border-border/60 rounded-2xl p-5">
                     <h3 className="font-bold text-foreground mb-4 flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-primary" />
-                      {t('Opening Hours', 'ساعات العمل')}
+                      <Clock className="w-4 h-4 text-primary" /> {t('Opening Hours', 'ساعات العمل')}
                     </h3>
                     <div className="space-y-2">
                       {openingHours.map(h => (
-                        <div key={h.id} className={`flex justify-between text-sm py-1 ${h.dayOfWeek === today ? 'font-bold text-primary' : 'text-muted-foreground'}`}>
+                        <div key={h.id} className={`flex justify-between text-sm py-1.5 border-b border-border/30 last:border-0 ${h.dayOfWeek === today ? 'font-bold text-primary' : 'text-muted-foreground'}`}>
                           <span>{lang === 'ar' ? DAYS_AR[h.dayOfWeek] : DAYS[h.dayOfWeek]}</span>
-                          <span>
-                            {h.isClosed
-                              ? t('Closed', 'مغلق')
-                              : `${h.openTime} – ${h.closeTime}`
-                            }
-                          </span>
+                          <span>{h.isClosed ? t('Closed', 'مغلق') : `${h.openTime} – ${h.closeTime}`}</span>
                         </div>
                       ))}
                     </div>
                   </div>
                 )}
 
-                {/* Features */}
                 <div className="bg-card border border-border/60 rounded-2xl p-5">
                   <h3 className="font-bold text-foreground mb-4">{t('Features & Amenities', 'المميزات والخدمات')}</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {restaurant.hasParking && <span className="text-sm bg-secondary text-secondary-foreground px-3 py-1.5 rounded-xl">{t('Parking', 'مواقف سيارات')}</span>}
-                    {restaurant.hasOutdoorSeating && <span className="text-sm bg-secondary text-secondary-foreground px-3 py-1.5 rounded-xl">{t('Outdoor Seating', 'جلسات خارجية')}</span>}
-                    {restaurant.hasPrivateRoom && <span className="text-sm bg-secondary text-secondary-foreground px-3 py-1.5 rounded-xl">{t('Private Room', 'غرفة خاصة')}</span>}
-                    {restaurant.isHalal && <span className="text-sm bg-green-100 text-green-700 px-3 py-1.5 rounded-xl">{t('Halal', 'حلال')}</span>}
-                    {!restaurant.hasParking && !restaurant.hasOutdoorSeating && !restaurant.hasPrivateRoom && !restaurant.isHalal && (
-                      <span className="text-sm text-muted-foreground">{t('No amenities listed.', 'لا توجد مميزات مدرجة.')}</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { show: restaurant.hasParking, en: 'Parking', ar: 'مواقف سيارات' },
+                      { show: restaurant.hasOutdoorSeating, en: 'Outdoor Seating', ar: 'جلسات خارجية' },
+                      { show: restaurant.hasPrivateRoom, en: 'Private Room', ar: 'غرفة خاصة' },
+                      { show: restaurant.isHalal, en: 'Halal Certified', ar: 'شهادة حلال' },
+                    ].filter(f => f.show).map(f => (
+                      <div key={f.en} className="flex items-center gap-2 text-sm bg-secondary/50 rounded-xl px-3 py-2">
+                        <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+                        <span className="font-medium">{lang === 'ar' ? f.ar : f.en}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="bg-card border border-border/60 rounded-2xl p-5">
+                  <h3 className="font-bold text-foreground mb-4">{t('Contact & Location', 'التواصل والموقع')}</h3>
+                  <div className="space-y-3">
+                    {restaurant.phone && (
+                      <a href={`tel:${restaurant.phone}`} className="flex items-center gap-3 text-sm text-foreground hover:text-primary transition-colors">
+                        <Phone className="w-4 h-4 text-muted-foreground" /> {restaurant.phone}
+                      </a>
+                    )}
+                    {restaurant.address && (
+                      <div className="flex items-center gap-3 text-sm text-foreground">
+                        <MapPin className="w-4 h-4 text-muted-foreground" /> {restaurant.address}
+                      </div>
+                    )}
+                    {restaurant.website && (
+                      <a href={restaurant.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 text-sm text-primary hover:underline">
+                        <Globe className="w-4 h-4" /> {restaurant.website}
+                      </a>
                     )}
                   </div>
                 </div>
-
-                {/* Contact */}
-                <div className="bg-card border border-border/60 rounded-2xl p-5 space-y-4">
-                  <h3 className="font-bold text-foreground mb-2">{t('Contact', 'التواصل')}</h3>
-                  {restaurant.phone && (
-                    <div className="flex items-center gap-3">
-                      <Phone className="w-4 h-4 text-primary shrink-0" />
-                      <a href={`tel:${restaurant.phone}`} className="text-sm text-foreground hover:text-primary" dir="ltr">{restaurant.phone}</a>
-                    </div>
-                  )}
-                  {restaurant.website && (
-                    <div className="flex items-center gap-3">
-                      <Globe className="w-4 h-4 text-primary shrink-0" />
-                      <a href={restaurant.website} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline">{restaurant.website}</a>
-                    </div>
-                  )}
-                  {restaurant.address && (
-                    <div className="flex items-center gap-3">
-                      <MapPin className="w-4 h-4 text-primary shrink-0" />
-                      <span className="text-sm text-foreground">{restaurant.address}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Location Map */}
-                {restaurant.latitude && restaurant.longitude ? (
-                  <div className="bg-card border border-border/60 rounded-2xl overflow-hidden">
-                    <div className="flex items-center gap-2 p-4 border-b border-border/40">
-                      <MapPin className="w-4 h-4 text-primary" />
-                      <h3 className="font-bold text-foreground">{t('Location', 'الموقع')}</h3>
-                    </div>
-                    <iframe
-                      title={`Map of ${name}`}
-                      src={`https://www.openstreetmap.org/export/embed.html?bbox=${restaurant.longitude - 0.01}%2C${restaurant.latitude - 0.008}%2C${restaurant.longitude + 0.01}%2C${restaurant.latitude + 0.008}&layer=mapnik&marker=${restaurant.latitude}%2C${restaurant.longitude}`}
-                      className="w-full h-56 border-0"
-                      loading="lazy"
-                      referrerPolicy="no-referrer"
-                    />
-                    <div className="p-3">
-                      <a
-                        href={`https://www.openstreetmap.org/?mlat=${restaurant.latitude}&mlon=${restaurant.longitude}#map=16/${restaurant.latitude}/${restaurant.longitude}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs text-primary hover:underline"
-                      >
-                        {t('Open in maps', 'فتح في الخريطة')}
-                      </a>
-                    </div>
-                  </div>
-                ) : restaurant.address ? (
-                  <div className="bg-card border border-border/60 rounded-2xl p-5">
-                    <div className="flex items-center gap-2 mb-3">
-                      <MapPin className="w-4 h-4 text-primary" />
-                      <h3 className="font-bold text-foreground">{t('Location', 'الموقع')}</h3>
-                    </div>
-                    <a
-                      href={`https://www.openstreetmap.org/search?query=${encodeURIComponent(restaurant.address)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm text-primary hover:underline"
-                    >
-                      {restaurant.address}
-                    </a>
-                  </div>
-                ) : null}
               </div>
             )}
           </div>
 
           {/* Sidebar */}
           <div className="space-y-5">
-            {/* Quick Info Card */}
-            <div className="bg-card border border-border rounded-3xl p-5 shadow-sm sticky top-6">
-              <h3 className="font-bold text-lg mb-4">{t('Quick Info', 'معلومات سريعة')}</h3>
-
-              {openingHours.length > 0 && (() => {
-                const todayHours = openingHours.find(h => h.dayOfWeek === today);
-                return todayHours ? (
-                  <div className="flex items-center gap-3 mb-4">
-                    <Clock className="w-4 h-4 text-primary shrink-0" />
-                    <div>
-                      <p className="text-xs text-muted-foreground">{t("Today's Hours", 'ساعات اليوم')}</p>
-                      <p className="text-sm font-semibold text-foreground">
-                        {todayHours.isClosed ? t('Closed', 'مغلق') : `${todayHours.openTime} – ${todayHours.closeTime}`}
-                      </p>
-                    </div>
-                  </div>
-                ) : null;
-              })()}
-
-              {restaurant.phone && (
-                <div className="flex items-center gap-3 mb-4">
-                  <Phone className="w-4 h-4 text-primary shrink-0" />
-                  <a href={`tel:${restaurant.phone}`} className="text-sm font-semibold text-foreground hover:text-primary transition-colors" dir="ltr">
-                    {restaurant.phone}
-                  </a>
-                </div>
-              )}
-
-              {restaurant.website && (
-                <div className="flex items-center gap-3 mb-4">
-                  <Globe className="w-4 h-4 text-primary shrink-0" />
-                  <a href={restaurant.website} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-primary hover:underline truncate">
-                    {restaurant.website.replace(/^https?:\/\//, '')}
-                  </a>
-                </div>
-              )}
-
-              <div className="flex flex-wrap gap-2 pt-4 border-t border-border mt-4">
-                {restaurant.hasParking && <span className="text-xs bg-secondary text-secondary-foreground px-2.5 py-1 rounded-lg">{t('Parking', 'مواقف')}</span>}
-                {restaurant.hasOutdoorSeating && <span className="text-xs bg-secondary text-secondary-foreground px-2.5 py-1 rounded-lg">{t('Outdoor', 'خارجي')}</span>}
-                {restaurant.isHalal && <span className="text-xs bg-green-100 text-green-700 px-2.5 py-1 rounded-lg">{t('Halal', 'حلال')}</span>}
-              </div>
-
-              <Button onClick={() => setShowBooking(true)} className="w-full mt-5 font-bold">
-                {t('Book a Table', 'احجز طاولة')}
+            {/* Quick Book CTA */}
+            <div className="bg-card border border-border/60 rounded-2xl p-5 sticky top-24">
+              <h3 className="font-bold text-foreground mb-3 flex items-center gap-2">
+                <CalendarDays className="w-5 h-5 text-primary" /> {t('Reserve a Table', 'احجز طاولة')}
+              </h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                {t('Instant booking confirmation for this restaurant.', 'تأكيد فوري للحجز في هذا المطعم.')}
+              </p>
+              <Button className="w-full font-bold" onClick={() => setActiveTab('book')}>
+                {t('See Available Times', 'عرض الأوقات المتاحة')}
               </Button>
+            </div>
+
+            {/* Rating Breakdown */}
+            {ratingBreakdown && ratingBreakdown.count > 0 && (
+              <div className="bg-card border border-border/60 rounded-2xl p-5">
+                <h3 className="font-bold text-foreground mb-4">{t('Rating Breakdown', 'تفاصيل التقييم')}</h3>
+                <div className="text-center mb-4">
+                  <span className="text-5xl font-black text-foreground">{ratingBreakdown.overall.toFixed(1)}</span>
+                  <div className="flex justify-center gap-0.5 mt-2">
+                    {[1, 2, 3, 4, 5].map(s => (
+                      <Star key={s} className={`w-4 h-4 ${s <= Math.round(ratingBreakdown.overall) ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground/20'}`} />
+                    ))}
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">{ratingBreakdown.count} {t('reviews', 'تقييم')}</p>
+                </div>
+                <div className="space-y-2">
+                  {[
+                    { label: t('Food', 'الطعام'), value: ratingBreakdown.food },
+                    { label: t('Service', 'الخدمة'), value: ratingBreakdown.service },
+                    { label: t('Ambiance', 'الأجواء'), value: ratingBreakdown.ambiance },
+                    { label: t('Value', 'القيمة'), value: ratingBreakdown.value },
+                  ].filter(r => r.value).map(r => (
+                    <div key={r.label} className="flex items-center gap-2 text-sm">
+                      <span className="text-muted-foreground w-16 shrink-0">{r.label}</span>
+                      <div className="flex-1 bg-muted rounded-full h-1.5 overflow-hidden">
+                        <div className="bg-primary h-full rounded-full transition-all" style={{ width: `${((r.value ?? 0) / 5) * 100}%` }} />
+                      </div>
+                      <span className="font-bold w-8 text-end">{r.value?.toFixed(1)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Quick Info */}
+            <div className="bg-card border border-border/60 rounded-2xl p-5">
+              <div className="space-y-3 text-sm">
+                {restaurant.phone && (
+                  <a href={`tel:${restaurant.phone}`} className="flex items-center gap-3 text-foreground hover:text-primary transition-colors">
+                    <Phone className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <span>{restaurant.phone}</span>
+                  </a>
+                )}
+                {restaurant.address && (
+                  <div className="flex items-center gap-3 text-foreground">
+                    <MapPin className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <span>{restaurant.address}</span>
+                  </div>
+                )}
+                {openingHours.length > 0 && (() => {
+                  const todayHours = openingHours.find(h => h.dayOfWeek === today);
+                  return todayHours ? (
+                    <div className="flex items-center gap-3 text-foreground">
+                      <Clock className="w-4 h-4 text-muted-foreground shrink-0" />
+                      <span>{todayHours.isClosed ? t('Closed today', 'مغلق اليوم') : `${t('Today:', 'اليوم:')} ${todayHours.openTime} – ${todayHours.closeTime}`}</span>
+                    </div>
+                  ) : null;
+                })()}
+              </div>
             </div>
           </div>
         </div>
       </div>
-
-      {/* Booking Modal */}
-      {showBooking && restaurant && (
-        <BookingModal
-          restaurantId={restaurant.id}
-          restaurantNameEn={restaurant.nameEn}
-          restaurantNameAr={restaurant.nameAr}
-          onClose={() => setShowBooking(false)}
-        />
-      )}
-
-      {/* Review Composer Modal */}
-      {showReviewComposer && restaurant && (
-        <ReviewComposerModal
-          restaurantId={restaurant.id}
-          restaurantNameEn={restaurant.nameEn}
-          restaurantNameAr={restaurant.nameAr}
-          onClose={() => setShowReviewComposer(false)}
-          onSuccess={() => {
-            setShowReviewComposer(false);
-            queryClient.invalidateQueries({ queryKey: getGetRestaurantQueryKey(Number(id)) });
-          }}
-        />
-      )}
     </div>
   );
 }

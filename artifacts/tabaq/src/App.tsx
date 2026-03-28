@@ -17,6 +17,7 @@ import { LeaderboardPage } from "@/pages/LeaderboardPage";
 import { ProfilePage } from "@/pages/ProfilePage";
 import { BookingsPage } from "@/pages/BookingsPage";
 import { VouchersPage } from "@/pages/VouchersPage";
+import { SignInPage } from "@/pages/SignInPage";
 import FeedPage from "@/pages/FeedPage";
 import NotFound from "@/pages/not-found";
 
@@ -31,27 +32,32 @@ const queryClient = new QueryClient({
 
 function Router() {
   return (
-    <div className="flex flex-col min-h-screen">
-      <Header />
-      <main className="flex-grow">
-        <Switch>
-          <Route path="/" component={HomePage} />
-          <Route path="/search" component={SearchPage} />
-          <Route path="/restaurants" component={DiscoveryPage} />
-          <Route path="/restaurants/:id" component={RestaurantDetailPage} />
-          <Route path="/dishes" component={DishesPage} />
-          <Route path="/dishes/:id" component={DishDetailPage} />
-          <Route path="/offers" component={OffersPage} />
-          <Route path="/leaderboard" component={LeaderboardPage} />
-          <Route path="/profile" component={ProfilePage} />
-          <Route path="/bookings" component={BookingsPage} />
-          <Route path="/vouchers" component={VouchersPage} />
-          <Route path="/feed" component={FeedPage} />
-          <Route component={NotFound} />
-        </Switch>
-      </main>
-      <Footer />
-    </div>
+    <Switch>
+      <Route path="/signin" component={SignInPage} />
+      <Route>
+        <div className="flex flex-col min-h-screen">
+          <Header />
+          <main className="flex-grow">
+            <Switch>
+              <Route path="/" component={HomePage} />
+              <Route path="/search" component={SearchPage} />
+              <Route path="/restaurants" component={DiscoveryPage} />
+              <Route path="/restaurants/:id" component={RestaurantDetailPage} />
+              <Route path="/dishes" component={DishesPage} />
+              <Route path="/dishes/:id" component={DishDetailPage} />
+              <Route path="/offers" component={OffersPage} />
+              <Route path="/leaderboard" component={LeaderboardPage} />
+              <Route path="/profile" component={ProfilePage} />
+              <Route path="/bookings" component={BookingsPage} />
+              <Route path="/vouchers" component={VouchersPage} />
+              <Route path="/feed" component={FeedPage} />
+              <Route component={NotFound} />
+            </Switch>
+          </main>
+          <Footer />
+        </div>
+      </Route>
+    </Switch>
   );
 }
 

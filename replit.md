@@ -43,7 +43,13 @@ Features include:
 - Booking reference format: `TBQ-XXXXXXXX`
 - Voucher code format: `VCH-XXXXXXXXXX`
 - ID generation: `nanoid` (in api-server)
-- Auth: Stubbed (userId hardcoded to 1) — real auth is Task #2
+- Auth: OTP-based auth via phone/email — users get JWT token stored in AuthContext
+- No pop-up modals anywhere — all interactions (booking, reviews, vouchers, sign-in) are inline on the page
+- Sign-in: dedicated `/signin` full-page route (no modal), accessed via Header button or Link
+- Booking: inline "Book" tab in RestaurantDetailPage (BookingSection component)
+- Reviews: inline InlineReviewComposer component at top of Reviews tab
+- Vouchers: inline expandable OfferCard on the Offers page (no modal)
+- RestaurantDetailPage: 5 tabs — Menu, Book, Reviews, Photos, Info
 
 ## Monorepo Structure
 

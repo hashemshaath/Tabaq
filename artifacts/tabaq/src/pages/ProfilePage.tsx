@@ -11,7 +11,7 @@ import {
   useGetUserFollowing,
   getGetUserFollowingQueryKey,
 } from "@workspace/api-client-react";
-import { LoginModal } from "@/components/auth/LoginModal";
+import { Link } from "wouter";
 import { User, Settings, ShieldCheck, MapPin, Calendar, Star, LogIn, BookOpen, Clock, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -20,7 +20,6 @@ type Tab = "activity" | "followers" | "following";
 export function ProfilePage() {
   const { t, lang } = useLanguage();
   const { user: authUser, isLoading: authLoading, token } = useAuth();
-  const [loginOpen, setLoginOpen] = useState(false);
   const [tab, setTab] = useState<Tab>("activity");
 
   const userId = authUser?.id ?? 0;
@@ -53,30 +52,26 @@ export function ProfilePage() {
 
   if (!authUser) {
     return (
-      <>
-        <div className="min-h-screen flex flex-col items-center justify-center gap-6 text-center p-8">
-          <div className="w-24 h-24 rounded-full bg-secondary flex items-center justify-center">
-            <User className="w-12 h-12 text-muted-foreground" />
-          </div>
-          <h2 className="text-2xl font-bold text-foreground">
-            {t("Sign in to view your profile", "سجّل دخولك لعرض ملفك الشخصي")}
-          </h2>
-          <p className="text-muted-foreground max-w-sm">
-            {t(
-              "Create an account or sign in to track your bookings, reviews, and rewards.",
-              "أنشئ حسابًا أو سجّل دخولك لمتابعة حجوزاتك وتقييماتك ومكافآتك."
-            )}
-          </p>
-          <Button
-            onClick={() => setLoginOpen(true)}
-            className="gap-2 rounded-xl px-8 h-12 text-base font-semibold"
-          >
+      <div className="min-h-screen flex flex-col items-center justify-center gap-6 text-center p-8">
+        <div className="w-24 h-24 rounded-full bg-secondary flex items-center justify-center">
+          <User className="w-12 h-12 text-muted-foreground" />
+        </div>
+        <h2 className="text-2xl font-bold text-foreground">
+          {t("Sign in to view your profile", "سجّل دخولك لعرض ملفك الشخصي")}
+        </h2>
+        <p className="text-muted-foreground max-w-sm">
+          {t(
+            "Create an account or sign in to track your bookings, reviews, and rewards.",
+            "أنشئ حسابًا أو سجّل دخولك لمتابعة حجوزاتك وتقييماتك ومكافآتك."
+          )}
+        </p>
+        <Link href="/signin">
+          <Button className="gap-2 rounded-xl px-8 h-12 text-base font-semibold">
             <LogIn className="w-5 h-5" />
             {t("Sign In", "تسجيل الدخول")}
           </Button>
-        </div>
-        <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
-      </>
+        </Link>
+      </div>
     );
   }
 
