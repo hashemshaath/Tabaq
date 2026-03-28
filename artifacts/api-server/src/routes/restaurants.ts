@@ -45,17 +45,17 @@ router.get("/restaurants", async (req, res) => {
     if (hasParking === "true") conditions.push(eq(restaurantsTable.hasParking, true));
     if (hasOutdoorSeating === "true") conditions.push(eq(restaurantsTable.hasOutdoorSeating, true));
     if (openNow === "true") {
-      const now = new Date();
-      const currentDay = now.getDay();
-      const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      // Use PostgreSQL server time in Asia/Riyadh timezone (UTC+3) for consistent GCC filtering
       const openRestaurantIds = await db
         .select({ restaurantId: openingHoursTable.restaurantId })
         .from(openingHoursTable)
         .where(and(
-          eq(openingHoursTable.dayOfWeek, currentDay),
           eq(openingHoursTable.isClosed, false),
-          sql`${openingHoursTable.openTime} <= ${currentTime}`,
-          sql`${openingHoursTable.closeTime} >= ${currentTime}`,
+          sql`${openingHoursTable.dayOfWeek} = EXTRACT(DOW FROM NOW() AT TIME ZONE 'Asia/Riyadh')::integer`,
+          sql`${openingHoursTable.openTime} IS NOT NULL`,
+          sql`${openingHoursTable.closeTime} IS NOT NULL`,
+          sql`${openingHoursTable.openTime} <= TO_CHAR(NOW() AT TIME ZONE 'Asia/Riyadh', 'HH24:MI')`,
+          sql`${openingHoursTable.closeTime} >= TO_CHAR(NOW() AT TIME ZONE 'Asia/Riyadh', 'HH24:MI')`,
         ));
       if (openRestaurantIds.length) {
         conditions.push(inArray(restaurantsTable.id, openRestaurantIds.map(r => r.restaurantId)));

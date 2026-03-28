@@ -304,8 +304,8 @@ export function RestaurantDetailPage() {
                               {lang === 'ar' ? section.nameAr : section.nameEn}
                             </h4>
                             {expandedSections.has(section.id)
-                              ? <ChevronUp className="w-4 h-4 text-muted-foreground" />
-                              : <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                              ? <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                              : <ChevronUp className="w-4 h-4 text-muted-foreground" />
                             }
                           </button>
                           {!expandedSections.has(section.id) && (
