@@ -71,13 +71,20 @@ router.get("/dishes", async (req, res) => {
   }
 });
 
-// Trending dishes
+// Trending dishes — ranked by computed quality score (rating weight + popularity + review volume)
 router.get("/dishes/trending", async (req, res) => {
   try {
     const { cityId, limit = "8" } = req.query;
 
     const trendingConditions: SQL[] = [eq(dishesTable.isAvailable, true)];
     if (cityId) trendingConditions.push(eq(restaurantsTable.cityId, parseInt(cityId as string)));
+
+    // Quality score = (avgRating * 20) + (popularityScore * 0.5) + (log(reviewCount+1) * 10)
+    const qualityScoreExpr = sql<number>`
+      (COALESCE(${dishesTable.avgRating}::numeric, 0) * 20)
+      + (COALESCE(${dishesTable.popularityScore}::numeric, 0) * 0.5)
+      + (LN(COALESCE(${dishesTable.reviewCount}, 0) + 1) * 10)
+    `;
 
     const dishes = await db.select({
       id: dishesTable.id,
@@ -88,14 +95,16 @@ router.get("/dishes/trending", async (req, res) => {
       currency: dishesTable.currency,
       avgRating: dishesTable.avgRating,
       reviewCount: dishesTable.reviewCount,
+      popularityScore: dishesTable.popularityScore,
       restaurantId: dishesTable.restaurantId,
       restaurantNameEn: restaurantsTable.nameEn,
       restaurantNameAr: restaurantsTable.nameAr,
       cityId: restaurantsTable.cityId,
+      qualityScore: qualityScoreExpr,
     }).from(dishesTable)
       .innerJoin(restaurantsTable, eq(dishesTable.restaurantId, restaurantsTable.id))
       .where(and(...trendingConditions))
-      .orderBy(desc(dishesTable.popularityScore))
+      .orderBy(desc(qualityScoreExpr))
       .limit(parseInt(limit as string));
 
     res.json(dishes);
