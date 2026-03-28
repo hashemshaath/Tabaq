@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, boolean, numeric, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, boolean, numeric, pgEnum, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { restaurantsTable } from "./restaurants";
@@ -43,6 +43,7 @@ export const dishesTable = pgTable("dishes", {
   isVegan: boolean("is_vegan").default(false).notNull(),
   isGlutenFree: boolean("is_gluten_free").default(false).notNull(),
   calories: integer("calories"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const insertMenuSchema = createInsertSchema(menusTable).omit({ id: true });

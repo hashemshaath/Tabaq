@@ -8,7 +8,7 @@ const router: IRouter = Router();
 // List dishes with filters
 router.get("/dishes", async (req, res) => {
   try {
-    const { restaurantId, categoryId, cityId, sortBy = "rating", limit = "20", offset = "0" } = req.query;
+    const { restaurantId, categoryId, cityId, dietaryTag, sortBy = "rating", limit = "20", offset = "0" } = req.query;
 
     const conditions: SQL[] = [eq(dishesTable.isAvailable, true)];
     if (restaurantId) conditions.push(eq(dishesTable.restaurantId, parseInt(restaurantId as string)));
@@ -23,9 +23,15 @@ router.get("/dishes", async (req, res) => {
         conditions.push(sql`1 = 0`);
       }
     }
+    if (dietaryTag === "halal") conditions.push(eq(dishesTable.isHalal, true));
+    else if (dietaryTag === "vegetarian") conditions.push(eq(dishesTable.isVegetarian, true));
+    else if (dietaryTag === "vegan") conditions.push(eq(dishesTable.isVegan, true));
+    else if (dietaryTag === "gluten_free") conditions.push(eq(dishesTable.isGlutenFree, true));
 
     const orderCol = sortBy === "popularity"
       ? desc(dishesTable.popularityScore)
+      : sortBy === "newest"
+      ? desc(dishesTable.createdAt)
       : desc(dishesTable.avgRating);
 
     const dishes = await db.select({
