@@ -2374,6 +2374,9 @@ components:
           type: string
         referenceCode:
           type: string
+        qrPayload:
+          type: string
+          description: "Canonical QR code payload: TABAQ:BOOKING:<id>:<referenceCode>. Clients render this as a QR image for restaurant staff to scan."
         createdAt:
           type: string
           format: date-time

@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { offersTable, vouchersTable, restaurantsTable } from "@workspace/db/schema";
-import { eq, and, sql, lte, gte, type SQL } from "drizzle-orm";
+import { offersTable, vouchersTable, restaurantsTable, usersTable } from "@workspace/db/schema";
+import { eq, and, sql, lte, gte, or, type SQL } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { requireAuth, optionalAuth } from "../middleware/requireAuth.js";
 import { awardPoints, POINTS } from "../lib/points.js";
@@ -204,31 +204,43 @@ router.post("/vouchers", requireAuth, async (req, res) => {
     const userId = req.auth!.userId;
     const code = `VCH-${nanoid(10).toUpperCase()}`;
 
-    // Atomically decrement capacity — only proceed if remaining > 0
-    if (offer.remainingCapacity !== null) {
-      const updated = await db.update(offersTable)
-        .set({ remainingCapacity: sql`${offersTable.remainingCapacity} - 1` })
-        .where(and(eq(offersTable.id, offerId), sql`${offersTable.remainingCapacity} > 0`))
-        .returning({ remainingCapacity: offersTable.remainingCapacity });
-      if (updated.length === 0) {
+    // Atomic transaction: decrement capacity + insert voucher.
+    // If any step fails the whole thing rolls back — no capacity lost without a voucher.
+    let voucher: typeof vouchersTable.$inferSelect;
+    try {
+      voucher = await db.transaction(async (tx) => {
+        if (offer.remainingCapacity !== null) {
+          const updated = await tx.update(offersTable)
+            .set({ remainingCapacity: sql`${offersTable.remainingCapacity} - 1` })
+            .where(and(eq(offersTable.id, offerId), sql`${offersTable.remainingCapacity} > 0`))
+            .returning({ remainingCapacity: offersTable.remainingCapacity });
+          if (updated.length === 0) {
+            throw Object.assign(new Error("sold_out"), { statusCode: 400 });
+          }
+        }
+
+        const [created] = await tx.insert(vouchersTable).values({
+          code,
+          offerId,
+          userId,
+          restaurantId: offer.restaurantId,
+          value: offer.discountedPrice ?? offer.originalPrice ?? "0",
+          currency: offer.currency,
+          validUntil: offer.validUntil,
+          isGift: false,
+          status: "active",
+        }).returning();
+        return created!;
+      });
+    } catch (err) {
+      if (err instanceof Error && err.message === "sold_out") {
         res.status(400).json({ error: "bad_request", message: "This offer is sold out" });
         return;
       }
+      throw err;
     }
 
-    const [voucher] = await db.insert(vouchersTable).values({
-      code,
-      offerId,
-      userId,
-      restaurantId: offer.restaurantId,
-      value: offer.discountedPrice ?? offer.originalPrice ?? "0",
-      currency: offer.currency,
-      validUntil: offer.validUntil,
-      isGift: false,
-      status: "active",
-    }).returning();
-
-    // Award points for purchasing a voucher
+    // Award points outside transaction (non-critical, failure should not roll back voucher issuance)
     await awardPoints(userId, POINTS.VOUCHER_PURCHASED);
 
     // Notification stubs: in production these trigger push/SMS/email events
@@ -316,18 +328,47 @@ router.post("/vouchers/:voucherId/gift", requireAuth, async (req, res) => {
       return;
     }
 
+    // Recipient lookup: resolve phone/email to a registered user account if one exists
+    const lookupConditions: SQL[] = [];
+    if (recipientPhone) lookupConditions.push(eq(usersTable.phone, recipientPhone));
+    if (recipientEmail) lookupConditions.push(eq(usersTable.email, recipientEmail));
+
+    let recipientUserId: number | null = null;
+    if (lookupConditions.length > 0) {
+      const [recipient] = await db.select({ id: usersTable.id })
+        .from(usersTable)
+        .where(or(...lookupConditions));
+      recipientUserId = recipient?.id ?? null;
+    }
+
     const [voucher] = await db.update(vouchersTable)
-      .set({ isGift: true, giftRecipientPhone: recipientPhone ?? null, giftRecipientEmail: recipientEmail ?? null, giftMessage: giftMessage ?? null })
+      .set({
+        isGift: true,
+        giftRecipientPhone: recipientPhone ?? null,
+        giftRecipientEmail: recipientEmail ?? null,
+        giftMessage: giftMessage ?? null,
+        // If recipient has an account, link the voucher to them directly
+        ...(recipientUserId ? { userId: recipientUserId } : {}),
+      })
       .where(eq(vouchersTable.id, voucherId))
       .returning();
 
     const [restaurant] = await db.select({ nameEn: restaurantsTable.nameEn, nameAr: restaurantsTable.nameAr })
       .from(restaurantsTable).where(eq(restaurantsTable.id, voucher.restaurantId));
 
-    // Notification stub: in production, send gift notification to recipient via phone/email
-    req.log.info({ voucherId, recipientPhone, recipientEmail }, "NOTIFY: gift voucher sent — deliver to recipient");
+    // Notification stub: in production, send gift notification to recipient via phone/email/in-app
+    if (recipientUserId) {
+      req.log.info({ voucherId, recipientUserId }, "NOTIFY: gift voucher sent — deliver in-app notification to registered recipient");
+    } else {
+      req.log.info({ voucherId, recipientPhone, recipientEmail }, "NOTIFY: gift voucher sent — deliver via SMS/email to unregistered recipient");
+    }
 
-    res.json({ ...voucher, restaurantNameEn: restaurant?.nameEn ?? "", restaurantNameAr: restaurant?.nameAr ?? "" });
+    res.json({
+      ...voucher,
+      restaurantNameEn: restaurant?.nameEn ?? "",
+      restaurantNameAr: restaurant?.nameAr ?? "",
+      recipientResolved: recipientUserId !== null,
+    });
   } catch (err) {
     req.log.error({ err }, "Failed to gift voucher");
     res.status(500).json({ error: "internal_error", message: "Failed to gift voucher" });

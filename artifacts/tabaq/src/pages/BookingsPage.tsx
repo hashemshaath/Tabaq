@@ -126,7 +126,7 @@ function BookingCard({ booking, lang, t, onCancel }: {
               </button>
             </div>
             <div className="flex justify-center mb-4">
-              <QRCodeDisplay value={booking.referenceCode} size={180} />
+              <QRCodeDisplay value={`TABAQ:BOOKING:${booking.id}:${booking.referenceCode}`} size={180} />
             </div>
             <p className="text-sm text-muted-foreground mb-2">{t('Show this code at the restaurant', 'أظهر هذا الرمز في المطعم')}</p>
             <p className="font-bold font-mono text-primary text-xl tracking-widest">{booking.referenceCode}</p>

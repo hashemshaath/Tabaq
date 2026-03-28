@@ -507,6 +507,8 @@ export interface Booking {
   occasionId?: number;
   specialRequests?: string;
   referenceCode: string;
+  /** Canonical QR code payload: TABAQ:BOOKING:<id>:<referenceCode>. Clients render this as a QR image. */
+  qrPayload?: string;
   createdAt: string;
 }
 

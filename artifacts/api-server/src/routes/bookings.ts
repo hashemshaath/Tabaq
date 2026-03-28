@@ -194,11 +194,17 @@ router.post("/bookings", requireAuth, async (req, res) => {
     req.log.info({ bookingId: booking.id, userId, referenceCode }, "NOTIFY: booking confirmation — send to user");
     req.log.info({ bookingId: booking.id, restaurantId }, "NOTIFY: new reservation alert — send to restaurant");
 
+    // qrPayload is the canonical machine-readable content for the booking QR code.
+    // Clients use this string to render QR codes (e.g. via qrcode npm).
+    // Format: TABAQ:BOOKING:<id>:<referenceCode> — stable, scannable by restaurant POS.
+    const qrPayload = `TABAQ:BOOKING:${booking.id}:${referenceCode}`;
+
     res.status(201).json({
       ...booking,
       restaurantNameEn: restaurant?.nameEn ?? "",
       restaurantNameAr: restaurant?.nameAr ?? "",
       restaurantCoverImageUrl: restaurant?.coverImageUrl ?? null,
+      qrPayload,
     });
   } catch (err) {
     req.log.error({ err }, "Failed to create booking");
