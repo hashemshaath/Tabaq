@@ -230,7 +230,6 @@ export interface Review {
   userAvatarUrl?: string;
   userLevel?: number;
   userLevelTitle?: string;
-  /** True when the reviewer has a credibility score >= 70 */
   userIsVerified?: boolean;
   restaurantId?: number;
   restaurantNameEn?: string;
@@ -271,40 +270,6 @@ export interface Review {
   isLiked: boolean;
   visitDate?: string;
   createdAt: string;
-}
-
-export interface ReviewComment {
-  id: number;
-  reviewId: number;
-  userId: number;
-  text: string;
-  createdAt: string;
-  userNameEn?: string;
-  userNameAr?: string;
-  userAvatarUrl?: string;
-  userLevelTitle?: string;
-}
-
-export interface ReviewCommentListResponse {
-  comments: ReviewComment[];
-}
-
-export interface CreateReviewCommentRequest {
-  text: string;
-}
-
-export interface FeedReview extends Review {
-  restaurantNameEn?: string;
-  restaurantNameAr?: string;
-  dishNameEn?: string;
-  dishNameAr?: string;
-}
-
-export interface FeedResponse {
-  reviews: FeedReview[];
-  total: number;
-  offset: number;
-  limit: number;
 }
 
 export interface RatingBreakdown {
@@ -548,7 +513,7 @@ export interface Booking {
   occasionId?: number;
   specialRequests?: string;
   referenceCode: string;
-  /** Canonical QR code payload: TABAQ:BOOKING:<id>:<referenceCode>. Clients render this as a QR image. */
+  /** Canonical QR code payload: TABAQ:BOOKING:<id>:<referenceCode>. Clients render this as a QR image for restaurant staff to scan. */
   qrPayload?: string;
   createdAt: string;
 }
@@ -612,6 +577,21 @@ export const VoucherStatus = {
   expired: "expired",
 } as const;
 
+export type VoucherRole = (typeof VoucherRole)[keyof typeof VoucherRole];
+
+export const VoucherRole = {
+  owner: "owner",
+  recipient: "recipient",
+} as const;
+
+export type VoucherGiftDeliveryStatus =
+  (typeof VoucherGiftDeliveryStatus)[keyof typeof VoucherGiftDeliveryStatus];
+
+export const VoucherGiftDeliveryStatus = {
+  pending: "pending",
+  delivered: "delivered",
+} as const;
+
 export interface Voucher {
   id: number;
   code: string;
@@ -626,18 +606,10 @@ export interface Voucher {
   validUntil?: string;
   giftMessage?: string;
   isGift: boolean;
-  /** Set when the voucher is a gift. Sender userId — separate from voucher owner for gift tracking. */
-  gifterUserId?: number;
-  /** Resolved recipient account ID, if recipient is a registered user. */
-  recipientUserId?: number;
-  giftRecipientPhone?: string;
-  giftRecipientEmail?: string;
-  /** "pending" | "delivered" — delivery status of gift notification. */
-  giftDeliveryStatus?: string;
+  role?: VoucherRole;
+  giftDeliveryStatus?: VoucherGiftDeliveryStatus;
   redeemedAt?: string;
   createdAt: string;
-  /** "owner" | "recipient" — caller's relationship to this voucher (returned by list endpoint). */
-  role?: string;
 }
 
 export interface PurchaseVoucherRequest {
@@ -694,6 +666,81 @@ export interface ReviewListResponse {
 export interface LikeStatusResponse {
   isLiked: boolean;
   likeCount: number;
+}
+
+export interface UpdateReviewRequest {
+  /**
+   * @minimum 1
+   * @maximum 5
+   */
+  ratingOverall?: number;
+  /**
+   * @minimum 1
+   * @maximum 5
+   */
+  ratingFood?: number;
+  /**
+   * @minimum 1
+   * @maximum 5
+   */
+  ratingService?: number;
+  /**
+   * @minimum 1
+   * @maximum 5
+   */
+  ratingAmbiance?: number;
+  /**
+   * @minimum 1
+   * @maximum 5
+   */
+  ratingValue?: number;
+  textEn?: string;
+  textAr?: string;
+  photoUrls?: string[];
+  visitDate?: string;
+}
+
+export interface ReviewComment {
+  id: number;
+  reviewId: number;
+  userId: number;
+  userNameEn: string;
+  userNameAr?: string;
+  userAvatarUrl?: string;
+  text: string;
+  createdAt: string;
+}
+
+export interface CreateReviewCommentRequest {
+  text: string;
+}
+
+export interface ReviewCommentListResponse {
+  comments: ReviewComment[];
+  total: number;
+}
+
+export interface FeedResponse {
+  reviews: Review[];
+  total: number;
+  offset: number;
+  limit: number;
+}
+
+export type ReportRequestReason =
+  (typeof ReportRequestReason)[keyof typeof ReportRequestReason];
+
+export const ReportRequestReason = {
+  spam: "spam",
+  inappropriate: "inappropriate",
+  offensive: "offensive",
+  fake: "fake",
+  other: "other",
+} as const;
+
+export interface ReportRequest {
+  reason: ReportRequestReason;
+  details?: string;
 }
 
 export interface SearchResponse {
@@ -964,6 +1011,15 @@ export type ListReviewsParams = {
   restaurantId?: number;
   dishId?: number;
   userId?: number;
+  limit?: number;
+  offset?: number;
+};
+
+export type ReportReview200 = {
+  message: string;
+};
+
+export type GetFeedParams = {
   limit?: number;
   offset?: number;
 };

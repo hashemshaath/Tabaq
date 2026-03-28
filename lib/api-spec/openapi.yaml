@@ -1066,6 +1066,29 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Review"
+    patch:
+      operationId: updateReview
+      tags: [reviews]
+      summary: Update a review (author only)
+      parameters:
+        - name: reviewId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateReviewRequest"
+      responses:
+        "200":
+          description: Updated review
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Review"
     delete:
       operationId: deleteReview
       tags: [reviews]
@@ -1098,6 +1121,122 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/LikeStatusResponse"
+
+  /reviews/{reviewId}/report:
+    post:
+      operationId: reportReview
+      tags: [reviews]
+      summary: Report a review as inappropriate
+      parameters:
+        - name: reviewId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReportRequest"
+      responses:
+        "200":
+          description: Report acknowledged
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                required:
+                  - message
+
+  /reviews/{reviewId}/comments:
+    get:
+      operationId: listReviewComments
+      tags: [reviews]
+      summary: List comments on a review
+      parameters:
+        - name: reviewId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Comments list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReviewCommentListResponse"
+    post:
+      operationId: addReviewComment
+      tags: [reviews]
+      summary: Add a comment to a review
+      parameters:
+        - name: reviewId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateReviewCommentRequest"
+      responses:
+        "201":
+          description: Comment created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReviewComment"
+
+  /reviews/{reviewId}/comments/{commentId}:
+    delete:
+      operationId: deleteReviewComment
+      tags: [reviews]
+      summary: Delete a comment (author only)
+      parameters:
+        - name: reviewId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: commentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /feed:
+    get:
+      operationId: getFeed
+      tags: [reviews]
+      summary: Social feed — reviews from followed users and followed restaurants, with city fallback
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 30
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: Social feed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeedResponse"
 
   # ─── Users ────────────────────────────────────────────────────────────────
   /users:
@@ -2583,6 +2722,12 @@ components:
           type: string
         isGift:
           type: boolean
+        role:
+          type: string
+          enum: [owner, recipient]
+        giftDeliveryStatus:
+          type: string
+          enum: [pending, delivered]
         redeemedAt:
           type: string
           format: date-time
@@ -2637,10 +2782,20 @@ components:
           type: integer
         userLevelTitle:
           type: string
+        userIsVerified:
+          type: boolean
         restaurantId:
           type: integer
+        restaurantNameEn:
+          type: string
+        restaurantNameAr:
+          type: string
         dishId:
           type: integer
+        dishNameEn:
+          type: string
+        dishNameAr:
+          type: string
         ratingOverall:
           type: number
           minimum: 1
@@ -2670,6 +2825,8 @@ components:
           items:
             type: string
         likeCount:
+          type: integer
+        commentCount:
           type: integer
         isLiked:
           type: boolean
@@ -2758,6 +2915,120 @@ components:
       required:
         - isLiked
         - likeCount
+
+    UpdateReviewRequest:
+      type: object
+      properties:
+        ratingOverall:
+          type: number
+          minimum: 1
+          maximum: 5
+        ratingFood:
+          type: number
+          minimum: 1
+          maximum: 5
+        ratingService:
+          type: number
+          minimum: 1
+          maximum: 5
+        ratingAmbiance:
+          type: number
+          minimum: 1
+          maximum: 5
+        ratingValue:
+          type: number
+          minimum: 1
+          maximum: 5
+        textEn:
+          type: string
+        textAr:
+          type: string
+        photoUrls:
+          type: array
+          items:
+            type: string
+        visitDate:
+          type: string
+          format: date
+
+    ReviewComment:
+      type: object
+      properties:
+        id:
+          type: integer
+        reviewId:
+          type: integer
+        userId:
+          type: integer
+        userNameEn:
+          type: string
+        userNameAr:
+          type: string
+        userAvatarUrl:
+          type: string
+        text:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - reviewId
+        - userId
+        - userNameEn
+        - text
+        - createdAt
+
+    CreateReviewCommentRequest:
+      type: object
+      properties:
+        text:
+          type: string
+      required:
+        - text
+
+    ReviewCommentListResponse:
+      type: object
+      properties:
+        comments:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReviewComment"
+        total:
+          type: integer
+      required:
+        - comments
+        - total
+
+    FeedResponse:
+      type: object
+      properties:
+        reviews:
+          type: array
+          items:
+            $ref: "#/components/schemas/Review"
+        total:
+          type: integer
+        offset:
+          type: integer
+        limit:
+          type: integer
+      required:
+        - reviews
+        - total
+        - offset
+        - limit
+
+    ReportRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          enum: [spam, inappropriate, offensive, fake, other]
+        details:
+          type: string
+      required:
+        - reason
 
     # ─── Search ───────────────────────────────────────────────────────────
     SearchResponse:

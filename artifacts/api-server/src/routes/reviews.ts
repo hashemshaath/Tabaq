@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import {
   reviewsTable, reviewPhotosTable, reviewLikesTable, reviewCommentsTable,
-  usersTable, restaurantsTable, dishesTable
+  usersTable, restaurantsTable, dishesTable,
 } from "@workspace/db/schema";
 import { eq, and, sql, desc, type SQL } from "drizzle-orm";
 import { requireAuth, optionalAuth } from "../middleware/requireAuth.js";
@@ -209,6 +209,98 @@ router.delete("/reviews/:reviewId", requireAuth, async (req, res) => {
   }
 });
 
+// Update review — only the author can edit
+router.patch("/reviews/:reviewId", requireAuth, async (req, res) => {
+  try {
+    const reviewId = parseInt(req.params["reviewId"] as string, 10);
+    const userId = req.auth!.userId;
+
+    const [review] = await db.select().from(reviewsTable).where(eq(reviewsTable.id, reviewId));
+    if (!review) {
+      res.status(404).json({ error: "not_found", message: "Review not found" });
+      return;
+    }
+    if (review.userId !== userId) {
+      res.status(403).json({ error: "forbidden", message: "You can only edit your own reviews" });
+      return;
+    }
+
+    const { photoUrls, ...rest } = req.body;
+    const allowedFields = ["ratingOverall", "ratingFood", "ratingService", "ratingAmbiance", "ratingValue", "textEn", "textAr", "visitDate"];
+    const updateData: Record<string, unknown> = {};
+    for (const field of allowedFields) {
+      if (field in rest && rest[field] !== undefined) {
+        // Convert camelCase to snake_case for drizzle
+        updateData[field] = rest[field];
+      }
+    }
+
+    if (Object.keys(updateData).length > 0) {
+      await db.update(reviewsTable).set(updateData).where(eq(reviewsTable.id, reviewId));
+    }
+
+    // Update photos if provided
+    if (Array.isArray(photoUrls)) {
+      await db.delete(reviewPhotosTable).where(eq(reviewPhotosTable.reviewId, reviewId));
+      if (photoUrls.length > 0) {
+        await db.insert(reviewPhotosTable).values(
+          (photoUrls as string[]).map((url: string, i: number) => ({ reviewId, photoUrl: url, displayOrder: i }))
+        );
+      }
+    }
+
+    // Recompute avg rating if overall changed
+    if (updateData.ratingOverall && review.restaurantId) {
+      await db.execute(sql`
+        UPDATE restaurants SET
+          avg_rating = (SELECT AVG(rating_overall::numeric) FROM reviews WHERE restaurant_id = ${review.restaurantId}),
+          updated_at = NOW()
+        WHERE id = ${review.restaurantId}
+      `);
+    }
+
+    const [updatedReview] = await db.select().from(reviewsTable).where(eq(reviewsTable.id, reviewId));
+    const enriched = await enrichReview(updatedReview!, userId);
+    res.json(enriched);
+  } catch (err) {
+    req.log.error({ err }, "Failed to update review");
+    res.status(500).json({ error: "internal_error", message: "Failed to update review" });
+  }
+});
+
+// Report review as inappropriate
+router.post("/reviews/:reviewId/report", requireAuth, async (req, res) => {
+  try {
+    const reviewId = parseInt(req.params["reviewId"] as string, 10);
+    const userId = req.auth!.userId;
+    const { reason, details } = req.body;
+
+    if (!reason) {
+      res.status(400).json({ error: "bad_request", message: "Reason is required" });
+      return;
+    }
+
+    const [review] = await db.select({ id: reviewsTable.id, userId: reviewsTable.userId })
+      .from(reviewsTable).where(eq(reviewsTable.id, reviewId));
+    if (!review) {
+      res.status(404).json({ error: "not_found", message: "Review not found" });
+      return;
+    }
+    if (review.userId === userId) {
+      res.status(400).json({ error: "bad_request", message: "You cannot report your own review" });
+      return;
+    }
+
+    // For now, log the report. In production this would go to a moderation queue.
+    req.log.info({ reviewId, reportedBy: userId, reason, details }, "Review reported");
+
+    res.json({ message: "Report received. Our team will review it shortly." });
+  } catch (err) {
+    req.log.error({ err }, "Failed to report review");
+    res.status(500).json({ error: "internal_error", message: "Failed to report review" });
+  }
+});
+
 // Like / unlike review
 router.post("/reviews/:reviewId/like", requireAuth, async (req, res) => {
   try {
@@ -381,37 +473,77 @@ router.delete("/reviews/:reviewId/comments/:commentId", requireAuth, async (req,
   }
 });
 
-// Social feed — reviews from followed users
+// Social feed — reviews from followed users + followed restaurants + city fallback
 router.get("/feed", requireAuth, async (req, res) => {
   try {
     const userId = req.auth!.userId;
-    const { limit = "20", offset = "0" } = req.query;
+    const { limit = "30", offset = "0" } = req.query;
     const lim = parseInt(limit as string);
     const off = parseInt(offset as string);
 
-    // Get reviews from users the current user follows + own reviews, most recent first
+    // Get the user's cityId for fallback
+    const [currentUser] = await db.select({ cityId: usersTable.cityId })
+      .from(usersTable).where(eq(usersTable.id, userId));
+
     const feedReviews = await db.execute<{
       id: number; user_id: number; restaurant_id: number | null; dish_id: number | null;
       rating_overall: string; rating_food: string | null; rating_service: string | null;
       rating_ambiance: string | null; rating_value: string | null;
       text_en: string | null; text_ar: string | null;
       like_count: number; comment_count: number; visit_date: string | null; created_at: Date;
-    }>(sql`
-      SELECT r.*
-      FROM reviews r
-      WHERE r.user_id = ${userId}
-        OR r.user_id IN (
-          SELECT following_id FROM user_follows WHERE follower_id = ${userId}
-        )
-      ORDER BY r.created_at DESC
-      LIMIT ${lim} OFFSET ${off}
-    `);
+    }>(
+      currentUser?.cityId
+        ? sql`
+          SELECT DISTINCT r.*
+          FROM reviews r
+          WHERE r.user_id = ${userId}
+            OR r.user_id IN (
+              SELECT following_id FROM user_follows WHERE follower_id = ${userId}
+            )
+            OR r.restaurant_id IN (
+              SELECT restaurant_id FROM restaurant_follows WHERE user_id = ${userId}
+            )
+            OR r.restaurant_id IN (
+              SELECT id FROM restaurants WHERE city_id = ${currentUser.cityId}
+            )
+          ORDER BY r.created_at DESC
+          LIMIT ${lim} OFFSET ${off}
+        `
+        : sql`
+          SELECT DISTINCT r.*
+          FROM reviews r
+          WHERE r.user_id = ${userId}
+            OR r.user_id IN (
+              SELECT following_id FROM user_follows WHERE follower_id = ${userId}
+            )
+            OR r.restaurant_id IN (
+              SELECT restaurant_id FROM restaurant_follows WHERE user_id = ${userId}
+            )
+          ORDER BY r.created_at DESC
+          LIMIT ${lim} OFFSET ${off}
+        `
+    );
 
-    const total = await db.execute<{ count: string }>(sql`
-      SELECT COUNT(*)::text as count FROM reviews r
-      WHERE r.user_id = ${userId}
-        OR r.user_id IN (SELECT following_id FROM user_follows WHERE follower_id = ${userId})
-    `);
+    const total = await db.execute<{ count: string }>(
+      currentUser?.cityId
+        ? sql`
+          SELECT COUNT(*)::text as count FROM (
+            SELECT DISTINCT r.id FROM reviews r
+            WHERE r.user_id = ${userId}
+              OR r.user_id IN (SELECT following_id FROM user_follows WHERE follower_id = ${userId})
+              OR r.restaurant_id IN (SELECT restaurant_id FROM restaurant_follows WHERE user_id = ${userId})
+              OR r.restaurant_id IN (SELECT id FROM restaurants WHERE city_id = ${currentUser.cityId})
+          ) sub
+        `
+        : sql`
+          SELECT COUNT(*)::text as count FROM (
+            SELECT DISTINCT r.id FROM reviews r
+            WHERE r.user_id = ${userId}
+              OR r.user_id IN (SELECT following_id FROM user_follows WHERE follower_id = ${userId})
+              OR r.restaurant_id IN (SELECT restaurant_id FROM restaurant_follows WHERE user_id = ${userId})
+          ) sub
+        `
+    );
 
     const enriched = await Promise.all(
       feedReviews.rows.map(row => {
