@@ -285,6 +285,19 @@ export function AdminPanelPage() {
     enabled: activeTab === 'messages',
   });
 
+  const { data: registrationsData, refetch: refetchRegistrations } = useQuery({
+    queryKey: ['admin-registrations'],
+    queryFn: async () => {
+      const res = await fetch('/api/admin/registrations?status=all', { credentials: 'include' });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    retry: false,
+    staleTime: 30000,
+  });
+
+  const pendingApplications: any[] = registrationsData?.applications?.filter((a: any) => a.status === 'pending') ?? PENDING_RESTAURANTS;
+
   const [contractForm, setContractForm] = useState({ restaurantId: '', paymentModel: 'full_collection', commissionPercent: '15', settlementDays: '7', partialCollectionPercent: '', validFrom: '', validUntil: '', notes: '', internalNotes: '' });
   const [showContractForm, setShowContractForm] = useState(false);
 
@@ -334,7 +347,7 @@ export function AdminPanelPage() {
 
   const navItems: { id: AdminTab; label: string; icon: React.ElementType; badge?: number }[] = [
     { id: 'overview', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'registrations', label: 'Registrations', icon: Plus, badge: PENDING_RESTAURANTS.length },
+    { id: 'registrations', label: 'Registrations', icon: Plus, badge: pendingApplications.length },
     { id: 'restaurants', label: 'Restaurants', icon: Utensils },
     { id: 'users', label: 'Users', icon: Users },
     { id: 'bookings', label: 'Bookings', icon: CalendarDays },
@@ -486,17 +499,17 @@ export function AdminPanelPage() {
                 <div className="bg-card border border-border rounded-2xl overflow-hidden">
                   <div className="flex items-center justify-between p-5 border-b border-border">
                     <h2 className="font-bold text-foreground">Pending Registrations</h2>
-                    <span className="bg-amber-100 text-amber-700 text-xs font-bold px-2.5 py-1 rounded-full">{PENDING_RESTAURANTS.length}</span>
+                    <span className="bg-amber-100 text-amber-700 text-xs font-bold px-2.5 py-1 rounded-full">{pendingApplications.length}</span>
                   </div>
                   <div className="divide-y divide-border">
-                    {PENDING_RESTAURANTS.slice(0, 3).map(r => (
+                    {pendingApplications.slice(0, 3).map((r: any) => (
                       <div key={r.id} className="flex items-center gap-3 p-4">
                         <div className="w-9 h-9 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
                           <Utensils className="w-4 h-4 text-primary" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-sm text-foreground truncate">{r.name}</p>
-                          <p className="text-xs text-muted-foreground">{r.city} · {r.appliedAt}</p>
+                          <p className="font-semibold text-sm text-foreground truncate">{r.nameEn ?? r.name}</p>
+                          <p className="text-xs text-muted-foreground">{r.city} · {r.appliedAt ?? (r.createdAt ? new Date(r.createdAt).toLocaleDateString() : '')}</p>
                         </div>
                         <div className="flex gap-1.5 shrink-0">
                           <button className="p-1.5 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 transition-colors"><CheckCircle2 className="w-4 h-4" /></button>
@@ -553,13 +566,27 @@ export function AdminPanelPage() {
           {activeTab === 'registrations' && (
             <div className="space-y-5">
               <div className="flex items-center justify-between">
-                <p className="text-muted-foreground text-sm">{PENDING_RESTAURANTS.length} applications awaiting review</p>
+                <p className="text-muted-foreground text-sm">{pendingApplications.length} applications awaiting review</p>
                 <div className="flex gap-2">
                   <button className="text-xs bg-green-100 text-green-700 px-3 py-1.5 rounded-lg font-semibold">Approve All</button>
                 </div>
               </div>
               <div className="space-y-4">
-                {PENDING_RESTAURANTS.map(r => (
+                {(registrationsData?.applications ?? PENDING_RESTAURANTS).map((r: any) => {
+                  const statusColors: Record<string, string> = {
+                    pending: 'bg-amber-100 text-amber-700',
+                    approved: 'bg-green-100 text-green-700',
+                    rejected: 'bg-red-100 text-red-700',
+                  };
+                  const handleAppAction = async (status: string) => {
+                    await fetch(`/api/admin/registrations/${r.id}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ status }),
+                    });
+                    refetchRegistrations();
+                  };
+                  return (
                   <div key={r.id} className="bg-card border border-border rounded-2xl p-5">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex items-start gap-4">
@@ -567,38 +594,43 @@ export function AdminPanelPage() {
                           <Utensils className="w-6 h-6 text-primary" />
                         </div>
                         <div>
-                          <h3 className="font-bold text-foreground">{r.name}</h3>
-                          <p className="text-sm text-muted-foreground">{r.nameAr} · {r.category}</p>
+                          <h3 className="font-bold text-foreground">{r.nameEn ?? r.name}</h3>
+                          <p className="text-sm text-muted-foreground">{r.nameAr} · {r.businessType ?? r.category}</p>
                           <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
                             <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{r.city}</span>
-                            <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{r.appliedAt}</span>
+                            <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{r.appliedAt ?? (r.createdAt ? new Date(r.createdAt).toLocaleDateString() : '')}</span>
                           </div>
                         </div>
                       </div>
                       <div className="text-end shrink-0">
-                        <p className="text-sm font-semibold text-foreground">{r.owner}</p>
+                        <p className="text-sm font-semibold text-foreground">{r.ownerName ?? r.owner}</p>
                         <p className="text-xs text-muted-foreground">{r.phone}</p>
-                        <span className="inline-flex items-center gap-1 text-xs bg-amber-100 text-amber-700 px-2.5 py-1 rounded-full font-semibold mt-2">
-                          <AlertCircle className="w-3 h-3" /> Pending Review
+                        <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-semibold mt-2 ${statusColors[r.status] ?? 'bg-amber-100 text-amber-700'}`}>
+                          <AlertCircle className="w-3 h-3" /> {r.status ? r.status.charAt(0).toUpperCase() + r.status.slice(1) : 'Pending'}
                         </span>
                       </div>
                     </div>
                     <div className="flex gap-2 mt-4 pt-4 border-t border-border">
-                      <button className="flex items-center gap-1.5 bg-green-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-green-700 transition-colors">
-                        <CheckCircle2 className="w-4 h-4" /> Approve
-                      </button>
-                      <button className="flex items-center gap-1.5 bg-red-100 text-red-700 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-red-200 transition-colors">
-                        <XCircle className="w-4 h-4" /> Reject
-                      </button>
-                      <button className="flex items-center gap-1.5 bg-secondary text-foreground px-4 py-2 rounded-xl text-sm font-semibold hover:bg-secondary/80 transition-colors">
-                        <Eye className="w-4 h-4" /> Preview
-                      </button>
+                      {r.status !== 'approved' && (
+                        <button onClick={() => handleAppAction('approved')} className="flex items-center gap-1.5 bg-green-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-green-700 transition-colors">
+                          <CheckCircle2 className="w-4 h-4" /> Approve
+                        </button>
+                      )}
+                      {r.status !== 'rejected' && (
+                        <button onClick={() => handleAppAction('rejected')} className="flex items-center gap-1.5 bg-red-100 text-red-700 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-red-200 transition-colors">
+                          <XCircle className="w-4 h-4" /> Reject
+                        </button>
+                      )}
+                      {r.refCode && (
+                        <span className="flex items-center gap-1 text-xs text-muted-foreground bg-secondary px-3 py-2 rounded-xl font-mono">{r.refCode}</span>
+                      )}
                       <button className="flex items-center gap-1.5 bg-blue-100 text-blue-700 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-blue-200 transition-colors ms-auto">
                         <MessageSquare className="w-4 h-4" /> Contact Owner
                       </button>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}

@@ -754,33 +754,34 @@ export function OffersPage() {
   const [search, setSearch] = useState('');
 
   const allOffers = useMemo<ExtendedOffer[]>(() => {
-    const api: ExtendedOffer[] = (apiOffers ?? []).map((o) => ({
+    const api: ExtendedOffer[] = (apiOffers ?? []).map((o: any) => ({
       id: o.id,
       titleEn: o.titleEn,
       titleAr: o.titleAr,
       descriptionEn: o.descriptionEn ?? '',
       descriptionAr: o.descriptionAr ?? '',
       restaurantId: o.restaurantId,
-      restaurantNameEn: 'Restaurant',
-      restaurantNameAr: 'مطعم',
-      imageUrl: o.imageUrl ?? 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=900&h=600&fit=crop',
-      images: [o.imageUrl ?? ''],
+      restaurantNameEn: o.restaurantNameEn ?? 'Restaurant',
+      restaurantNameAr: o.restaurantNameAr ?? 'مطعم',
+      imageUrl: o.imageUrl ?? o.restaurantCoverImageUrl ?? 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=900&h=600&fit=crop',
+      images: [o.imageUrl ?? o.restaurantCoverImageUrl ?? 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=900&h=600&fit=crop'],
       discountPercent: String(o.discountPercent ?? 20),
       originalPrice: String(o.originalPrice ?? 200),
       discountedPrice: String(o.discountedPrice ?? 160),
-      currency: o.currency,
-      validUntil: o.validUntil,
+      currency: o.currency ?? 'SAR',
+      validUntil: o.validUntil ?? new Date(Date.now() + 30 * 86400000).toISOString(),
       remainingCapacity: o.remainingCapacity ?? 50,
-      boughtCount: 0,
+      boughtCount: o.boughtCount ?? 0,
       categoryEn: 'Restaurant',
       city: 'Riyadh',
-      rating: 4.5,
-      reviews: 0,
+      rating: 4.7,
+      reviews: 50,
       highlights: [],
-      termsEn: 'Terms apply.',
+      termsEn: 'Valid as described. Advance booking required. Non-refundable once purchased.',
       address: '',
     }));
-    return [...MOCK_OFFERS, ...api];
+    // Show real DB offers first; only fall back to mocks if no real offers are available
+    return api.length > 0 ? api : MOCK_OFFERS;
   }, [apiOffers]);
 
   const filtered = useMemo(() => {

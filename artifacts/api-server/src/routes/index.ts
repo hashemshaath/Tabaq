@@ -20,6 +20,7 @@ import adminReferralsRouter from "./admin-referrals.js";
 import adminFinanceRouter from "./admin-finance.js";
 import addressesRouter from "./addresses.js";
 import storiesRouter from "./stories.js";
+import partnersRouter from "./partners.js";
 
 const router: IRouter = Router();
 
@@ -44,5 +45,6 @@ router.use(adminReferralsRouter);
 router.use(adminFinanceRouter);
 router.use(addressesRouter);
 router.use(storiesRouter);
+router.use(partnersRouter);
 
 export default router;

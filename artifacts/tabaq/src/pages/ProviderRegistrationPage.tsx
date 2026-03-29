@@ -77,6 +77,7 @@ export function ProviderRegistrationPage() {
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [refCode, setRefCode] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     businessType: '' as BusinessType | '',
@@ -117,9 +118,27 @@ export function ProviderRegistrationPage() {
     return true;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setSubmitting(true);
-    setTimeout(() => { setSubmitting(false); setSubmitted(true); }, 1800);
+    try {
+      const res = await fetch('/api/partner-applications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setRefCode(data.refCode ?? null);
+        setSubmitted(true);
+      } else {
+        const err = await res.json();
+        alert(err.message || 'Submission failed. Please try again.');
+      }
+    } catch {
+      alert('Network error. Please check your connection and try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (submitted) {
@@ -136,6 +155,13 @@ export function ProviderRegistrationPage() {
               `شكراً ${form.ownerName}. سيقوم فريقنا بمراجعة طلبك لـ${form.nameAr || form.nameEn || 'نشاطك التجاري'} والرد عليك خلال 2-3 أيام عمل.`
             )}
           </p>
+          {refCode && (
+            <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 mb-5">
+              <p className="text-xs font-semibold text-muted-foreground mb-1">{t('Your Reference Code', 'رمز المتابعة')}</p>
+              <p className="text-lg font-bold text-primary tracking-widest font-mono">{refCode}</p>
+              <p className="text-xs text-muted-foreground mt-1">{t('Keep this code to track your application status', 'احتفظ بهذا الرمز لمتابعة حالة طلبك')}</p>
+            </div>
+          )}
           <div className="bg-secondary/50 rounded-xl p-4 mb-6 text-start">
             <p className="text-xs font-semibold text-foreground mb-3">{t('What happens next:', 'ماذا يحدث بعد ذلك:')}</p>
             {[

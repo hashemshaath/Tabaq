@@ -1,4 +1,4 @@
-import { pgTable, serial, text, boolean, timestamp, integer } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, boolean, timestamp, integer, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -20,3 +20,34 @@ export const insertPlatformModuleSchema = createInsertSchema(platformModulesTabl
 
 export type PlatformModule = typeof platformModulesTable.$inferSelect;
 export type InsertPlatformModule = z.infer<typeof insertPlatformModuleSchema>;
+
+export const partnerApplicationsTable = pgTable("partner_applications", {
+  id: serial("id").primaryKey(),
+  refCode: text("ref_code").unique(),
+  businessType: text("business_type"),
+  nameEn: text("name_en").notNull(),
+  nameAr: text("name_ar"),
+  city: text("city"),
+  address: text("address"),
+  seatingCapacity: integer("seating_capacity"),
+  cuisines: text("cuisines").array(),
+  description: text("description"),
+  phone: text("phone"),
+  email: text("email"),
+  website: text("website"),
+  ownerName: text("owner_name"),
+  ownerEmail: text("owner_email"),
+  crNumber: text("cr_number"),
+  plan: text("plan"),
+  extraData: jsonb("extra_data"),
+  status: text("status").default("pending").notNull(),
+  reviewedBy: integer("reviewed_by"),
+  reviewNotes: text("review_notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertPartnerApplicationSchema = createInsertSchema(partnerApplicationsTable).omit({ id: true, createdAt: true, updatedAt: true });
+
+export type PartnerApplication = typeof partnerApplicationsTable.$inferSelect;
+export type InsertPartnerApplication = z.infer<typeof insertPartnerApplicationSchema>;

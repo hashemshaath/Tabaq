@@ -187,21 +187,10 @@ function UsernameSection() {
 
 const LEVEL_CONFIG = [
   { level: 1, name: 'Food Explorer', nameAr: 'مستكشف الطعام', min: 0, max: 100, color: 'from-green-400 to-emerald-500', icon: '🌱' },
-  { level: 2, name: 'Taste Enthusiast', nameAr: 'عاشق الذوق', min: 100, max: 300, color: 'from-blue-400 to-cyan-500', icon: '🍽️' },
-  { level: 3, name: 'Culinary Critic', nameAr: 'ناقد طعام', min: 300, max: 600, color: 'from-purple-400 to-violet-500', icon: '📝' },
-  { level: 4, name: 'Dining Connoisseur', nameAr: 'خبير الطعام', min: 600, max: 1000, color: 'from-amber-400 to-orange-500', icon: '🏆' },
-  { level: 5, name: 'Tabaq Legend', nameAr: 'أسطورة طبق', min: 1000, max: 9999, color: 'from-rose-400 to-pink-500', icon: '👑' },
-];
-
-const MOCK_BOOKINGS = [
-  { id: 1, restaurantName: 'Najd Village', restaurantNameAr: 'قرية نجد', date: '2026-03-29', time: '7:30 PM', guests: 4, status: 'confirmed', ref: 'TBQ-A1B2C3D4', img: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=100&h=100&fit=crop' },
-  { id: 2, restaurantName: 'Sushi Sama', restaurantNameAr: 'سوشي ساما', date: '2026-04-05', time: '8:00 PM', guests: 2, status: 'confirmed', ref: 'TBQ-E5F6G7H8', img: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=100&h=100&fit=crop' },
-  { id: 3, restaurantName: 'Reem Al Bawadi', restaurantNameAr: 'ريم البوادي', date: '2026-03-15', time: '1:00 PM', guests: 6, status: 'completed', ref: 'TBQ-I9J0K1L2', img: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=100&h=100&fit=crop' },
-];
-
-const MOCK_REVIEWS = [
-  { id: 1, restaurant: 'Najd Village', restaurantNameAr: 'قرية نجد', rating: 5, text: 'Absolutely incredible. The lamb chops were perfect.', date: '2026-03-16', points: 25 },
-  { id: 2, restaurant: 'Hakkasan', restaurantNameAr: 'هاكاسان', rating: 4, text: 'Beautiful venue, great Cantonese food. Service was very attentive.', date: '2026-02-28', points: 25 },
+  { level: 2, name: 'Food Enthusiast', nameAr: 'عاشق الطعام', min: 100, max: 500, color: 'from-blue-400 to-cyan-500', icon: '🍽️' },
+  { level: 3, name: 'Gourmet', nameAr: 'ذواق', min: 500, max: 1500, color: 'from-purple-400 to-violet-500', icon: '📝' },
+  { level: 4, name: 'Food Critic', nameAr: 'ناقد طعام', min: 1500, max: 5000, color: 'from-amber-400 to-orange-500', icon: '🏆' },
+  { level: 5, name: 'Master Chef', nameAr: 'الشيف الرئيسي', min: 5000, max: 99999, color: 'from-rose-400 to-pink-500', icon: '👑' },
 ];
 
 const SAVED_RESTAURANTS = [
@@ -210,13 +199,35 @@ const SAVED_RESTAURANTS = [
   { id: 3, name: 'Fuego Steakhouse', nameAr: 'فيوجو ستيك', city: 'Riyadh', rating: 4.6, img: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&h=150&fit=crop', tier: 'Steakhouse' },
 ];
 
-const MOCK_POINTS = {
-  total: 475,
-  level: 3,
-  bookings: 18,
-  reviews: 12,
-  toNextLevel: 125,
-};
+const FALLBACK_COVER = 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=200&h=200&fit=crop';
+
+function normalizeBooking(b: any) {
+  return {
+    id: b.id,
+    restaurantId: b.restaurantId,
+    restaurantName: b.restaurantNameEn ?? 'Restaurant',
+    restaurantNameAr: b.restaurantNameAr ?? 'مطعم',
+    date: b.date ?? '',
+    time: b.time ?? '',
+    guests: b.partySize ?? 1,
+    status: b.status ?? 'pending',
+    ref: b.referenceCode ?? '',
+    img: b.restaurantCoverImageUrl ?? FALLBACK_COVER,
+  };
+}
+
+function normalizeReview(r: any) {
+  return {
+    id: r.id,
+    restaurantId: r.restaurantId,
+    restaurant: r.restaurantNameEn ?? 'Restaurant',
+    restaurantNameAr: r.restaurantNameAr ?? 'مطعم',
+    rating: r.ratingOverall ?? 0,
+    text: r.textEn ?? r.textAr ?? '',
+    date: r.createdAt ? new Date(r.createdAt).toLocaleDateString('en-SA') : '',
+    points: 25,
+  };
+}
 
 type DashTab = 'overview' | 'bookings' | 'reviews' | 'saved' | 'vouchers' | 'points' | 'settings';
 
@@ -225,22 +236,44 @@ export function UserDashboardPage() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<DashTab>('overview');
 
+  const DEMO_USER_ID = 1;
+
+  const { data: userData } = useQuery({
+    queryKey: ['user-profile', DEMO_USER_ID],
+    queryFn: () => fetch(`/api/users/${DEMO_USER_ID}`).then(r => r.ok ? r.json() : null),
+    retry: false,
+  });
   const { data: bookingsData } = useQuery({
-    queryKey: ['bookings'],
-    queryFn: () => fetch('/api/bookings').then(r => r.ok ? r.json() : null),
+    queryKey: ['user-bookings', DEMO_USER_ID],
+    queryFn: () => fetch(`/api/users/${DEMO_USER_ID}/bookings`).then(r => r.ok ? r.json() : null),
+    retry: false,
+  });
+  const { data: reviewsData } = useQuery({
+    queryKey: ['user-reviews', DEMO_USER_ID],
+    queryFn: () => fetch(`/api/users/${DEMO_USER_ID}/reviews`).then(r => r.ok ? r.json() : null),
     retry: false,
   });
   const { data: vouchersData } = useQuery({
     queryKey: ['vouchers'],
-    queryFn: () => fetch('/api/vouchers').then(r => r.ok ? r.json() : null),
+    queryFn: () => fetch('/api/vouchers', { credentials: 'include' }).then(r => r.ok ? r.json() : null),
     retry: false,
   });
-  const bookings = (Array.isArray(bookingsData) ? bookingsData : null) ?? MOCK_BOOKINGS;
+
+  const rawBookings = Array.isArray(bookingsData) ? bookingsData : [];
+  const bookings = rawBookings.map(normalizeBooking);
+  const rawReviews = Array.isArray(reviewsData) ? reviewsData : [];
+  const reviews = rawReviews.map(normalizeReview);
   const vouchers = (Array.isArray(vouchersData) ? vouchersData : null) ?? [];
 
-  const levelConfig = LEVEL_CONFIG[MOCK_POINTS.level - 1];
-  const progress = ((MOCK_POINTS.total - levelConfig.min) / (levelConfig.max - levelConfig.min)) * 100;
-  const displayName = lang === 'ar' ? (user?.nameAr || user?.nameEn) : user?.nameEn;
+  const profileUser = userData?.user ?? userData;
+  const userPoints: number = Number(profileUser?.points ?? 0);
+  const userLevel: number = Math.max(1, Math.min(5, profileUser?.level ?? 1));
+  const levelConfig = LEVEL_CONFIG[userLevel - 1];
+  const progress = ((userPoints - levelConfig.min) / (levelConfig.max - levelConfig.min)) * 100;
+  const toNextLevel = levelConfig.max - userPoints;
+  const displayName = lang === 'ar'
+    ? (user?.nameAr || user?.nameEn || profileUser?.nameAr || profileUser?.nameEn)
+    : (user?.nameEn || profileUser?.nameEn);
 
   const navTabs: { id: DashTab; labelEn: string; labelAr: string; icon: React.ElementType; badge?: number }[] = [
     { id: 'overview', labelEn: 'Overview', labelAr: 'نظرة عامة', icon: TrendingUp },
@@ -280,13 +313,13 @@ export function UserDashboardPage() {
                 <CheckCircle2 className="w-5 h-5 text-white/70" />
               </div>
               <p className="text-white/70 text-sm mb-3">
-                {levelConfig.icon} {lang === 'ar' ? levelConfig.nameAr : levelConfig.name} · Level {MOCK_POINTS.level}
+                {levelConfig.icon} {lang === 'ar' ? levelConfig.nameAr : levelConfig.name} · Level {userLevel}
               </p>
               {/* Progress bar */}
               <div className="max-w-xs">
                 <div className="flex justify-between text-xs text-white/60 mb-1">
-                  <span>{MOCK_POINTS.total} pts</span>
-                  <span>{MOCK_POINTS.toNextLevel} to Level {MOCK_POINTS.level + 1}</span>
+                  <span>{userPoints} pts</span>
+                  <span>{Math.max(0, toNextLevel)} to Level {Math.min(5, userLevel + 1)}</span>
                 </div>
                 <div className="h-2 bg-white/20 rounded-full overflow-hidden">
                   <div className="h-full bg-white rounded-full transition-all" style={{ width: `${Math.min(progress, 100)}%` }} />
@@ -297,9 +330,9 @@ export function UserDashboardPage() {
             {/* Quick stats */}
             <div className="grid grid-cols-3 gap-4 sm:gap-6 shrink-0">
               {[
-                { val: MOCK_POINTS.bookings, labelEn: 'Bookings', labelAr: 'حجوزات' },
-                { val: MOCK_POINTS.reviews, labelEn: 'Reviews', labelAr: 'تقييمات' },
-                { val: MOCK_POINTS.total, labelEn: 'Points', labelAr: 'نقاط' },
+                { val: bookings.length, labelEn: 'Bookings', labelAr: 'حجوزات' },
+                { val: reviews.length, labelEn: 'Reviews', labelAr: 'تقييمات' },
+                { val: userPoints, labelEn: 'Points', labelAr: 'نقاط' },
               ].map(s => (
                 <div key={s.labelEn} className="text-center">
                   <p className="text-2xl font-extrabold text-white">{s.val}</p>
@@ -380,7 +413,7 @@ export function UserDashboardPage() {
                   {t('View all', 'عرض الكل')} <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
-              {MOCK_BOOKINGS.filter(b => b.status === 'confirmed').length === 0 ? (
+              {bookings.filter(b => b.status === 'confirmed').length === 0 ? (
                 <div className="text-center py-10">
                   <CalendarDays className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
                   <p className="text-muted-foreground text-sm">{t('No upcoming bookings', 'لا توجد حجوزات قادمة')}</p>
@@ -388,7 +421,7 @@ export function UserDashboardPage() {
                 </div>
               ) : (
                 <div className="divide-y divide-border">
-                  {MOCK_BOOKINGS.filter(b => b.status === 'confirmed').map(booking => (
+                  {bookings.filter(b => b.status === 'confirmed').map(booking => (
                     <div key={booking.id} className="flex items-center gap-4 p-4">
                       <img src={booking.img} alt={booking.restaurantName} className="w-14 h-14 rounded-xl object-cover shrink-0" />
                       <div className="flex-1 min-w-0">
@@ -450,7 +483,13 @@ export function UserDashboardPage() {
                 <button key={f} className={`px-4 py-2 rounded-full text-sm font-semibold border transition-all ${f === t('All', 'الكل') ? 'bg-primary text-primary-foreground border-primary' : 'border-border'}`}>{f}</button>
               ))}
             </div>
-            {MOCK_BOOKINGS.map(booking => (
+            {bookings.length === 0 ? (
+              <div className="text-center py-14">
+                <CalendarDays className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
+                <p className="text-muted-foreground">{t('No bookings found', 'لا توجد حجوزات')}</p>
+                <Link href="/restaurants"><Button size="sm" className="mt-3">{t('Book a Table', 'احجز طاولة')}</Button></Link>
+              </div>
+            ) : bookings.map(booking => (
               <div key={booking.id} className="bg-card border border-border rounded-2xl p-5 flex items-start gap-4">
                 <img src={booking.img} alt={booking.restaurantName} className="w-20 h-20 rounded-2xl object-cover shrink-0" />
                 <div className="flex-1 min-w-0">
@@ -467,7 +506,7 @@ export function UserDashboardPage() {
                   </div>
                   <p className="text-xs font-mono text-muted-foreground/60 mt-1">{booking.ref}</p>
                   {booking.status === 'completed' && (
-                    <Link href={`/restaurants/${booking.id}`}>
+                    <Link href={`/restaurants/${booking.restaurantId}`}>
                       <button className="mt-3 text-xs bg-primary text-white px-3 py-1.5 rounded-lg font-semibold hover:bg-primary/90 transition-colors flex items-center gap-1">
                         <Star className="w-3 h-3" /> {t('Write a Review', 'اكتب تقييماً')}
                       </button>
@@ -483,16 +522,22 @@ export function UserDashboardPage() {
         {activeTab === 'reviews' && (
           <div className="space-y-4">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-muted-foreground text-sm">{MOCK_REVIEWS.length} {t('reviews written', 'تقييمات مكتوبة')}</p>
+              <p className="text-muted-foreground text-sm">{reviews.length} {t('reviews written', 'تقييمات مكتوبة')}</p>
               <Link href="/restaurants">
                 <Button size="sm" variant="outline" className="gap-1.5"><Star className="w-3.5 h-3.5" />{t('Write Review', 'اكتب تقييماً')}</Button>
               </Link>
             </div>
-            {MOCK_REVIEWS.map(review => (
+            {reviews.length === 0 ? (
+              <div className="text-center py-14">
+                <Star className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
+                <p className="text-muted-foreground">{t('No reviews yet. Share your dining experience!', 'لا توجد تقييمات بعد.')}</p>
+                <Link href="/restaurants"><Button size="sm" className="mt-3">{t('Explore Restaurants', 'استكشف المطاعم')}</Button></Link>
+              </div>
+            ) : reviews.map(review => (
               <div key={review.id} className="bg-card border border-border rounded-2xl p-5">
                 <div className="flex items-start justify-between gap-4 mb-3">
                   <div>
-                    <h3 className="font-bold text-foreground">{review.restaurant}</h3>
+                    <h3 className="font-bold text-foreground">{lang === 'ar' ? review.restaurantNameAr : review.restaurant}</h3>
                     <div className="flex items-center gap-1.5 mt-1">
                       {[1,2,3,4,5].map(s => <Star key={s} className={`w-3.5 h-3.5 ${s <= review.rating ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground/20'}`} />)}
                       <span className="text-xs text-muted-foreground">{review.date}</span>
@@ -500,10 +545,12 @@ export function UserDashboardPage() {
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">+{review.points} pts</span>
-                    <button className="p-1.5 rounded hover:bg-secondary text-muted-foreground"><Edit className="w-3.5 h-3.5" /></button>
+                    <Link href={`/restaurants/${review.restaurantId}`}>
+                      <button className="p-1.5 rounded hover:bg-secondary text-muted-foreground"><Edit className="w-3.5 h-3.5" /></button>
+                    </Link>
                   </div>
                 </div>
-                <p className="text-sm text-muted-foreground leading-relaxed">"{review.text}"</p>
+                {review.text && <p className="text-sm text-muted-foreground leading-relaxed">"{review.text}"</p>}
               </div>
             ))}
           </div>
@@ -575,12 +622,12 @@ export function UserDashboardPage() {
             <div className={`bg-gradient-to-br ${levelConfig.color} rounded-3xl p-7 text-white relative overflow-hidden`}>
               <div className="absolute top-4 end-4 text-6xl opacity-20">{levelConfig.icon}</div>
               <p className="text-white/70 text-sm font-semibold uppercase tracking-wider mb-1">Current Level</p>
-              <h2 className="text-4xl font-extrabold mb-1">{levelConfig.icon} Level {MOCK_POINTS.level}</h2>
+              <h2 className="text-4xl font-extrabold mb-1">{levelConfig.icon} Level {userLevel}</h2>
               <p className="text-2xl font-bold text-white/80 mb-5">{lang === 'ar' ? levelConfig.nameAr : levelConfig.name}</p>
               <div className="max-w-xs">
                 <div className="flex justify-between text-sm text-white/70 mb-2">
-                  <span>{MOCK_POINTS.total} pts earned</span>
-                  <span>{MOCK_POINTS.toNextLevel} to Level {MOCK_POINTS.level + 1}</span>
+                  <span>{userPoints} pts earned</span>
+                  <span>{Math.max(0, toNextLevel)} to Level {Math.min(5, userLevel + 1)}</span>
                 </div>
                 <div className="h-3 bg-white/20 rounded-full overflow-hidden">
                   <div className="h-full bg-white rounded-full" style={{ width: `${Math.min(progress, 100)}%` }} />
@@ -617,7 +664,7 @@ export function UserDashboardPage() {
               </div>
               <div className="p-4 border-t border-border flex items-center justify-between">
                 <p className="font-bold text-foreground">{t('Total Points', 'إجمالي النقاط')}</p>
-                <p className="text-2xl font-extrabold text-primary">{MOCK_POINTS.total}</p>
+                <p className="text-2xl font-extrabold text-primary">{userPoints}</p>
               </div>
             </div>
 
@@ -628,18 +675,18 @@ export function UserDashboardPage() {
               </div>
               <div className="divide-y divide-border">
                 {LEVEL_CONFIG.map(lev => (
-                  <div key={lev.level} className={`flex items-center gap-4 px-5 py-3 ${lev.level === MOCK_POINTS.level ? 'bg-secondary/40' : ''}`}>
+                  <div key={lev.level} className={`flex items-center gap-4 px-5 py-3 ${lev.level === userLevel ? 'bg-secondary/40' : ''}`}>
                     <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${lev.color} flex items-center justify-center text-xl shrink-0`}>
                       {lev.icon}
                     </div>
                     <div className="flex-1">
                       <p className="font-bold text-foreground text-sm">{lev.name}</p>
-                      <p className="text-xs text-muted-foreground">{lev.min} – {lev.max === 9999 ? '∞' : lev.max} pts</p>
+                      <p className="text-xs text-muted-foreground">{lev.min.toLocaleString()} – {lev.max >= 99999 ? '∞' : lev.max.toLocaleString()} pts</p>
                     </div>
-                    {lev.level === MOCK_POINTS.level && (
+                    {lev.level === userLevel && (
                       <span className="text-xs font-bold text-primary bg-primary/10 px-2.5 py-1 rounded-full">{t('Current', 'الحالي')}</span>
                     )}
-                    {lev.level < MOCK_POINTS.level && (
+                    {lev.level < userLevel && (
                       <CheckCircle2 className="w-5 h-5 text-green-500" />
                     )}
                   </div>

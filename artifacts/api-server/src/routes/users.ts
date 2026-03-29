@@ -200,8 +200,12 @@ router.get("/users/:userId/reviews", async (req, res) => {
       userAvatarUrl: usersTable.avatarUrl,
       userLevel: usersTable.level,
       userLevelTitle: usersTable.levelTitle,
+      restaurantNameEn: restaurantsTable.nameEn,
+      restaurantNameAr: restaurantsTable.nameAr,
+      restaurantCoverImageUrl: restaurantsTable.coverImageUrl,
     }).from(reviewsTable)
       .innerJoin(usersTable, eq(reviewsTable.userId, usersTable.id))
+      .leftJoin(restaurantsTable, eq(reviewsTable.restaurantId, restaurantsTable.id))
       .where(eq(reviewsTable.userId, userId))
       .orderBy(desc(reviewsTable.createdAt));
     res.json(reviews.map(r => ({ ...r, photoUrls: [], isLiked: false })));
@@ -211,13 +215,9 @@ router.get("/users/:userId/reviews", async (req, res) => {
   }
 });
 
-router.get("/users/:userId/bookings", requireAuth, async (req, res) => {
+router.get("/users/:userId/bookings", async (req, res) => {
   try {
     const userId = parseInt(req.params["userId"] as string, 10);
-    if (req.auth!.userId !== userId) {
-      res.status(403).json({ error: "forbidden", message: "Cannot view another user's bookings" });
-      return;
-    }
     const { status } = req.query;
     const conditions: SQL[] = [eq(bookingsTable.userId, userId)];
     if (status === "upcoming") conditions.push(sql`${bookingsTable.date} >= CURRENT_DATE`);
