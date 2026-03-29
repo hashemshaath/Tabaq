@@ -147,25 +147,91 @@ export function ProfilePage() {
 
   if (!authUser) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-6 text-center p-8">
-        <div className="w-24 h-24 rounded-full bg-secondary flex items-center justify-center">
-          <User className="w-12 h-12 text-muted-foreground" />
+      <div className="min-h-screen bg-background pb-20" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+        {/* Sample profile hero (blurred/locked) */}
+        <div className="h-44 md:h-56 bg-gradient-to-r from-primary/80 via-primary to-violet-600 relative overflow-hidden">
+          <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=1200&h=300&fit=crop')] bg-cover bg-center opacity-20" />
+          <div className="absolute inset-0 backdrop-blur-[1px]" />
         </div>
-        <h2 className="text-2xl font-bold text-foreground">
-          {t("Sign in to view your profile", "سجّل دخولك لعرض ملفك الشخصي")}
-        </h2>
-        <p className="text-muted-foreground max-w-sm">
-          {t(
-            "Create an account or sign in to track your bookings, reviews, and rewards.",
-            "أنشئ حسابًا أو سجّل دخولك لمتابعة حجوزاتك وتقييماتك ومكافآتك."
-          )}
-        </p>
-        <Link href="/signin">
-          <Button className="gap-2 rounded-xl px-8 h-12 text-base font-semibold">
-            <LogIn className="w-5 h-5" />
-            {t("Sign In", "تسجيل الدخول")}
-          </Button>
-        </Link>
+
+        <div className="max-w-3xl mx-auto px-4 sm:px-6">
+          {/* Sample Profile Card */}
+          <div className="bg-card rounded-3xl p-6 md:p-8 shadow-xl border border-border -mt-16 relative z-10">
+            <div className="flex flex-col sm:flex-row gap-5 items-center sm:items-start text-center sm:text-start">
+              {/* Locked avatar */}
+              <div className="relative shrink-0">
+                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary/20 to-violet-200 border-4 border-card shadow-lg flex items-center justify-center">
+                  <User className="w-12 h-12 text-primary/40" />
+                </div>
+                <div className="absolute inset-0 rounded-full bg-white/30 backdrop-blur-sm flex items-center justify-center">
+                  <Lock className="w-7 h-7 text-primary" />
+                </div>
+              </div>
+              <div className="flex-1">
+                <div className="h-7 w-40 bg-muted rounded-xl mx-auto sm:mx-0 mb-2 animate-pulse" />
+                <div className="h-4 w-28 bg-muted/60 rounded-lg mx-auto sm:mx-0 mb-4 animate-pulse" />
+                <div className="flex flex-wrap justify-center sm:justify-start gap-6">
+                  {[t('Reviews','تقييمات'), t('Bookings','حجوزات'), t('Followers','متابعون'), t('Points','نقاط')].map(label => (
+                    <div key={label} className="text-center">
+                      <div className="h-6 w-8 bg-muted rounded-lg mx-auto mb-1 animate-pulse" />
+                      <p className="text-xs text-muted-foreground">{label}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Central CTA */}
+          <div className="mt-8 text-center">
+            <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-1.5 rounded-full text-sm font-semibold mb-4">
+              <Sparkles className="w-4 h-4" />
+              {t('Unlock your food profile', 'أطلق عنان ملفك الغذائي')}
+            </div>
+            <h2 className="text-3xl font-extrabold text-foreground mb-3">
+              {t('Your culinary identity awaits', 'هويتك الطهي في انتظارك')}
+            </h2>
+            <p className="text-muted-foreground max-w-md mx-auto mb-7 text-base">
+              {t(
+                'Sign in to track your dining adventures, earn points, climb the leaderboard, and share your food stories.',
+                'سجّل دخولك لتتبع مغامراتك الطعامية، وتجميع النقاط، والصعود في القائمة، ومشاركة قصصك الغذائية.'
+              )}
+            </p>
+            <div className="flex gap-3 justify-center flex-wrap">
+              <Link href="/signin">
+                <Button className="gap-2 rounded-xl px-8 h-12 text-base font-semibold shadow-lg shadow-primary/20">
+                  <LogIn className="w-5 h-5" />
+                  {t('Sign In', 'تسجيل الدخول')}
+                </Button>
+              </Link>
+              <Link href="/restaurants">
+                <Button variant="outline" className="rounded-xl px-6 h-12 text-base font-semibold">
+                  {t('Explore First', 'استكشف أولاً')}
+                </Button>
+              </Link>
+            </div>
+          </div>
+
+          {/* What you get */}
+          <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {[
+              { icon: Star, title: t('Earn & Track Points', 'اجمع وتتبع النقاط'), desc: t('Every review and booking earns you points toward rewards.', 'كل تقييم وحجز يمنحك نقاطاً نحو المكافآت.'), color: 'bg-amber-50 text-amber-600' },
+              { icon: Gift, title: t('Exclusive Vouchers', 'قسائم حصرية'), desc: t('Receive personalised discount vouchers from your favourite spots.', 'احصل على قسائم خصم مخصصة من أماكنك المفضلة.'), color: 'bg-rose-50 text-rose-600' },
+              { icon: Users, title: t('Follow Foodies', 'تابع عشاق الطعام'), desc: t('Build your own community of trusted food critics.', 'ابنِ مجتمعك الخاص من نقاد الطعام الموثوقين.'), color: 'bg-blue-50 text-blue-600' },
+              { icon: ChevronRight, title: t('Personalised Feed', 'تغذية مخصصة'), desc: t('Discover restaurants matched to your taste and history.', 'اكتشف مطاعم مناسبة لذوقك وتاريخك.'), color: 'bg-violet-50 text-violet-600' },
+            ].map(({ icon: Icon, title, desc, color }) => (
+              <div key={title} className="flex gap-4 p-5 bg-card border border-border rounded-2xl hover:shadow-sm transition-shadow">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${color}`}>
+                  <Icon className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="font-bold text-foreground text-sm mb-0.5">{title}</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed">{desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }

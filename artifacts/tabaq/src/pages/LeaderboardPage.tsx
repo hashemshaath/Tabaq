@@ -1,182 +1,354 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useLanguage } from '@/hooks/use-language';
 import { useGetLeaderboard } from '@workspace/api-client-react';
-import { Trophy, Medal, Star, Crown, TrendingUp } from 'lucide-react';
+import {
+  Trophy, Medal, Star, Crown, TrendingUp, Zap, Award, Target,
+  Flame, Heart, ChefHat, Users, CheckCircle2
+} from 'lucide-react';
 import { Link } from 'wouter';
 
-const RANK_COLORS = [
-  'from-yellow-400 to-amber-500',
-  'from-slate-300 to-slate-400',
-  'from-amber-600 to-amber-700',
+type Period = 'weekly' | 'monthly' | 'alltime';
+
+const MOCK_COMMUNITY: Array<{
+  rank: number;
+  nameEn: string;
+  nameAr: string;
+  avatar: string;
+  points: number;
+  reviewCount: number;
+  badge: string;
+  levelTitle: string;
+  levelTitleAr: string;
+  specialty: string;
+  trending?: boolean;
+}> = [
+  { rank: 3, nameEn: 'Noura Al-Rashid', nameAr: 'نورة الراشد', avatar: 'https://i.pravatar.cc/80?img=47', points: 980, reviewCount: 38, badge: '👑', levelTitle: 'Grand Gourmet', levelTitleAr: 'جورميه كبير', specialty: 'Fine Dining', trending: true },
+  { rank: 4, nameEn: 'Faisal Al-Harbi', nameAr: 'فيصل الحربي', avatar: 'https://i.pravatar.cc/80?img=12', points: 840, reviewCount: 32, badge: '🍽️', levelTitle: 'Taste Expert', levelTitleAr: 'خبير الذوق', specialty: 'Grills', trending: true },
+  { rank: 5, nameEn: 'Lama Khalid', nameAr: 'لمى خالد', avatar: 'https://i.pravatar.cc/80?img=32', points: 720, reviewCount: 28, badge: '⭐', levelTitle: 'Food Critic', levelTitleAr: 'ناقد طعام', specialty: 'Desserts' },
+  { rank: 6, nameEn: 'Sultan Al-Qahtani', nameAr: 'سلطان القحطاني', avatar: 'https://i.pravatar.cc/80?img=15', points: 615, reviewCount: 25, badge: '🌱', levelTitle: 'Food Critic', levelTitleAr: 'ناقد طعام', specialty: 'Healthy' },
+  { rank: 7, nameEn: 'Rawan Al-Shehri', nameAr: 'روان الشهري', avatar: 'https://i.pravatar.cc/80?img=5', points: 530, reviewCount: 20, badge: '🥢', levelTitle: 'Taste Enthusiast', levelTitleAr: 'عاشق الذوق', specialty: 'Asian' },
+  { rank: 8, nameEn: 'Ahmed Al-Dosari', nameAr: 'أحمد الدوسري', avatar: 'https://i.pravatar.cc/80?img=33', points: 460, reviewCount: 17, badge: '🍜', levelTitle: 'Taste Enthusiast', levelTitleAr: 'عاشق الذوق', specialty: 'Street Food' },
+  { rank: 9, nameEn: 'Fatima Al-Mutairi', nameAr: 'فاطمة المطيري', avatar: 'https://i.pravatar.cc/80?img=23', points: 390, reviewCount: 14, badge: '🫐', levelTitle: 'Food Explorer', levelTitleAr: 'مستكشف الطعام', specialty: 'Cafes' },
+  { rank: 10, nameEn: 'Khalid Al-Ghamdi', nameAr: 'خالد الغامدي', avatar: 'https://i.pravatar.cc/80?img=8', points: 310, reviewCount: 11, badge: '🥙', levelTitle: 'Food Explorer', levelTitleAr: 'مستكشف الطعام', specialty: 'Saudi Cuisine' },
 ];
 
-const RANK_ICON_COLORS = [
-  'text-yellow-500',
-  'text-slate-400',
-  'text-amber-700',
+const LEVELS = [
+  { level: 1, nameEn: 'Food Explorer', nameAr: 'مستكشف الطعام', icon: '🌱', color: 'from-green-400 to-emerald-500', min: 0, max: 100 },
+  { level: 2, nameEn: 'Taste Enthusiast', nameAr: 'عاشق الذوق', icon: '🍽️', color: 'from-blue-400 to-cyan-500', min: 100, max: 300 },
+  { level: 3, nameEn: 'Food Critic', nameAr: 'ناقد طعام', icon: '⭐', color: 'from-purple-400 to-violet-500', min: 300, max: 600 },
+  { level: 4, nameEn: 'Taste Expert', nameAr: 'خبير الذوق', icon: '🏅', color: 'from-orange-400 to-amber-500', min: 600, max: 1000 },
+  { level: 5, nameEn: 'Grand Gourmet', nameAr: 'جورميه كبير', icon: '👑', color: 'from-yellow-400 to-amber-400', min: 1000, max: 2000 },
+  { level: 6, nameEn: 'Culinary Legend', nameAr: 'أسطورة الطهي', icon: '🌟', color: 'from-rose-400 to-pink-500', min: 2000, max: Infinity },
 ];
 
-const RANK_BG = [
-  'bg-yellow-50 border-yellow-200 shadow-yellow-100',
-  'bg-slate-50 border-slate-200 shadow-slate-100',
-  'bg-amber-50 border-amber-200 shadow-amber-100',
+const ACHIEVEMENTS = [
+  { icon: <Star className="w-5 h-5" />, nameEn: 'First Review', nameAr: 'أول تقييم', descEn: 'Write your first review', descAr: 'اكتب أول تقييم', pts: 25, bg: 'bg-amber-50', color: 'text-amber-600' },
+  { icon: <Flame className="w-5 h-5" />, nameEn: 'On Fire!', nameAr: 'مشتعل!', descEn: '5 reviews in a week', descAr: '5 تقييمات في أسبوع', pts: 50, bg: 'bg-orange-50', color: 'text-orange-600' },
+  { icon: <Heart className="w-5 h-5" />, nameEn: 'Community Favourite', nameAr: 'مفضل المجتمع', descEn: 'Get 100 helpful votes', descAr: 'احصل على 100 تصويت مفيد', pts: 100, bg: 'bg-rose-50', color: 'text-rose-600' },
+  { icon: <ChefHat className="w-5 h-5" />, nameEn: 'Cuisine Explorer', nameAr: 'مستكشف المطابخ', descEn: 'Review 10 cuisine types', descAr: 'قيّم 10 أنواع مطابخ', pts: 75, bg: 'bg-purple-50', color: 'text-purple-600' },
+  { icon: <Trophy className="w-5 h-5" />, nameEn: 'Top 10', nameAr: 'ضمن أفضل 10', descEn: 'Reach top 10 on leaderboard', descAr: 'ادخل ضمن أفضل 10 في القائمة', pts: 200, bg: 'bg-yellow-50', color: 'text-yellow-600' },
+  { icon: <Users className="w-5 h-5" />, nameEn: 'Social Butterfly', nameAr: 'الفراشة الاجتماعية', descEn: 'Get 50 followers', descAr: 'احصل على 50 متابع', pts: 150, bg: 'bg-blue-50', color: 'text-blue-600' },
 ];
+
+const PERIOD_TABS: { id: Period; labelEn: string; labelAr: string }[] = [
+  { id: 'weekly', labelEn: 'This Week', labelAr: 'هذا الأسبوع' },
+  { id: 'monthly', labelEn: 'This Month', labelAr: 'هذا الشهر' },
+  { id: 'alltime', labelEn: 'All Time', labelAr: 'كل الوقت' },
+];
+
+const RANK_PODIUM_ORDER = [1, 0, 2]; // silver, gold, bronze display order
+
+function PodiumBlock({ entry, rank, lang, t }: {
+  entry: { nameEn: string; nameAr: string; avatar: string; points: number; reviewCount: number; badge: string };
+  rank: number;
+  lang: string;
+  t: (en: string, ar: string) => string;
+}) {
+  const configs = [
+    { height: 'h-36', gradient: 'from-yellow-400 to-amber-400', ring: 'ring-yellow-400', crown: true, label: '🥇' },
+    { height: 'h-28', gradient: 'from-slate-300 to-slate-400', ring: 'ring-slate-400', crown: false, label: '🥈' },
+    { height: 'h-24', gradient: 'from-amber-600 to-orange-700', ring: 'ring-amber-600', crown: false, label: '🥉' },
+  ];
+  const cfg = configs[rank];
+  const name = lang === 'ar' ? entry.nameAr : entry.nameEn;
+
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <div className="relative">
+        {cfg.crown && (
+          <div className="absolute -top-4 left-1/2 -translate-x-1/2 text-2xl">👑</div>
+        )}
+        <img
+          src={entry.avatar}
+          alt={name}
+          className={`w-16 h-16 rounded-full object-cover ring-4 ${cfg.ring} shadow-xl`}
+        />
+        <span className="absolute -bottom-1 -end-1 text-lg">{entry.badge}</span>
+      </div>
+      <div className={`w-full ${cfg.height} rounded-t-2xl bg-gradient-to-b ${cfg.gradient} flex flex-col items-center justify-end pb-3 shadow-lg relative overflow-hidden`}>
+        <div className="absolute inset-0 bg-white/5" />
+        <span className="relative text-white font-black text-3xl">{rank + 1}</span>
+      </div>
+      <div className="text-center px-1">
+        <p className="font-bold text-foreground text-xs sm:text-sm line-clamp-1">{name}</p>
+        <p className="text-xs text-primary font-bold">{entry.points} {t('pts', 'نقطة')}</p>
+        <p className="text-[10px] text-muted-foreground">{entry.reviewCount} {t('reviews', 'تقييم')}</p>
+      </div>
+    </div>
+  );
+}
 
 export function LeaderboardPage() {
   const { t, lang } = useLanguage();
-  const { data, isLoading } = useGetLeaderboard({ limit: 20 });
+  const [period, setPeriod] = useState<Period>('alltime');
+  const { data: liveData, isLoading } = useGetLeaderboard({ limit: 20 });
 
-  const top3 = data?.slice(0, 3) ?? [];
-  const rest = data?.slice(3) ?? [];
+  const liveEntries = (liveData ?? []).map((e, i) => ({
+    rank: i + 1,
+    nameEn: e.user.nameEn,
+    nameAr: e.user.nameAr,
+    avatar: e.user.avatarUrl || `https://i.pravatar.cc/80?u=${e.user.id}`,
+    points: e.points,
+    reviewCount: e.reviewCount,
+    badge: i === 0 ? '👑' : i === 1 ? '🥈' : '🥉',
+    levelTitle: e.user.levelTitle || 'Food Explorer',
+    levelTitleAr: e.user.levelTitle || 'مستكشف الطعام',
+    specialty: 'Gourmet',
+    trending: false,
+  }));
+
+  const allEntries = [...liveEntries];
+  const liveRanks = new Set(liveEntries.map((_, i) => i + 1));
+  MOCK_COMMUNITY.forEach(m => {
+    if (!liveRanks.has(m.rank) && allEntries.length < 10) {
+      allEntries.push({ ...m, trending: m.trending ?? false });
+    }
+  });
+  allEntries.sort((a, b) => b.points - a.points);
+  allEntries.forEach((e, i) => { e.rank = i + 1; });
+
+  const top3 = allEntries.slice(0, 3);
+  const rest = allEntries.slice(3);
+
+  const podiumOrder = top3.length >= 3
+    ? [top3[1], top3[0], top3[2]]
+    : top3.length >= 1 ? [top3[0]] : [];
 
   return (
     <div className="min-h-screen bg-background pb-20" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
       {/* Hero */}
-      <div className="relative bg-gradient-to-br from-primary via-primary/90 to-primary/70 overflow-hidden">
+      <div className="relative bg-gradient-to-br from-primary via-primary/90 to-violet-700 overflow-hidden">
         <div className="absolute inset-0">
           <div className="absolute top-0 end-0 w-80 h-80 bg-white/5 rounded-full translate-x-1/3 -translate-y-1/3" />
           <div className="absolute bottom-0 start-0 w-64 h-64 bg-white/5 rounded-full -translate-x-1/3 translate-y-1/3" />
+          <div className="absolute top-1/2 start-1/2 w-96 h-96 bg-white/3 rounded-full -translate-x-1/2 -translate-y-1/2" />
         </div>
         <div className="relative max-w-4xl mx-auto px-4 sm:px-6 py-16 text-center text-primary-foreground">
-          <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <Trophy className="w-9 h-9" />
+          <div className="w-20 h-20 bg-white/20 rounded-3xl flex items-center justify-center mx-auto mb-5 shadow-xl">
+            <Trophy className="w-11 h-11" />
           </div>
           <h1 className="text-4xl md:text-5xl font-extrabold mb-3">
             {t('Food Explorers Leaderboard', 'قائمة كبار المستكشفين')}
           </h1>
-          <p className="text-lg text-primary-foreground/80 max-w-lg mx-auto">
+          <p className="text-lg text-primary-foreground/80 max-w-lg mx-auto mb-8">
             {t('The most trusted food critics and top contributors in the region.', 'أكثر نقاد الطعام موثوقية وأبرز المساهمين في المنطقة.')}
           </p>
+
+          {/* Period tabs */}
+          <div className="inline-flex bg-white/10 rounded-2xl p-1 gap-1">
+            {PERIOD_TABS.map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setPeriod(tab.id)}
+                className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${period === tab.id ? 'bg-white text-primary shadow-md' : 'text-white/80 hover:text-white'}`}
+              >
+                {lang === 'ar' ? tab.labelAr : tab.labelEn}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10">
         {isLoading ? (
           <div className="space-y-4">
-            {[1, 2, 3, 4, 5].map(i => (
-              <div key={i} className="h-24 bg-muted animate-pulse rounded-2xl" />
-            ))}
+            {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-20 bg-muted animate-pulse rounded-2xl" />)}
           </div>
         ) : (
-          <>
-            {/* Top 3 podium */}
-            {top3.length >= 3 && (
-              <div className="grid grid-cols-3 gap-3 mb-8">
-                {[top3[1], top3[0], top3[2]].map((entry, podiumIdx) => {
+          <div className="space-y-10">
+            {/* Podium */}
+            {top3.length >= 2 && (
+              <div className="flex items-end justify-center gap-3 sm:gap-6 pt-6">
+                {podiumOrder.map((entry, podiumIdx) => {
                   if (!entry) return null;
                   const rank = podiumIdx === 1 ? 0 : podiumIdx === 0 ? 1 : 2;
-                  const user = entry.user;
-                  const name = lang === 'ar' ? user.nameAr : user.nameEn;
-                  const heights = ['h-32', 'h-40', 'h-28'];
                   return (
-                    <div key={user.id} className="flex flex-col items-center gap-2">
-                      <div className={`relative w-14 h-14 md:w-16 md:h-16 rounded-full overflow-hidden border-4 ${rank === 0 ? 'border-yellow-400' : rank === 1 ? 'border-slate-400' : 'border-amber-600'} shadow-lg`}>
-                        <img
-                          src={user.avatarUrl || `https://i.pravatar.cc/150?u=${user.id}`}
-                          alt={name}
-                          className="w-full h-full object-cover"
-                        />
-                        {rank === 0 && (
-                          <div className="absolute -top-1 -end-1 w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center">
-                            <Crown className="w-3.5 h-3.5 text-white" />
-                          </div>
-                        )}
-                      </div>
-                      <div className={`w-full ${heights[podiumIdx]} rounded-t-2xl bg-gradient-to-b ${RANK_COLORS[rank]} flex flex-col items-center justify-end pb-3 shadow-lg`}>
-                        <span className="text-white font-black text-2xl">{rank + 1}</span>
-                      </div>
-                      <div className="text-center">
-                        <p className="font-bold text-foreground text-sm line-clamp-1">{name}</p>
-                        <p className="text-xs text-primary font-bold">{entry.points} {t('pts', 'نقطة')}</p>
-                        <p className="text-xs text-muted-foreground">{entry.reviewCount} {t('reviews', 'تقييم')}</p>
-                      </div>
+                    <div key={entry.nameEn} className="flex-1 max-w-[140px]">
+                      <PodiumBlock entry={entry} rank={rank} lang={lang} t={t} />
                     </div>
                   );
                 })}
               </div>
             )}
 
-            {/* Top 3 cards */}
-            <div className="space-y-3 mb-8">
+            {/* Top 3 detailed cards */}
+            <div className="space-y-3">
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider px-1">
+                {t('Top Performers', 'أبرز المنافسين')}
+              </p>
               {top3.map((entry, index) => {
-                const user = entry.user;
-                const name = lang === 'ar' ? user.nameAr : user.nameEn;
+                const rankColors = [
+                  'bg-yellow-50 border-yellow-200',
+                  'bg-slate-50 border-slate-200',
+                  'bg-amber-50 border-amber-200',
+                ];
+                const medalColors = ['text-yellow-500', 'text-slate-400', 'text-amber-700'];
                 return (
                   <div
-                    key={user.id}
-                    className={`flex items-center gap-4 p-5 rounded-2xl border-2 shadow-md transition-all duration-300 hover:shadow-lg ${RANK_BG[index]}`}
+                    key={entry.nameEn}
+                    className={`flex items-center gap-4 p-4 rounded-2xl border-2 transition-all hover:shadow-md ${rankColors[index]}`}
                   >
-                    <div className={`w-12 text-center shrink-0 ${RANK_ICON_COLORS[index]}`}>
-                      <Medal className="w-9 h-9 mx-auto" />
+                    <div className={`w-10 text-center shrink-0 ${medalColors[index]}`}>
+                      <Medal className="w-8 h-8 mx-auto" />
                     </div>
-                    <div className="w-14 h-14 rounded-full bg-white shrink-0 overflow-hidden border-2 border-white shadow">
-                      <img src={user.avatarUrl || `https://i.pravatar.cc/150?u=${user.id}`} alt={name} className="w-full h-full object-cover" />
-                    </div>
-                    <div className="flex-grow">
-                      <h3 className="font-extrabold text-lg text-foreground">{name}</h3>
+                    <img src={entry.avatar} alt={lang === 'ar' ? entry.nameAr : entry.nameEn} className="w-12 h-12 rounded-full object-cover shrink-0 border-2 border-white shadow" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <p className="font-extrabold text-foreground truncate">{lang === 'ar' ? entry.nameAr : entry.nameEn}</p>
+                        <span className="text-base shrink-0">{entry.badge}</span>
+                      </div>
                       <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-xs font-bold bg-primary/15 text-primary px-2 py-0.5 rounded-md">{user.levelTitle}</span>
-                        <span className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Star className="w-3 h-3" /> {entry.reviewCount} {t('reviews', 'تقييم')}
+                        <span className="text-xs font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-md">
+                          {lang === 'ar' ? entry.levelTitleAr : entry.levelTitle}
                         </span>
+                        <span className="text-xs text-muted-foreground">· {entry.reviewCount} {t('reviews', 'تقييم')}</span>
+                        {entry.specialty && <span className="text-xs text-muted-foreground hidden sm:block">· {entry.specialty}</span>}
                       </div>
                     </div>
                     <div className="text-end shrink-0">
-                      <div className="text-2xl font-black text-primary">{entry.points}</div>
-                      <div className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">{t('Points', 'نقطة')}</div>
+                      <div className="text-xl font-black text-primary">{entry.points.toLocaleString()}</div>
+                      <div className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">{t('pts', 'نقطة')}</div>
                     </div>
                   </div>
                 );
               })}
             </div>
 
-            {/* Remaining ranks */}
+            {/* Rising explorers */}
             {rest.length > 0 && (
-              <>
-                <div className="flex items-center gap-3 mb-4">
+              <div>
+                <div className="flex items-center gap-2 mb-3 px-1">
                   <TrendingUp className="w-4 h-4 text-muted-foreground" />
-                  <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">{t('Rising Explorers', 'المستكشفون الصاعدون')}</p>
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('Rising Explorers', 'المستكشفون الصاعدون')}</p>
                 </div>
                 <div className="space-y-2">
-                  {rest.map((entry, idx) => {
-                    const user = entry.user;
-                    const name = lang === 'ar' ? user.nameAr : user.nameEn;
-                    const rank = idx + 4;
-                    return (
-                      <div
-                        key={user.id}
-                        className="flex items-center gap-4 p-4 rounded-2xl border border-border/60 bg-card hover:bg-accent/30 hover:border-primary/20 transition-all duration-200"
-                      >
-                        <div className="w-10 text-center shrink-0">
-                          <span className="text-lg font-black text-muted-foreground/60">#{rank}</span>
-                        </div>
-                        <div className="w-11 h-11 rounded-full bg-muted shrink-0 overflow-hidden border border-border">
-                          <img src={user.avatarUrl || `https://i.pravatar.cc/150?u=${user.id}`} alt={name} className="w-full h-full object-cover" />
-                        </div>
-                        <div className="flex-grow">
-                          <p className="font-semibold text-foreground">{name}</p>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-xs text-muted-foreground">{user.levelTitle}</span>
-                            <span className="text-xs text-muted-foreground">· {entry.reviewCount} {t('reviews', 'تقييم')}</span>
-                          </div>
-                        </div>
-                        <div className="text-end shrink-0">
-                          <div className="text-lg font-bold text-foreground">{entry.points}</div>
-                          <div className="text-xs text-muted-foreground">{t('pts', 'نقطة')}</div>
-                        </div>
+                  {rest.map((entry) => (
+                    <div
+                      key={entry.nameEn}
+                      className="flex items-center gap-4 p-4 rounded-2xl border border-border/60 bg-card hover:bg-accent/30 hover:border-primary/20 transition-all"
+                    >
+                      <div className="w-8 text-center shrink-0">
+                        <span className="text-sm font-black text-muted-foreground">#{entry.rank}</span>
                       </div>
-                    );
-                  })}
+                      <div className="relative shrink-0">
+                        <img src={entry.avatar} alt={lang === 'ar' ? entry.nameAr : entry.nameEn} className="w-11 h-11 rounded-full object-cover border border-border" />
+                        {entry.trending && (
+                          <div className="absolute -top-1 -end-1 w-4 h-4 bg-orange-500 rounded-full flex items-center justify-center">
+                            <Flame className="w-2.5 h-2.5 text-white" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1">
+                          <p className="font-semibold text-foreground text-sm truncate">{lang === 'ar' ? entry.nameAr : entry.nameEn}</p>
+                          <span className="text-sm shrink-0">{entry.badge}</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5">{lang === 'ar' ? entry.levelTitleAr : entry.levelTitle} · {entry.reviewCount} {t('reviews', 'تقييم')}</p>
+                      </div>
+                      <div className="text-end shrink-0">
+                        <div className="text-base font-bold text-foreground">{entry.points.toLocaleString()}</div>
+                        <div className="text-[10px] text-muted-foreground">{t('pts', 'نقطة')}</div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </>
+              </div>
             )}
 
-            {/* CTA */}
-            <div className="mt-10 bg-primary/5 border border-primary/20 rounded-3xl p-8 text-center">
-              <Trophy className="w-12 h-12 text-primary mx-auto mb-3" />
-              <h3 className="text-xl font-bold text-foreground mb-2">{t('Want to climb the ranks?', 'تريد تصعيد المراتب؟')}</h3>
-              <p className="text-muted-foreground mb-5">{t('Write reviews and book tables to earn points and rise in the leaderboard.', 'اكتب تقييمات واحجز طاولات لكسب النقاط والتصعيد في القائمة.')}</p>
-              <div className="flex gap-3 justify-center">
+            {/* Levels system */}
+            <div className="bg-card border border-border rounded-3xl p-6">
+              <div className="flex items-center gap-2 mb-5">
+                <Zap className="w-5 h-5 text-primary" />
+                <h2 className="font-bold text-foreground">{t('Levels System', 'نظام المستويات')}</h2>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {LEVELS.map(lev => (
+                  <div key={lev.level} className="flex items-center gap-3 p-3 bg-secondary/40 rounded-2xl">
+                    <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${lev.color} flex items-center justify-center text-xl shadow-sm shrink-0`}>
+                      {lev.icon}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-foreground truncate">{lang === 'ar' ? lev.nameAr : lev.nameEn}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {lev.min}–{lev.max === Infinity ? '∞' : lev.max} {t('pts', 'نقطة')}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Achievements */}
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <Award className="w-5 h-5 text-primary" />
+                <h2 className="font-bold text-foreground">{t('Achievements', 'الإنجازات')}</h2>
+                <span className="text-xs text-muted-foreground">{t('Earn bonus points', 'اجمع نقاطاً إضافية')}</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {ACHIEVEMENTS.map((a, i) => (
+                  <div key={i} className={`flex items-center gap-3 p-4 rounded-2xl border border-border ${a.bg}`}>
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${a.color} bg-white shadow-sm`}>
+                      {a.icon}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-foreground text-sm">{lang === 'ar' ? a.nameAr : a.nameEn}</p>
+                      <p className="text-xs text-muted-foreground">{lang === 'ar' ? a.descAr : a.descEn}</p>
+                    </div>
+                    <div className={`shrink-0 text-xs font-black px-2 py-1 rounded-xl ${a.color} bg-white`}>+{a.pts}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* How to earn points */}
+            <div className="bg-primary/5 border border-primary/15 rounded-3xl p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Target className="w-5 h-5 text-primary" />
+                <h2 className="font-bold text-foreground">{t('How to Earn Points', 'كيف تجمع النقاط')}</h2>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {[
+                  { en: 'Write a review', ar: 'اكتب تقييماً', pts: 25, icon: Star },
+                  { en: 'Complete a booking', ar: 'أكمل حجزاً', pts: 10, icon: CheckCircle2 },
+                  { en: 'Refer a friend', ar: 'ادعُ صديقاً', pts: 50, icon: Users },
+                  { en: 'Upload a photo', ar: 'ارفع صورة', pts: 5, icon: Flame },
+                ].map(item => {
+                  const Icon = item.icon;
+                  return (
+                    <div key={item.en} className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
+                        <Icon className="w-4 h-4 text-primary" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-foreground">{lang === 'ar' ? item.ar : item.en}</p>
+                      </div>
+                      <span className="text-sm font-black text-primary shrink-0">+{item.pts}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex gap-3 mt-6 flex-wrap">
                 <Link href="/restaurants">
                   <button className="px-5 py-2.5 bg-primary text-primary-foreground rounded-xl font-semibold text-sm hover:bg-primary/90 transition-colors">
                     {t('Explore Restaurants', 'استكشف المطاعم')}
@@ -184,12 +356,12 @@ export function LeaderboardPage() {
                 </Link>
                 <Link href="/signin">
                   <button className="px-5 py-2.5 border border-primary text-primary rounded-xl font-semibold text-sm hover:bg-primary/5 transition-colors">
-                    {t('Sign In', 'تسجيل الدخول')}
+                    {t('Sign In to Compete', 'سجّل دخولك للمنافسة')}
                   </button>
                 </Link>
               </div>
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>

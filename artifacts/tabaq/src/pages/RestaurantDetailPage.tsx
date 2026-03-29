@@ -642,9 +642,30 @@ export function RestaurantDetailPage() {
                     ))}
                   </div>
                 )) : (
-                  <div className="text-center py-16 text-muted-foreground">
-                    <Utensils className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                    <p>{t('Menu not available yet.', 'المنيو غير متوفر حالياً.')}</p>
+                  <div className="py-8">
+                    <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-primary/5 via-primary/3 to-violet-50 border border-primary/10 p-8 text-center">
+                      <div className="absolute top-4 start-4 text-4xl opacity-20">🍽️</div>
+                      <div className="absolute bottom-4 end-4 text-4xl opacity-20">🥘</div>
+                      <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <Utensils className="w-8 h-8 text-primary" />
+                      </div>
+                      <h3 className="text-lg font-bold text-foreground mb-1">{t('Menu Coming Soon', 'المنيو قريباً')}</h3>
+                      <p className="text-muted-foreground text-sm max-w-xs mx-auto mb-5">
+                        {t('The restaurant is still uploading their menu. Book a table or check their reviews.', 'المطعم لا يزال يرفع قائمة طعامه. احجز طاولة أو اطّلع على التقييمات.')}
+                      </p>
+                      <div className="flex gap-3 justify-center flex-wrap">
+                        <Link href={`/restaurants/${restaurant.id}#book`}>
+                          <button className="px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors">
+                            {t('Book a Table', 'احجز طاولة')}
+                          </button>
+                        </Link>
+                        <Link href={`/restaurants/${restaurant.id}#reviews`}>
+                          <button className="px-5 py-2.5 border border-border text-foreground rounded-xl text-sm font-semibold hover:bg-accent transition-colors">
+                            {t('Read Reviews', 'اقرأ التقييمات')}
+                          </button>
+                        </Link>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -695,37 +716,77 @@ export function RestaurantDetailPage() {
 
             {/* Tab: Photos */}
             {activeTab === 'photos' && (
-              <div>
-                {menuData && menuData.flatMap(m => m.sections).flatMap(s => s.items || []).filter(d => d.imageUrl).length > 0 ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {restaurant.coverImageUrl && (
-                      <div className="col-span-2 rounded-2xl overflow-hidden aspect-video">
-                        <img src={restaurant.coverImageUrl} alt={name} className="w-full h-full object-cover" />
-                      </div>
-                    )}
-                    {menuData
-                      .flatMap(m => m.sections)
-                      .flatMap(s => (s.items || []) as Dish[])
-                      .filter(d => d.imageUrl)
-                      .map(dish => (
-                        <Link key={dish.id} href={`/dishes/${dish.id}`}>
-                          <div className="rounded-2xl overflow-hidden aspect-square group cursor-pointer">
-                            <img
-                              src={dish.imageUrl!}
-                              alt={lang === 'ar' ? dish.nameAr : dish.nameEn}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                            />
+              <div className="space-y-4">
+                {(() => {
+                  const dishPhotos = menuData
+                    ? menuData.flatMap(m => m.sections).flatMap(s => (s.items || []) as Dish[]).filter(d => d.imageUrl)
+                    : [];
+
+                  const FOOD_PHOTO_SEEDS = [
+                    'restaurant,food,plating',
+                    'gourmet,dish,food',
+                    'fine-dining,cuisine,meal',
+                    'restaurant,interior,ambiance',
+                    'chef,kitchen,cooking',
+                    'dessert,pastry,sweet',
+                    'salad,healthy,fresh',
+                    'grilled,meat,steak',
+                  ];
+                  const rid = Number(restaurant.id) || 1;
+                  const curatedPhotos = FOOD_PHOTO_SEEDS.map((seed, i) => ({
+                    url: `https://source.unsplash.com/featured/800x600?${seed}&sig=${rid * 10 + i}`,
+                    alt: seed,
+                  }));
+
+                  const allPhotos = [
+                    ...(restaurant.coverImageUrl ? [{ url: restaurant.coverImageUrl, alt: name, isCover: true }] : []),
+                    ...dishPhotos.map(d => ({ url: d.imageUrl!, alt: lang === 'ar' ? d.nameAr : d.nameEn, isCover: false, dishId: d.id })),
+                    ...curatedPhotos.map(p => ({ ...p, isCover: false })),
+                  ];
+
+                  return (
+                    <>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                        {allPhotos.slice(0, 1).map((photo, i) => (
+                          <div key={i} className="col-span-2 row-span-2 rounded-2xl overflow-hidden aspect-video group cursor-pointer relative">
+                            <img src={photo.url} alt={photo.alt} className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-500" loading="lazy" />
+                            {(photo as any).isCover && (
+                              <div className="absolute bottom-3 start-3 bg-black/50 backdrop-blur-sm text-white text-xs px-2.5 py-1 rounded-full font-medium">
+                                {t('Cover Photo', 'صورة الغلاف')}
+                              </div>
+                            )}
                           </div>
-                        </Link>
-                      ))
-                    }
-                  </div>
-                ) : (
-                  <div className="text-center py-16 text-muted-foreground">
-                    <Camera className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                    <p className="font-semibold">{t('No photos yet', 'لا توجد صور بعد')}</p>
-                  </div>
-                )}
+                        ))}
+                        {allPhotos.slice(1, 3).map((photo, i) => (
+                          <div key={i + 1} className="rounded-2xl overflow-hidden aspect-square group cursor-pointer relative">
+                            <img src={photo.url} alt={photo.alt} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
+                          </div>
+                        ))}
+                        {allPhotos.slice(3).map((photo, i) => (
+                          'dishId' in photo && (photo as any).dishId ? (
+                            <Link key={i + 3} href={`/dishes/${(photo as any).dishId}`}>
+                              <div className="rounded-2xl overflow-hidden aspect-square group cursor-pointer">
+                                <img src={photo.url} alt={photo.alt} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
+                              </div>
+                            </Link>
+                          ) : (
+                            <div key={i + 3} className="rounded-2xl overflow-hidden aspect-square group cursor-pointer">
+                              <img src={photo.url} alt={photo.alt} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
+                            </div>
+                          )
+                        ))}
+                      </div>
+
+                      <div className="flex items-center justify-between pt-2">
+                        <p className="text-sm text-muted-foreground">{allPhotos.length} {t('photos', 'صورة')}</p>
+                        <button className="flex items-center gap-2 text-sm text-primary font-semibold hover:underline">
+                          <Camera className="w-4 h-4" />
+                          {t('Upload a photo', 'ارفع صورة')}
+                        </button>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             )}
 
