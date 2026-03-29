@@ -4,7 +4,8 @@ import { Link } from 'wouter';
 import {
   BarChart3, CalendarDays, Users, Star, TrendingUp, ChevronRight,
   CheckCircle2, Clock, XCircle, AlertCircle, MessageSquare,
-  Utensils, Settings, Bell, Eye, ArrowUpRight, Percent, Gift
+  Utensils, Settings, Bell, Eye, ArrowUpRight, Percent, Gift,
+  Tag, Plus, ToggleLeft, ToggleRight, ScanLine, QrCode, ExternalLink, MapPin
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -35,15 +36,35 @@ const STATUS_MAP: Record<string, { icon: React.ElementType; labelEn: string; cla
   cancelled: { icon: XCircle, labelEn: 'Cancelled', className: 'text-red-700 bg-red-100' },
 };
 
-type ConsoleTab = 'overview' | 'bookings' | 'reviews' | 'menu' | 'settings';
+const MOCK_CONSOLE_OFFERS = [
+  {
+    id: 1, titleEn: '50% Off Premium Dining Set Menu', titleAr: 'خصم 50% على قائمة الطعام المميزة',
+    discountPercent: 50, originalPrice: 280, discountedPrice: 140, currency: 'SAR',
+    isActive: true, validUntil: '2026-04-30', redemptions: 34, totalCapacity: 100,
+  },
+  {
+    id: 2, titleEn: 'Weekend Brunch for Two', titleAr: 'برانش نهاية الأسبوع لاثنين',
+    discountPercent: 30, originalPrice: 220, discountedPrice: 154, currency: 'SAR',
+    isActive: true, validUntil: '2026-05-15', redemptions: 12, totalCapacity: 50,
+  },
+  {
+    id: 3, titleEn: 'Family Feast Package', titleAr: 'باقة وليمة العائلة',
+    discountPercent: 25, originalPrice: 400, discountedPrice: 300, currency: 'SAR',
+    isActive: false, validUntil: '2026-03-31', redemptions: 8, totalCapacity: 30,
+  },
+];
+
+type ConsoleTab = 'overview' | 'bookings' | 'offers' | 'reviews' | 'menu' | 'settings';
 
 export function BusinessConsolePage() {
   const { t, lang } = useLanguage();
   const [activeTab, setActiveTab] = useState<ConsoleTab>('overview');
+  const [consoleOffers, setConsoleOffers] = useState(MOCK_CONSOLE_OFFERS);
 
   const tabs: { id: ConsoleTab; labelEn: string; labelAr: string; icon: React.ElementType }[] = [
     { id: 'overview', labelEn: 'Overview', labelAr: 'نظرة عامة', icon: BarChart3 },
     { id: 'bookings', labelEn: 'Bookings', labelAr: 'الحجوزات', icon: CalendarDays },
+    { id: 'offers', labelEn: 'Offers', labelAr: 'العروض', icon: Tag },
     { id: 'reviews', labelEn: 'Reviews', labelAr: 'التقييمات', icon: MessageSquare },
     { id: 'menu', labelEn: 'Menu', labelAr: 'القائمة', icon: Utensils },
     { id: 'settings', labelEn: 'Settings', labelAr: 'الإعدادات', icon: Settings },
@@ -344,6 +365,108 @@ export function BusinessConsolePage() {
                 <p className="text-muted-foreground text-sm leading-relaxed">{review.text}</p>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Offers Tab */}
+        {activeTab === 'offers' && (
+          <div className="space-y-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-foreground">{t('My Offers', 'عروضي')}</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  {t('Manage exclusive deals for your restaurant', 'إدارة العروض الحصرية لمطعمك')}
+                </p>
+              </div>
+              <Button className="gap-2" size="sm">
+                <Plus className="w-4 h-4" />
+                {t('Create Offer', 'إنشاء عرض')}
+              </Button>
+            </div>
+
+            {/* Summary cards */}
+            <div className="grid grid-cols-3 gap-4">
+              {[
+                { label: t('Active', 'نشط'), val: consoleOffers.filter(o => o.isActive).length, color: 'bg-green-50 text-green-700 border-green-200' },
+                { label: t('Total Redemptions', 'إجمالي الاستخدامات'), val: consoleOffers.reduce((a, o) => a + o.redemptions, 0), color: 'bg-primary/5 text-primary border-primary/20' },
+                { label: t('Revenue Generated', 'الإيرادات المحققة'), val: `SAR ${consoleOffers.reduce((a, o) => a + o.redemptions * o.discountedPrice, 0).toLocaleString()}`, color: 'bg-amber-50 text-amber-700 border-amber-200' },
+              ].map(s => (
+                <div key={s.label} className={`border rounded-2xl p-4 ${s.color}`}>
+                  <p className="text-2xl font-extrabold">{s.val}</p>
+                  <p className="text-xs font-medium mt-0.5 opacity-80">{s.label}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="space-y-3">
+              {consoleOffers.map(offer => (
+                <div key={offer.id} className="bg-card border border-border rounded-2xl p-5 flex gap-4 items-center">
+                  <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center shrink-0">
+                    <Tag className="w-6 h-6 text-primary" />
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-bold text-foreground truncate">{lang === 'ar' ? offer.titleAr : offer.titleEn}</p>
+                        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                          <span className="inline-flex items-center gap-1 bg-red-100 text-red-700 font-bold px-2 py-0.5 rounded-full">
+                            -{offer.discountPercent}% OFF
+                          </span>
+                          <span>
+                            <span className="font-semibold text-foreground">{offer.currency} {offer.discountedPrice}</span>
+                            <span className="line-through ms-1.5">{offer.originalPrice}</span>
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" /> {t('Expires', 'ينتهي')} {offer.validUntil}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 shrink-0">
+                        <div className="text-end">
+                          <p className="text-sm font-bold text-foreground">{offer.redemptions} / {offer.totalCapacity}</p>
+                          <p className="text-xs text-muted-foreground">{t('Redeemed', 'استُخدم')}</p>
+                        </div>
+                        <button
+                          onClick={() => setConsoleOffers(prev => prev.map(o => o.id === offer.id ? { ...o, isActive: !o.isActive } : o))}
+                          className={`relative w-11 h-6 rounded-full transition-all duration-300 shrink-0 ${offer.isActive ? 'bg-primary' : 'bg-muted'}`}
+                        >
+                          <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-all duration-300 ${offer.isActive ? 'start-[22px]' : 'start-0.5'}`} />
+                        </button>
+                        <button className="p-2 rounded-xl hover:bg-secondary transition-colors">
+                          <ExternalLink className="w-4 h-4 text-muted-foreground" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Redemption progress */}
+                    <div className="mt-3">
+                      <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-primary rounded-full transition-all"
+                          style={{ width: `${Math.min((offer.redemptions / offer.totalCapacity) * 100, 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 rounded-2xl p-5 flex items-center gap-4">
+              <div className="w-12 h-12 bg-primary/15 rounded-2xl flex items-center justify-center shrink-0">
+                <QrCode className="w-6 h-6 text-primary" />
+              </div>
+              <div className="flex-1">
+                <p className="font-bold text-foreground">{t('Redemption Scanner', 'ماسح الاستخدام')}</p>
+                <p className="text-sm text-muted-foreground">{t('Scan customer QR codes at the restaurant to validate offers', 'امسح رموز QR للعملاء في المطعم للتحقق من العروض')}</p>
+              </div>
+              <Button size="sm" className="gap-2 shrink-0">
+                <ScanLine className="w-4 h-4" />
+                {t('Open Scanner', 'فتح الماسح')}
+              </Button>
+            </div>
           </div>
         )}
 

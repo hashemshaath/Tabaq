@@ -488,28 +488,53 @@ function DealDetailPage({ offer, onBack }: { offer: ExtendedOffer; onBack: () =>
             {/* Location */}
             <div className="mb-6">
               <h2 className="text-base font-semibold text-foreground mb-3">{t('Location', 'الموقع')}</h2>
-              <div className="rounded-xl overflow-hidden border border-border/60 bg-secondary/30">
-                <div className="h-40 bg-gradient-to-br from-secondary to-muted flex items-center justify-center relative">
-                  <div className="absolute inset-0 opacity-10"
-                    style={{
-                      backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 24px, #666 24px, #666 25px), repeating-linear-gradient(90deg, transparent, transparent 24px, #666 24px, #666 25px)'
-                    }}
+              <div className="rounded-xl overflow-hidden border border-border/60">
+                {/* OpenStreetMap embed — real interactive map */}
+                <div className="relative h-48 w-full">
+                  <iframe
+                    title="Restaurant Location"
+                    width="100%"
+                    height="100%"
+                    style={{ border: 0, display: 'block' }}
+                    loading="lazy"
+                    src={(() => {
+                      const cityCoords: Record<string, [number, number]> = {
+                        'Riyadh': [24.7136, 46.6753],
+                        'Jeddah': [21.3891, 39.8579],
+                        'Dammam': [26.3927, 49.9777],
+                        'Mecca': [21.3891, 39.8579],
+                        'Medina': [24.5247, 39.5692],
+                        'NEOM': [28.0339, 35.1054],
+                        'Khobar': [26.2172, 50.1972],
+                        'Tabuk': [28.3835, 36.5662],
+                      };
+                      const lat = (offer as any).latitude || cityCoords[offer.city]?.[0] || 24.7136;
+                      const lon = (offer as any).longitude || cityCoords[offer.city]?.[1] || 46.6753;
+                      const delta = 0.008;
+                      return `https://www.openstreetmap.org/export/embed.html?bbox=${lon - delta},${lat - delta},${lon + delta},${lat + delta}&layer=mapnik&marker=${lat},${lon}`;
+                    })()}
                   />
-                  <div className="relative flex flex-col items-center gap-2 text-center">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 border-2 border-primary flex items-center justify-center shadow-lg">
-                      <MapPin className="w-5 h-5 text-primary fill-primary/20" />
+                  {/* Overlay with restaurant name pin */}
+                  <div className="absolute bottom-3 start-3 end-3 pointer-events-none">
+                    <div className="inline-flex items-center gap-2 bg-white/95 backdrop-blur-sm rounded-full px-3 py-1.5 shadow-lg border border-border/30">
+                      <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center shrink-0">
+                        <MapPin className="w-3 h-3 text-white" />
+                      </div>
+                      <p className="text-xs font-semibold text-foreground truncate max-w-[200px]">{restName}</p>
                     </div>
-                    <p className="text-sm font-semibold text-foreground">{restName}</p>
-                    <p className="text-xs text-muted-foreground">{(offer as any).address || offer.city}</p>
                   </div>
                 </div>
-                <div className="px-4 py-3 flex items-center justify-between">
+                <div className="px-4 py-3 flex items-center justify-between bg-card">
                   <div>
                     <p className="text-sm font-semibold text-foreground">{restName}</p>
-                    <p className="text-xs text-muted-foreground">{(offer as any).address || offer.city}</p>
+                    <p className="text-xs text-muted-foreground">{(offer as any).address || offer.city + ', Saudi Arabia'}</p>
                   </div>
-                  <a href={`https://maps.google.com/?q=${(offer as any).latitude},${(offer as any).longitude}`} target="_blank" rel="noopener noreferrer"
-                    className="text-xs font-semibold text-primary flex items-center gap-1 hover:underline">
+                  <a
+                    href={`https://maps.google.com/?q=${encodeURIComponent(`${restName}, ${offer.city}, Saudi Arabia`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs font-semibold text-primary flex items-center gap-1 hover:underline shrink-0"
+                  >
                     <ExternalLink className="w-3 h-3" /> {t('Open in Maps', 'فتح في الخرائط')}
                   </a>
                 </div>

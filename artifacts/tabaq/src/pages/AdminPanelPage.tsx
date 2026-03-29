@@ -86,7 +86,7 @@ const INITIAL_MODULES: Module[] = [
 ];
 
 // ─── Types ──────────────────────────────────────────────────────
-type AdminTab = 'overview' | 'restaurants' | 'registrations' | 'users' | 'bookings' | 'reviews' | 'blog' | 'seo' | 'modules' | 'settings';
+type AdminTab = 'overview' | 'offers' | 'referrals' | 'restaurants' | 'registrations' | 'users' | 'bookings' | 'reviews' | 'blog' | 'seo' | 'modules' | 'settings';
 
 // ─── Component ──────────────────────────────────────────────────
 export function AdminPanelPage() {
@@ -147,12 +147,61 @@ export function AdminPanelPage() {
 
   const displayStats = realStats?.stats ?? null;
 
+  const { data: adminOffersData, refetch: refetchOffers } = useQuery({
+    queryKey: ['admin-offers'],
+    queryFn: async () => {
+      const res = await fetch('/api/admin/offers', { credentials: 'include' });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    retry: false,
+    staleTime: 30000,
+  });
+
+  const { data: referralData } = useQuery({
+    queryKey: ['admin-referrals'],
+    queryFn: async () => {
+      const res = await fetch('/api/admin/referrals', { credentials: 'include' });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    retry: false,
+    staleTime: 30000,
+    enabled: activeTab === 'referrals',
+  });
+
+  const [pointsRules, setPointsRules] = useState({
+    referralSignup: 100,
+    referredBonus: 50,
+    reviewWritten: 25,
+    bookingMade: 15,
+    voucherPurchased: 10,
+    dailyMaxPoints: 500,
+    pointExpireDays: 365,
+    minRedemption: 100,
+  });
+
+  const toggleOfferActive = useMutation({
+    mutationFn: async ({ id, isActive }: { id: number; isActive: boolean }) => {
+      const res = await fetch(`/api/admin/offers/${id}/toggle`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive }),
+        credentials: 'include',
+      });
+      return res.json();
+    },
+    onSuccess: () => refetchOffers(),
+  });
+
   const navItems: { id: AdminTab; label: string; icon: React.ElementType; badge?: number }[] = [
     { id: 'overview', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'registrations', label: 'Registrations', icon: Plus, badge: PENDING_RESTAURANTS.length },
     { id: 'restaurants', label: 'Restaurants', icon: Utensils },
     { id: 'users', label: 'Users', icon: Users },
     { id: 'bookings', label: 'Bookings', icon: CalendarDays },
+    { id: 'offers', label: 'Offers', icon: Tag },
+    { id: 'referrals', label: 'Referrals & Points', icon: Award },
     { id: 'reviews', label: 'Reviews', icon: Star, badge: 1 },
     { id: 'blog', label: 'Blog & Content', icon: BookOpen },
     { id: 'seo', label: 'SEO Manager', icon: Globe },
@@ -776,6 +825,273 @@ export function AdminPanelPage() {
                   <Button className="mt-2">Save SEO Settings</Button>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* ── OFFERS MANAGEMENT ── */}
+          {activeTab === 'offers' && (
+            <div className="space-y-5">
+              {/* Header actions */}
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 bg-primary/10 text-primary px-3 py-1.5 rounded-full text-sm font-semibold">
+                    <Tag className="w-4 h-4" />
+                    {adminOffersData?.total ?? 0} Total Offers
+                  </div>
+                  <div className="flex items-center gap-2 bg-green-100 text-green-700 px-3 py-1.5 rounded-full text-sm font-semibold">
+                    {adminOffersData?.offers?.filter((o: any) => o.isActive)?.length ?? 0} Active
+                  </div>
+                </div>
+                <Button size="sm" className="gap-2">
+                  <Plus className="w-4 h-4" /> New Offer
+                </Button>
+              </div>
+
+              {/* Offers table */}
+              <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border bg-secondary/30">
+                        <th className="text-start px-5 py-3.5 font-semibold text-foreground">Offer</th>
+                        <th className="text-start px-4 py-3.5 font-semibold text-foreground">Restaurant</th>
+                        <th className="text-start px-4 py-3.5 font-semibold text-foreground">Discount</th>
+                        <th className="text-start px-4 py-3.5 font-semibold text-foreground">Price</th>
+                        <th className="text-start px-4 py-3.5 font-semibold text-foreground">Redemptions</th>
+                        <th className="text-start px-4 py-3.5 font-semibold text-foreground">Valid Until</th>
+                        <th className="text-start px-4 py-3.5 font-semibold text-foreground">Status</th>
+                        <th className="px-4 py-3.5" />
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {!adminOffersData?.offers?.length ? (
+                        <tr>
+                          <td colSpan={8} className="py-16 text-center text-muted-foreground">
+                            <Tag className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                            <p className="font-medium">No offers yet</p>
+                            <p className="text-xs mt-1">Create your first offer to get started</p>
+                          </td>
+                        </tr>
+                      ) : (
+                        (adminOffersData.offers as any[]).map((offer: any) => (
+                          <tr key={offer.id} className="hover:bg-secondary/30 transition-colors">
+                            <td className="px-5 py-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
+                                  <Tag className="w-4 h-4 text-primary" />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="font-semibold text-foreground text-sm truncate max-w-[180px]">{offer.titleEn}</p>
+                                  <p className="text-xs text-muted-foreground truncate max-w-[180px]">{offer.titleAr}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-4">
+                              <p className="text-sm font-medium text-foreground">{offer.restaurantNameEn ?? '—'}</p>
+                            </td>
+                            <td className="px-4 py-4">
+                              <span className="inline-flex items-center gap-1 bg-red-100 text-red-700 text-xs font-bold px-2 py-0.5 rounded-full">
+                                -{Number(offer.discountPercent ?? 0).toFixed(0)}%
+                              </span>
+                            </td>
+                            <td className="px-4 py-4">
+                              <div>
+                                <span className="text-sm font-semibold text-foreground">
+                                  SAR {Number(offer.discountedPrice ?? 0).toFixed(0)}
+                                </span>
+                                {offer.originalPrice && (
+                                  <span className="text-xs text-muted-foreground line-through ms-1.5">
+                                    {Number(offer.originalPrice).toFixed(0)}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-4 py-4">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-sm font-semibold text-foreground">{offer.redemptions}</span>
+                                {offer.totalCapacity && (
+                                  <span className="text-xs text-muted-foreground">/ {offer.totalCapacity}</span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-4 py-4 text-xs text-muted-foreground whitespace-nowrap">
+                              {offer.validUntil ? new Date(offer.validUntil).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                            </td>
+                            <td className="px-4 py-4">
+                              <button
+                                onClick={() => toggleOfferActive.mutate({ id: offer.id, isActive: !offer.isActive })}
+                                className={`relative w-10 h-5.5 rounded-full transition-all duration-300 ${offer.isActive ? 'bg-primary' : 'bg-muted'}`}
+                                style={{ width: 40, height: 22 }}
+                              >
+                                <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 ${offer.isActive ? 'start-[20px]' : 'start-0.5'}`} />
+                              </button>
+                            </td>
+                            <td className="px-4 py-4">
+                              <button className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-lg hover:bg-secondary">
+                                <MoreHorizontal className="w-4 h-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── REFERRALS & POINTS ── */}
+          {activeTab === 'referrals' && (
+            <div className="space-y-6">
+              {/* Analytics Stats */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {[
+                  { label: 'Total Referrals', val: referralData?.stats?.totalReferrals ?? '—', icon: Users, color: 'bg-blue-50 text-blue-600' },
+                  { label: 'Converted', val: referralData?.stats?.converted ?? '—', icon: CheckCircle2, color: 'bg-green-50 text-green-600' },
+                  { label: 'Conversion Rate', val: referralData?.stats ? `${referralData.stats.conversionRate}%` : '—', icon: TrendingUp, color: 'bg-primary/10 text-primary' },
+                  { label: 'Points Awarded', val: referralData?.stats?.totalPointsAwarded?.toLocaleString() ?? '—', icon: Award, color: 'bg-amber-50 text-amber-600' },
+                  { label: 'Points Redeemed', val: referralData?.stats?.totalPointsRedeemed?.toLocaleString() ?? '—', icon: Tag, color: 'bg-purple-50 text-purple-600' },
+                  { label: 'Outstanding Points', val: referralData?.stats?.outstandingPoints?.toLocaleString() ?? '—', icon: Activity, color: 'bg-orange-50 text-orange-600' },
+                  { label: 'Pending Referrals', val: referralData?.stats?.pending ?? '—', icon: Clock, color: 'bg-yellow-50 text-yellow-600' },
+                  { label: 'Total Transactions', val: referralData?.stats?.totalTransactions?.toLocaleString() ?? '—', icon: Database, color: 'bg-cyan-50 text-cyan-600' },
+                ].map(stat => {
+                  const Icon = stat.icon;
+                  return (
+                    <div key={stat.label} className="bg-card border border-border rounded-2xl p-4">
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-3 ${stat.color}`}>
+                        <Icon className="w-4 h-4" />
+                      </div>
+                      <p className="text-xl font-extrabold text-foreground">{String(stat.val)}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{stat.label}</p>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                {/* Top Referrers */}
+                <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                  <div className="px-5 py-4 border-b border-border">
+                    <h3 className="font-bold text-foreground">Top Referrers</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">Most active users by invitations sent</p>
+                  </div>
+                  {!referralData?.topReferrers?.length ? (
+                    <div className="py-12 text-center text-muted-foreground">
+                      <Users className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                      <p className="text-sm font-medium">No referrals yet</p>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-border">
+                      {(referralData.topReferrers as any[]).map((r: any, i: number) => (
+                        <div key={r.referrerId} className="flex items-center gap-3 px-5 py-3">
+                          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${i === 0 ? 'bg-amber-100 text-amber-700' : i === 1 ? 'bg-secondary text-foreground' : 'bg-secondary text-muted-foreground'}`}>
+                            {i + 1}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-foreground truncate">{r.nameEn || r.email || `User #${r.referrerId}`}</p>
+                            <p className="text-xs text-muted-foreground">{r.email}</p>
+                          </div>
+                          <div className="text-end">
+                            <p className="text-sm font-bold text-foreground">{r.referralCount}</p>
+                            <p className="text-xs text-muted-foreground">{r.pointsEarned ?? 0} pts</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Points Rules Configurator */}
+                <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                  <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+                    <div>
+                      <h3 className="font-bold text-foreground">Points Rules</h3>
+                      <p className="text-xs text-muted-foreground mt-0.5">Configure how points are earned and redeemed</p>
+                    </div>
+                    <button
+                      onClick={() => alert('Points rules saved! (Connected to API in production)')}
+                      className="text-xs font-semibold text-white bg-primary px-3 py-1.5 rounded-lg hover:bg-primary/90 transition-colors"
+                    >
+                      Save Rules
+                    </button>
+                  </div>
+                  <div className="p-4 space-y-3">
+                    {[
+                      { key: 'referralSignup', label: 'Points per successful referral (referrer)', icon: '🎁' },
+                      { key: 'referredBonus', label: 'Welcome bonus for referred user', icon: '👋' },
+                      { key: 'reviewWritten', label: 'Points for writing a review', icon: '⭐' },
+                      { key: 'bookingMade', label: 'Points for completing a booking', icon: '📅' },
+                      { key: 'voucherPurchased', label: 'Points for purchasing a voucher', icon: '🎫' },
+                      { key: 'dailyMaxPoints', label: 'Max points per day (cap)', icon: '⚡' },
+                      { key: 'pointExpireDays', label: 'Points expire after (days)', icon: '📆' },
+                      { key: 'minRedemption', label: 'Minimum points to redeem', icon: '💳' },
+                    ].map(rule => (
+                      <div key={rule.key} className="flex items-center justify-between gap-3">
+                        <label className="text-xs font-medium text-foreground flex items-center gap-2 flex-1">
+                          <span>{rule.icon}</span>
+                          <span>{rule.label}</span>
+                        </label>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <input
+                            type="number"
+                            value={pointsRules[rule.key as keyof typeof pointsRules]}
+                            onChange={e => setPointsRules(prev => ({ ...prev, [rule.key]: parseInt(e.target.value) || 0 }))}
+                            className="w-20 h-8 px-2 text-sm text-end border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 font-mono"
+                          />
+                          <span className="text-xs text-muted-foreground w-8">
+                            {rule.key === 'pointExpireDays' ? 'days' : rule.key === 'dailyMaxPoints' || rule.key === 'minRedemption' ? 'pts' : 'pts'}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Recent Activity */}
+              {referralData?.recentActivity?.length > 0 && (
+                <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                  <div className="px-5 py-4 border-b border-border">
+                    <h3 className="font-bold text-foreground">Recent Referral Activity</h3>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border bg-secondary/30">
+                          <th className="text-start px-5 py-3 font-semibold text-foreground">Code</th>
+                          <th className="text-start px-4 py-3 font-semibold text-foreground">Status</th>
+                          <th className="text-start px-4 py-3 font-semibold text-foreground">Referrer Pts</th>
+                          <th className="text-start px-4 py-3 font-semibold text-foreground">Referred Pts</th>
+                          <th className="text-start px-4 py-3 font-semibold text-foreground">Date</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {(referralData.recentActivity as any[]).map((item: any) => (
+                          <tr key={item.id} className="hover:bg-secondary/20 transition-colors">
+                            <td className="px-5 py-3 font-mono text-xs text-foreground">{item.referralCode}</td>
+                            <td className="px-4 py-3">
+                              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                                item.status === 'converted' ? 'bg-green-100 text-green-700'
+                                : item.status === 'signed_up' ? 'bg-blue-100 text-blue-700'
+                                : item.status === 'expired' ? 'bg-red-100 text-red-700'
+                                : 'bg-yellow-100 text-yellow-700'
+                              }`}>
+                                {item.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-sm font-semibold text-foreground">{item.referrerPointsEarned} pts</td>
+                            <td className="px-4 py-3 text-sm font-semibold text-foreground">{item.referredPointsEarned} pts</td>
+                            <td className="px-4 py-3 text-xs text-muted-foreground">
+                              {new Date(item.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

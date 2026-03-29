@@ -13,7 +13,7 @@ Features include:
 - Referral & Points System (`/referral`) — unique codes, WhatsApp/Twitter sharing, points history
 - Username System — claim @username on profile Settings tab, real-time availability check via `/api/username/check`
 - Provider Registration (`/partners/register`) — 5-step wizard: business type, details, contact, owner, plan
-- Restaurant business console (`/console`) with overview, bookings, reviews, menu, settings tabs
+- Restaurant business console (`/console`) with overview, bookings, **offers** (active/inactive toggle, redemption progress, QR scanner CTA, revenue stats), reviews, menu, settings tabs
 - Curated collections (`/collections`, `/collections/:id`) — 8 themed restaurant lists
 - Michelin-style award badges (Excellence, Top Rated, Fine Dining, Hidden Gem) on RestaurantCard
 - Trending/New indicators on restaurant cards

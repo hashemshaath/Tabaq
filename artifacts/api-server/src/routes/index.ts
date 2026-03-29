@@ -15,6 +15,8 @@ import eventsRouter from "./events.js";
 import referralsRouter from "./referrals.js";
 import usernameRouter from "./username.js";
 import adminStatsRouter from "./admin-stats.js";
+import adminOffersRouter from "./admin-offers.js";
+import adminReferralsRouter from "./admin-referrals.js";
 
 const router: IRouter = Router();
 
@@ -34,5 +36,7 @@ router.use(eventsRouter);
 router.use(referralsRouter);
 router.use(usernameRouter);
 router.use(adminStatsRouter);
+router.use(adminOffersRouter);
+router.use(adminReferralsRouter);
 
 export default router;
