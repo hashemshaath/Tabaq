@@ -12,6 +12,9 @@ import reviewsRouter from "./reviews.js";
 import usersRouter from "./users.js";
 import searchRouter from "./search.js";
 import eventsRouter from "./events.js";
+import referralsRouter from "./referrals.js";
+import usernameRouter from "./username.js";
+import adminStatsRouter from "./admin-stats.js";
 
 const router: IRouter = Router();
 
@@ -28,5 +31,8 @@ router.use(reviewsRouter);
 router.use(usersRouter);
 router.use(searchRouter);
 router.use(eventsRouter);
+router.use(referralsRouter);
+router.use(usernameRouter);
+router.use(adminStatsRouter);
 
 export default router;

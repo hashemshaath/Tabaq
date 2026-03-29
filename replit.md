@@ -7,17 +7,20 @@
 Features include:
 - Restaurant & dish discovery with smart sort pills (Featured, Top Rated, Trending, New, Award Winners)
 - Table reservations with inline waitlist when no slots available
-- Exclusive offers and vouchers
+- Exclusive offers and vouchers (world-class redesigned OffersPage with QR/barcode redemption, gallery, gift mode)
 - Gifting system
 - Social reviews and leaderboard/levels
+- Referral & Points System (`/referral`) — unique codes, WhatsApp/Twitter sharing, points history
+- Username System — claim @username on profile Settings tab, real-time availability check via `/api/username/check`
+- Provider Registration (`/partners/register`) — 5-step wizard: business type, details, contact, owner, plan
 - Restaurant business console (`/console`) with overview, bookings, reviews, menu, settings tabs
 - Curated collections (`/collections`, `/collections/:id`) — 8 themed restaurant lists
 - Michelin-style award badges (Excellence, Top Rated, Fine Dining, Hidden Gem) on RestaurantCard
 - Trending/New indicators on restaurant cards
 - Payments and wallet
-- Admin CRM
+- Admin CRM with live DB stats (total restaurants, users, bookings, reviews, offers) + module management
 
-**Pages**: HomePage, DiscoveryPage, CollectionsPage (list + detail), RestaurantDetailPage, DishDetailPage, BookingsPage, VouchersPage, OffersPage, LeaderboardPage, ProfilePage, FeedPage, BusinessConsolePage (`/console`), UserDashboardPage (`/dashboard`), PartnerLandingPage (`/partners`), AdminPanelPage (`/admin`), SignInPage, SearchPage, NotFound
+**Pages**: HomePage, DiscoveryPage, CollectionsPage (list + detail), RestaurantDetailPage, DishDetailPage, BookingsPage, VouchersPage, OffersPage, LeaderboardPage, ProfilePage (with Settings tab + username management), FeedPage, BusinessConsolePage (`/console`), UserDashboardPage (`/dashboard`), PartnerLandingPage (`/partners`), ProviderRegistrationPage (`/partners/register` — 5-step wizard), ReferralPage (`/referral`), AdminPanelPage (`/admin`), SignInPage, SearchPage, NotFound
 
 **Award badge logic** (client-side, `src/lib/awards.ts`):
 - Excellence: 4.8+ rating, 30+ reviews

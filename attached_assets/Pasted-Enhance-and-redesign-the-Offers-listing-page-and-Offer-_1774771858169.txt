@@ -1,0 +1,81 @@
+Enhance and redesign the Offers listing page and Offer details page to a fully professional, world-class standard. Improve layout, typography, spacing, colors, and user experience to match leading global platforms.
+
+Implement a complete Points and Referral System with the following:
+
+- Each user receives a unique promo/referral code
+- Users can invite friends via:
+  - Shareable link
+  - Promo code
+  - Social media sharing
+- Points are awarded for:
+  - Successful referrals
+  - Purchases
+  - Engagement actions
+- Points can be redeemed through participating restaurants and offers
+
+Build this system as a modular microservice:
+- Fully controllable from admin (enable/disable)
+- Independent and scalable
+- Includes full analytics:
+  - Invitations sent
+  - Conversions
+  - Points earned/spent
+- Full settings panel for admin to control rules, rewards, and limits
+
+---
+
+Complete all missing sections and ensure full functionality, including:
+- Offer redemption flow (barcode / QR / code validation)
+- Map integration (location of the offer)
+- Clear discount breakdown and savings
+- Consistent UI between provider dashboard and user-facing pages
+
+---
+
+Develop a professional Service Provider Registration System:
+
+- Support different types of restaurants and providers
+- Allow feature customization based on business type
+- Provide an intuitive onboarding flow
+- Ensure full validation and structured data input
+
+---
+
+Implement a Username System for both users and providers:
+
+- Each user must have a unique username
+- URL structure:
+  tabaq.co/username
+- Requirements:
+  - No duplicates
+  - Real-time availability check
+  - Validation rules (length, characters, reserved words)
+- Apply consistently across profiles and public pages
+
+---
+
+Ensure the entire platform follows a microservices architecture:
+
+- Each main module (Offers, Referrals, Users, Providers, Billing, etc.) is:
+  - Independently manageable
+  - Can be enabled/disabled by admin
+  - Scalable and extendable
+
+---
+
+Admin System Requirements:
+
+- Full control over:
+  - Offers
+  - Users
+  - Providers
+  - Points & referrals
+  - Analytics
+  - Settings
+- Professional dashboards with real data and insights
+
+---
+
+Final Requirement:
+
+Complete all systems and features in a fully professional, scalable, and production-ready manner to compete with leading global platforms in the food and dining marketplace industry.

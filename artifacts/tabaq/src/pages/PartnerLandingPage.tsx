@@ -242,7 +242,7 @@ export function PartnerLandingPage() {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 mb-10">
-              <Link href="/admin/register">
+              <Link href="/partners/register">
                 <button className="bg-primary hover:bg-primary/90 text-white font-bold px-8 py-4 rounded-2xl text-lg transition-all shadow-xl shadow-primary/30 flex items-center gap-2 justify-center">
                   {t('List Your Restaurant — Free', 'سجّل مطعمك مجاناً')}
                   <ArrowRight className="w-5 h-5" />

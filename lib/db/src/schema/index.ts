@@ -9,3 +9,5 @@ export * from "./reviews";
 export * from "./events";
 export * from "./venues";
 export * from "./tags";
+export * from "./loyalty";
+export * from "./platform";

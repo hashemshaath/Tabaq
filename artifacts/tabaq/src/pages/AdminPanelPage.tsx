@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLanguage } from '@/hooks/use-language';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'wouter';
 import {
   BarChart3, Utensils, Users, CalendarDays, Star, MessageSquare,
@@ -95,9 +96,56 @@ export function AdminPanelPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [restaurantStatusFilter, setRestaurantStatusFilter] = useState('all');
 
+  const apiBase = import.meta.env.BASE_URL?.replace(/\/$/, '') || '';
+
+  const { data: realStats } = useQuery({
+    queryKey: ['admin-stats'],
+    queryFn: async () => {
+      const res = await fetch(`${apiBase.replace('/','')}/api/admin/stats`.replace(/^\//, '/'), { credentials: 'include' });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    retry: false,
+    staleTime: 30000,
+  });
+
+  const { data: realModules } = useQuery({
+    queryKey: ['admin-modules'],
+    queryFn: async () => {
+      const res = await fetch(`${apiBase.replace('/','')}/api/admin/modules`.replace(/^\//, '/'), { credentials: 'include' });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data?.modules ?? null;
+    },
+    retry: false,
+    staleTime: 30000,
+  });
+
+  const queryClient = useQueryClient();
+
+  const toggleModuleApi = useMutation({
+    mutationFn: async ({ moduleId, isEnabled }: { moduleId: string; isEnabled: boolean }) => {
+      const res = await fetch(`${apiBase.replace('/','')}/api/admin/modules/${moduleId}`.replace(/^\//, '/'), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isEnabled }),
+        credentials: 'include',
+      });
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-modules'] }),
+  });
+
   const toggleModule = (id: string) => {
-    setModules(prev => prev.map(m => m.id === id ? { ...m, enabled: !m.enabled } : m));
+    const current = modules.find(m => m.id === id);
+    if (current) {
+      const newEnabled = !current.enabled;
+      setModules(prev => prev.map(m => m.id === id ? { ...m, enabled: newEnabled } : m));
+      toggleModuleApi.mutate({ moduleId: id, isEnabled: newEnabled });
+    }
   };
+
+  const displayStats = realStats?.stats ?? null;
 
   const navItems: { id: AdminTab; label: string; icon: React.ElementType; badge?: number }[] = [
     { id: 'overview', label: 'Dashboard', icon: LayoutDashboard },
@@ -204,7 +252,14 @@ export function AdminPanelPage() {
             <div className="space-y-6">
               {/* Stats Grid */}
               <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                {OVERVIEW_STATS.map(stat => {
+                {(displayStats ? [
+                  { label: 'Total Restaurants', val: displayStats.totalRestaurants.toLocaleString(), change: 'Live data', up: true, icon: Utensils, color: 'bg-blue-50 text-blue-600' },
+                  { label: 'Total Users', val: displayStats.totalUsers.toLocaleString(), change: 'Live data', up: true, icon: Users, color: 'bg-purple-50 text-purple-600' },
+                  { label: 'Total Bookings', val: displayStats.totalBookings.toLocaleString(), change: 'Live data', up: true, icon: CalendarDays, color: 'bg-primary/10 text-primary' },
+                  { label: 'Total Reviews', val: displayStats.totalReviews.toLocaleString(), change: 'Live data', up: true, icon: Star, color: 'bg-amber-50 text-amber-600' },
+                  { label: 'Active Offers', val: displayStats.activeOffers.toLocaleString(), change: 'Live data', up: true, icon: Tag, color: 'bg-green-50 text-green-600' },
+                  { label: 'Avg. Platform Rating', val: Number(displayStats.avgPlatformRating) > 0 ? Number(displayStats.avgPlatformRating).toFixed(2) : 'N/A', change: 'Live data', up: true, icon: TrendingUp, color: 'bg-emerald-50 text-emerald-600' },
+                ] : OVERVIEW_STATS).map(stat => {
                   const Icon = stat.icon;
                   return (
                     <div key={stat.label} className="bg-card border border-border rounded-2xl p-5">
@@ -215,7 +270,7 @@ export function AdminPanelPage() {
                       <p className="text-xs text-muted-foreground mt-0.5">{stat.label}</p>
                       <div className={`flex items-center gap-1 mt-2 text-xs font-semibold ${stat.up ? 'text-green-600' : 'text-red-600'}`}>
                         <ArrowUpRight className={`w-3 h-3 ${!stat.up ? 'rotate-180' : ''}`} />
-                        {stat.change} this month
+                        {stat.change}{stat.change === 'Live data' ? '' : ' this month'}
                       </div>
                     </div>
                   );

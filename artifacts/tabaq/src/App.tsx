@@ -23,6 +23,8 @@ import { BusinessConsolePage } from "@/pages/BusinessConsolePage";
 import { PartnerLandingPage } from "@/pages/PartnerLandingPage";
 import { AdminPanelPage } from "@/pages/AdminPanelPage";
 import { UserDashboardPage } from "@/pages/UserDashboardPage";
+import { ReferralPage } from "@/pages/ReferralPage";
+import { ProviderRegistrationPage } from "@/pages/ProviderRegistrationPage";
 import FeedPage from "@/pages/FeedPage";
 import NotFound from "@/pages/not-found";
 
@@ -61,6 +63,8 @@ function Router() {
               <Route path="/console" component={BusinessConsolePage} />
               <Route path="/dashboard" component={UserDashboardPage} />
               <Route path="/partners" component={PartnerLandingPage} />
+              <Route path="/partners/register" component={ProviderRegistrationPage} />
+              <Route path="/referral" component={ReferralPage} />
               <Route path="/admin" component={AdminPanelPage} />
               <Route component={NotFound} />
             </Switch>

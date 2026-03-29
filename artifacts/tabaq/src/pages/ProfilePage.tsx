@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -12,18 +12,45 @@ import {
   getGetUserFollowingQueryKey,
 } from "@workspace/api-client-react";
 import { Link } from "wouter";
-import { User, Settings, ShieldCheck, MapPin, Calendar, Star, LogIn, BookOpen, Clock, Users } from "lucide-react";
+import {
+  User, Settings, ShieldCheck, MapPin, Calendar, Star, LogIn,
+  BookOpen, Clock, Users, AtSign, CheckCircle2, XCircle, Loader2,
+  Gift, Copy, ChevronRight, Sparkles, Lock,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-type Tab = "activity" | "followers" | "following";
+type Tab = "activity" | "followers" | "following" | "settings";
+
+const RESERVED_USERNAMES = ["tabaq", "admin", "api", "support", "help", "www", "mail", "root", "system", "official"];
+const USERNAME_REGEX = /^[a-zA-Z0-9_\.]{3,30}$/;
+
+function validateUsername(value: string): string | null {
+  if (value.length < 3) return "At least 3 characters required";
+  if (value.length > 30) return "Maximum 30 characters";
+  if (!USERNAME_REGEX.test(value)) return "Only letters, numbers, underscores, and dots";
+  if (value.startsWith(".") || value.endsWith(".")) return "Cannot start or end with a dot";
+  if (value.includes("..")) return "No consecutive dots";
+  if (RESERVED_USERNAMES.includes(value.toLowerCase())) return "This username is reserved";
+  return null;
+}
 
 export function ProfilePage() {
   const { t, lang } = useLanguage();
   const { user: authUser, isLoading: authLoading, token } = useAuth();
   const [tab, setTab] = useState<Tab>("activity");
 
+  // ─── Username state ─────────────────────────────────────────────
+  const [usernameInput, setUsernameInput] = useState("");
+  const [usernameStatus, setUsernameStatus] = useState<"idle" | "checking" | "available" | "taken" | "error">("idle");
+  const [usernameError, setUsernameError] = useState<string | null>(null);
+  const [usernameSaving, setUsernameSaving] = useState(false);
+  const [usernameSaved, setUsernameSaved] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const apiBase = import.meta.env.BASE_URL?.replace(/\/$/, "") || "";
+
   const userId = authUser?.id ?? 0;
-  const { data, isLoading } = useGetUser(userId, {
+  const { data, isLoading, refetch: refetchUser } = useGetUser(userId, {
     query: { queryKey: getGetUserQueryKey(userId), enabled: !!authUser },
   });
 
@@ -41,6 +68,74 @@ export function ProfilePage() {
   const { data: followingData } = useGetUserFollowing(userId, {
     query: { queryKey: getGetUserFollowingQueryKey(userId), enabled: !!authUser && tab === "following" },
   });
+
+  // Pre-fill username if user already has one
+  useEffect(() => {
+    if (data?.user && (data.user as any).username) {
+      setUsernameInput((data.user as any).username);
+    }
+  }, [data]);
+
+  // Debounced availability check
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    const val = usernameInput.trim().toLowerCase();
+    const validErr = validateUsername(val);
+    if (!val) { setUsernameStatus("idle"); setUsernameError(null); return; }
+    if (validErr) { setUsernameStatus("error"); setUsernameError(validErr); return; }
+
+    // If it's the same as current saved username, show as available
+    const currentUsername = (data?.user as any)?.username;
+    if (currentUsername && val === currentUsername.toLowerCase()) {
+      setUsernameStatus("available");
+      setUsernameError(null);
+      return;
+    }
+
+    setUsernameStatus("checking");
+    setUsernameError(null);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/username/check?username=${encodeURIComponent(val)}`);
+        const json = await res.json();
+        if (json.available) {
+          setUsernameStatus("available");
+        } else {
+          setUsernameStatus("taken");
+          setUsernameError("This username is already taken");
+        }
+      } catch {
+        setUsernameStatus("error");
+        setUsernameError("Could not check availability");
+      }
+    }, 500);
+  }, [usernameInput, data]);
+
+  const handleSaveUsername = async () => {
+    if (usernameStatus !== "available") return;
+    setUsernameSaving(true);
+    try {
+      const res = await fetch("/api/me/username", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ username: usernameInput.trim().toLowerCase() }),
+        credentials: "include",
+      });
+      if (res.ok) {
+        setUsernameSaved(true);
+        setUsernameStatus("idle");
+        refetchUser();
+        setTimeout(() => setUsernameSaved(false), 3000);
+      } else {
+        const err = await res.json();
+        setUsernameError(err?.message || "Failed to save username");
+      }
+    } catch {
+      setUsernameError("Network error — please try again");
+    } finally {
+      setUsernameSaving(false);
+    }
+  };
 
   if (authLoading) {
     return (
@@ -89,6 +184,14 @@ export function ProfilePage() {
   const levelMax = user.level === 5 ? 10000 : user.level === 4 ? 5000 : user.level === 3 ? 1500 : user.level === 2 ? 500 : 100;
   const levelMin = user.level === 5 ? 5000 : user.level === 4 ? 1500 : user.level === 3 ? 500 : user.level === 2 ? 100 : 0;
   const progressPct = Math.min(((user.points - levelMin) / (levelMax - levelMin)) * 100, 100);
+  const currentUsername = (user as any).username as string | undefined;
+
+  const usernameStatusIcon = () => {
+    if (usernameStatus === "checking") return <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />;
+    if (usernameStatus === "available") return <CheckCircle2 className="w-4 h-4 text-green-500" />;
+    if (usernameStatus === "taken" || usernameStatus === "error") return <XCircle className="w-4 h-4 text-red-500" />;
+    return null;
+  };
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -116,6 +219,12 @@ export function ProfilePage() {
                     </span>
                   )}
                 </h1>
+                {currentUsername && (
+                  <p className="text-muted-foreground text-sm mt-1 flex items-center gap-1.5">
+                    <AtSign className="w-3.5 h-3.5" />
+                    {currentUsername}
+                  </p>
+                )}
                 <p className="text-muted-foreground mt-2 max-w-lg">
                   {user.bio || t("No bio provided.", "لم يتم كتابة نبذة.")}
                 </p>
@@ -132,10 +241,13 @@ export function ProfilePage() {
                   )}
                 </div>
               </div>
-              <Button variant="outline" className="shrink-0 gap-2 rounded-xl">
+              <button
+                onClick={() => setTab("settings")}
+                className="shrink-0 flex items-center gap-2 px-4 py-2 border border-input rounded-xl text-sm font-medium hover:bg-secondary transition-colors"
+              >
                 <Settings className="w-4 h-4" />
                 {t("Edit Profile", "تعديل الملف")}
-              </Button>
+              </button>
             </div>
 
             <div className="flex flex-wrap justify-center md:justify-start gap-6 mt-8 pt-6 border-t border-border">
@@ -155,6 +267,10 @@ export function ProfilePage() {
                 <div className="text-2xl font-bold text-foreground">{followingCount ?? 0}</div>
                 <div className="text-xs text-muted-foreground uppercase tracking-wide">{t("Following", "يتابع")}</div>
               </button>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-foreground">{user.points ?? 0}</div>
+                <div className="text-xs text-muted-foreground uppercase tracking-wide">{t("Points", "نقاط")}</div>
+              </div>
             </div>
           </div>
         </div>
@@ -192,16 +308,17 @@ export function ProfilePage() {
 
         {/* Tabs */}
         <div className="mt-8">
-          <div className="flex gap-1 bg-muted rounded-2xl p-1 mb-6">
+          <div className="flex gap-1 bg-muted rounded-2xl p-1 mb-6 overflow-x-auto">
             {([
               { id: "activity", label: t("Activity", "النشاط"), icon: Clock },
               { id: "followers", label: t("Followers", "المتابعون"), icon: Users },
               { id: "following", label: t("Following", "يتابع"), icon: Users },
+              { id: "settings", label: t("Settings", "الإعدادات"), icon: Settings },
             ] as const).map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
                 onClick={() => setTab(id)}
-                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition-all whitespace-nowrap px-3 ${
                   tab === id
                     ? "bg-card shadow text-foreground"
                     : "text-muted-foreground hover:text-foreground"
@@ -329,6 +446,192 @@ export function ProfilePage() {
                   );
                 })
               )}
+            </div>
+          )}
+
+          {/* Settings Tab */}
+          {tab === "settings" && (
+            <div className="space-y-6">
+
+              {/* Username Section */}
+              <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                <div className="p-5 border-b border-border flex items-center gap-3">
+                  <div className="w-9 h-9 bg-primary/10 rounded-xl flex items-center justify-center">
+                    <AtSign className="w-4 h-4 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-foreground">{t("Your Username", "اسم المستخدم")}</h3>
+                    <p className="text-xs text-muted-foreground">
+                      {t("Choose a unique handle for your public profile", "اختر اسمًا مميزًا لملفك الشخصي العام")}
+                    </p>
+                  </div>
+                  {currentUsername && (
+                    <span className="ms-auto text-xs bg-green-100 text-green-700 px-2.5 py-1 rounded-full font-medium">
+                      {t("Active", "مفعّل")}
+                    </span>
+                  )}
+                </div>
+
+                <div className="p-5 space-y-4">
+                  {currentUsername && (
+                    <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-xl">
+                      <AtSign className="w-4 h-4 text-muted-foreground shrink-0" />
+                      <span className="text-sm font-medium text-foreground">{currentUsername}</span>
+                      <span className="ms-auto text-xs text-muted-foreground">
+                        {t("Current username", "الاسم الحالي")}
+                      </span>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-1.5">
+                      {currentUsername
+                        ? t("Change username", "تغيير اسم المستخدم")
+                        : t("Claim your username", "احجز اسم مستخدمك")}
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 start-0 flex items-center ps-3.5 pointer-events-none">
+                        <AtSign className="w-4 h-4 text-muted-foreground" />
+                      </div>
+                      <input
+                        type="text"
+                        value={usernameInput}
+                        onChange={e => setUsernameInput(e.target.value.toLowerCase().replace(/[^a-z0-9_.]/g, ""))}
+                        placeholder="yourname"
+                        maxLength={30}
+                        className="w-full ps-9 pe-10 h-11 border border-input rounded-xl bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 font-mono"
+                      />
+                      <div className="absolute inset-y-0 end-0 flex items-center pe-3">
+                        {usernameStatusIcon()}
+                      </div>
+                    </div>
+
+                    {/* Status message */}
+                    {usernameInput && (
+                      <div className={`mt-1.5 text-xs flex items-center gap-1.5 ${
+                        usernameStatus === "available" ? "text-green-600"
+                        : (usernameStatus === "taken" || usernameStatus === "error") ? "text-red-500"
+                        : "text-muted-foreground"
+                      }`}>
+                        {usernameStatus === "available" && <><CheckCircle2 className="w-3 h-3" /> {t("Username is available!", "الاسم متاح!")}</>}
+                        {usernameStatus === "taken" && <><XCircle className="w-3 h-3" /> {usernameError}</>}
+                        {usernameStatus === "error" && <><XCircle className="w-3 h-3" /> {usernameError}</>}
+                        {usernameStatus === "checking" && t("Checking availability...", "جارٍ التحقق...")}
+                        {usernameStatus === "idle" && usernameInput.length > 0 && t("3–30 characters, letters, numbers, _ and .", "3–30 حرفًا، أحرف، أرقام، _ و .")}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-muted-foreground">
+                      {t(
+                        "Your profile URL: tabaq.sa/@username",
+                        "رابط ملفك: tabaq.sa/@username"
+                      )}
+                    </p>
+                    <button
+                      onClick={handleSaveUsername}
+                      disabled={usernameStatus !== "available" || usernameSaving}
+                      className={`flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold transition-all ${
+                        usernameStatus === "available" && !usernameSaving
+                          ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
+                          : "bg-muted text-muted-foreground cursor-not-allowed"
+                      }`}
+                    >
+                      {usernameSaving ? (
+                        <><Loader2 className="w-3.5 h-3.5 animate-spin" /> {t("Saving...", "جارٍ الحفظ...")}</>
+                      ) : usernameSaved ? (
+                        <><CheckCircle2 className="w-3.5 h-3.5" /> {t("Saved!", "تم الحفظ!")}</>
+                      ) : (
+                        t("Save Username", "حفظ الاسم")
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Referral & Rewards Shortcut */}
+              <Link href="/referral">
+                <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 rounded-2xl p-5 flex items-center gap-4 hover:border-primary/40 transition-colors cursor-pointer group">
+                  <div className="w-12 h-12 bg-primary/15 rounded-2xl flex items-center justify-center shrink-0">
+                    <Gift className="w-6 h-6 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-bold text-foreground">{t("Referral & Rewards", "الإحالات والمكافآت")}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {t("Invite friends, earn points. Your balance:", "ادعُ أصدقاءك، اكسب نقاطًا. رصيدك:")}
+                      {" "}<span className="text-primary font-semibold">{user.points ?? 0} pts</span>
+                    </p>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                </div>
+              </Link>
+
+              {/* Account Settings Cards */}
+              <div className="bg-card border border-border rounded-2xl overflow-hidden divide-y divide-border">
+                <div className="p-5">
+                  <h3 className="font-bold text-foreground mb-1">{t("Account", "الحساب")}</h3>
+                  <p className="text-xs text-muted-foreground">{t("Manage your account preferences", "إدارة تفضيلات حسابك")}</p>
+                </div>
+
+                {[
+                  {
+                    icon: User,
+                    label: t("Personal Information", "المعلومات الشخصية"),
+                    desc: t("Name, email, phone number", "الاسم، البريد الإلكتروني، الهاتف"),
+                    locked: false,
+                  },
+                  {
+                    icon: Lock,
+                    label: t("Password & Security", "كلمة المرور والأمان"),
+                    desc: t("Change password, 2FA", "تغيير كلمة المرور، المصادقة الثنائية"),
+                    locked: false,
+                  },
+                  {
+                    icon: MapPin,
+                    label: t("Saved Addresses", "العناوين المحفوظة"),
+                    desc: t("Home, work, and other locations", "المنزل، العمل، والمواقع الأخرى"),
+                    locked: false,
+                  },
+                  {
+                    icon: Sparkles,
+                    label: t("Preferences", "التفضيلات"),
+                    desc: t("Cuisines, dietary requirements, notifications", "المطابخ، المتطلبات الغذائية، الإشعارات"),
+                    locked: false,
+                  },
+                ].map(item => {
+                  const Icon = item.icon;
+                  return (
+                    <div key={item.label} className="flex items-center gap-4 p-4 hover:bg-muted/30 transition-colors cursor-pointer group">
+                      <div className="w-9 h-9 bg-muted rounded-xl flex items-center justify-center shrink-0">
+                        <Icon className="w-4 h-4 text-muted-foreground" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-foreground">{item.label}</p>
+                        <p className="text-xs text-muted-foreground">{item.desc}</p>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Danger Zone */}
+              <div className="bg-card border border-red-200 rounded-2xl overflow-hidden">
+                <div className="p-5 border-b border-red-100">
+                  <h3 className="font-bold text-red-600">{t("Danger Zone", "منطقة الخطر")}</h3>
+                </div>
+                <div className="p-4 flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{t("Delete Account", "حذف الحساب")}</p>
+                    <p className="text-xs text-muted-foreground">{t("This action cannot be undone", "هذا الإجراء لا يمكن التراجع عنه")}</p>
+                  </div>
+                  <button className="px-4 py-2 text-sm font-medium text-red-600 border border-red-200 rounded-xl hover:bg-red-50 transition-colors">
+                    {t("Delete", "حذف")}
+                  </button>
+                </div>
+              </div>
+
             </div>
           )}
         </div>
