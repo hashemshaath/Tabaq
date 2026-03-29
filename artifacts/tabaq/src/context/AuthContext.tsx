@@ -4,6 +4,16 @@ import type { User } from "@workspace/api-client-react";
 
 const TOKEN_KEY = "tabaq_token";
 
+function safeGet(key: string): string | null {
+  try { return localStorage.getItem(key); } catch { return null; }
+}
+function safeSet(key: string, value: string): void {
+  try { localStorage.setItem(key, value); } catch { /* ignore */ }
+}
+function safeRemove(key: string): void {
+  try { localStorage.removeItem(key); } catch { /* ignore */ }
+}
+
 interface AuthContextValue {
   user: User | null;
   token: string | null;
@@ -15,25 +25,25 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY));
+  const [token, setToken] = useState<string | null>(() => safeGet(TOKEN_KEY));
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const login = useCallback((newToken: string, newUser: User) => {
-    localStorage.setItem(TOKEN_KEY, newToken);
+    safeSet(TOKEN_KEY, newToken);
     setToken(newToken);
     setUser(newUser);
   }, []);
 
   const logout = useCallback(() => {
-    localStorage.removeItem(TOKEN_KEY);
+    safeRemove(TOKEN_KEY);
     setToken(null);
     setUser(null);
     fetch("/api/auth/logout", { method: "POST", credentials: "include" }).catch(() => {});
   }, []);
 
   useEffect(() => {
-    setAuthTokenGetter(() => localStorage.getItem(TOKEN_KEY));
+    setAuthTokenGetter(() => safeGet(TOKEN_KEY));
   }, []);
 
   useEffect(() => {
@@ -50,12 +60,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const data = await res.json();
           setUser(data.user);
         } else {
-          localStorage.removeItem(TOKEN_KEY);
+          safeRemove(TOKEN_KEY);
           setToken(null);
         }
       })
       .catch(() => {
-        localStorage.removeItem(TOKEN_KEY);
+        safeRemove(TOKEN_KEY);
         setToken(null);
       })
       .finally(() => setIsLoading(false));
