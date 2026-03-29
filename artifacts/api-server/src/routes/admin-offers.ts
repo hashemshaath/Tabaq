@@ -61,6 +61,104 @@ router.get("/admin/offers", async (req, res) => {
   }
 });
 
+// Create offer on behalf of any restaurant (admin/console)
+router.post("/admin/offers", async (req, res) => {
+  try {
+    const {
+      restaurantId, titleEn, titleAr, descriptionEn, descriptionAr,
+      imageUrl, discountPercent, originalPrice, discountedPrice, currency,
+      validFrom, validUntil, totalCapacity
+    } = req.body;
+
+    if (!restaurantId || !titleEn || !titleAr || !originalPrice || !validFrom || !validUntil) {
+      return res.status(400).json({ error: "bad_request", message: "Missing required fields: restaurantId, titleEn, titleAr, originalPrice, validFrom, validUntil" });
+    }
+
+    const [restaurant] = await db.select({ nameEn: restaurantsTable.nameEn })
+      .from(restaurantsTable).where(eq(restaurantsTable.id, parseInt(restaurantId)));
+    if (!restaurant) {
+      return res.status(404).json({ error: "not_found", message: "Restaurant not found" });
+    }
+
+    const [offer] = await db.insert(offersTable).values({
+      restaurantId: parseInt(restaurantId),
+      titleEn,
+      titleAr,
+      descriptionEn: descriptionEn || null,
+      descriptionAr: descriptionAr || null,
+      imageUrl: imageUrl || null,
+      discountPercent: discountPercent ? String(discountPercent) : null,
+      originalPrice: String(originalPrice),
+      discountedPrice: discountedPrice ? String(discountedPrice) : String(Math.round(parseFloat(originalPrice) * (1 - parseFloat(discountPercent || '0') / 100))),
+      currency: currency || 'SAR',
+      validFrom: new Date(validFrom),
+      validUntil: new Date(validUntil),
+      totalCapacity: totalCapacity ? parseInt(totalCapacity) : null,
+      remainingCapacity: totalCapacity ? parseInt(totalCapacity) : null,
+      isActive: false,
+      approvalStatus: "pending",
+    }).returning();
+
+    const refCode = `TBQ-OFR-${new Date().getFullYear()}-${offer.id.toString().padStart(6, "0")}`;
+    const [withRef] = await db.update(offersTable).set({ refCode }).where(eq(offersTable.id, offer.id)).returning();
+
+    res.status(201).json({ offer: withRef ?? offer });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// List offers for a specific restaurant (business console)
+router.get("/admin/restaurants/:restaurantId/offers", async (req, res) => {
+  try {
+    const restaurantId = parseInt(req.params.restaurantId);
+    const offers = await db
+      .select({
+        id: offersTable.id,
+        refCode: offersTable.refCode,
+        titleEn: offersTable.titleEn,
+        titleAr: offersTable.titleAr,
+        discountPercent: offersTable.discountPercent,
+        originalPrice: offersTable.originalPrice,
+        discountedPrice: offersTable.discountedPrice,
+        currency: offersTable.currency,
+        isActive: offersTable.isActive,
+        approvalStatus: offersTable.approvalStatus,
+        adminNotes: offersTable.adminNotes,
+        approvedAt: offersTable.approvedAt,
+        validFrom: offersTable.validFrom,
+        validUntil: offersTable.validUntil,
+        totalCapacity: offersTable.totalCapacity,
+        remainingCapacity: offersTable.remainingCapacity,
+        createdAt: offersTable.createdAt,
+      })
+      .from(offersTable)
+      .where(eq(offersTable.restaurantId, restaurantId))
+      .orderBy(desc(offersTable.createdAt));
+
+    const offerIds = offers.map(o => o.id);
+    let voucherMap = new Map<number, number>();
+    if (offerIds.length > 0) {
+      const voucherCounts = await db
+        .select({ offerId: vouchersTable.offerId, total: count() })
+        .from(vouchersTable)
+        .groupBy(vouchersTable.offerId);
+      for (const v of voucherCounts) {
+        if (v.offerId !== null && offerIds.includes(v.offerId)) {
+          voucherMap.set(v.offerId, Number(v.total));
+        }
+      }
+    }
+    const enriched = offers.map(o => ({ ...o, redemptions: voucherMap.get(o.id) ?? 0 }));
+
+    res.json({ offers: enriched, total: enriched.length });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 // Toggle offer active/inactive (admin only)
 router.patch("/admin/offers/:id/toggle", async (req, res) => {
   try {

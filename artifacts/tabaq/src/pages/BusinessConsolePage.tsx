@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLanguage } from '@/hooks/use-language';
 import { Link } from 'wouter';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   BarChart3, CalendarDays, Users, Star, TrendingUp, ChevronRight,
   CheckCircle2, Clock, XCircle, AlertCircle, MessageSquare,
   Utensils, Settings, Bell, Eye, ArrowUpRight, Percent, Gift,
   Tag, Plus, ScanLine, QrCode, ExternalLink, MapPin,
-  FileSignature, BadgeCheck, RefreshCw, Ban, Hash, Info
+  FileSignature, BadgeCheck, RefreshCw, Ban, Hash, Info, X,
+  Sparkles, Image, DollarSign, Calendar
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -76,6 +78,63 @@ export function BusinessConsolePage() {
   const { t, lang } = useLanguage();
   const [activeTab, setActiveTab] = useState<ConsoleTab>('overview');
   const [consoleOffers, setConsoleOffers] = useState(MOCK_CONSOLE_OFFERS);
+  const queryClient = useQueryClient();
+
+  // The demo restaurant ID — in production this comes from auth context
+  const RESTAURANT_ID = 2;
+
+  // Fetch real offers from the API for this restaurant
+  const { data: liveOffersData, refetch: refetchLiveOffers } = useQuery({
+    queryKey: ['console-offers', RESTAURANT_ID],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/restaurants/${RESTAURANT_ID}/offers`, { credentials: 'include' });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    staleTime: 30000,
+    enabled: activeTab === 'offers',
+  });
+
+  // Merge: real DB offers first, then mock examples (so new submissions appear at top)
+  const displayOffers = liveOffersData?.offers?.length
+    ? liveOffersData.offers
+    : consoleOffers;
+
+  // Create offer form state
+  const EMPTY_FORM = {
+    titleEn: '', titleAr: '', descriptionEn: '', descriptionAr: '',
+    imageUrl: '', originalPrice: '', discountPercent: '', validFrom: '', validUntil: '',
+    totalCapacity: '',
+  };
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [createForm, setCreateForm] = useState(EMPTY_FORM);
+  const [createSuccess, setCreateSuccess] = useState<{ refCode: string; titleEn: string } | null>(null);
+
+  const discountedPrice = createForm.originalPrice && createForm.discountPercent
+    ? Math.round(parseFloat(createForm.originalPrice) * (1 - parseFloat(createForm.discountPercent) / 100))
+    : null;
+
+  const createOfferMutation = useMutation({
+    mutationFn: async (body: Record<string, any>) => {
+      const res = await fetch('/api/admin/offers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message ?? 'Failed to create offer');
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setCreateSuccess({ refCode: data.offer?.refCode ?? '', titleEn: data.offer?.titleEn ?? '' });
+      setCreateForm(EMPTY_FORM);
+      refetchLiveOffers();
+      queryClient.invalidateQueries({ queryKey: ['admin-offers'] });
+    },
+  });
 
   const tabs: { id: ConsoleTab; labelEn: string; labelAr: string; icon: React.ElementType }[] = [
     { id: 'overview', labelEn: 'Overview', labelAr: 'نظرة عامة', icon: BarChart3 },
@@ -423,6 +482,220 @@ export function BusinessConsolePage() {
         {/* Offers Tab */}
         {activeTab === 'offers' && (
           <div className="space-y-5">
+
+            {/* ── Create Offer Drawer ── */}
+            {showCreateForm && (
+              <div className="fixed inset-0 z-50 flex" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+                <div className="flex-1 bg-black/40 backdrop-blur-sm" onClick={() => { setShowCreateForm(false); setCreateSuccess(null); }} />
+                <div className="w-full max-w-xl bg-card border-s border-border h-full overflow-y-auto shadow-2xl flex flex-col">
+                  {/* Drawer header */}
+                  <div className="px-6 py-5 border-b border-border flex items-center justify-between sticky top-0 bg-card z-10">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 bg-primary/10 rounded-xl flex items-center justify-center">
+                        <Sparkles className="w-4 h-4 text-primary" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-foreground">{t('Create New Offer', 'إنشاء عرض جديد')}</h3>
+                        <p className="text-xs text-muted-foreground">{t('Submitted for admin review', 'يُرسل للمراجعة من قبل فريق طبق')}</p>
+                      </div>
+                    </div>
+                    <button onClick={() => { setShowCreateForm(false); setCreateSuccess(null); }} className="p-2 rounded-xl hover:bg-secondary text-muted-foreground">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* Success state */}
+                  {createSuccess ? (
+                    <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+                      <div className="w-16 h-16 bg-green-100 rounded-3xl flex items-center justify-center mb-4">
+                        <BadgeCheck className="w-8 h-8 text-green-600" />
+                      </div>
+                      <h3 className="text-xl font-bold text-foreground mb-2">{t('Offer Submitted!', 'تم إرسال العرض!')}</h3>
+                      <p className="text-muted-foreground mb-1 text-sm">{createSuccess.titleEn}</p>
+                      {createSuccess.refCode && (
+                        <p className="font-mono text-xs bg-secondary px-3 py-1.5 rounded-lg text-muted-foreground mb-4">{createSuccess.refCode}</p>
+                      )}
+                      <p className="text-sm text-muted-foreground mb-6">
+                        {t('Your offer is now pending review by the Tabaq team. You\'ll be notified once it\'s approved.', 'عرضك الآن في انتظار مراجعة فريق طبق. سيتم إخطارك بمجرد الموافقة عليه.')}
+                      </p>
+                      <div className="flex gap-3 w-full">
+                        <Button variant="outline" className="flex-1" onClick={() => { setCreateSuccess(null); setCreateForm(EMPTY_FORM); }}>
+                          {t('Create Another', 'إنشاء عرض آخر')}
+                        </Button>
+                        <Button className="flex-1" onClick={() => { setShowCreateForm(false); setCreateSuccess(null); }}>
+                          {t('Done', 'تم')}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex-1 p-6 space-y-5">
+                      {/* Offer titles */}
+                      <div>
+                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">{t('Offer Name', 'اسم العرض')}</p>
+                        <div className="space-y-2">
+                          <div>
+                            <label className="text-xs font-semibold text-muted-foreground block mb-1">English Title *</label>
+                            <input type="text" placeholder="e.g. 50% Off Premium Dinner for Two"
+                              value={createForm.titleEn}
+                              onChange={e => setCreateForm(f => ({ ...f, titleEn: e.target.value }))}
+                              className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                          </div>
+                          <div>
+                            <label className="text-xs font-semibold text-muted-foreground block mb-1">Arabic Title * (العنوان بالعربية)</label>
+                            <input type="text" placeholder="مثال: خصم 50% على عشاء مميز لشخصين" dir="rtl"
+                              value={createForm.titleAr}
+                              onChange={e => setCreateForm(f => ({ ...f, titleAr: e.target.value }))}
+                              className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 text-right" />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Descriptions */}
+                      <div>
+                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">{t('Description', 'الوصف')}</p>
+                        <div className="space-y-2">
+                          <div>
+                            <label className="text-xs font-semibold text-muted-foreground block mb-1">English Description</label>
+                            <textarea rows={3} placeholder="Describe what's included in this offer..."
+                              value={createForm.descriptionEn}
+                              onChange={e => setCreateForm(f => ({ ...f, descriptionEn: e.target.value }))}
+                              className="w-full px-3 py-2 rounded-xl border border-input bg-background text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                          </div>
+                          <div>
+                            <label className="text-xs font-semibold text-muted-foreground block mb-1">Arabic Description (الوصف بالعربية)</label>
+                            <textarea rows={3} dir="rtl" placeholder="اوصف ما يتضمنه هذا العرض..."
+                              value={createForm.descriptionAr}
+                              onChange={e => setCreateForm(f => ({ ...f, descriptionAr: e.target.value }))}
+                              className="w-full px-3 py-2 rounded-xl border border-input bg-background text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 text-right" />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Pricing */}
+                      <div>
+                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+                          <DollarSign className="w-3.5 h-3.5" />{t('Pricing', 'التسعير')}
+                        </p>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-xs font-semibold text-muted-foreground block mb-1">Original Price (SAR) *</label>
+                            <input type="number" step="1" placeholder="380"
+                              value={createForm.originalPrice}
+                              onChange={e => setCreateForm(f => ({ ...f, originalPrice: e.target.value }))}
+                              className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                          </div>
+                          <div>
+                            <label className="text-xs font-semibold text-muted-foreground block mb-1">Discount %</label>
+                            <input type="number" step="5" min="1" max="90" placeholder="30"
+                              value={createForm.discountPercent}
+                              onChange={e => setCreateForm(f => ({ ...f, discountPercent: e.target.value }))}
+                              className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                          </div>
+                        </div>
+                        {discountedPrice !== null && (
+                          <div className="mt-2 flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-3 py-2">
+                            <BadgeCheck className="w-4 h-4 text-green-600 shrink-0" />
+                            <p className="text-sm text-green-800">
+                              {t('Customer pays:', 'يدفع العميل:')} <span className="font-bold">SAR {discountedPrice}</span>
+                              <span className="text-green-600 ms-2">({t('saves', 'يوفر')} SAR {parseFloat(createForm.originalPrice) - discountedPrice})</span>
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Dates & Capacity */}
+                      <div>
+                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+                          <Calendar className="w-3.5 h-3.5" />{t('Dates & Capacity', 'التواريخ والسعة')}
+                        </p>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-xs font-semibold text-muted-foreground block mb-1">Valid From *</label>
+                            <input type="date" value={createForm.validFrom}
+                              onChange={e => setCreateForm(f => ({ ...f, validFrom: e.target.value }))}
+                              className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                          </div>
+                          <div>
+                            <label className="text-xs font-semibold text-muted-foreground block mb-1">Valid Until *</label>
+                            <input type="date" value={createForm.validUntil}
+                              onChange={e => setCreateForm(f => ({ ...f, validUntil: e.target.value }))}
+                              className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                          </div>
+                        </div>
+                        <div className="mt-2">
+                          <label className="text-xs font-semibold text-muted-foreground block mb-1">Total Vouchers Available</label>
+                          <input type="number" step="1" placeholder="e.g. 100 (leave blank for unlimited)"
+                            value={createForm.totalCapacity}
+                            onChange={e => setCreateForm(f => ({ ...f, totalCapacity: e.target.value }))}
+                            className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                        </div>
+                      </div>
+
+                      {/* Image */}
+                      <div>
+                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+                          <Image className="w-3.5 h-3.5" />{t('Cover Image', 'صورة الغلاف')}
+                        </p>
+                        <input type="url" placeholder="https://images.unsplash.com/..."
+                          value={createForm.imageUrl}
+                          onChange={e => setCreateForm(f => ({ ...f, imageUrl: e.target.value }))}
+                          className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                        {createForm.imageUrl && (
+                          <img src={createForm.imageUrl} alt="Preview" className="mt-2 w-full h-40 object-cover rounded-xl" onError={e => (e.currentTarget.style.display = 'none')} />
+                        )}
+                      </div>
+
+                      {/* Approval info */}
+                      <div className="flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-2xl p-4">
+                        <Info className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+                        <p className="text-xs text-blue-800">
+                          {t('Your offer will be reviewed by the Tabaq team before going live. This usually takes 1–2 business days.', 'سيتم مراجعة عرضك من قبل فريق طبق قبل نشره. عادةً ما يستغرق ذلك 1-2 أيام عمل.')}
+                        </p>
+                      </div>
+
+                      {/* Error */}
+                      {createOfferMutation.isError && (
+                        <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+                          <AlertCircle className="w-4 h-4 shrink-0" />
+                          {(createOfferMutation.error as Error)?.message ?? t('Something went wrong', 'حدث خطأ ما')}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Submit button */}
+                  {!createSuccess && (
+                    <div className="p-6 border-t border-border sticky bottom-0 bg-card">
+                      <Button
+                        className="w-full gap-2"
+                        disabled={!createForm.titleEn || !createForm.titleAr || !createForm.originalPrice || !createForm.validFrom || !createForm.validUntil || createOfferMutation.isPending}
+                        onClick={() => createOfferMutation.mutate({
+                          restaurantId: RESTAURANT_ID,
+                          titleEn: createForm.titleEn,
+                          titleAr: createForm.titleAr,
+                          descriptionEn: createForm.descriptionEn || undefined,
+                          descriptionAr: createForm.descriptionAr || undefined,
+                          imageUrl: createForm.imageUrl || undefined,
+                          originalPrice: parseFloat(createForm.originalPrice),
+                          discountPercent: createForm.discountPercent ? parseFloat(createForm.discountPercent) : undefined,
+                          discountedPrice: discountedPrice || undefined,
+                          validFrom: createForm.validFrom,
+                          validUntil: createForm.validUntil,
+                          totalCapacity: createForm.totalCapacity ? parseInt(createForm.totalCapacity) : undefined,
+                        })}
+                      >
+                        {createOfferMutation.isPending ? (
+                          <>{t('Submitting...', 'جارٍ الإرسال...')}</>
+                        ) : (
+                          <><Sparkles className="w-4 h-4" /> {t('Submit for Approval', 'إرسال للموافقة')}</>
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-bold text-foreground">{t('My Offers', 'عروضي')}</h2>
@@ -430,7 +703,7 @@ export function BusinessConsolePage() {
                   {t('Manage exclusive deals for your restaurant', 'إدارة العروض الحصرية لمطعمك')}
                 </p>
               </div>
-              <Button className="gap-2" size="sm" onClick={() => setActiveTab('offers')}>
+              <Button className="gap-2" size="sm" onClick={() => setShowCreateForm(true)}>
                 <Plus className="w-4 h-4" />
                 {t('Create Offer', 'إنشاء عرض')}
               </Button>
@@ -447,10 +720,10 @@ export function BusinessConsolePage() {
             {/* Summary cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
-                { label: t('Active', 'نشط'), val: consoleOffers.filter(o => o.isActive).length, color: 'bg-green-50 text-green-700 border-green-200' },
-                { label: t('Pending Review', 'في انتظار المراجعة'), val: consoleOffers.filter(o => o.approvalStatus === 'pending').length, color: 'bg-amber-50 text-amber-700 border-amber-200' },
-                { label: t('Total Redemptions', 'إجمالي الاستخدامات'), val: consoleOffers.reduce((a, o) => a + o.redemptions, 0), color: 'bg-primary/5 text-primary border-primary/20' },
-                { label: t('Revenue Generated', 'الإيرادات المحققة'), val: `SAR ${consoleOffers.reduce((a, o) => a + o.redemptions * o.discountedPrice, 0).toLocaleString()}`, color: 'bg-purple-50 text-purple-700 border-purple-200' },
+                { label: t('Active', 'نشط'), val: (displayOffers as any[]).filter((o: any) => o.isActive).length, color: 'bg-green-50 text-green-700 border-green-200' },
+                { label: t('Pending Review', 'في انتظار المراجعة'), val: (displayOffers as any[]).filter((o: any) => o.approvalStatus === 'pending').length, color: 'bg-amber-50 text-amber-700 border-amber-200' },
+                { label: t('Total Redemptions', 'إجمالي الاستخدامات'), val: (displayOffers as any[]).reduce((a: number, o: any) => a + (o.redemptions ?? 0), 0), color: 'bg-primary/5 text-primary border-primary/20' },
+                { label: t('Total Offers', 'إجمالي العروض'), val: (displayOffers as any[]).length, color: 'bg-purple-50 text-purple-700 border-purple-200' },
               ].map(s => (
                 <div key={s.label} className={`border rounded-2xl p-4 ${s.color}`}>
                   <p className="text-2xl font-extrabold">{s.val}</p>
@@ -459,8 +732,19 @@ export function BusinessConsolePage() {
               ))}
             </div>
 
+            {!(displayOffers as any[]).length && (
+              <div className="bg-card border border-dashed border-border rounded-2xl p-12 text-center">
+                <Tag className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
+                <p className="font-semibold text-foreground">{t('No offers yet', 'لا توجد عروض بعد')}</p>
+                <p className="text-sm text-muted-foreground mt-1 mb-4">{t('Create your first exclusive offer for customers', 'أنشئ أول عرض حصري لعملائك')}</p>
+                <Button size="sm" onClick={() => setShowCreateForm(true)} className="gap-2">
+                  <Plus className="w-4 h-4" /> {t('Create First Offer', 'إنشاء أول عرض')}
+                </Button>
+              </div>
+            )}
+
             <div className="space-y-3">
-              {consoleOffers.map(offer => (
+              {(displayOffers as any[]).map((offer: any) => (
                 <div key={offer.id} className={`bg-card border rounded-2xl p-5 flex gap-4 items-start ${offer.approvalStatus === 'revision_requested' ? 'border-amber-300' : offer.approvalStatus === 'rejected' ? 'border-red-300' : 'border-border'}`}>
                   <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center shrink-0">
                     <Tag className="w-6 h-6 text-primary" />
