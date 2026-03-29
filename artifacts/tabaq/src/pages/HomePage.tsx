@@ -70,21 +70,21 @@ function DishItem({ d, rank }: { d: any; rank: number }) {
   const img = d.imageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop';
   return (
     <Link href={`/dishes/${d.id}`} className="block group">
-      <div className="bg-card rounded-xl p-3 border border-border/50 shadow-sm hover:shadow-md hover:border-primary/20 transition-all flex items-center gap-3">
-        <div className="relative w-20 h-20 rounded-xl overflow-hidden bg-muted shrink-0">
+      <div className="bg-card rounded-xl p-3 border border-border/60 shadow-[0_1px_3px_rgb(0,0,0,0.06)] hover:shadow-[0_4px_16px_rgb(0,0,0,0.09)] hover:border-primary/20 transition-all flex items-center gap-3">
+        <div className="relative w-[72px] h-[72px] rounded-lg overflow-hidden bg-muted shrink-0">
           <img src={img} alt={name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-          <div className="absolute top-0 start-0 bg-primary text-white text-xs font-black w-6 h-6 flex items-center justify-center rounded-br-xl rounded-tl-xl">{rank}</div>
+          <div className="absolute top-0 start-0 bg-foreground/80 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-br-md rounded-tl-md">{rank}</div>
         </div>
         <div className="flex-1 min-w-0">
-          <h4 className="font-bold text-foreground line-clamp-1 text-sm">{name}</h4>
+          <h4 className="font-semibold text-foreground line-clamp-1 text-sm tracking-[-0.01em]">{name}</h4>
           <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{restaurant}</p>
-          <div className="flex items-center gap-2 mt-1.5">
-            <div className="flex items-center gap-1 bg-secondary px-2 py-0.5 rounded-md">
+          <div className="flex items-center gap-2 mt-2">
+            <div className="flex items-center gap-1">
               <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-              <span className="text-xs font-bold">{Number(d.avgRating).toFixed(1)}</span>
+              <span className="text-xs font-semibold tabular-nums">{Number(d.avgRating).toFixed(1)}</span>
             </div>
             {d.price && (
-              <span className="text-sm font-bold text-primary">
+              <span className="text-xs font-semibold text-primary">
                 {Number(d.price).toLocaleString('en-SA', { style: 'currency', currency: d.currency || 'SAR', minimumFractionDigits: 0 })}
               </span>
             )}
@@ -104,17 +104,17 @@ function SectionHeader({ badge, badgeIcon: Icon, title, subtitle, viewAllHref, v
     <div className="flex justify-between items-end mb-6">
       <div>
         {badge && Icon && (
-          <div className="flex items-center gap-2 mb-1.5">
-            <Icon className="w-4 h-4 text-primary" />
-            <span className="text-primary font-semibold text-sm tracking-wide uppercase text-xs">{badge}</span>
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <Icon className="w-3.5 h-3.5 text-primary" />
+            <span className="text-primary font-medium text-xs tracking-[0.05em] uppercase">{badge}</span>
           </div>
         )}
-        <h2 className="text-2xl md:text-3xl font-extrabold text-foreground">{title}</h2>
-        {subtitle && <p className="text-muted-foreground text-sm mt-1">{subtitle}</p>}
+        <h2 className="text-xl md:text-2xl font-bold text-foreground">{title}</h2>
+        {subtitle && <p className="text-muted-foreground text-sm mt-1 leading-relaxed">{subtitle}</p>}
       </div>
       {viewAllHref && (
-        <Link href={viewAllHref} className="flex items-center gap-1 text-primary font-semibold text-sm hover:underline shrink-0">
-          {viewAllLabel || 'View all'} <ChevronRight className="w-4 h-4" />
+        <Link href={viewAllHref} className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors shrink-0">
+          {viewAllLabel || 'View all'} <ChevronRight className="w-3.5 h-3.5" />
         </Link>
       )}
     </div>
@@ -168,40 +168,40 @@ export function HomePage() {
               </div>
 
               {/* Heading */}
-              <h1 className="text-5xl md:text-7xl font-extrabold text-white leading-[1.05] mb-5">
+              <h1 className="text-5xl md:text-[4.25rem] font-extrabold text-white leading-[1.08] mb-5 whitespace-pre-line">
                 {t('Discover\nExceptional\nDining', 'اكتشف\nتجارب طعام\naستثنائية')}
               </h1>
-              <p className="text-lg text-white/75 mb-8 max-w-lg leading-relaxed">
+              <p className="text-base text-white/70 mb-7 max-w-md leading-relaxed">
                 {t('Find, book, and review the finest restaurants across Saudi Arabia — all in one place.', 'ابحث واحجز وقيّم أفضل المطاعم في المملكة العربية السعودية — كل شيء في مكان واحد.')}
               </p>
 
               {/* Search bar */}
-              <form onSubmit={handleSearch} className="max-w-xl mb-5">
-                <div className="flex gap-2 bg-white/10 backdrop-blur-xl border border-white/30 rounded-2xl p-2 shadow-2xl">
-                  <div className="flex-1 flex items-center gap-3 ps-3">
-                    <Search className="w-5 h-5 text-white/60 shrink-0" />
+              <form onSubmit={handleSearch} className="max-w-lg mb-5">
+                <div className="flex items-center bg-white rounded-xl overflow-hidden shadow-xl">
+                  <div className="flex-1 flex items-center gap-2.5 px-4">
+                    <Search className="w-4 h-4 text-muted-foreground shrink-0" />
                     <input
                       type="text"
                       value={query}
                       onChange={e => setQuery(e.target.value)}
                       placeholder={t('Restaurant, dish, or cuisine…', 'مطعم، طبق، أو مطبخ...')}
-                      className="flex-1 bg-transparent text-white placeholder:text-white/50 outline-none text-base py-2"
+                      className="flex-1 bg-transparent text-foreground placeholder:text-muted-foreground outline-none text-sm py-3.5 font-medium"
                     />
                   </div>
-                  <button type="submit" className="px-6 py-2.5 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold transition-all shadow-lg whitespace-nowrap">
+                  <button type="submit" className="px-6 py-3.5 bg-primary hover:bg-primary/90 text-white font-semibold text-sm transition-colors whitespace-nowrap">
                     {t('Search', 'بحث')}
                   </button>
                 </div>
               </form>
 
               {/* Quick terms */}
-              <div className="flex flex-wrap gap-2">
-                <span className="text-white/50 text-sm self-center">{t('Popular:', 'شائع:')}</span>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-white/45 text-xs font-medium">{t('Popular:', 'شائع:')}</span>
                 {quickTerms.map(term => (
                   <button
                     key={term}
                     onClick={() => setLocation(`/search?q=${encodeURIComponent(term)}`)}
-                    className="text-sm text-white/80 hover:text-white bg-white/10 hover:bg-white/20 border border-white/20 rounded-full px-4 py-1.5 transition-all"
+                    className="text-xs font-medium text-white/75 hover:text-white bg-white/10 hover:bg-white/18 border border-white/15 rounded-full px-3.5 py-1.5 transition-all"
                   >
                     {term}
                   </button>
@@ -212,33 +212,33 @@ export function HomePage() {
         </div>
 
         {/* Stats bar pinned to bottom of hero */}
-        <div className="relative z-10 bg-black/50 backdrop-blur-md border-t border-white/10">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between gap-6 flex-wrap">
+        <div className="relative z-10 bg-black/40 backdrop-blur-md border-t border-white/8">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between gap-6 flex-wrap">
             {[
-              { icon: Utensils,      valEn: '500+',  valAr: '+500',  labelEn: 'Restaurants',   labelAr: 'مطعم' },
-              { icon: CalendarDays, valEn: '10K+',  valAr: '+10K',  labelEn: 'Reservations',   labelAr: 'حجز' },
-              { icon: MessageSquare,valEn: '50K+',  valAr: '+50K',  labelEn: 'Reviews',        labelAr: 'تقييم' },
-              { icon: MapPin,        valEn: '12',    valAr: '12',    labelEn: 'Cities',         labelAr: 'مدينة' },
+              { icon: Utensils,       valEn: '500+',  valAr: '+500',  labelEn: 'Restaurants',  labelAr: 'مطعم' },
+              { icon: CalendarDays,   valEn: '10K+',  valAr: '+10K',  labelEn: 'Reservations', labelAr: 'حجز' },
+              { icon: MessageSquare,  valEn: '50K+',  valAr: '+50K',  labelEn: 'Reviews',      labelAr: 'تقييم' },
+              { icon: MapPin,         valEn: '12',    valAr: '12',    labelEn: 'Cities',       labelAr: 'مدينة' },
             ].map(s => {
               const Icon = s.icon;
               return (
                 <div key={s.labelEn} className="flex items-center gap-2.5 text-white">
-                  <div className="w-9 h-9 bg-white/10 rounded-lg flex items-center justify-center shrink-0">
-                    <Icon className="w-4 h-4 text-primary" />
+                  <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center shrink-0">
+                    <Icon className="w-3.5 h-3.5 text-white/70" />
                   </div>
                   <div>
-                    <p className="font-extrabold text-base leading-none">{lang === 'ar' ? s.valAr : s.valEn}</p>
-                    <p className="text-white/55 text-xs mt-0.5">{lang === 'ar' ? s.labelAr : s.labelEn}</p>
+                    <p className="font-bold text-sm leading-none tabular-nums">{lang === 'ar' ? s.valAr : s.valEn}</p>
+                    <p className="text-white/50 text-xs mt-0.5 font-medium">{lang === 'ar' ? s.labelAr : s.labelEn}</p>
                   </div>
                 </div>
               );
             })}
-            <div className="hidden md:flex items-center gap-3 ms-auto">
-              <Link href="/restaurants" className="px-5 py-2 bg-primary text-white rounded-xl text-sm font-bold hover:bg-primary/90 transition-all">
+            <div className="hidden md:flex items-center gap-2.5 ms-auto">
+              <Link href="/restaurants" className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors">
                 {t('Explore Now', 'استكشف الآن')}
               </Link>
-              <Link href="/offers" className="px-5 py-2 bg-white/15 border border-white/25 text-white rounded-xl text-sm font-bold hover:bg-white/25 transition-all flex items-center gap-1.5">
-                <Tag className="w-3.5 h-3.5" /> {t('Today\'s Deals', 'عروض اليوم')}
+              <Link href="/offers" className="px-4 py-2 bg-white/12 border border-white/20 text-white rounded-lg text-sm font-semibold hover:bg-white/20 transition-colors flex items-center gap-1.5">
+                <Tag className="w-3.5 h-3.5" /> {t("Today's Deals", 'عروض اليوم')}
               </Link>
             </div>
           </div>
@@ -292,19 +292,19 @@ export function HomePage() {
       {!categories.loading && (categories.data || []).length > 0 && (
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-14">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-foreground">{t('Cuisine Types', 'أنواع المطابخ')}</h2>
-            <Link href="/restaurants" className="text-primary text-sm font-semibold hover:underline flex items-center gap-1">
-              {t('Browse all', 'تصفح الكل')} <ChevronRight className="w-4 h-4" />
+            <h2 className="text-xl font-bold text-foreground tracking-[-0.02em]">{t('Cuisine Types', 'أنواع المطابخ')}</h2>
+            <Link href="/restaurants" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+              {t('Browse all', 'تصفح الكل')} <ChevronRight className="w-3.5 h-3.5" />
             </Link>
           </div>
-          <div className="flex gap-2.5 overflow-x-auto pb-2 hide-scrollbar">
+          <div className="flex gap-2 overflow-x-auto pb-2 hide-scrollbar">
             {(categories.data || []).slice(0, 14).map((cat: any) => (
               <Link
                 key={cat.id}
                 href={`/restaurants?categoryId=${cat.id}`}
-                className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-full border border-border bg-card hover:bg-primary hover:text-primary-foreground hover:border-primary hover:shadow-md transition-all text-sm font-semibold whitespace-nowrap"
+                className="shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-border bg-card hover:bg-foreground hover:text-card hover:border-foreground shadow-[0_1px_3px_rgb(0,0,0,0.06)] hover:shadow-md transition-all text-sm font-medium whitespace-nowrap"
               >
-                {cat.icon && <span className="text-base leading-none">{cat.icon}</span>}
+                {cat.icon && <span className="text-sm leading-none">{cat.icon}</span>}
                 {lang === 'ar' ? cat.nameAr : cat.nameEn}
               </Link>
             ))}
@@ -332,17 +332,16 @@ export function HomePage() {
             ];
             return (
               <Link key={col.id} href={`/collections/${col.slug}`} className="block group">
-                <div className="relative h-48 rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300">
-                  <img src={collectionImgs[i]} alt={col.labelEn} className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                  <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent`} />
-                  <div className={`absolute inset-0 bg-gradient-to-br ${col.gradient} opacity-40`} />
-                  <div className="absolute inset-0 flex flex-col justify-between p-4 text-white">
-                    <span className="text-2xl">{col.icon}</span>
+                <div className="relative h-44 rounded-xl overflow-hidden shadow-[0_2px_8px_rgb(0,0,0,0.1)] hover:shadow-[0_8px_24px_rgb(0,0,0,0.15)] transition-all duration-300">
+                  <img src={collectionImgs[i]} alt={col.labelEn} className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.06] transition-transform duration-500" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent" />
+                  <div className={`absolute inset-0 bg-gradient-to-br ${col.gradient} opacity-35`} />
+                  <div className="absolute inset-0 flex flex-col justify-between p-3.5 text-white">
+                    <span className="text-xl">{col.icon}</span>
                     <div>
-                      <p className="font-extrabold text-base leading-tight mb-1">{lang === 'ar' ? col.labelAr : col.labelEn}</p>
-                      <p className="text-white/70 text-xs line-clamp-1">{lang === 'ar' ? col.descAr : col.descEn}</p>
-                      <div className="flex items-center gap-1 mt-2 text-white/80 text-xs font-semibold group-hover:text-white transition-colors">
-                        {t('Explore', 'استكشف')} <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+                      <p className="font-semibold text-sm leading-tight mb-1 tracking-[-0.01em]">{lang === 'ar' ? col.labelAr : col.labelEn}</p>
+                      <div className="flex items-center gap-1 text-white/65 text-xs font-medium group-hover:text-white/90 transition-colors">
+                        {t('Explore', 'استكشف')} <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
                       </div>
                     </div>
                   </div>

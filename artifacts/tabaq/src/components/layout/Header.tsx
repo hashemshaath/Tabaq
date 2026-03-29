@@ -33,7 +33,7 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full glass-panel border-b border-border/50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
 
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 transition-transform hover:scale-105 active:scale-95 shrink-0">
@@ -45,14 +45,14 @@ export function Header() {
         </Link>
 
         {/* Desktop Nav */}
-        <nav className="hidden lg:flex items-center gap-7">
+        <nav className="hidden lg:flex items-center gap-6">
           {navLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
               className={cn(
-                "text-sm font-semibold transition-colors hover:text-primary relative py-2",
-                isActive(link.href) ? "text-primary" : "text-muted-foreground"
+                "text-sm font-medium transition-colors hover:text-foreground relative py-2 tracking-[-0.01em]",
+                isActive(link.href) ? "text-foreground" : "text-muted-foreground"
               )}
             >
               {t(link.en, link.ar)}
@@ -65,8 +65,8 @@ export function Header() {
           <Link
             href="/partners"
             className={cn(
-              "text-sm font-semibold transition-colors hover:text-primary relative py-2 flex items-center gap-1",
-              isActive("/partners") ? "text-primary" : "text-muted-foreground"
+              "text-sm font-medium transition-colors hover:text-foreground relative py-2 flex items-center gap-1 tracking-[-0.01em]",
+              isActive("/partners") ? "text-foreground" : "text-muted-foreground"
             )}
           >
             <Utensils className="w-3.5 h-3.5" />
