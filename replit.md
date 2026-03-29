@@ -13,12 +13,12 @@ Features include:
 - Referral & Points System (`/referral`) — unique codes, WhatsApp/Twitter sharing, points history
 - Username System — claim @username on profile Settings tab, real-time availability check via `/api/username/check`
 - Provider Registration (`/partners/register`) — 5-step wizard: business type, details, contact, owner, plan
-- Restaurant business console (`/console`) with overview, bookings, **offers** (active/inactive toggle, redemption progress, QR scanner CTA, revenue stats), reviews, menu, settings tabs
+- Restaurant business console (`/console`) with overview (contract info panel, refCode display), bookings, **offers** (approval status badges, revision notice, pending count, redemption progress, QR scanner CTA), reviews, menu, settings tabs
 - Curated collections (`/collections`, `/collections/:id`) — 8 themed restaurant lists
 - Michelin-style award badges (Excellence, Top Rated, Fine Dining, Hidden Gem) on RestaurantCard
 - Trending/New indicators on restaurant cards
 - Payments and wallet
-- Admin CRM with live DB stats (total restaurants, users, bookings, reviews, offers) + module management
+- Admin CRM with live DB stats (total restaurants, users, bookings, reviews, offers) + module management + **Contracts** (create/activate/suspend with payment models & commission %) + **Finance** (transaction ledger, invoice list) + **Messages** (send messages to restaurants) + **enhanced Offers** (approve/reject/revision workflow with commission override)
 
 **Pages**: HomePage, DiscoveryPage, CollectionsPage (list + detail), RestaurantDetailPage, DishDetailPage, BookingsPage, VouchersPage, OffersPage, LeaderboardPage, ProfilePage (with Settings tab + username management), FeedPage (world-class social feed with two-column layout, rich activity cards, trending restaurants/critics/dishes sidebar), NotificationsPage (`/notifications` — grouped notifications with 8 types, filter chips, mark read/dismiss), BusinessConsolePage (`/console`), UserDashboardPage (`/dashboard`), PartnerLandingPage (`/partners`), ProviderRegistrationPage (`/partners/register` — 5-step wizard), ReferralPage (`/referral`), AdminPanelPage (`/admin`), SignInPage, SearchPage, NotFound
 

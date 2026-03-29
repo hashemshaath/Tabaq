@@ -5,7 +5,8 @@ import {
   BarChart3, CalendarDays, Users, Star, TrendingUp, ChevronRight,
   CheckCircle2, Clock, XCircle, AlertCircle, MessageSquare,
   Utensils, Settings, Bell, Eye, ArrowUpRight, Percent, Gift,
-  Tag, Plus, ToggleLeft, ToggleRight, ScanLine, QrCode, ExternalLink, MapPin
+  Tag, Plus, ScanLine, QrCode, ExternalLink, MapPin,
+  FileSignature, BadgeCheck, RefreshCw, Ban, Hash, Info
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -41,18 +42,33 @@ const MOCK_CONSOLE_OFFERS = [
     id: 1, titleEn: '50% Off Premium Dining Set Menu', titleAr: 'خصم 50% على قائمة الطعام المميزة',
     discountPercent: 50, originalPrice: 280, discountedPrice: 140, currency: 'SAR',
     isActive: true, validUntil: '2026-04-30', redemptions: 34, totalCapacity: 100,
+    approvalStatus: 'approved' as const, refCode: 'TBQ-OFR-2026-000001',
+    commissionOverridePercent: null, paymentModel: null,
   },
   {
     id: 2, titleEn: 'Weekend Brunch for Two', titleAr: 'برانش نهاية الأسبوع لاثنين',
     discountPercent: 30, originalPrice: 220, discountedPrice: 154, currency: 'SAR',
-    isActive: true, validUntil: '2026-05-15', redemptions: 12, totalCapacity: 50,
+    isActive: false, validUntil: '2026-05-15', redemptions: 0, totalCapacity: 50,
+    approvalStatus: 'pending' as const, refCode: 'TBQ-OFR-2026-000002',
+    commissionOverridePercent: null, paymentModel: null,
   },
   {
     id: 3, titleEn: 'Family Feast Package', titleAr: 'باقة وليمة العائلة',
     discountPercent: 25, originalPrice: 400, discountedPrice: 300, currency: 'SAR',
     isActive: false, validUntil: '2026-03-31', redemptions: 8, totalCapacity: 30,
+    approvalStatus: 'revision_requested' as const, refCode: 'TBQ-OFR-2026-000003',
+    commissionOverridePercent: null, paymentModel: null,
   },
 ];
+
+const MOCK_CONTRACT = {
+  refCode: 'TBQ-CTR-2026-000001',
+  status: 'active',
+  paymentModel: 'full_collection',
+  commissionPercent: '15.00',
+  settlementDays: 7,
+  validFrom: '2026-01-01',
+};
 
 type ConsoleTab = 'overview' | 'bookings' | 'offers' | 'reviews' | 'menu' | 'settings';
 
@@ -85,7 +101,12 @@ export function BusinessConsolePage() {
                   <h1 className="text-xl font-bold text-background">Reem Al Bawadi</h1>
                   <CheckCircle2 className="w-4 h-4 text-primary" />
                 </div>
-                <p className="text-background/60 text-sm">{t('Business Console', 'لوحة تحكم الأعمال')} · Riyadh, Saudi Arabia</p>
+                <div className="flex items-center gap-3 mt-0.5">
+                  <p className="text-background/60 text-sm">{t('Business Console', 'لوحة تحكم الأعمال')} · Riyadh, Saudi Arabia</p>
+                  <span className="font-mono text-xs bg-background/10 text-background/70 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <Hash className="w-3 h-3" /> TBQ-RST-2026-000002
+                  </span>
+                </div>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -227,6 +248,37 @@ export function BusinessConsolePage() {
                   <button onClick={() => setActiveTab('reviews')} className="text-primary text-sm font-semibold hover:underline flex items-center gap-1">
                     {t('Manage reviews', 'إدارة التقييمات')} <ChevronRight className="w-4 h-4" />
                   </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Contract Info Panel */}
+            <div className="bg-card border border-border rounded-2xl overflow-hidden">
+              <div className="px-5 py-4 border-b border-border flex items-center gap-2">
+                <FileSignature className="w-4 h-4 text-primary" />
+                <h2 className="font-bold text-foreground">{t('Platform Contract', 'عقد المنصة')}</h2>
+              </div>
+              <div className="p-5">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {[
+                    { label: t('Contract Ref', 'رقم العقد'), val: MOCK_CONTRACT.refCode, mono: true },
+                    { label: t('Commission Rate', 'نسبة العمولة'), val: `${MOCK_CONTRACT.commissionPercent}%`, highlight: true },
+                    { label: t('Payment Model', 'نموذج الدفع'), val: MOCK_CONTRACT.paymentModel.replace(/_/g, ' '), capitalize: true },
+                    { label: t('Settlement', 'التسوية'), val: `${MOCK_CONTRACT.settlementDays} days` },
+                  ].map(item => (
+                    <div key={item.label} className="bg-secondary/40 rounded-xl p-3">
+                      <p className="text-xs text-muted-foreground mb-1">{item.label}</p>
+                      <p className={`font-semibold text-sm ${item.mono ? 'font-mono text-xs' : ''} ${item.highlight ? 'text-primary' : 'text-foreground'} ${item.capitalize ? 'capitalize' : ''}`}>
+                        {item.val}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-3 flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 text-xs font-semibold px-2.5 py-1 rounded-full">
+                    <BadgeCheck className="w-3 h-3" /> {t('Active Contract', 'عقد نشط')}
+                  </span>
+                  <span className="text-xs text-muted-foreground">{t('Valid from', 'صالح من')} {MOCK_CONTRACT.validFrom}</span>
                 </div>
               </div>
             </div>
@@ -378,18 +430,27 @@ export function BusinessConsolePage() {
                   {t('Manage exclusive deals for your restaurant', 'إدارة العروض الحصرية لمطعمك')}
                 </p>
               </div>
-              <Button className="gap-2" size="sm">
+              <Button className="gap-2" size="sm" onClick={() => setActiveTab('offers')}>
                 <Plus className="w-4 h-4" />
                 {t('Create Offer', 'إنشاء عرض')}
               </Button>
             </div>
 
+            {/* Approval process notice */}
+            <div className="flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-2xl p-4">
+              <Info className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+              <p className="text-sm text-blue-800">
+                {t('New offers are reviewed by the Tabaq team before going live. Approved offers are automatically activated.', 'تتم مراجعة العروض الجديدة من قبل فريق طبق قبل نشرها. العروض المعتمدة يتم تفعيلها تلقائياً.')}
+              </p>
+            </div>
+
             {/* Summary cards */}
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
                 { label: t('Active', 'نشط'), val: consoleOffers.filter(o => o.isActive).length, color: 'bg-green-50 text-green-700 border-green-200' },
+                { label: t('Pending Review', 'في انتظار المراجعة'), val: consoleOffers.filter(o => o.approvalStatus === 'pending').length, color: 'bg-amber-50 text-amber-700 border-amber-200' },
                 { label: t('Total Redemptions', 'إجمالي الاستخدامات'), val: consoleOffers.reduce((a, o) => a + o.redemptions, 0), color: 'bg-primary/5 text-primary border-primary/20' },
-                { label: t('Revenue Generated', 'الإيرادات المحققة'), val: `SAR ${consoleOffers.reduce((a, o) => a + o.redemptions * o.discountedPrice, 0).toLocaleString()}`, color: 'bg-amber-50 text-amber-700 border-amber-200' },
+                { label: t('Revenue Generated', 'الإيرادات المحققة'), val: `SAR ${consoleOffers.reduce((a, o) => a + o.redemptions * o.discountedPrice, 0).toLocaleString()}`, color: 'bg-purple-50 text-purple-700 border-purple-200' },
               ].map(s => (
                 <div key={s.label} className={`border rounded-2xl p-4 ${s.color}`}>
                   <p className="text-2xl font-extrabold">{s.val}</p>
@@ -400,16 +461,40 @@ export function BusinessConsolePage() {
 
             <div className="space-y-3">
               {consoleOffers.map(offer => (
-                <div key={offer.id} className="bg-card border border-border rounded-2xl p-5 flex gap-4 items-center">
+                <div key={offer.id} className={`bg-card border rounded-2xl p-5 flex gap-4 items-start ${offer.approvalStatus === 'revision_requested' ? 'border-amber-300' : offer.approvalStatus === 'rejected' ? 'border-red-300' : 'border-border'}`}>
                   <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center shrink-0">
                     <Tag className="w-6 h-6 text-primary" />
                   </div>
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="font-bold text-foreground truncate">{lang === 'ar' ? offer.titleAr : offer.titleEn}</p>
-                        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-bold text-foreground">{lang === 'ar' ? offer.titleAr : offer.titleEn}</p>
+                          {/* Approval Status Badge */}
+                          {offer.approvalStatus === 'approved' && (
+                            <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 text-xs font-semibold px-2 py-0.5 rounded-full">
+                              <BadgeCheck className="w-3 h-3" /> {t('Approved', 'معتمد')}
+                            </span>
+                          )}
+                          {offer.approvalStatus === 'pending' && (
+                            <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-700 text-xs font-semibold px-2 py-0.5 rounded-full">
+                              <Clock className="w-3 h-3" /> {t('Pending Review', 'في انتظار المراجعة')}
+                            </span>
+                          )}
+                          {offer.approvalStatus === 'rejected' && (
+                            <span className="inline-flex items-center gap-1 bg-red-100 text-red-700 text-xs font-semibold px-2 py-0.5 rounded-full">
+                              <Ban className="w-3 h-3" /> {t('Rejected', 'مرفوض')}
+                            </span>
+                          )}
+                          {offer.approvalStatus === 'revision_requested' && (
+                            <span className="inline-flex items-center gap-1 bg-orange-100 text-orange-700 text-xs font-semibold px-2 py-0.5 rounded-full">
+                              <RefreshCw className="w-3 h-3" /> {t('Revision Requested', 'طلب مراجعة')}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs font-mono text-muted-foreground mt-0.5">{offer.refCode}</p>
+                        <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground flex-wrap">
                           <span className="inline-flex items-center gap-1 bg-red-100 text-red-700 font-bold px-2 py-0.5 rounded-full">
                             -{offer.discountPercent}% OFF
                           </span>
@@ -421,34 +506,48 @@ export function BusinessConsolePage() {
                             <Clock className="w-3 h-3" /> {t('Expires', 'ينتهي')} {offer.validUntil}
                           </span>
                         </div>
+
+                        {/* Revision notice */}
+                        {offer.approvalStatus === 'revision_requested' && (
+                          <div className="mt-2 bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800">
+                            <p className="font-semibold mb-0.5">{t('Revision Required:', 'مطلوب مراجعة:')}</p>
+                            <p>{t('Please review the offer details and update before resubmitting.', 'يرجى مراجعة تفاصيل العرض وتحديثه قبل إعادة الإرسال.')}</p>
+                          </div>
+                        )}
                       </div>
 
                       <div className="flex items-center gap-3 shrink-0">
-                        <div className="text-end">
-                          <p className="text-sm font-bold text-foreground">{offer.redemptions} / {offer.totalCapacity}</p>
-                          <p className="text-xs text-muted-foreground">{t('Redeemed', 'استُخدم')}</p>
-                        </div>
-                        <button
-                          onClick={() => setConsoleOffers(prev => prev.map(o => o.id === offer.id ? { ...o, isActive: !o.isActive } : o))}
-                          className={`relative w-11 h-6 rounded-full transition-all duration-300 shrink-0 ${offer.isActive ? 'bg-primary' : 'bg-muted'}`}
-                        >
-                          <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-all duration-300 ${offer.isActive ? 'start-[22px]' : 'start-0.5'}`} />
-                        </button>
+                        {offer.approvalStatus === 'approved' && (
+                          <>
+                            <div className="text-end">
+                              <p className="text-sm font-bold text-foreground">{offer.redemptions} / {offer.totalCapacity}</p>
+                              <p className="text-xs text-muted-foreground">{t('Redeemed', 'استُخدم')}</p>
+                            </div>
+                            <button
+                              onClick={() => setConsoleOffers(prev => prev.map(o => o.id === offer.id ? { ...o, isActive: !o.isActive } : o))}
+                              className={`relative w-11 h-6 rounded-full transition-all duration-300 shrink-0 ${offer.isActive ? 'bg-primary' : 'bg-muted'}`}
+                            >
+                              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-all duration-300 ${offer.isActive ? 'start-[22px]' : 'start-0.5'}`} />
+                            </button>
+                          </>
+                        )}
                         <button className="p-2 rounded-xl hover:bg-secondary transition-colors">
                           <ExternalLink className="w-4 h-4 text-muted-foreground" />
                         </button>
                       </div>
                     </div>
 
-                    {/* Redemption progress */}
-                    <div className="mt-3">
-                      <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-primary rounded-full transition-all"
-                          style={{ width: `${Math.min((offer.redemptions / offer.totalCapacity) * 100, 100)}%` }}
-                        />
+                    {/* Redemption progress — only for approved active */}
+                    {offer.approvalStatus === 'approved' && offer.redemptions > 0 && (
+                      <div className="mt-3">
+                        <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-primary rounded-full transition-all"
+                            style={{ width: `${Math.min((offer.redemptions / offer.totalCapacity) * 100, 100)}%` }}
+                          />
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               ))}

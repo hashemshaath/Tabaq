@@ -5,6 +5,7 @@ import { citiesTable } from "./countries";
 
 export const usersTable = pgTable("users", {
   id: serial("id").primaryKey(),
+  refCode: text("ref_code").unique(), // e.g. TBQ-USR-2026-000001
   phone: text("phone").unique(),
   email: text("email").unique(),
   username: text("username").unique(),
@@ -53,7 +54,7 @@ export const emailVerificationTokensTable = pgTable("email_verification_tokens",
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const insertUserSchema = createInsertSchema(usersTable).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertUserSchema = createInsertSchema(usersTable).omit({ id: true, refCode: true, createdAt: true, updatedAt: true });
 export const insertUserFollowSchema = createInsertSchema(userFollowsTable).omit({ id: true, createdAt: true });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;

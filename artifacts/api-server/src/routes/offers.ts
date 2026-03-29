@@ -126,9 +126,22 @@ router.post("/offers", requireAuth, async (req, res) => {
       return;
     }
     const [offer] = await db.insert(offersTable).values({
-      restaurantId, titleEn, titleAr, originalPrice, validFrom: new Date(validFrom), validUntil: new Date(validUntil), ...rest,
+      restaurantId, titleEn, titleAr, originalPrice, validFrom: new Date(validFrom), validUntil: new Date(validUntil),
+      isActive: false, // stays inactive until admin approves
+      approvalStatus: "pending",
+      ...rest,
     }).returning();
-    res.status(201).json({ ...offer, restaurantNameEn: restaurant.nameEn ?? "", restaurantNameAr: restaurant.nameAr ?? "", restaurantCoverImageUrl: restaurant.coverImageUrl ?? null });
+
+    // Assign a sequential refCode now that we have the DB-assigned id
+    const refCode = `TBQ-OFR-${new Date().getFullYear()}-${offer.id.toString().padStart(6, "0")}`;
+    const [withRef] = await db.update(offersTable).set({ refCode }).where(eq(offersTable.id, offer.id)).returning();
+
+    res.status(201).json({
+      ...(withRef ?? offer),
+      restaurantNameEn: restaurant.nameEn ?? "",
+      restaurantNameAr: restaurant.nameAr ?? "",
+      restaurantCoverImageUrl: restaurant.coverImageUrl ?? null,
+    });
   } catch (err) {
     req.log.error({ err }, "Failed to create offer");
     res.status(500).json({ error: "internal_error", message: "Failed to create offer" });

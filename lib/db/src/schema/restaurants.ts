@@ -12,6 +12,7 @@ export const priceTierEnum = pgEnum("price_tier", ["budget", "mid", "upscale", "
 
 export const restaurantsTable = pgTable("restaurants", {
   id: serial("id").primaryKey(),
+  refCode: text("ref_code").unique(), // e.g. TBQ-RST-2026-000001
   nameEn: text("name_en").notNull(),
   nameAr: text("name_ar").notNull(),
   descriptionEn: text("description_en"),
@@ -73,7 +74,7 @@ export const openingHoursTable = pgTable("opening_hours", {
   isClosed: boolean("is_closed").default(false).notNull(),
 });
 
-export const insertRestaurantSchema = createInsertSchema(restaurantsTable).omit({ id: true, createdAt: true, updatedAt: true, avgRating: true, reviewCount: true, followerCount: true });
+export const insertRestaurantSchema = createInsertSchema(restaurantsTable).omit({ id: true, refCode: true, createdAt: true, updatedAt: true, avgRating: true, reviewCount: true, followerCount: true });
 export const insertOpeningHourSchema = createInsertSchema(openingHoursTable).omit({ id: true });
 
 export type InsertRestaurant = z.infer<typeof insertRestaurantSchema>;

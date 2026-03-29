@@ -6,8 +6,22 @@ import { restaurantsTable } from "./restaurants";
 
 export const voucherStatusEnum = pgEnum("voucher_status", ["active", "used", "expired"]);
 
+export const offerApprovalStatusEnum = pgEnum("offer_approval_status", [
+  "pending",            // submitted, awaiting admin review
+  "approved",           // approved and can go live
+  "rejected",           // rejected, offer cannot be activated
+  "revision_requested", // admin asked for changes before approving
+]);
+
+export const offerPaymentModelEnum = pgEnum("offer_payment_model", [
+  "full_collection",
+  "partial_collection",
+  "direct_payment",
+]);
+
 export const offersTable = pgTable("offers", {
   id: serial("id").primaryKey(),
+  refCode: text("ref_code").unique(), // e.g. TBQ-OFR-2026-000001 (set after insert)
   restaurantId: integer("restaurant_id").notNull().references(() => restaurantsTable.id),
   titleEn: text("title_en").notNull(),
   titleAr: text("title_ar").notNull(),
@@ -22,12 +36,27 @@ export const offersTable = pgTable("offers", {
   validUntil: timestamp("valid_until").notNull(),
   totalCapacity: integer("total_capacity"),
   remainingCapacity: integer("remaining_capacity"),
-  isActive: boolean("is_active").default(true).notNull(),
+  isActive: boolean("is_active").default(false).notNull(), // stays false until approved
+
+  // Admin approval workflow
+  approvalStatus: offerApprovalStatusEnum("approval_status").default("pending").notNull(),
+  adminNotes: text("admin_notes"), // admin feedback to the restaurant owner
+  approvedById: integer("approved_by_id").references(() => usersTable.id),
+  approvedAt: timestamp("approved_at"),
+
+  // Commission override — if null, falls back to contract default
+  commissionOverridePercent: numeric("commission_override_percent", { precision: 5, scale: 2 }),
+
+  // Payment model for this specific offer — if null, falls back to contract default
+  paymentModel: offerPaymentModelEnum("payment_model"),
+
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const vouchersTable = pgTable("vouchers", {
   id: serial("id").primaryKey(),
+  refCode: text("ref_code").unique(), // e.g. TBQ-VCH-2026-000001
   code: text("code").notNull().unique(),
   offerId: integer("offer_id").references(() => offersTable.id),
   userId: integer("user_id").notNull().references(() => usersTable.id),
@@ -47,8 +76,13 @@ export const vouchersTable = pgTable("vouchers", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const insertOfferSchema = createInsertSchema(offersTable).omit({ id: true, createdAt: true });
-export const insertVoucherSchema = createInsertSchema(vouchersTable).omit({ id: true, createdAt: true });
+export const insertOfferSchema = createInsertSchema(offersTable).omit({
+  id: true, refCode: true, createdAt: true, updatedAt: true,
+  approvalStatus: true, adminNotes: true, approvedById: true, approvedAt: true
+});
+export const insertVoucherSchema = createInsertSchema(vouchersTable).omit({
+  id: true, refCode: true, createdAt: true
+});
 
 export type InsertOffer = z.infer<typeof insertOfferSchema>;
 export type Offer = typeof offersTable.$inferSelect;

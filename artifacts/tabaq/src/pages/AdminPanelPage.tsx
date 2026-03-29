@@ -8,7 +8,9 @@ import {
   Eye, Edit, Trash2, Search, Filter, Shield, Bell, BookOpen,
   Tag, LayoutDashboard, Layers, Power, Zap, Award, CreditCard,
   FileText, ArrowUpRight, ChevronRight, MoreHorizontal, Plus,
-  MapPin, Clock, LogOut, Database, Activity
+  MapPin, Clock, LogOut, Database, Activity, FileSignature,
+  DollarSign, Receipt, Send, Percent, BadgeCheck, Ban, RefreshCw,
+  CheckSquare, X, Hash
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -86,7 +88,7 @@ const INITIAL_MODULES: Module[] = [
 ];
 
 // ─── Types ──────────────────────────────────────────────────────
-type AdminTab = 'overview' | 'offers' | 'referrals' | 'restaurants' | 'registrations' | 'users' | 'bookings' | 'reviews' | 'blog' | 'seo' | 'modules' | 'settings';
+type AdminTab = 'overview' | 'offers' | 'contracts' | 'finance' | 'messages' | 'referrals' | 'restaurants' | 'registrations' | 'users' | 'bookings' | 'reviews' | 'blog' | 'seo' | 'modules' | 'settings';
 
 // ─── Component ──────────────────────────────────────────────────
 export function AdminPanelPage() {
@@ -194,13 +196,152 @@ export function AdminPanelPage() {
     onSuccess: () => refetchOffers(),
   });
 
+  const [offerActionState, setOfferActionState] = useState<{ id: number; action: 'approve' | 'reject' | 'revision'; notes: string; commissionOverride?: string; paymentModel?: string } | null>(null);
+
+  const approveOffer = useMutation({
+    mutationFn: async ({ id, commissionOverridePercent, paymentModel, adminNotes }: any) => {
+      const res = await fetch(`/api/admin/offers/${id}/approve`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ commissionOverridePercent, paymentModel, adminNotes }),
+        credentials: 'include',
+      });
+      return res.json();
+    },
+    onSuccess: () => { refetchOffers(); setOfferActionState(null); },
+  });
+
+  const rejectOffer = useMutation({
+    mutationFn: async ({ id, adminNotes }: any) => {
+      const res = await fetch(`/api/admin/offers/${id}/reject`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminNotes }),
+        credentials: 'include',
+      });
+      return res.json();
+    },
+    onSuccess: () => { refetchOffers(); setOfferActionState(null); },
+  });
+
+  const requestRevision = useMutation({
+    mutationFn: async ({ id, adminNotes }: any) => {
+      const res = await fetch(`/api/admin/offers/${id}/request-revision`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminNotes }),
+        credentials: 'include',
+      });
+      return res.json();
+    },
+    onSuccess: () => { refetchOffers(); setOfferActionState(null); },
+  });
+
+  const { data: contractsData, refetch: refetchContracts } = useQuery({
+    queryKey: ['admin-contracts'],
+    queryFn: async () => {
+      const res = await fetch('/api/admin/contracts', { credentials: 'include' });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    retry: false,
+    staleTime: 30000,
+    enabled: activeTab === 'contracts',
+  });
+
+  const { data: transactionsData } = useQuery({
+    queryKey: ['admin-transactions'],
+    queryFn: async () => {
+      const res = await fetch('/api/admin/transactions', { credentials: 'include' });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    retry: false,
+    staleTime: 30000,
+    enabled: activeTab === 'finance',
+  });
+
+  const { data: invoicesData } = useQuery({
+    queryKey: ['admin-invoices'],
+    queryFn: async () => {
+      const res = await fetch('/api/admin/invoices', { credentials: 'include' });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    retry: false,
+    staleTime: 30000,
+    enabled: activeTab === 'finance',
+  });
+
+  const { data: messagesData, refetch: refetchMessages } = useQuery({
+    queryKey: ['admin-messages'],
+    queryFn: async () => {
+      const res = await fetch('/api/admin/messages', { credentials: 'include' });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    retry: false,
+    staleTime: 30000,
+    enabled: activeTab === 'messages',
+  });
+
+  const [contractForm, setContractForm] = useState({ restaurantId: '', paymentModel: 'full_collection', commissionPercent: '15', settlementDays: '7', partialCollectionPercent: '', validFrom: '', validUntil: '', notes: '', internalNotes: '' });
+  const [showContractForm, setShowContractForm] = useState(false);
+
+  const createContract = useMutation({
+    mutationFn: async (body: any) => {
+      const res = await fetch('/api/admin/contracts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        credentials: 'include',
+      });
+      return res.json();
+    },
+    onSuccess: () => { refetchContracts(); setShowContractForm(false); },
+  });
+
+  const updateContractStatus = useMutation({
+    mutationFn: async ({ id, status }: { id: number; status: string }) => {
+      const res = await fetch(`/api/admin/contracts/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+        credentials: 'include',
+      });
+      return res.json();
+    },
+    onSuccess: () => refetchContracts(),
+  });
+
+  const [msgForm, setMsgForm] = useState({ restaurantId: '', subject: '', body: '', type: 'general' });
+  const [showMsgForm, setShowMsgForm] = useState(false);
+
+  const sendMessage = useMutation({
+    mutationFn: async (body: any) => {
+      const res = await fetch('/api/admin/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        credentials: 'include',
+      });
+      return res.json();
+    },
+    onSuccess: () => { refetchMessages(); setShowMsgForm(false); setMsgForm({ restaurantId: '', subject: '', body: '', type: 'general' }); },
+  });
+
+  const pendingOffersCount = (adminOffersData?.offers as any[])?.filter((o: any) => o.approvalStatus === 'pending')?.length ?? 0;
+
   const navItems: { id: AdminTab; label: string; icon: React.ElementType; badge?: number }[] = [
     { id: 'overview', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'registrations', label: 'Registrations', icon: Plus, badge: PENDING_RESTAURANTS.length },
     { id: 'restaurants', label: 'Restaurants', icon: Utensils },
     { id: 'users', label: 'Users', icon: Users },
     { id: 'bookings', label: 'Bookings', icon: CalendarDays },
-    { id: 'offers', label: 'Offers', icon: Tag },
+    { id: 'offers', label: 'Offers', icon: Tag, badge: pendingOffersCount || undefined },
+    { id: 'contracts', label: 'Contracts', icon: FileSignature },
+    { id: 'finance', label: 'Finance', icon: DollarSign },
+    { id: 'messages', label: 'Messages', icon: Send },
     { id: 'referrals', label: 'Referrals & Points', icon: Award },
     { id: 'reviews', label: 'Reviews', icon: Star, badge: 1 },
     { id: 'blog', label: 'Blog & Content', icon: BookOpen },
@@ -831,20 +972,93 @@ export function AdminPanelPage() {
           {/* ── OFFERS MANAGEMENT ── */}
           {activeTab === 'offers' && (
             <div className="space-y-5">
-              {/* Header actions */}
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-2 bg-primary/10 text-primary px-3 py-1.5 rounded-full text-sm font-semibold">
-                    <Tag className="w-4 h-4" />
-                    {adminOffersData?.total ?? 0} Total Offers
-                  </div>
-                  <div className="flex items-center gap-2 bg-green-100 text-green-700 px-3 py-1.5 rounded-full text-sm font-semibold">
-                    {adminOffersData?.offers?.filter((o: any) => o.isActive)?.length ?? 0} Active
+              {/* Action modal */}
+              {offerActionState && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                  <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      {offerActionState.action === 'approve' && <BadgeCheck className="w-5 h-5 text-green-600" />}
+                      {offerActionState.action === 'reject' && <Ban className="w-5 h-5 text-red-600" />}
+                      {offerActionState.action === 'revision' && <RefreshCw className="w-5 h-5 text-amber-600" />}
+                      <h3 className="font-bold text-foreground capitalize">
+                        {offerActionState.action === 'approve' ? 'Approve Offer' : offerActionState.action === 'reject' ? 'Reject Offer' : 'Request Revision'}
+                      </h3>
+                    </div>
+
+                    {offerActionState.action === 'approve' && (
+                      <div className="space-y-3 mb-4">
+                        <div>
+                          <label className="text-xs font-semibold text-muted-foreground block mb-1.5">Commission Override % (leave blank to use contract default)</label>
+                          <input type="number" step="0.5" placeholder="e.g. 12.5" value={offerActionState.commissionOverride ?? ''}
+                            onChange={e => setOfferActionState(s => s ? { ...s, commissionOverride: e.target.value } : s)}
+                            className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-muted-foreground block mb-1.5">Payment Model Override</label>
+                          <select value={offerActionState.paymentModel ?? ''}
+                            onChange={e => setOfferActionState(s => s ? { ...s, paymentModel: e.target.value } : s)}
+                            className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20">
+                            <option value="">— Use contract default —</option>
+                            <option value="full_collection">Full Collection</option>
+                            <option value="partial_collection">Partial Collection</option>
+                            <option value="direct_payment">Direct Payment</option>
+                          </select>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="mb-4">
+                      <label className="text-xs font-semibold text-muted-foreground block mb-1.5">
+                        {offerActionState.action === 'approve' ? 'Admin Notes (optional)' : 'Reason / Instructions *'}
+                      </label>
+                      <textarea value={offerActionState.notes}
+                        onChange={e => setOfferActionState(s => s ? { ...s, notes: e.target.value } : s)}
+                        rows={3}
+                        placeholder={offerActionState.action === 'approve' ? 'Any notes for the restaurant...' : 'Explain what needs to change...'}
+                        className="w-full px-3 py-2 rounded-xl border border-input bg-background text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button onClick={() => setOfferActionState(null)}
+                        className="flex-1 px-4 py-2.5 rounded-xl border border-border text-sm font-semibold text-muted-foreground hover:bg-secondary">
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (offerActionState.action === 'approve') {
+                            approveOffer.mutate({ id: offerActionState.id, adminNotes: offerActionState.notes || undefined, commissionOverridePercent: offerActionState.commissionOverride || undefined, paymentModel: offerActionState.paymentModel || undefined });
+                          } else if (offerActionState.action === 'reject') {
+                            rejectOffer.mutate({ id: offerActionState.id, adminNotes: offerActionState.notes || undefined });
+                          } else {
+                            requestRevision.mutate({ id: offerActionState.id, adminNotes: offerActionState.notes });
+                          }
+                        }}
+                        className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-colors ${offerActionState.action === 'approve' ? 'bg-green-600 hover:bg-green-700' : offerActionState.action === 'reject' ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700'}`}>
+                        {offerActionState.action === 'approve' ? 'Approve & Activate' : offerActionState.action === 'reject' ? 'Reject Offer' : 'Send for Revision'}
+                      </button>
+                    </div>
                   </div>
                 </div>
-                <Button size="sm" className="gap-2">
-                  <Plus className="w-4 h-4" /> New Offer
-                </Button>
+              )}
+
+              {/* Header actions */}
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-2 bg-primary/10 text-primary px-3 py-1.5 rounded-full text-sm font-semibold">
+                    <Tag className="w-4 h-4" />
+                    {adminOffersData?.total ?? 0} Total
+                  </div>
+                  <div className="flex items-center gap-2 bg-green-100 text-green-700 px-3 py-1.5 rounded-full text-sm font-semibold">
+                    <BadgeCheck className="w-4 h-4" />
+                    {(adminOffersData?.offers as any[])?.filter((o: any) => o.approvalStatus === 'approved')?.length ?? 0} Approved
+                  </div>
+                  {pendingOffersCount > 0 && (
+                    <div className="flex items-center gap-2 bg-amber-100 text-amber-700 px-3 py-1.5 rounded-full text-sm font-semibold">
+                      <Clock className="w-4 h-4" />
+                      {pendingOffersCount} Pending Review
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Offers table */}
@@ -853,36 +1067,37 @@ export function AdminPanelPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-border bg-secondary/30">
-                        <th className="text-start px-5 py-3.5 font-semibold text-foreground">Offer</th>
-                        <th className="text-start px-4 py-3.5 font-semibold text-foreground">Restaurant</th>
-                        <th className="text-start px-4 py-3.5 font-semibold text-foreground">Discount</th>
-                        <th className="text-start px-4 py-3.5 font-semibold text-foreground">Price</th>
-                        <th className="text-start px-4 py-3.5 font-semibold text-foreground">Redemptions</th>
-                        <th className="text-start px-4 py-3.5 font-semibold text-foreground">Valid Until</th>
-                        <th className="text-start px-4 py-3.5 font-semibold text-foreground">Status</th>
+                        <th className="text-start px-5 py-3.5 text-xs font-semibold text-muted-foreground">Offer</th>
+                        <th className="text-start px-4 py-3.5 text-xs font-semibold text-muted-foreground">Restaurant</th>
+                        <th className="text-start px-4 py-3.5 text-xs font-semibold text-muted-foreground">Discount</th>
+                        <th className="text-start px-4 py-3.5 text-xs font-semibold text-muted-foreground">Price</th>
+                        <th className="text-start px-4 py-3.5 text-xs font-semibold text-muted-foreground">Redemptions</th>
+                        <th className="text-start px-4 py-3.5 text-xs font-semibold text-muted-foreground">Valid Until</th>
+                        <th className="text-start px-4 py-3.5 text-xs font-semibold text-muted-foreground">Approval</th>
+                        <th className="text-start px-4 py-3.5 text-xs font-semibold text-muted-foreground">Active</th>
                         <th className="px-4 py-3.5" />
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
                       {!adminOffersData?.offers?.length ? (
                         <tr>
-                          <td colSpan={8} className="py-16 text-center text-muted-foreground">
+                          <td colSpan={9} className="py-16 text-center text-muted-foreground">
                             <Tag className="w-10 h-10 mx-auto mb-3 opacity-30" />
                             <p className="font-medium">No offers yet</p>
-                            <p className="text-xs mt-1">Create your first offer to get started</p>
+                            <p className="text-xs mt-1">Restaurants submit offers for approval here</p>
                           </td>
                         </tr>
                       ) : (
                         (adminOffersData.offers as any[]).map((offer: any) => (
-                          <tr key={offer.id} className="hover:bg-secondary/30 transition-colors">
+                          <tr key={offer.id} className={`hover:bg-secondary/30 transition-colors ${offer.approvalStatus === 'pending' ? 'bg-amber-50/40' : ''}`}>
                             <td className="px-5 py-4">
                               <div className="flex items-center gap-3">
                                 <div className="w-9 h-9 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
                                   <Tag className="w-4 h-4 text-primary" />
                                 </div>
                                 <div className="min-w-0">
-                                  <p className="font-semibold text-foreground text-sm truncate max-w-[180px]">{offer.titleEn}</p>
-                                  <p className="text-xs text-muted-foreground truncate max-w-[180px]">{offer.titleAr}</p>
+                                  <p className="font-semibold text-foreground text-sm truncate max-w-[160px]">{offer.titleEn}</p>
+                                  {offer.refCode && <p className="text-xs font-mono text-muted-foreground">{offer.refCode}</p>}
                                 </div>
                               </div>
                             </td>
@@ -895,41 +1110,61 @@ export function AdminPanelPage() {
                               </span>
                             </td>
                             <td className="px-4 py-4">
-                              <div>
-                                <span className="text-sm font-semibold text-foreground">
-                                  SAR {Number(offer.discountedPrice ?? 0).toFixed(0)}
-                                </span>
-                                {offer.originalPrice && (
-                                  <span className="text-xs text-muted-foreground line-through ms-1.5">
-                                    {Number(offer.originalPrice).toFixed(0)}
-                                  </span>
-                                )}
-                              </div>
+                              <span className="text-sm font-semibold text-foreground">SAR {Number(offer.discountedPrice ?? 0).toFixed(0)}</span>
+                              {offer.originalPrice && <span className="text-xs text-muted-foreground line-through ms-1.5">{Number(offer.originalPrice).toFixed(0)}</span>}
                             </td>
                             <td className="px-4 py-4">
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-sm font-semibold text-foreground">{offer.redemptions}</span>
-                                {offer.totalCapacity && (
-                                  <span className="text-xs text-muted-foreground">/ {offer.totalCapacity}</span>
-                                )}
-                              </div>
+                              <span className="text-sm font-semibold text-foreground">{offer.redemptions ?? 0}</span>
+                              {offer.totalCapacity && <span className="text-xs text-muted-foreground"> / {offer.totalCapacity}</span>}
                             </td>
                             <td className="px-4 py-4 text-xs text-muted-foreground whitespace-nowrap">
                               {offer.validUntil ? new Date(offer.validUntil).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
                             </td>
                             <td className="px-4 py-4">
+                              {offer.approvalStatus === 'approved' && <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 text-xs font-semibold px-2 py-0.5 rounded-full"><BadgeCheck className="w-3 h-3" /> Approved</span>}
+                              {offer.approvalStatus === 'pending' && <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-700 text-xs font-semibold px-2 py-0.5 rounded-full"><Clock className="w-3 h-3" /> Pending</span>}
+                              {offer.approvalStatus === 'rejected' && <span className="inline-flex items-center gap-1 bg-red-100 text-red-700 text-xs font-semibold px-2 py-0.5 rounded-full"><X className="w-3 h-3" /> Rejected</span>}
+                              {offer.approvalStatus === 'revision_requested' && <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-0.5 rounded-full"><RefreshCw className="w-3 h-3" /> Revision</span>}
+                            </td>
+                            <td className="px-4 py-4">
                               <button
-                                onClick={() => toggleOfferActive.mutate({ id: offer.id, isActive: !offer.isActive })}
-                                className={`relative w-10 h-5.5 rounded-full transition-all duration-300 ${offer.isActive ? 'bg-primary' : 'bg-muted'}`}
+                                onClick={() => offer.approvalStatus === 'approved' && toggleOfferActive.mutate({ id: offer.id, isActive: !offer.isActive })}
+                                disabled={offer.approvalStatus !== 'approved'}
+                                className={`relative rounded-full transition-all duration-300 ${offer.isActive ? 'bg-primary' : offer.approvalStatus !== 'approved' ? 'bg-muted/50 cursor-not-allowed' : 'bg-muted'}`}
                                 style={{ width: 40, height: 22 }}
+                                title={offer.approvalStatus !== 'approved' ? 'Must be approved first' : ''}
                               >
                                 <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 ${offer.isActive ? 'start-[20px]' : 'start-0.5'}`} />
                               </button>
                             </td>
                             <td className="px-4 py-4">
-                              <button className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-lg hover:bg-secondary">
-                                <MoreHorizontal className="w-4 h-4" />
-                              </button>
+                              <div className="flex items-center gap-1">
+                                {offer.approvalStatus === 'pending' && (
+                                  <>
+                                    <button onClick={() => setOfferActionState({ id: offer.id, action: 'approve', notes: '', commissionOverride: '', paymentModel: '' })}
+                                      className="p-1.5 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 transition-colors" title="Approve">
+                                      <CheckSquare className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button onClick={() => setOfferActionState({ id: offer.id, action: 'reject', notes: '' })}
+                                      className="p-1.5 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 transition-colors" title="Reject">
+                                      <Ban className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button onClick={() => setOfferActionState({ id: offer.id, action: 'revision', notes: '' })}
+                                      className="p-1.5 rounded-lg bg-amber-100 text-amber-700 hover:bg-amber-200 transition-colors" title="Request Revision">
+                                      <RefreshCw className="w-3.5 h-3.5" />
+                                    </button>
+                                  </>
+                                )}
+                                {offer.approvalStatus === 'approved' && (
+                                  <button onClick={() => setOfferActionState({ id: offer.id, action: 'reject', notes: '' })}
+                                    className="p-1.5 rounded-lg hover:bg-red-50 text-muted-foreground hover:text-red-600 transition-colors" title="Revoke">
+                                    <Ban className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                                <button className="p-1.5 rounded-lg hover:bg-secondary text-muted-foreground transition-colors" title="More">
+                                  <MoreHorizontal className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))
@@ -937,6 +1172,412 @@ export function AdminPanelPage() {
                     </tbody>
                   </table>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── CONTRACTS ── */}
+          {activeTab === 'contracts' && (
+            <div className="space-y-5">
+              {/* New Contract form */}
+              {showContractForm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                  <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-lg p-6 overflow-y-auto max-h-[90vh]">
+                    <div className="flex items-center justify-between mb-5">
+                      <h3 className="font-bold text-foreground flex items-center gap-2"><FileSignature className="w-5 h-5 text-primary" /> New Contract</h3>
+                      <button onClick={() => setShowContractForm(false)} className="p-1.5 rounded-lg hover:bg-secondary text-muted-foreground"><X className="w-4 h-4" /></button>
+                    </div>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-xs font-semibold text-muted-foreground block mb-1.5">Restaurant ID</label>
+                        <input type="number" placeholder="Restaurant ID" value={contractForm.restaurantId}
+                          onChange={e => setContractForm(f => ({ ...f, restaurantId: e.target.value }))}
+                          className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs font-semibold text-muted-foreground block mb-1.5">Payment Model</label>
+                          <select value={contractForm.paymentModel}
+                            onChange={e => setContractForm(f => ({ ...f, paymentModel: e.target.value }))}
+                            className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20">
+                            <option value="full_collection">Full Collection</option>
+                            <option value="partial_collection">Partial Collection</option>
+                            <option value="direct_payment">Direct Payment</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-muted-foreground block mb-1.5">Commission %</label>
+                          <input type="number" step="0.5" value={contractForm.commissionPercent}
+                            onChange={e => setContractForm(f => ({ ...f, commissionPercent: e.target.value }))}
+                            className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                        </div>
+                      </div>
+                      {contractForm.paymentModel === 'partial_collection' && (
+                        <div>
+                          <label className="text-xs font-semibold text-muted-foreground block mb-1.5">Tabaq Collects % (upfront)</label>
+                          <input type="number" step="0.5" placeholder="e.g. 50" value={contractForm.partialCollectionPercent}
+                            onChange={e => setContractForm(f => ({ ...f, partialCollectionPercent: e.target.value }))}
+                            className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                        </div>
+                      )}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs font-semibold text-muted-foreground block mb-1.5">Settlement Days</label>
+                          <input type="number" value={contractForm.settlementDays}
+                            onChange={e => setContractForm(f => ({ ...f, settlementDays: e.target.value }))}
+                            className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-muted-foreground block mb-1.5">Valid From</label>
+                          <input type="date" value={contractForm.validFrom}
+                            onChange={e => setContractForm(f => ({ ...f, validFrom: e.target.value }))}
+                            className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-muted-foreground block mb-1.5">Valid Until (optional)</label>
+                        <input type="date" value={contractForm.validUntil}
+                          onChange={e => setContractForm(f => ({ ...f, validUntil: e.target.value }))}
+                          className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-muted-foreground block mb-1.5">Public Notes</label>
+                        <textarea rows={2} value={contractForm.notes}
+                          onChange={e => setContractForm(f => ({ ...f, notes: e.target.value }))}
+                          className="w-full px-3 py-2 rounded-xl border border-input bg-background text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-muted-foreground block mb-1.5">Internal Notes</label>
+                        <textarea rows={2} value={contractForm.internalNotes}
+                          onChange={e => setContractForm(f => ({ ...f, internalNotes: e.target.value }))}
+                          className="w-full px-3 py-2 rounded-xl border border-input bg-background text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                      </div>
+                    </div>
+                    <div className="flex gap-2 mt-5">
+                      <button onClick={() => setShowContractForm(false)}
+                        className="flex-1 px-4 py-2.5 rounded-xl border border-border text-sm font-semibold text-muted-foreground hover:bg-secondary">Cancel</button>
+                      <button
+                        onClick={() => createContract.mutate({
+                          restaurantId: parseInt(contractForm.restaurantId),
+                          paymentModel: contractForm.paymentModel,
+                          commissionPercent: parseFloat(contractForm.commissionPercent),
+                          partialCollectionPercent: contractForm.partialCollectionPercent ? parseFloat(contractForm.partialCollectionPercent) : undefined,
+                          settlementDays: parseInt(contractForm.settlementDays),
+                          validFrom: contractForm.validFrom || undefined,
+                          validUntil: contractForm.validUntil || undefined,
+                          notes: contractForm.notes || undefined,
+                          internalNotes: contractForm.internalNotes || undefined,
+                        })}
+                        disabled={!contractForm.restaurantId}
+                        className="flex-1 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 disabled:opacity-50">
+                        Create Contract
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 bg-primary/10 text-primary px-3 py-1.5 rounded-full text-sm font-semibold">
+                    <FileSignature className="w-4 h-4" />
+                    {contractsData?.total ?? 0} Contracts
+                  </div>
+                </div>
+                <Button size="sm" className="gap-2" onClick={() => setShowContractForm(true)}>
+                  <Plus className="w-4 h-4" /> New Contract
+                </Button>
+              </div>
+
+              <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border bg-secondary/30">
+                        {['Ref Code', 'Restaurant', 'Payment Model', 'Commission', 'Settlement', 'Valid From', 'Status', 'Actions'].map(h => (
+                          <th key={h} className="text-start px-4 py-3.5 text-xs font-semibold text-muted-foreground">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {!contractsData?.contracts?.length ? (
+                        <tr>
+                          <td colSpan={8} className="py-16 text-center text-muted-foreground">
+                            <FileSignature className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                            <p className="font-medium">No contracts yet</p>
+                            <p className="text-xs mt-1">Create a contract to establish commission terms with a restaurant</p>
+                          </td>
+                        </tr>
+                      ) : (
+                        (contractsData.contracts as any[]).map((c: any) => (
+                          <tr key={c.id} className="hover:bg-secondary/30 transition-colors">
+                            <td className="px-4 py-4 font-mono text-xs text-muted-foreground">{c.refCode}</td>
+                            <td className="px-4 py-4">
+                              <p className="text-sm font-medium text-foreground">{c.restaurantNameEn ?? `Restaurant #${c.restaurantId}`}</p>
+                              <p className="text-xs text-muted-foreground">{c.restaurantRefCode ?? ''}</p>
+                            </td>
+                            <td className="px-4 py-4">
+                              <span className="text-xs font-semibold capitalize">{(c.paymentModel as string).replace(/_/g, ' ')}</span>
+                            </td>
+                            <td className="px-4 py-4">
+                              <span className="inline-flex items-center gap-1 bg-primary/10 text-primary text-xs font-bold px-2 py-0.5 rounded-full">
+                                <Percent className="w-3 h-3" />{c.commissionPercent}%
+                              </span>
+                            </td>
+                            <td className="px-4 py-4 text-xs text-muted-foreground">{c.settlementDays}d</td>
+                            <td className="px-4 py-4 text-xs text-muted-foreground">
+                              {c.validFrom ? new Date(c.validFrom).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                            </td>
+                            <td className="px-4 py-4">
+                              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${c.status === 'active' ? 'bg-green-100 text-green-700' : c.status === 'draft' ? 'bg-gray-100 text-gray-600' : c.status === 'suspended' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>
+                                {c.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-4">
+                              <div className="flex items-center gap-1">
+                                {c.status === 'draft' && (
+                                  <button onClick={() => updateContractStatus.mutate({ id: c.id, status: 'active' })}
+                                    className="text-xs bg-green-100 text-green-700 px-2.5 py-1 rounded-lg font-semibold hover:bg-green-200 transition-colors">Activate</button>
+                                )}
+                                {c.status === 'active' && (
+                                  <button onClick={() => updateContractStatus.mutate({ id: c.id, status: 'suspended' })}
+                                    className="text-xs bg-amber-100 text-amber-700 px-2.5 py-1 rounded-lg font-semibold hover:bg-amber-200 transition-colors">Suspend</button>
+                                )}
+                                {c.status === 'suspended' && (
+                                  <button onClick={() => updateContractStatus.mutate({ id: c.id, status: 'active' })}
+                                    className="text-xs bg-green-100 text-green-700 px-2.5 py-1 rounded-lg font-semibold hover:bg-green-200 transition-colors">Reactivate</button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── FINANCE (Transactions + Invoices) ── */}
+          {activeTab === 'finance' && (
+            <div className="space-y-6">
+              {/* Finance stats */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {[
+                  { label: 'Total Transactions', val: transactionsData?.total ?? '—', icon: Receipt, color: 'bg-blue-50 text-blue-600' },
+                  { label: 'Total Invoices', val: invoicesData?.total ?? '—', icon: FileText, color: 'bg-purple-50 text-purple-600' },
+                  { label: 'Pending Settlement', val: (transactionsData?.transactions as any[])?.filter((t: any) => t.status === 'pending')?.length ?? '—', icon: Clock, color: 'bg-amber-50 text-amber-600' },
+                  { label: 'Overdue Invoices', val: (invoicesData?.invoices as any[])?.filter((i: any) => i.status === 'overdue')?.length ?? '—', icon: AlertCircle, color: 'bg-red-50 text-red-600' },
+                ].map(s => {
+                  const Icon = s.icon;
+                  return (
+                    <div key={s.label} className="bg-card border border-border rounded-2xl p-4">
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-3 ${s.color}`}><Icon className="w-4 h-4" /></div>
+                      <p className="text-xl font-extrabold text-foreground">{String(s.val)}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{s.label}</p>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Transactions ledger */}
+              <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+                  <h3 className="font-bold text-foreground flex items-center gap-2"><Receipt className="w-4 h-4 text-primary" /> Transaction Ledger</h3>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border bg-secondary/20">
+                        {['Ref Code', 'Type', 'Restaurant', 'Gross', 'Commission', 'Net', 'Status', 'Date'].map(h => (
+                          <th key={h} className="text-start px-4 py-3 text-xs font-semibold text-muted-foreground">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {!(transactionsData?.transactions as any[])?.length ? (
+                        <tr>
+                          <td colSpan={8} className="py-12 text-center text-muted-foreground">
+                            <Receipt className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                            <p className="text-sm font-medium">No transactions yet</p>
+                          </td>
+                        </tr>
+                      ) : (
+                        (transactionsData.transactions as any[]).map((t: any) => (
+                          <tr key={t.id} className="hover:bg-secondary/20 transition-colors">
+                            <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{t.refCode}</td>
+                            <td className="px-4 py-3">
+                              <span className="text-xs font-semibold capitalize">{(t.type as string).replace(/_/g, ' ')}</span>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-foreground">{t.restaurantNameEn ?? `#${t.restaurantId}`}</td>
+                            <td className="px-4 py-3 text-sm font-medium text-foreground">SAR {Number(t.grossAmount).toFixed(2)}</td>
+                            <td className="px-4 py-3 text-xs text-red-600 font-medium">{t.commissionAmount ? `-SAR ${Number(t.commissionAmount).toFixed(2)}` : '—'}</td>
+                            <td className="px-4 py-3 text-sm font-semibold text-green-700">SAR {Number(t.netAmount).toFixed(2)}</td>
+                            <td className="px-4 py-3">
+                              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${t.status === 'completed' ? 'bg-green-100 text-green-700' : t.status === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>{t.status}</span>
+                            </td>
+                            <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
+                              {new Date(t.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Invoices */}
+              <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+                  <h3 className="font-bold text-foreground flex items-center gap-2"><FileText className="w-4 h-4 text-primary" /> Invoices</h3>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border bg-secondary/20">
+                        {['Ref Code', 'Restaurant', 'Period', 'Gross', 'Commission', 'Net', 'Transactions', 'Status', 'Due Date'].map(h => (
+                          <th key={h} className="text-start px-4 py-3 text-xs font-semibold text-muted-foreground">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {!(invoicesData?.invoices as any[])?.length ? (
+                        <tr>
+                          <td colSpan={9} className="py-12 text-center text-muted-foreground">
+                            <FileText className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                            <p className="text-sm font-medium">No invoices yet</p>
+                          </td>
+                        </tr>
+                      ) : (
+                        (invoicesData.invoices as any[]).map((inv: any) => (
+                          <tr key={inv.id} className="hover:bg-secondary/20 transition-colors">
+                            <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{inv.refCode}</td>
+                            <td className="px-4 py-3 text-sm text-foreground">{inv.restaurantNameEn ?? `#${inv.restaurantId}`}</td>
+                            <td className="px-4 py-3 text-xs text-muted-foreground">
+                              {new Date(inv.periodStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – {new Date(inv.periodEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                            </td>
+                            <td className="px-4 py-3 text-sm font-medium">SAR {Number(inv.totalGrossAmount).toFixed(2)}</td>
+                            <td className="px-4 py-3 text-xs text-red-600">-SAR {Number(inv.totalCommissionAmount).toFixed(2)}</td>
+                            <td className="px-4 py-3 text-sm font-semibold text-green-700">SAR {Number(inv.totalNetAmount).toFixed(2)}</td>
+                            <td className="px-4 py-3 text-xs text-muted-foreground text-center">{inv.totalTransactions}</td>
+                            <td className="px-4 py-3">
+                              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${inv.status === 'paid' ? 'bg-green-100 text-green-700' : inv.status === 'sent' ? 'bg-blue-100 text-blue-700' : inv.status === 'overdue' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'}`}>{inv.status}</span>
+                            </td>
+                            <td className="px-4 py-3 text-xs text-muted-foreground">
+                              {inv.dueDate ? new Date(inv.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── MESSAGES ── */}
+          {activeTab === 'messages' && (
+            <div className="space-y-5">
+              {showMsgForm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                  <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-lg p-6">
+                    <div className="flex items-center justify-between mb-5">
+                      <h3 className="font-bold text-foreground flex items-center gap-2"><Send className="w-4 h-4 text-primary" /> Send Message to Restaurant</h3>
+                      <button onClick={() => setShowMsgForm(false)} className="p-1.5 rounded-lg hover:bg-secondary text-muted-foreground"><X className="w-4 h-4" /></button>
+                    </div>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-xs font-semibold text-muted-foreground block mb-1.5">Restaurant ID</label>
+                        <input type="number" placeholder="Restaurant ID" value={msgForm.restaurantId}
+                          onChange={e => setMsgForm(f => ({ ...f, restaurantId: e.target.value }))}
+                          className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs font-semibold text-muted-foreground block mb-1.5">Type</label>
+                          <select value={msgForm.type}
+                            onChange={e => setMsgForm(f => ({ ...f, type: e.target.value }))}
+                            className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20">
+                            <option value="general">General</option>
+                            <option value="offer_feedback">Offer Feedback</option>
+                            <option value="contract_update">Contract Update</option>
+                            <option value="payment">Payment</option>
+                            <option value="warning">Warning</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-muted-foreground block mb-1.5">Subject</label>
+                          <input type="text" placeholder="Message subject" value={msgForm.subject}
+                            onChange={e => setMsgForm(f => ({ ...f, subject: e.target.value }))}
+                            className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-muted-foreground block mb-1.5">Message Body *</label>
+                        <textarea rows={5} placeholder="Write your message..." value={msgForm.body}
+                          onChange={e => setMsgForm(f => ({ ...f, body: e.target.value }))}
+                          className="w-full px-3 py-2 rounded-xl border border-input bg-background text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                      </div>
+                    </div>
+                    <div className="flex gap-2 mt-4">
+                      <button onClick={() => setShowMsgForm(false)}
+                        className="flex-1 px-4 py-2.5 rounded-xl border border-border text-sm font-semibold text-muted-foreground hover:bg-secondary">Cancel</button>
+                      <button
+                        onClick={() => sendMessage.mutate({ restaurantId: parseInt(msgForm.restaurantId), subject: msgForm.subject, body: msgForm.body, type: msgForm.type })}
+                        disabled={!msgForm.restaurantId || !msgForm.body}
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 disabled:opacity-50">
+                        <Send className="w-4 h-4" /> Send Message
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 bg-primary/10 text-primary px-3 py-1.5 rounded-full text-sm font-semibold">
+                  <MessageSquare className="w-4 h-4" />
+                  {messagesData?.total ?? 0} Messages Sent
+                </div>
+                <Button size="sm" className="gap-2" onClick={() => setShowMsgForm(true)}>
+                  <Plus className="w-4 h-4" /> New Message
+                </Button>
+              </div>
+
+              <div className="space-y-3">
+                {!(messagesData?.messages as any[])?.length ? (
+                  <div className="bg-card border border-border rounded-2xl p-16 text-center text-muted-foreground">
+                    <MessageSquare className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                    <p className="font-medium">No messages sent yet</p>
+                    <p className="text-xs mt-1">Send your first message to a restaurant</p>
+                  </div>
+                ) : (
+                  (messagesData.messages as any[]).map((msg: any) => (
+                    <div key={msg.id} className="bg-card border border-border rounded-2xl p-5">
+                      <div className="flex items-start justify-between gap-4 mb-2">
+                        <div>
+                          <p className="font-semibold text-foreground text-sm">{msg.subject}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            To: {msg.restaurantNameEn ?? `Restaurant #${msg.restaurantId}`} · {msg.refCode} · {new Date(msg.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full capitalize ${msg.type === 'warning' ? 'bg-red-100 text-red-700' : msg.type === 'payment' ? 'bg-green-100 text-green-700' : 'bg-secondary text-muted-foreground'}`}>
+                            {(msg.type as string).replace(/_/g, ' ')}
+                          </span>
+                          {msg.isRead ? (
+                            <span className="text-xs text-green-600 font-medium flex items-center gap-1"><CheckSquare className="w-3 h-3" /> Read</span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="w-3 h-3" /> Unread</span>
+                          )}
+                        </div>
+                      </div>
+                      <p className="text-sm text-muted-foreground line-clamp-2">{msg.body}</p>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           )}

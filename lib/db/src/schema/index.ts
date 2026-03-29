@@ -12,3 +12,4 @@ export * from "./venues";
 export * from "./tags";
 export * from "./loyalty";
 export * from "./platform";
+export * from "./finance";
