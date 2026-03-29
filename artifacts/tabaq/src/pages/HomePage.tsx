@@ -1,12 +1,41 @@
 import React, { useState } from 'react';
 import { useLanguage } from '@/hooks/use-language';
 import { Link, useLocation } from 'wouter';
-import { Search, ChevronRight, Star, TrendingUp, Trophy, MapPin, CheckCircle2, Flame, Layers, ArrowRight, CalendarDays, MessageSquare, Utensils } from 'lucide-react';
+import {
+  Search, ChevronRight, Star, TrendingUp, Trophy, MapPin,
+  Flame, Layers, ArrowRight, CalendarDays, MessageSquare,
+  Utensils, Sparkles, BookOpen, Tag
+} from 'lucide-react';
 import { RestaurantCard } from '@/components/RestaurantCard';
 import { getRestaurantAwards, COLLECTIONS } from '@/lib/awards';
 
-const HERO_IMG = 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=1920&h=1080&fit=crop';
+// ── Images ─────────────────────────────────────────────────────────
+const HERO_IMGS = [
+  'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=1920&h=1080&fit=crop',
+];
 
+const OCCASION_META: Record<string, { img: string; gradient: string }> = {
+  'Birthday Celebration': { img: 'https://images.unsplash.com/photo-1464349095431-e9a21285b5f3?w=300&h=200&fit=crop', gradient: 'from-rose-400 to-pink-600' },
+  'Breakfast':            { img: 'https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?w=300&h=200&fit=crop', gradient: 'from-amber-300 to-orange-400' },
+  'Business Lunch':       { img: 'https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=300&h=200&fit=crop', gradient: 'from-slate-500 to-slate-700' },
+  'Family Dinner':        { img: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=300&h=200&fit=crop', gradient: 'from-emerald-400 to-teal-600' },
+  'Group Gathering':      { img: 'https://images.unsplash.com/photo-1529543544282-ea669407fca3?w=300&h=200&fit=crop', gradient: 'from-violet-400 to-purple-600' },
+  'Healthy Dining':       { img: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=300&h=200&fit=crop', gradient: 'from-green-400 to-emerald-600' },
+  'Ramadan Iftar':        { img: 'https://images.unsplash.com/photo-1510626176961-4b57d4fbad03?w=300&h=200&fit=crop', gradient: 'from-indigo-500 to-purple-700' },
+  'Romantic Date':        { img: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=300&h=200&fit=crop', gradient: 'from-red-400 to-rose-600' },
+};
+const OCCASION_FALLBACK_GRADIENTS = [
+  'from-violet-400 to-purple-600',
+  'from-rose-400 to-pink-600',
+  'from-blue-400 to-cyan-500',
+  'from-emerald-400 to-teal-600',
+  'from-amber-400 to-orange-500',
+  'from-indigo-500 to-blue-600',
+  'from-pink-400 to-rose-500',
+  'from-slate-500 to-slate-700',
+];
+
+// ── Helpers ────────────────────────────────────────────────────────
 function useApi<T>(url: string): { data: T | null; loading: boolean } {
   const [data, setData] = React.useState<T | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -16,7 +45,7 @@ function useApi<T>(url: string): { data: T | null; loading: boolean } {
     fetch(url)
       .then(r => r.json())
       .then(d => { if (!cancelled) { setData(d); setLoading(false); } })
-      .catch(() => { if (!cancelled) { setLoading(false); } });
+      .catch(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [url]);
   return { data, loading };
@@ -51,7 +80,7 @@ function DishItem({ d, rank }: { d: any; rank: number }) {
           <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{restaurant}</p>
           <div className="flex items-center gap-2 mt-1.5">
             <div className="flex items-center gap-1 bg-secondary px-2 py-0.5 rounded-md">
-              <Star className="w-3 h-3 fill-primary text-primary" />
+              <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
               <span className="text-xs font-bold">{Number(d.avgRating).toFixed(1)}</span>
             </div>
             {d.price && (
@@ -66,17 +95,44 @@ function DishItem({ d, rank }: { d: any; rank: number }) {
   );
 }
 
+// ── SectionHeader ──────────────────────────────────────────────────
+function SectionHeader({ badge, badgeIcon: Icon, title, subtitle, viewAllHref, viewAllLabel }: {
+  badge?: string; badgeIcon?: React.ElementType; title: string; subtitle?: string;
+  viewAllHref?: string; viewAllLabel?: string;
+}) {
+  return (
+    <div className="flex justify-between items-end mb-6">
+      <div>
+        {badge && Icon && (
+          <div className="flex items-center gap-2 mb-1.5">
+            <Icon className="w-4 h-4 text-primary" />
+            <span className="text-primary font-semibold text-sm tracking-wide uppercase text-xs">{badge}</span>
+          </div>
+        )}
+        <h2 className="text-2xl md:text-3xl font-extrabold text-foreground">{title}</h2>
+        {subtitle && <p className="text-muted-foreground text-sm mt-1">{subtitle}</p>}
+      </div>
+      {viewAllHref && (
+        <Link href={viewAllHref} className="flex items-center gap-1 text-primary font-semibold text-sm hover:underline shrink-0">
+          {viewAllLabel || 'View all'} <ChevronRight className="w-4 h-4" />
+        </Link>
+      )}
+    </div>
+  );
+}
+
+// ── Main Page ──────────────────────────────────────────────────────
 export function HomePage() {
   const { t, lang } = useLanguage();
   const [, setLocation] = useLocation();
   const [query, setQuery] = useState('');
 
-  const featured = useApi<any[]>('/api/restaurants/featured?limit=8');
-  const trending = useApi<any[]>('/api/dishes/trending?limit=6');
-  const occasions = useApi<any[]>('/api/occasions');
+  const featured   = useApi<any[]>('/api/restaurants/featured?limit=8');
+  const trending   = useApi<any[]>('/api/dishes/trending?limit=6');
+  const occasions  = useApi<any[]>('/api/occasions');
   const categories = useApi<any[]>('/api/categories');
-  const topRated = useApi<{ restaurants: any[] }>('/api/restaurants?minRating=4.5&limit=6');
-  const newest = useApi<{ restaurants: any[] }>('/api/restaurants?limit=4&sortBy=newest');
+  const topRated   = useApi<{ restaurants: any[] }>('/api/restaurants?minRating=4.5&limit=6');
+  const newest     = useApi<{ restaurants: any[] }>('/api/restaurants?limit=4&sortBy=newest');
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,123 +144,167 @@ export function HomePage() {
     ? ['ستيك', 'سوشي', 'بيتزا', 'مشويات', 'إفطار']
     : ['Steak', 'Sushi', 'Pizza', 'BBQ', 'Brunch'];
 
-  const occasionIcons = ['👨‍👩‍👧‍👦', '💼', '🌹', '🎂', '🥗', '🎉', '🌅', '🌙'];
-
   return (
     <div className="min-h-screen bg-background pb-20">
 
-      {/* ── Hero ── */}
-      <section className="relative min-h-[65vh] flex items-center justify-center overflow-hidden">
+      {/* ══ HERO ══════════════════════════════════════════════════ */}
+      <section className="relative h-[88vh] min-h-[580px] max-h-[800px] flex flex-col overflow-hidden">
+        {/* Background image */}
         <div className="absolute inset-0">
-          <img src={HERO_IMG} alt="Fine dining" className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/75" />
+          <img src={HERO_IMGS[0]} alt="Fine dining" className="w-full h-full object-cover" />
+          {/* Left-to-right radial overlay + bottom fade */}
+          <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-black/20" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
         </div>
 
-        <div className="relative z-10 w-full max-w-3xl mx-auto px-4 text-center py-20">
-          <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm border border-white/25 rounded-full px-4 py-1.5 text-white text-sm mb-5">
-            <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />
-            {t("Saudi Arabia's #1 Dining Platform", 'منصة الطعام الأولى في المملكة')}
-          </div>
-
-          <h1 className="text-4xl md:text-6xl font-extrabold text-white mb-4 leading-tight">
-            {t('Discover Exceptional Dining', 'اكتشف تجارب طعام استثنائية')}
-          </h1>
-          <p className="text-lg text-white/80 mb-8 max-w-xl mx-auto">
-            {t('Find, book, and review the finest restaurants in Saudi Arabia.', 'ابحث واحجز وقيّم أفضل المطاعم في المملكة العربية السعودية.')}
-          </p>
-
-          <form onSubmit={handleSearch} className="max-w-2xl mx-auto mb-5">
-            <div className="flex gap-2 bg-white/10 backdrop-blur-xl border border-white/25 rounded-2xl p-2 shadow-2xl">
-              <div className="flex-1 flex items-center gap-3 ps-3">
-                <Search className="w-5 h-5 text-white/60 shrink-0" />
-                <input
-                  type="text"
-                  value={query}
-                  onChange={e => setQuery(e.target.value)}
-                  placeholder={t('Search restaurants or dishes…', 'ابحث عن مطعم أو طبق…')}
-                  className="flex-1 bg-transparent text-white placeholder:text-white/50 outline-none text-base py-2"
-                />
+        {/* Hero content — left-aligned, vertically centered */}
+        <div className="relative z-10 flex-1 flex items-center">
+          <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="max-w-2xl">
+              {/* Badge */}
+              <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm border border-white/25 rounded-full px-4 py-1.5 text-white text-sm mb-6">
+                <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400 shrink-0" />
+                {t("Saudi Arabia's #1 Dining Platform", 'منصة الطعام الأولى في المملكة')}
               </div>
-              <button type="submit" className="px-6 py-2.5 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold transition-all shadow-lg whitespace-nowrap">
-                {t('Search', 'بحث')}
-              </button>
-            </div>
-          </form>
 
-          <div className="flex flex-wrap justify-center gap-2">
-            {quickTerms.map(term => (
-              <button
-                key={term}
-                onClick={() => setLocation(`/search?q=${encodeURIComponent(term)}`)}
-                className="text-sm text-white/80 hover:text-white bg-white/10 hover:bg-white/20 border border-white/15 rounded-full px-4 py-1.5 transition-all"
-              >
-                {term}
-              </button>
-            ))}
+              {/* Heading */}
+              <h1 className="text-5xl md:text-7xl font-extrabold text-white leading-[1.05] mb-5">
+                {t('Discover\nExceptional\nDining', 'اكتشف\nتجارب طعام\naستثنائية')}
+              </h1>
+              <p className="text-lg text-white/75 mb-8 max-w-lg leading-relaxed">
+                {t('Find, book, and review the finest restaurants across Saudi Arabia — all in one place.', 'ابحث واحجز وقيّم أفضل المطاعم في المملكة العربية السعودية — كل شيء في مكان واحد.')}
+              </p>
+
+              {/* Search bar */}
+              <form onSubmit={handleSearch} className="max-w-xl mb-5">
+                <div className="flex gap-2 bg-white/10 backdrop-blur-xl border border-white/30 rounded-2xl p-2 shadow-2xl">
+                  <div className="flex-1 flex items-center gap-3 ps-3">
+                    <Search className="w-5 h-5 text-white/60 shrink-0" />
+                    <input
+                      type="text"
+                      value={query}
+                      onChange={e => setQuery(e.target.value)}
+                      placeholder={t('Restaurant, dish, or cuisine…', 'مطعم، طبق، أو مطبخ...')}
+                      className="flex-1 bg-transparent text-white placeholder:text-white/50 outline-none text-base py-2"
+                    />
+                  </div>
+                  <button type="submit" className="px-6 py-2.5 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold transition-all shadow-lg whitespace-nowrap">
+                    {t('Search', 'بحث')}
+                  </button>
+                </div>
+              </form>
+
+              {/* Quick terms */}
+              <div className="flex flex-wrap gap-2">
+                <span className="text-white/50 text-sm self-center">{t('Popular:', 'شائع:')}</span>
+                {quickTerms.map(term => (
+                  <button
+                    key={term}
+                    onClick={() => setLocation(`/search?q=${encodeURIComponent(term)}`)}
+                    className="text-sm text-white/80 hover:text-white bg-white/10 hover:bg-white/20 border border-white/20 rounded-full px-4 py-1.5 transition-all"
+                  >
+                    {term}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Stats bar */}
-        <div className="absolute bottom-0 left-0 right-0 bg-black/60 backdrop-blur-md border-t border-white/10">
-          <div className="max-w-4xl mx-auto px-4 py-3 grid grid-cols-3 gap-4">
+        {/* Stats bar pinned to bottom of hero */}
+        <div className="relative z-10 bg-black/50 backdrop-blur-md border-t border-white/10">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between gap-6 flex-wrap">
             {[
-              { icon: Utensils, valEn: '500+', valAr: '+500', labelEn: 'Restaurants', labelAr: 'مطعم' },
-              { icon: CalendarDays, valEn: '10K+', valAr: '+10K', labelEn: 'Reservations', labelAr: 'حجز' },
-              { icon: MessageSquare, valEn: '50K+', valAr: '+50K', labelEn: 'Reviews', labelAr: 'تقييم' },
+              { icon: Utensils,      valEn: '500+',  valAr: '+500',  labelEn: 'Restaurants',   labelAr: 'مطعم' },
+              { icon: CalendarDays, valEn: '10K+',  valAr: '+10K',  labelEn: 'Reservations',   labelAr: 'حجز' },
+              { icon: MessageSquare,valEn: '50K+',  valAr: '+50K',  labelEn: 'Reviews',        labelAr: 'تقييم' },
+              { icon: MapPin,        valEn: '12',    valAr: '12',    labelEn: 'Cities',         labelAr: 'مدينة' },
             ].map(s => {
               const Icon = s.icon;
               return (
-                <div key={s.labelEn} className="flex items-center justify-center gap-2 text-white">
-                  <Icon className="w-4 h-4 text-primary shrink-0" />
+                <div key={s.labelEn} className="flex items-center gap-2.5 text-white">
+                  <div className="w-9 h-9 bg-white/10 rounded-lg flex items-center justify-center shrink-0">
+                    <Icon className="w-4 h-4 text-primary" />
+                  </div>
                   <div>
-                    <p className="font-extrabold text-sm">{lang === 'ar' ? s.valAr : s.valEn}</p>
-                    <p className="text-white/60 text-xs">{lang === 'ar' ? s.labelAr : s.labelEn}</p>
+                    <p className="font-extrabold text-base leading-none">{lang === 'ar' ? s.valAr : s.valEn}</p>
+                    <p className="text-white/55 text-xs mt-0.5">{lang === 'ar' ? s.labelAr : s.labelEn}</p>
                   </div>
                 </div>
               );
             })}
+            <div className="hidden md:flex items-center gap-3 ms-auto">
+              <Link href="/restaurants" className="px-5 py-2 bg-primary text-white rounded-xl text-sm font-bold hover:bg-primary/90 transition-all">
+                {t('Explore Now', 'استكشف الآن')}
+              </Link>
+              <Link href="/offers" className="px-5 py-2 bg-white/15 border border-white/25 text-white rounded-xl text-sm font-bold hover:bg-white/25 transition-all flex items-center gap-1.5">
+                <Tag className="w-3.5 h-3.5" /> {t('Today\'s Deals', 'عروض اليوم')}
+              </Link>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ── Occasions ── */}
+      {/* ══ OCCASIONS ════════════════════════════════════════════ */}
       {!occasions.loading && (occasions.data || []).length > 0 && (
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-14 mb-12">
-          <div className="flex justify-between items-center mb-5">
-            <h2 className="text-2xl font-bold text-foreground">{t('Browse by Occasion', 'تصفح حسب المناسبة')}</h2>
-            <Link href="/restaurants" className="text-primary text-sm font-semibold hover:underline flex items-center gap-1">
-              {t('See all', 'عرض الكل')} <ChevronRight className="w-4 h-4" />
-            </Link>
-          </div>
-          <div className="flex gap-3 overflow-x-auto pb-2 hide-scrollbar">
-            {(occasions.data || []).slice(0, 8).map((occ: any, idx: number) => (
-              <Link
-                key={occ.id}
-                href={`/restaurants?occasion=${occ.id}`}
-                className="flex flex-col items-center justify-center min-w-[100px] h-[100px] rounded-2xl bg-card hover:bg-primary hover:text-primary-foreground transition-all cursor-pointer border border-border/60 hover:border-primary hover:shadow-lg shrink-0 group"
-              >
-                <span className="text-3xl mb-1.5">{occ.icon || occasionIcons[idx % occasionIcons.length]}</span>
-                <span className="text-xs font-semibold text-center px-1 leading-tight group-hover:text-primary-foreground">
-                  {lang === 'ar' ? occ.nameAr : occ.nameEn}
-                </span>
-              </Link>
-            ))}
+          <SectionHeader
+            badge={t('Browse by Occasion', 'تصفح حسب المناسبة')}
+            badgeIcon={Sparkles}
+            title={t('What are you celebrating?', 'ماذا تحتفل؟')}
+            subtitle={t('Find the perfect restaurant for every moment', 'ابحث عن المطعم المثالي لكل لحظة')}
+            viewAllHref="/restaurants"
+            viewAllLabel={t('See all', 'عرض الكل')}
+          />
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+            {(occasions.data || []).slice(0, 8).map((occ: any, idx: number) => {
+              const meta = OCCASION_META[occ.nameEn] || {};
+              const gradient = meta.gradient || OCCASION_FALLBACK_GRADIENTS[idx % OCCASION_FALLBACK_GRADIENTS.length];
+              const img = meta.img;
+              return (
+                <Link
+                  key={occ.id}
+                  href={`/restaurants?occasion=${occ.id}`}
+                  className="group block relative rounded-2xl overflow-hidden aspect-square hover:scale-105 transition-all duration-300 hover:shadow-xl cursor-pointer"
+                >
+                  {img ? (
+                    <>
+                      <img src={img} alt={occ.nameEn} className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                      <div className={`absolute inset-0 bg-gradient-to-t ${gradient} opacity-70 group-hover:opacity-80 transition-opacity`} />
+                    </>
+                  ) : (
+                    <div className={`absolute inset-0 bg-gradient-to-br ${gradient}`} />
+                  )}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center p-2 text-white">
+                    <span className="text-2xl mb-1 drop-shadow-md">{occ.icon || '🍽️'}</span>
+                    <span className="text-xs font-bold text-center leading-tight drop-shadow-sm">
+                      {lang === 'ar' ? occ.nameAr : occ.nameEn}
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         </section>
       )}
 
-      {/* ── Cuisine Types ── */}
+      {/* ══ CUISINE TYPES ════════════════════════════════════════ */}
       {!categories.loading && (categories.data || []).length > 0 && (
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-12">
-          <h2 className="text-2xl font-bold text-foreground mb-4">{t('Cuisine Types', 'أنواع المطابخ')}</h2>
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-14">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-foreground">{t('Cuisine Types', 'أنواع المطابخ')}</h2>
+            <Link href="/restaurants" className="text-primary text-sm font-semibold hover:underline flex items-center gap-1">
+              {t('Browse all', 'تصفح الكل')} <ChevronRight className="w-4 h-4" />
+            </Link>
+          </div>
           <div className="flex gap-2.5 overflow-x-auto pb-2 hide-scrollbar">
             {(categories.data || []).slice(0, 14).map((cat: any) => (
               <Link
                 key={cat.id}
                 href={`/restaurants?categoryId=${cat.id}`}
-                className="shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full border border-border bg-card hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all text-sm font-semibold whitespace-nowrap"
+                className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-full border border-border bg-card hover:bg-primary hover:text-primary-foreground hover:border-primary hover:shadow-md transition-all text-sm font-semibold whitespace-nowrap"
               >
-                {cat.icon && <span>{cat.icon}</span>}
+                {cat.icon && <span className="text-base leading-none">{cat.icon}</span>}
                 {lang === 'ar' ? cat.nameAr : cat.nameEn}
               </Link>
             ))}
@@ -212,51 +312,57 @@ export function HomePage() {
         </section>
       )}
 
-      {/* ── Collections Showcase ── */}
+      {/* ══ COLLECTIONS SHOWCASE ═════════════════════════════════ */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-14">
-        <div className="flex justify-between items-end mb-6">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <Layers className="w-5 h-5 text-primary" />
-              <span className="text-primary font-semibold text-sm">{t('Handpicked', 'اختيارات')}</span>
-            </div>
-            <h2 className="text-2xl md:text-3xl font-bold text-foreground">{t('Collections', 'المجموعات')}</h2>
-            <p className="text-muted-foreground text-sm mt-1">{t('Curated lists for every mood and occasion', 'قوائم مختارة لكل مزاج ومناسبة')}</p>
-          </div>
-          <Link href="/collections" className="text-primary font-semibold hover:underline text-sm flex items-center gap-1">
-            {t('View all', 'عرض الكل')} <ChevronRight className="w-4 h-4" />
-          </Link>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {COLLECTIONS.slice(0, 4).map(col => (
-            <Link key={col.id} href={`/collections/${col.slug}`} className="block group">
-              <div className={`relative h-40 rounded-2xl overflow-hidden bg-gradient-to-br ${col.gradient}`}>
-                <div className="absolute inset-0 flex flex-col justify-between p-4 text-white">
-                  <span className="text-3xl">{col.icon}</span>
-                  <div>
-                    <p className="font-extrabold text-sm leading-tight">{lang === 'ar' ? col.labelAr : col.labelEn}</p>
-                    <div className="flex items-center gap-1 mt-1.5 text-white/70 text-xs font-medium group-hover:text-white transition-colors">
-                      {t('Explore', 'استكشف')} <ArrowRight className="w-3 h-3" />
+        <SectionHeader
+          badge={t('Handpicked', 'اختيارات')}
+          badgeIcon={Layers}
+          title={t('Curated Collections', 'مجموعات مختارة')}
+          subtitle={t('Expertly curated lists for every mood and occasion', 'قوائم اختيارية متخصصة لكل مزاج ومناسبة')}
+          viewAllHref="/collections"
+          viewAllLabel={t('View all', 'عرض الكل')}
+        />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {COLLECTIONS.slice(0, 4).map((col, i) => {
+            const collectionImgs = [
+              'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400&h=300&fit=crop',
+              'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=400&h=300&fit=crop',
+              'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400&h=300&fit=crop',
+              'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&h=300&fit=crop',
+            ];
+            return (
+              <Link key={col.id} href={`/collections/${col.slug}`} className="block group">
+                <div className="relative h-48 rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300">
+                  <img src={collectionImgs[i]} alt={col.labelEn} className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                  <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent`} />
+                  <div className={`absolute inset-0 bg-gradient-to-br ${col.gradient} opacity-40`} />
+                  <div className="absolute inset-0 flex flex-col justify-between p-4 text-white">
+                    <span className="text-2xl">{col.icon}</span>
+                    <div>
+                      <p className="font-extrabold text-base leading-tight mb-1">{lang === 'ar' ? col.labelAr : col.labelEn}</p>
+                      <p className="text-white/70 text-xs line-clamp-1">{lang === 'ar' ? col.descAr : col.descEn}</p>
+                      <div className="flex items-center gap-1 mt-2 text-white/80 text-xs font-semibold group-hover:text-white transition-colors">
+                        {t('Explore', 'استكشف')} <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </Link>
-          ))}
+              </Link>
+            );
+          })}
         </div>
       </section>
 
-      {/* ── Featured Restaurants ── */}
+      {/* ══ FEATURED RESTAURANTS ═════════════════════════════════ */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-14">
-        <div className="flex justify-between items-end mb-6">
-          <div>
-            <h2 className="text-2xl md:text-3xl font-bold text-foreground">{t('Featured Restaurants', 'مطاعم مميزة')}</h2>
-            <p className="text-muted-foreground text-sm mt-1">{t('Curated picks for you this week', 'خيارات مختارة لك هذا الأسبوع')}</p>
-          </div>
-          <Link href="/restaurants?featured=true" className="text-primary font-semibold hover:underline text-sm flex items-center gap-1">
-            {t('View all', 'عرض الكل')} <ChevronRight className="w-4 h-4" />
-          </Link>
-        </div>
+        <SectionHeader
+          badge={t('Featured', 'مميز')}
+          badgeIcon={Sparkles}
+          title={t('Featured Restaurants', 'مطاعم مميزة')}
+          subtitle={t('Curated picks for you this week', 'خيارات مختارة لك هذا الأسبوع')}
+          viewAllHref="/restaurants?featured=true"
+          viewAllLabel={t('View all', 'عرض الكل')}
+        />
         {featured.loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {[1,2,3,4].map(i => <SkeletonCard key={i} />)}
@@ -274,47 +380,42 @@ export function HomePage() {
         )}
       </section>
 
-      {/* ── Top-Rated Rankings ── */}
+      {/* ══ TOP-RATED RANKINGS ═══════════════════════════════════ */}
       {!topRated.loading && (topRated.data?.restaurants || []).length > 0 && (
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-14">
-          <div className="flex justify-between items-end mb-6">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <Trophy className="w-5 h-5 text-amber-500" />
-                <span className="text-amber-600 font-semibold text-sm">{t("Award of Excellence", 'جائزة التميز')}</span>
-              </div>
-              <h2 className="text-2xl font-bold text-foreground">{t('Top-Rated Venues', 'الأماكن الأعلى تقييماً')}</h2>
-              <p className="text-muted-foreground text-sm mt-1">{t('Consistently praised by thousands of diners', 'تحظى بإشادة آلاف رواد الطعام')}</p>
-            </div>
-            <Link href="/collections/top-rated" className="text-primary font-semibold text-sm hover:underline flex items-center gap-1">
-              {t('View all', 'عرض الكل')} <ChevronRight className="w-4 h-4" />
-            </Link>
-          </div>
+          <SectionHeader
+            badge={t('Award of Excellence', 'جائزة التميز')}
+            badgeIcon={Trophy}
+            title={t('Top-Rated Venues', 'الأماكن الأعلى تقييماً')}
+            subtitle={t('Consistently praised by thousands of diners', 'تحظى بإشادة آلاف رواد الطعام')}
+            viewAllHref="/collections/top-rated"
+            viewAllLabel={t('View all', 'عرض الكل')}
+          />
 
-          {/* Top 1 — Large card */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-5">
+            {/* #1 — Large hero card */}
             {(topRated.data?.restaurants || []).slice(0, 1).map((r: any) => {
               const name = lang === 'ar' ? r.nameAr : r.nameEn;
               const city = lang === 'ar' ? (r.cityNameAr || '') : (r.cityNameEn || '');
-              const img = r.coverImageUrl || HERO_IMG;
+              const img = r.coverImageUrl || HERO_IMGS[0];
               const awards = getRestaurantAwards(r);
               return (
-                <Link key={r.id} href={`/restaurants/${r.id}`} className="block group lg:col-span-2 relative rounded-3xl overflow-hidden h-64 border border-border/50 hover:shadow-2xl transition-all">
+                <Link key={r.id} href={`/restaurants/${r.id}`} className="block group lg:col-span-2 relative rounded-3xl overflow-hidden h-72 border border-border/50 hover:shadow-2xl transition-all">
                   <img src={img} alt={name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                  <div className="absolute top-4 start-4 bg-amber-500 text-white text-sm font-black w-9 h-9 rounded-full flex items-center justify-center shadow-lg">#1</div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
+                  <div className="absolute top-4 start-4 bg-amber-400 text-black text-sm font-black w-10 h-10 rounded-2xl flex items-center justify-center shadow-lg">#1</div>
                   {awards[0] && (
-                    <div className={`absolute top-4 end-4 ${awards[0].bgClass} ${awards[0].textClass} px-3 py-1 rounded-full text-xs font-bold shadow-lg`}>
+                    <div className={`absolute top-4 end-4 ${awards[0].bgClass} ${awards[0].textClass} px-3 py-1.5 rounded-xl text-xs font-bold shadow-lg`}>
                       {awards[0].icon} {lang === 'ar' ? awards[0].labelAr : awards[0].labelEn}
                     </div>
                   )}
                   <div className="absolute bottom-0 p-5">
-                    <div className="flex items-center gap-1.5 text-white/70 text-xs mb-1">
-                      <MapPin className="w-3 h-3" /> {city}
+                    <div className="flex items-center gap-1.5 text-white/60 text-xs mb-1.5">
+                      <MapPin className="w-3.5 h-3.5" /> {city}
                     </div>
-                    <h3 className="text-white font-extrabold text-xl mb-1.5">{name}</h3>
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1.5 bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full">
+                    <h3 className="text-white font-extrabold text-2xl mb-2">{name}</h3>
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-1.5 bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-full">
                         <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
                         <span className="text-white text-sm font-bold">{Number(r.avgRating).toFixed(1)}</span>
                         <span className="text-white/60 text-xs">({Number(r.reviewCount).toLocaleString()})</span>
@@ -325,22 +426,22 @@ export function HomePage() {
               );
             })}
 
-            {/* Ranks 2-3 */}
+            {/* #2 & #3 */}
             <div className="flex flex-col gap-5">
               {(topRated.data?.restaurants || []).slice(1, 3).map((r: any, idx: number) => {
                 const name = lang === 'ar' ? r.nameAr : r.nameEn;
-                const img = r.coverImageUrl || HERO_IMG;
+                const img = r.coverImageUrl || HERO_IMGS[0];
                 return (
-                  <Link key={r.id} href={`/restaurants/${r.id}`} className="block group relative rounded-2xl overflow-hidden h-[116px] border border-border/50 hover:shadow-xl transition-all">
+                  <Link key={r.id} href={`/restaurants/${r.id}`} className="block group relative rounded-2xl overflow-hidden flex-1 min-h-[120px] border border-border/50 hover:shadow-xl transition-all">
                     <img src={img} alt={name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
-                    <div className="absolute top-3 start-3 bg-background/90 backdrop-blur-md text-foreground text-xs font-black w-7 h-7 rounded-full flex items-center justify-center shadow-md">#{idx+2}</div>
-                    <div className="absolute bottom-0 p-3">
+                    <div className="absolute top-3 start-3 bg-background/90 backdrop-blur-md text-foreground text-xs font-black w-7 h-7 rounded-xl flex items-center justify-center shadow-md">#{idx + 2}</div>
+                    <div className="absolute bottom-0 p-3.5">
                       <h3 className="text-white font-bold text-sm line-clamp-1">{name}</h3>
                       <div className="flex items-center gap-1 mt-0.5">
                         <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
                         <span className="text-white text-xs font-bold">{Number(r.avgRating).toFixed(1)}</span>
-                        <span className="text-white/60 text-xs">({Number(r.reviewCount).toLocaleString()})</span>
+                        <span className="text-white/55 text-xs">({Number(r.reviewCount).toLocaleString()})</span>
                       </div>
                     </div>
                   </Link>
@@ -360,22 +461,17 @@ export function HomePage() {
         </section>
       )}
 
-      {/* ── Trending Restaurants ── */}
+      {/* ══ TRENDING RESTAURANTS ═════════════════════════════════ */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-14">
-        <div className="bg-gradient-to-br from-primary/5 to-violet-50 dark:from-primary/10 dark:to-violet-950/20 rounded-3xl p-6 md:p-10 border border-primary/10 dark:border-primary/20">
-          <div className="flex justify-between items-end mb-6">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <Flame className="w-5 h-5 text-primary" />
-                <span className="text-primary font-semibold text-sm">{t('Hot Right Now', 'الأكثر طلباً الآن')}</span>
-              </div>
-              <h2 className="text-2xl md:text-3xl font-bold text-foreground">{t('Trending Restaurants', 'مطاعم شائعة')}</h2>
-              <p className="text-muted-foreground text-sm mt-1">{t('Everyone\'s dining here this week', 'الكل يتناول العشاء هنا هذا الأسبوع')}</p>
-            </div>
-            <Link href="/restaurants" className="text-primary font-semibold text-sm hover:underline flex items-center gap-1">
-              {t('View all', 'عرض الكل')} <ChevronRight className="w-4 h-4" />
-            </Link>
-          </div>
+        <div className="bg-gradient-to-br from-primary/8 to-violet-50 dark:from-primary/10 dark:to-violet-950/20 rounded-3xl p-6 md:p-10 border border-primary/10">
+          <SectionHeader
+            badge={t('Hot Right Now', 'الأكثر طلباً الآن')}
+            badgeIcon={Flame}
+            title={t('Trending Restaurants', 'مطاعم شائعة')}
+            subtitle={t("Everyone's dining here this week", 'الكل يتناول العشاء هنا هذا الأسبوع')}
+            viewAllHref="/restaurants"
+            viewAllLabel={t('View all', 'عرض الكل')}
+          />
           {featured.loading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {[1,2,3,4].map(i => <SkeletonCard key={i} />)}
@@ -390,22 +486,17 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* ── Trending Dishes ── */}
+      {/* ══ TRENDING DISHES ══════════════════════════════════════ */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-14">
-        <div className="bg-gradient-to-br from-secondary/80 to-secondary/20 rounded-3xl p-6 md:p-10 border border-border/40">
-          <div className="flex justify-between items-end mb-6">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <TrendingUp className="w-5 h-5 text-primary" />
-                <span className="text-primary font-semibold text-sm">{t('Most Popular', 'الأكثر شعبية')}</span>
-              </div>
-              <h2 className="text-2xl md:text-3xl font-bold text-foreground">{t('Trending Dishes', 'أطباق شائعة')}</h2>
-              <p className="text-muted-foreground text-sm mt-1">{t('Highest-rated dishes across the city', 'الأطباق الأعلى تقييماً في المدينة')}</p>
-            </div>
-            <Link href="/dishes" className="text-primary font-semibold text-sm hover:underline flex items-center gap-1">
-              {t('View all', 'عرض الكل')} <ChevronRight className="w-4 h-4" />
-            </Link>
-          </div>
+        <div className="bg-secondary/30 rounded-3xl p-6 md:p-10 border border-border/40">
+          <SectionHeader
+            badge={t('Most Popular', 'الأكثر شعبية')}
+            badgeIcon={TrendingUp}
+            title={t('Trending Dishes', 'أطباق شائعة')}
+            subtitle={t('Highest-rated dishes across the city', 'الأطباق الأعلى تقييماً في المدينة')}
+            viewAllHref="/dishes"
+            viewAllLabel={t('View all', 'عرض الكل')}
+          />
           {trending.loading ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
               {[1,2,3,4].map(i => <div key={i} className="h-28 bg-card rounded-xl animate-pulse border border-border/40" />)}
@@ -420,21 +511,17 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* ── New Restaurants ── */}
+      {/* ══ NEW OPENINGS ═════════════════════════════════════════ */}
       {!newest.loading && (newest.data?.restaurants || []).length > 0 && (
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-14">
-          <div className="flex justify-between items-end mb-6">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-blue-600 font-semibold text-sm">🆕 {t('Just Opened', 'افتتح حديثاً')}</span>
-              </div>
-              <h2 className="text-2xl font-bold text-foreground">{t('New Openings', 'افتتاحات جديدة')}</h2>
-              <p className="text-muted-foreground text-sm mt-1">{t('Fresh new places to explore this season', 'أماكن جديدة رائعة لاكتشافها هذا الموسم')}</p>
-            </div>
-            <Link href="/collections/new-openings" className="text-primary font-semibold text-sm hover:underline flex items-center gap-1">
-              {t('View all', 'عرض الكل')} <ChevronRight className="w-4 h-4" />
-            </Link>
-          </div>
+          <SectionHeader
+            badge={t('Just Opened', 'افتتح حديثاً')}
+            badgeIcon={Sparkles}
+            title={t('New Openings', 'افتتاحات جديدة')}
+            subtitle={t('Fresh new places to explore this season', 'أماكن جديدة رائعة لاكتشافها هذا الموسم')}
+            viewAllHref="/collections/new-openings"
+            viewAllLabel={t('View all', 'عرض الكل')}
+          />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {(newest.data?.restaurants || []).map((r: any) => (
               <RestaurantCard key={r.id} restaurant={{ ...r, isNew: true }} />
@@ -443,30 +530,41 @@ export function HomePage() {
         </section>
       )}
 
-      {/* ── CTA ── */}
+      {/* ══ BOTTOM CTA ═══════════════════════════════════════════ */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-6">
-        <div className="relative bg-primary rounded-3xl p-8 md:p-12 overflow-hidden text-white">
-          <div className="absolute inset-0 opacity-10 pointer-events-none">
-            <div className="absolute top-0 end-0 w-64 h-64 bg-white rounded-full translate-x-1/3 -translate-y-1/3" />
-            <div className="absolute bottom-0 start-0 w-48 h-48 bg-white rounded-full -translate-x-1/3 translate-y-1/3" />
-          </div>
-          <div className="relative flex flex-col md:flex-row items-center gap-6">
-            <div className="flex-grow text-center md:text-start">
-              <h2 className="text-2xl md:text-3xl font-bold mb-2">
+        <div className="relative bg-primary rounded-3xl overflow-hidden">
+          {/* Background image */}
+          <img
+            src="https://images.unsplash.com/photo-1551218808-94e220e084d2?w=1400&h=400&fit=crop"
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover opacity-20"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-primary via-primary/95 to-primary/80" />
+
+          <div className="relative px-8 md:px-12 py-12 flex flex-col md:flex-row items-center gap-8">
+            {/* Left */}
+            <div className="flex-1 text-center md:text-start">
+              <div className="flex items-center gap-2 mb-3 justify-center md:justify-start">
+                <BookOpen className="w-5 h-5 text-white/70" />
+                <span className="text-white/70 text-sm font-semibold uppercase tracking-wider">{t('Community', 'المجتمع')}</span>
+              </div>
+              <h2 className="text-2xl md:text-3xl font-extrabold text-white mb-3">
                 {t('Share your dining experiences', 'شارك تجارب تناول الطعام')}
               </h2>
-              <p className="text-white/80">
-                {t('Write reviews, earn points, climb the leaderboard, and become a top food critic.', 'اكتب تقييمات، اكسب نقاط، تصدر المتصدرين، وكن ناقداً غذائياً متميزاً.')}
+              <p className="text-white/75 max-w-lg">
+                {t('Write reviews, earn points, climb the leaderboard, and become a top food critic in Saudi Arabia.', 'اكتب تقييمات، اكسب نقاط، تصدر المتصدرين، وكن ناقداً غذائياً متميزاً في المملكة.')}
               </p>
             </div>
-            <div className="flex gap-3 shrink-0">
+
+            {/* Right */}
+            <div className="flex flex-col sm:flex-row gap-3 shrink-0">
               <Link href="/leaderboard">
-                <button className="bg-white text-primary font-bold px-7 py-3.5 rounded-2xl hover:bg-white/90 transition-all shadow-lg whitespace-nowrap">
+                <button className="w-full sm:w-auto bg-white text-primary font-bold px-7 py-3.5 rounded-2xl hover:bg-white/90 transition-all shadow-lg whitespace-nowrap">
                   {t('View Leaderboard', 'عرض المتصدرين')}
                 </button>
               </Link>
               <Link href="/restaurants">
-                <button className="bg-white/20 hover:bg-white/30 text-white font-bold px-7 py-3.5 rounded-2xl transition-all whitespace-nowrap border border-white/30">
+                <button className="w-full sm:w-auto bg-white/15 hover:bg-white/25 text-white font-bold px-7 py-3.5 rounded-2xl transition-all whitespace-nowrap border border-white/25">
                   {t('Explore Now', 'استكشف الآن')}
                 </button>
               </Link>
@@ -477,4 +575,3 @@ export function HomePage() {
     </div>
   );
 }
-
