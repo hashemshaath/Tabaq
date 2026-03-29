@@ -27,6 +27,7 @@ import { UserDashboardPage } from "@/pages/UserDashboardPage";
 import { ReferralPage } from "@/pages/ReferralPage";
 import { ProviderRegistrationPage } from "@/pages/ProviderRegistrationPage";
 import FeedPage from "@/pages/FeedPage";
+import NotificationsPage from "@/pages/NotificationsPage";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -66,6 +67,7 @@ function Router() {
               <Route path="/partners" component={PartnerLandingPage} />
               <Route path="/partners/register" component={ProviderRegistrationPage} />
               <Route path="/referral" component={ReferralPage} />
+              <Route path="/notifications" component={NotificationsPage} />
               <Route path="/admin" component={AdminPanelPage} />
               <Route component={NotFound} />
             </Switch>

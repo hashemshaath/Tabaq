@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Link, useLocation } from "wouter";
 import {
   Search, MapPin, Globe, User, LogOut, ChevronDown, Tag,
-  CalendarDays, LayoutDashboard, Trophy, Star, Shield, Utensils, ArrowRight
+  CalendarDays, LayoutDashboard, Trophy, Star, Shield, Utensils, ArrowRight, Bell
 } from "lucide-react";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/context/AuthContext";
@@ -88,6 +88,13 @@ export function Header() {
             <Search className="w-5 h-5" />
           </Link>
 
+          {user && (
+            <Link href="/notifications" className="relative p-2.5 rounded-full hover:bg-accent text-foreground transition-colors">
+              <Bell className="w-5 h-5" />
+              <span className="absolute top-1.5 end-1.5 w-2.5 h-2.5 bg-primary rounded-full border-2 border-background" />
+            </Link>
+          )}
+
           <button
             onClick={toggleLanguage}
             className="p-2.5 rounded-full hover:bg-accent text-foreground transition-colors flex items-center justify-center font-bold text-xs relative"
@@ -138,6 +145,21 @@ export function Header() {
                       <div>
                         <p className="font-semibold text-foreground leading-none">{t("My Dashboard", "لوحتي")}</p>
                         <p className="text-xs text-muted-foreground">{t("Profile, points & history", "الملف والنقاط والتاريخ")}</p>
+                      </div>
+                    </Link>
+
+                    <Link
+                      href="/notifications"
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors"
+                      onClick={() => setUserMenuOpen(false)}
+                    >
+                      <div className="w-7 h-7 bg-primary/10 rounded-lg flex items-center justify-center relative">
+                        <Bell className="w-3.5 h-3.5 text-primary" />
+                        <span className="absolute -top-0.5 -end-0.5 w-2 h-2 bg-primary rounded-full" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-foreground leading-none">{t("Notifications", "الإشعارات")}</p>
+                        <p className="text-xs text-muted-foreground">{t("Bookings, offers & more", "الحجوزات والعروض وأكثر")}</p>
                       </div>
                     </Link>
 
