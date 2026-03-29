@@ -362,12 +362,12 @@ export function HomePage() {
 
       {/* ── Trending Restaurants ── */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-14">
-        <div className="bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950/20 dark:to-amber-950/20 rounded-3xl p-6 md:p-10 border border-orange-100 dark:border-orange-900/30">
+        <div className="bg-gradient-to-br from-primary/5 to-violet-50 dark:from-primary/10 dark:to-violet-950/20 rounded-3xl p-6 md:p-10 border border-primary/10 dark:border-primary/20">
           <div className="flex justify-between items-end mb-6">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <Flame className="w-5 h-5 text-orange-500" />
-                <span className="text-orange-600 font-semibold text-sm">{t('Hot Right Now', 'الأكثر طلباً الآن')}</span>
+                <Flame className="w-5 h-5 text-primary" />
+                <span className="text-primary font-semibold text-sm">{t('Hot Right Now', 'الأكثر طلباً الآن')}</span>
               </div>
               <h2 className="text-2xl md:text-3xl font-bold text-foreground">{t('Trending Restaurants', 'مطاعم شائعة')}</h2>
               <p className="text-muted-foreground text-sm mt-1">{t('Everyone\'s dining here this week', 'الكل يتناول العشاء هنا هذا الأسبوع')}</p>

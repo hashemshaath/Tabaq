@@ -29,6 +29,8 @@ Features include:
 **Currency default**: SAR  
 **Fonts**: Cairo (Arabic), DM Sans (English body/UI), Sora (English display headings h1/h2 + `.font-display`) via Google Fonts. Sora applied globally to h1/h2 in LTR via CSS; Cairo for all RTL.
 
+**Brand Colors**: Primary = Tabaq Purple `hsl(270 62% 47%)` (~`#7B28C8`) — matches official Tabaq logo. All `bg-primary`, `text-primary`, `border-primary` tokens use this purple. Logo file: `public/images/tabaq-logo.png`.
+
 ## Tech Stack
 
 - **Monorepo tool**: pnpm workspaces

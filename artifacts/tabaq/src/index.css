@@ -40,65 +40,64 @@
 }
 
 :root {
-  /* Warm premium light mode */
-  --background: 30 33% 98%;
-  --foreground: 20 20% 15%;
-  
+  /* Clean professional white background */
+  --background: 0 0% 98%;
+  --foreground: 270 15% 12%;
+
   --card: 0 0% 100%;
-  --card-foreground: 20 20% 15%;
-  
+  --card-foreground: 270 15% 12%;
+
   --popover: 0 0% 100%;
-  --popover-foreground: 20 20% 15%;
-  
-  /* Rich terracotta/saffron primary */
-  --primary: 24 90% 55%;
+  --popover-foreground: 270 15% 12%;
+
+  /* Tabaq Brand Purple — matches logo exactly */
+  --primary: 270 62% 47%;
   --primary-foreground: 0 0% 100%;
-  
-  --secondary: 30 20% 94%;
-  --secondary-foreground: 20 20% 15%;
-  
-  --muted: 30 20% 92%;
-  --muted-foreground: 25 10% 45%;
-  
-  --accent: 40 80% 92%;
-  --accent-foreground: 24 90% 40%;
-  
+
+  --secondary: 270 25% 96%;
+  --secondary-foreground: 270 20% 20%;
+
+  --muted: 270 15% 94%;
+  --muted-foreground: 270 10% 48%;
+
+  --accent: 270 40% 94%;
+  --accent-foreground: 270 62% 42%;
+
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
 
-  --border: 30 20% 90%;
-  --input: 30 20% 90%;
-  --ring: 24 90% 55%;
+  --border: 270 18% 90%;
+  --input: 270 18% 90%;
+  --ring: 270 62% 47%;
 
   --radius: 1rem;
 }
 
 .dark {
-  /* Deep warm charcoal dark mode */
-  --background: 20 15% 10%;
-  --foreground: 30 20% 96%;
-  
-  --card: 20 15% 14%;
-  --card-foreground: 30 20% 96%;
-  
-  --popover: 20 15% 14%;
-  --popover-foreground: 30 20% 96%;
-  
-  --primary: 24 90% 60%;
+  --background: 270 20% 8%;
+  --foreground: 270 15% 96%;
+
+  --card: 270 18% 12%;
+  --card-foreground: 270 15% 96%;
+
+  --popover: 270 18% 12%;
+  --popover-foreground: 270 15% 96%;
+
+  --primary: 270 62% 62%;
   --primary-foreground: 0 0% 100%;
-  
-  --secondary: 20 15% 20%;
-  --secondary-foreground: 30 20% 96%;
-  
-  --muted: 20 15% 20%;
-  --muted-foreground: 30 10% 65%;
-  
-  --accent: 20 30% 25%;
-  --accent-foreground: 30 20% 96%;
-  
-  --border: 20 15% 22%;
-  --input: 20 15% 22%;
-  --ring: 24 90% 60%;
+
+  --secondary: 270 18% 18%;
+  --secondary-foreground: 270 15% 96%;
+
+  --muted: 270 15% 20%;
+  --muted-foreground: 270 10% 65%;
+
+  --accent: 270 25% 22%;
+  --accent-foreground: 270 62% 75%;
+
+  --border: 270 18% 22%;
+  --input: 270 18% 22%;
+  --ring: 270 62% 62%;
 }
 
 @layer base {
@@ -108,8 +107,7 @@
   body {
     @apply bg-background text-foreground antialiased;
   }
-  
-  /* Apply font families conditionally based on dir attribute */
+
   html[dir="rtl"] {
     font-family: var(--font-arabic);
   }
@@ -121,46 +119,30 @@
     @apply font-bold tracking-tight;
   }
 
-  /* Apply Sora display font to headings in LTR mode */
   html[dir="ltr"] h1,
   html[dir="ltr"] h2,
   html[dir="ltr"] .font-display {
     font-family: var(--font-display);
   }
 
-  /* Letter-spacing refinements for Sora */
   html[dir="ltr"] h1 { letter-spacing: -0.03em; }
   html[dir="ltr"] h2 { letter-spacing: -0.02em; }
 }
 
-/* Custom scrollbar for a premium feel */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  @apply bg-muted-foreground/30 rounded-full;
-}
-::-webkit-scrollbar-thumb:hover {
-  @apply bg-muted-foreground/50;
-}
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { @apply bg-muted-foreground/30 rounded-full; }
+::-webkit-scrollbar-thumb:hover { @apply bg-muted-foreground/50; }
 
-/* Utilities for visual depth */
 .glass-panel {
-  @apply bg-background/80 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-xl;
+  @apply bg-background/90 backdrop-blur-xl border border-border/60 shadow-sm;
 }
 
-.text-balance {
-  text-wrap: balance;
-}
+.text-balance { text-wrap: balance; }
 
 .hide-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
-.hide-scrollbar::-webkit-scrollbar {
-  display: none;
-}
+.hide-scrollbar::-webkit-scrollbar { display: none; }

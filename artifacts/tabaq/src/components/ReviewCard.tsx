@@ -389,7 +389,7 @@ export function ReviewCard({ review, showTarget = false, onDelete }: ReviewCardP
           {user && user.id !== review.userId && (
             <button
               onClick={() => { setShowReport(v => !v); setReportDone(false); }}
-              className="text-muted-foreground hover:text-orange-500 transition-colors"
+              className="text-muted-foreground hover:text-primary transition-colors"
               title={t('Report review', 'الإبلاغ عن التقييم')}
             >
               <Flag className="w-4 h-4" />

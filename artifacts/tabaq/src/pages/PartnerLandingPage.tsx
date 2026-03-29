@@ -570,7 +570,7 @@ export function PartnerLandingPage() {
 
       {/* ── FINAL CTA ── */}
       <section className="py-24 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/90 to-orange-600" />
+        <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/90 to-violet-800" />
         <div className="absolute inset-0 opacity-10">
           <img src={PARTNER_HERO} alt="" className="w-full h-full object-cover" />
         </div>

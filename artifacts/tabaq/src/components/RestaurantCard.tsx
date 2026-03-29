@@ -64,7 +64,7 @@ export function RestaurantCard({ restaurant, rank }: { restaurant: RestaurantCar
 
           {/* Top-right: Trending or New badge */}
           {isTrending && !isNew && (
-            <div className="absolute top-3 end-3 bg-orange-500 text-white px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-lg">
+            <div className="absolute top-3 end-3 bg-primary text-primary-foreground px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-lg">
               <Flame className="w-3 h-3" />
               {lang === 'ar' ? 'شائع' : 'Trending'}
             </div>

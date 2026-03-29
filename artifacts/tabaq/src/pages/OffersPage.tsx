@@ -674,7 +674,7 @@ export function OffersPage() {
     <div className="min-h-screen bg-background pb-20" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
 
       {/* ── Hero ── */}
-      <div className="relative bg-gradient-to-br from-primary via-primary/90 to-orange-500 overflow-hidden">
+      <div className="relative bg-gradient-to-br from-primary via-primary/90 to-violet-700 overflow-hidden">
         <div className="absolute inset-0">
           <div className="absolute top-0 end-0 w-96 h-96 bg-white/10 rounded-full translate-x-1/3 -translate-y-1/3 blur-3xl" />
           <div className="absolute bottom-0 start-0 w-80 h-80 bg-white/10 rounded-full -translate-x-1/3 translate-y-1/3 blur-3xl" />

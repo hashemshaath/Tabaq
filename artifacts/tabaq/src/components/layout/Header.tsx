@@ -36,11 +36,12 @@ export function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
 
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-3 transition-transform hover:scale-105 active:scale-95 shrink-0">
-          <img src={`${import.meta.env.BASE_URL}images/logo.png`} alt="Tabaq" className="w-10 h-10 object-contain" />
-          <span className="text-2xl font-bold tracking-tight text-primary font-display">
-            {t("Tabaq", "طبق")}
-          </span>
+        <Link href="/" className="flex items-center gap-2 transition-transform hover:scale-105 active:scale-95 shrink-0">
+          <img
+            src={`${import.meta.env.BASE_URL}images/tabaq-logo.png`}
+            alt="Tabaq"
+            className="h-9 w-auto object-contain"
+          />
         </Link>
 
         {/* Desktop Nav */}
