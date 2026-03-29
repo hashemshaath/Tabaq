@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { usersTable, userFollowsTable, reviewsTable, bookingsTable, restaurantsTable } from "@workspace/db/schema";
+import { usersTable, userFollowsTable, reviewsTable, bookingsTable, restaurantsTable, pointsTransactionsTable } from "@workspace/db/schema";
 import { eq, and, sql, desc, type SQL } from "drizzle-orm";
 import { requireAuth, optionalAuth } from "../middleware/requireAuth.js";
 
@@ -374,6 +374,43 @@ router.get("/users/:userId/activity", requireAuth, async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "Failed to fetch user activity");
     res.status(500).json({ error: "internal_error", message: "Failed to fetch user activity" });
+  }
+});
+
+// GET /me/points/history — points transaction history for current user
+router.get("/me/points/history", requireAuth, async (req, res) => {
+  try {
+    const userId = req.auth!.userId;
+    const { limit = "50", offset = "0" } = req.query;
+
+    const [user] = await db
+      .select({ points: usersTable.points, level: usersTable.level, levelTitle: usersTable.levelTitle })
+      .from(usersTable)
+      .where(eq(usersTable.id, userId));
+
+    const transactions = await db
+      .select()
+      .from(pointsTransactionsTable)
+      .where(eq(pointsTransactionsTable.userId, userId))
+      .orderBy(desc(pointsTransactionsTable.createdAt))
+      .limit(parseInt(limit as string))
+      .offset(parseInt(offset as string));
+
+    const [totalRow] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(pointsTransactionsTable)
+      .where(eq(pointsTransactionsTable.userId, userId));
+
+    res.json({
+      currentBalance: user?.points ?? 0,
+      level: user?.level ?? 1,
+      levelTitle: user?.levelTitle ?? "Food Explorer",
+      transactions,
+      total: Number(totalRow?.count ?? 0),
+    });
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch points history");
+    res.status(500).json({ error: "internal_error", message: "Failed to fetch points history" });
   }
 });
 

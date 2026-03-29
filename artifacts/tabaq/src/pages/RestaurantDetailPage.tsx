@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useLanguage } from '@/hooks/use-language';
 import {
   useGetRestaurant,
@@ -10,26 +10,26 @@ import {
   useCreateBooking,
   useListOccasions,
   getGetRestaurantQueryKey,
-  type Dish,
 } from '@workspace/api-client-react';
 import { useParams, Link } from 'wouter';
 import { InlineReviewComposer } from '@/components/InlineReviewComposer';
 import { ReviewCard } from '@/components/ReviewCard';
+import { MenuTab } from '@/components/MenuTab';
+import { StoriesTab } from '@/components/StoriesTab';
 import {
   Star, MapPin, Phone, Globe, Clock, CheckCircle2, Heart, HeartOff,
   Utensils, Info, Camera, MessageSquare, CalendarDays, Users,
-  ChevronLeft, ChevronRight, Tag, Leaf, Wifi, Bell, BellRing,
+  ChevronLeft, ChevronRight, Tag, Bell, BellRing, BookImage,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
-import { formatPrice } from '@/lib/utils';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const DAYS_AR = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
 const PARTY_SIZES = [1, 2, 3, 4, 5, 6, 7, 8, 10, 12];
 
-type Tab = 'menu' | 'book' | 'reviews' | 'photos' | 'info';
+type Tab = 'menu' | 'book' | 'reviews' | 'photos' | 'stories' | 'info';
 
 function getDatesAhead(n: number): Date[] {
   const today = new Date();
@@ -374,7 +374,6 @@ export function RestaurantDetailPage() {
 
   const [activeTab, setActiveTab] = useState<Tab>('menu');
   const [isFollowing, setIsFollowing] = useState(false);
-  const [expandedSections, setExpandedSections] = useState<Set<number>>(new Set());
 
   const { mutate: followRestaurant } = useFollowRestaurant();
   const { mutate: unfollowRestaurant } = useUnfollowRestaurant();
@@ -393,14 +392,6 @@ export function RestaurantDetailPage() {
     } else {
       followRestaurant({ restaurantId }, { onSuccess: () => setIsFollowing(true) });
     }
-  };
-
-  const toggleSection = (sectionId: number) => {
-    setExpandedSections(prev => {
-      const next = new Set(prev);
-      if (next.has(sectionId)) next.delete(sectionId); else next.add(sectionId);
-      return next;
-    });
   };
 
   if (isLoading) {
@@ -432,6 +423,7 @@ export function RestaurantDetailPage() {
     { id: 'book', label: 'Book', labelAr: 'حجز', icon: <CalendarDays className="w-4 h-4" /> },
     { id: 'reviews', label: 'Reviews', labelAr: 'التقييمات', icon: <MessageSquare className="w-4 h-4" /> },
     { id: 'photos', label: 'Photos', labelAr: 'الصور', icon: <Camera className="w-4 h-4" /> },
+    { id: 'stories', label: 'Stories', labelAr: 'القصص', icon: <BookImage className="w-4 h-4" /> },
     { id: 'info', label: 'Info', labelAr: 'معلومات', icon: <Info className="w-4 h-4" /> },
   ];
 
@@ -586,89 +578,7 @@ export function RestaurantDetailPage() {
 
             {/* Tab: Menu */}
             {activeTab === 'menu' && (
-              <div className="space-y-6">
-                {menuData && menuData.length > 0 ? menuData.map(menu => (
-                  <div key={menu.id}>
-                    <h3 className="text-lg font-bold mb-4">{lang === 'ar' ? menu.nameAr : menu.nameEn}</h3>
-                    {menu.sections?.map(section => (
-                      <div key={section.id} className="mb-4">
-                        <button
-                          className="w-full flex justify-between items-center py-2 px-0 text-start"
-                          onClick={() => toggleSection(section.id)}
-                        >
-                          <h4 className="font-semibold text-foreground">{lang === 'ar' ? section.nameAr : section.nameEn}</h4>
-                          {expandedSections.has(section.id) ? <ChevronLeft className="w-4 h-4 text-muted-foreground rotate-90" /> : <ChevronRight className="w-4 h-4 text-muted-foreground rotate-90" />}
-                        </button>
-                        {!expandedSections.has(section.id) && (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
-                            {section.items?.map((dish: Dish) => (
-                              <Link key={dish.id} href={`/dishes/${dish.id}`}>
-                                <div className="flex gap-3 p-3 rounded-2xl border border-border/60 hover:bg-accent/30 hover:border-primary/20 transition-all group">
-                                  <div className="w-[72px] h-[72px] shrink-0 rounded-xl overflow-hidden bg-muted">
-                                    <img
-                                      src={dish.imageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&h=200&fit=crop'}
-                                      alt={lang === 'ar' ? dish.nameAr : dish.nameEn}
-                                      className="w-full h-full object-cover"
-                                    />
-                                  </div>
-                                  <div className="flex-grow min-w-0">
-                                    <div className="flex justify-between items-start gap-1">
-                                      <h5 className="font-semibold text-foreground text-sm line-clamp-1 group-hover:text-primary transition-colors">
-                                        {lang === 'ar' ? dish.nameAr : dish.nameEn}
-                                      </h5>
-                                      {dish.price && (
-                                        <span className="text-primary font-bold text-sm shrink-0 ms-1">
-                                          {formatPrice(dish.price, dish.currency, lang)}
-                                        </span>
-                                      )}
-                                    </div>
-                                    {(lang === 'ar' ? dish.descriptionAr : dish.descriptionEn) && (
-                                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                                        {lang === 'ar' ? dish.descriptionAr : dish.descriptionEn}
-                                      </p>
-                                    )}
-                                    <div className="flex items-center gap-2 mt-1.5">
-                                      {dish.isHalal && <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-md font-medium">Halal</span>}
-                                      {dish.isVegetarian && <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-md font-medium flex items-center gap-0.5"><Leaf className="w-2.5 h-2.5" />Veg</span>}
-                                      {dish.calories && <span className="text-[10px] text-muted-foreground">{dish.calories} kcal</span>}
-                                    </div>
-                                  </div>
-                                </div>
-                              </Link>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )) : (
-                  <div className="py-8">
-                    <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-primary/5 via-primary/3 to-violet-50 border border-primary/10 p-8 text-center">
-                      <div className="absolute top-4 start-4 text-4xl opacity-20">🍽️</div>
-                      <div className="absolute bottom-4 end-4 text-4xl opacity-20">🥘</div>
-                      <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                        <Utensils className="w-8 h-8 text-primary" />
-                      </div>
-                      <h3 className="text-lg font-bold text-foreground mb-1">{t('Menu Coming Soon', 'المنيو قريباً')}</h3>
-                      <p className="text-muted-foreground text-sm max-w-xs mx-auto mb-5">
-                        {t('The restaurant is still uploading their menu. Book a table or check their reviews.', 'المطعم لا يزال يرفع قائمة طعامه. احجز طاولة أو اطّلع على التقييمات.')}
-                      </p>
-                      <div className="flex gap-3 justify-center flex-wrap">
-                        <Link href={`/restaurants/${restaurant.id}#book`}>
-                          <button className="px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors">
-                            {t('Book a Table', 'احجز طاولة')}
-                          </button>
-                        </Link>
-                        <Link href={`/restaurants/${restaurant.id}#reviews`}>
-                          <button className="px-5 py-2.5 border border-border text-foreground rounded-xl text-sm font-semibold hover:bg-accent transition-colors">
-                            {t('Read Reviews', 'اقرأ التقييمات')}
-                          </button>
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
+              <MenuTab menuData={menuData} />
             )}
 
             {/* Tab: Book */}
@@ -788,6 +698,11 @@ export function RestaurantDetailPage() {
                   );
                 })()}
               </div>
+            )}
+
+            {/* Tab: Stories */}
+            {activeTab === 'stories' && (
+              <StoriesTab restaurantId={Number(id)} />
             )}
 
             {/* Tab: Info */}

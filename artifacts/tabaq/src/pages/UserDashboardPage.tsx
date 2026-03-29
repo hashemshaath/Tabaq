@@ -1,16 +1,189 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLanguage } from '@/hooks/use-language';
 import { Link } from 'wouter';
 import { useAuth } from '@/context/AuthContext';
 import {
   CalendarDays, Star, Heart, Tag, Award, TrendingUp, ChevronRight,
   CheckCircle2, Clock, MapPin, Users, Bookmark, Edit, Camera,
-  Trophy, Zap, Gift, Bell, Settings, ArrowRight, BookOpen
+  Trophy, Zap, Gift, Bell, Settings, ArrowRight, BookOpen,
+  AtSign, Loader2, XCircle, AlertCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AddressBook } from '@/components/AddressBook';
 import { LocalizationSettings } from '@/components/LocalizationSettings';
+
+// ─── Username Section Component ───────────────────────────────────────────────
+function UsernameSection() {
+  const { t } = useLanguage();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  const [inputValue, setInputValue] = useState((user as any)?.username ?? '');
+  const [checkResult, setCheckResult] = useState<{ available: boolean; reason?: string } | null>(null);
+  const [isChecking, setIsChecking] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [saveError, setSaveError] = useState('');
+
+  const currentUsername = (user as any)?.username;
+  const isUnchanged = inputValue.trim().toLowerCase() === (currentUsername ?? '').toLowerCase();
+
+  // Debounced availability check
+  useEffect(() => {
+    const trimmed = inputValue.trim().toLowerCase();
+    if (!trimmed || trimmed.length < 3 || isUnchanged) {
+      setCheckResult(null);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setIsChecking(true);
+      try {
+        const res = await fetch(`/api/username/check?username=${encodeURIComponent(trimmed)}`);
+        const data = await res.json();
+        setCheckResult(data);
+      } catch {
+        setCheckResult(null);
+      } finally {
+        setIsChecking(false);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [inputValue, isUnchanged]);
+
+  const handleSave = async () => {
+    const trimmed = inputValue.trim().toLowerCase();
+    if (!trimmed) return;
+    setSaveStatus('saving');
+    setSaveError('');
+    try {
+      const res = await fetch('/api/me/username', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ username: trimmed }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setSaveStatus('error');
+        setSaveError(data.error || t('Failed to set username.', 'فشل تعيين اسم المستخدم.'));
+      } else {
+        setSaveStatus('saved');
+        queryClient.invalidateQueries({ queryKey: ['me'] });
+        setTimeout(() => setSaveStatus('idle'), 3000);
+      }
+    } catch {
+      setSaveStatus('error');
+      setSaveError(t('Network error. Please try again.', 'خطأ في الشبكة. حاول مجدداً.'));
+    }
+  };
+
+  const inputBorder = () => {
+    if (isChecking) return 'border-border';
+    if (checkResult?.available === true) return 'border-emerald-400 ring-1 ring-emerald-200';
+    if (checkResult?.available === false) return 'border-red-400 ring-1 ring-red-100';
+    if (saveStatus === 'saved') return 'border-emerald-400 ring-1 ring-emerald-200';
+    return 'border-input';
+  };
+
+  return (
+    <div className="bg-card border border-border rounded-2xl overflow-hidden">
+      <div className="px-5 py-4 border-b border-border flex items-center gap-3">
+        <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center shrink-0">
+          <AtSign className="w-4 h-4 text-primary" />
+        </div>
+        <div>
+          <h3 className="font-bold text-foreground text-sm">{t('Username', 'اسم المستخدم')}</h3>
+          <p className="text-xs text-muted-foreground">{t('Your unique Tabaq handle — visible on your public profile', 'معرّفك الفريد على طبق — يظهر في ملفك العام')}</p>
+        </div>
+      </div>
+      <div className="p-5 space-y-3">
+        <div className="relative">
+          <div className="absolute start-3.5 top-1/2 -translate-y-1/2 text-muted-foreground font-medium text-sm select-none">@</div>
+          <input
+            type="text"
+            value={inputValue}
+            onChange={e => {
+              setInputValue(e.target.value.replace(/\s/g, '').toLowerCase());
+              setSaveStatus('idle');
+              setSaveError('');
+            }}
+            placeholder={t('your_handle', 'معرّفك')}
+            maxLength={30}
+            className={`w-full h-11 ps-8 pe-10 rounded-xl border ${inputBorder()} bg-background text-sm focus:outline-none transition-all font-mono`}
+          />
+          <div className="absolute end-3.5 top-1/2 -translate-y-1/2">
+            {isChecking && <Loader2 className="w-4 h-4 text-muted-foreground animate-spin" />}
+            {!isChecking && checkResult?.available === true && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
+            {!isChecking && checkResult?.available === false && <XCircle className="w-4 h-4 text-red-500" />}
+            {!isChecking && saveStatus === 'saved' && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
+          </div>
+        </div>
+
+        {/* Feedback messages */}
+        {!isChecking && checkResult?.available === true && (
+          <p className="text-xs text-emerald-600 flex items-center gap-1.5 font-medium">
+            <CheckCircle2 className="w-3 h-3" /> {t('Username available!', 'اسم المستخدم متاح!')}
+          </p>
+        )}
+        {!isChecking && checkResult?.available === false && (
+          <p className="text-xs text-red-500 flex items-center gap-1.5">
+            <XCircle className="w-3 h-3" /> {checkResult.reason || t('Username not available.', 'اسم المستخدم غير متاح.')}
+          </p>
+        )}
+        {saveStatus === 'saved' && (
+          <p className="text-xs text-emerald-600 flex items-center gap-1.5 font-medium">
+            <CheckCircle2 className="w-3 h-3" /> {t('Username saved!', 'تم حفظ اسم المستخدم!')} — @{inputValue.trim().toLowerCase()}
+          </p>
+        )}
+        {saveStatus === 'error' && (
+          <p className="text-xs text-red-500 flex items-center gap-1.5">
+            <AlertCircle className="w-3 h-3" /> {saveError}
+          </p>
+        )}
+
+        {/* Rules */}
+        <div className="bg-secondary/50 rounded-xl px-4 py-3 text-xs text-muted-foreground space-y-1">
+          <p className="font-semibold text-foreground/80 mb-1">{t('Username rules', 'قواعد اسم المستخدم')}</p>
+          {[
+            t('3–30 characters', '3–30 حرفاً'),
+            t('Letters, numbers, underscores, and dots only', 'أحرف وأرقام وشرطة سفلية ونقاط فقط'),
+            t('Cannot start or end with _ or .', 'لا يمكن أن يبدأ أو ينتهي بـ _ أو .'),
+            t('No spaces allowed', 'لا يُسمح بالمسافات'),
+          ].map(rule => (
+            <p key={rule} className="flex items-center gap-1.5">
+              <span className="w-1 h-1 rounded-full bg-muted-foreground/60 shrink-0" />
+              {rule}
+            </p>
+          ))}
+        </div>
+
+        <button
+          onClick={handleSave}
+          disabled={
+            !inputValue.trim() ||
+            inputValue.trim().length < 3 ||
+            isChecking ||
+            saveStatus === 'saving' ||
+            saveStatus === 'saved' ||
+            (checkResult !== null && !checkResult.available && !isUnchanged) ||
+            (isUnchanged && !!currentUsername)
+          }
+          className="w-full h-11 bg-primary text-primary-foreground text-sm font-semibold rounded-xl hover:bg-primary/90 disabled:opacity-40 transition-all flex items-center justify-center gap-2"
+        >
+          {saveStatus === 'saving' ? (
+            <><Loader2 className="w-4 h-4 animate-spin" /> {t('Saving...', 'جار الحفظ...')}</>
+          ) : saveStatus === 'saved' ? (
+            <><CheckCircle2 className="w-4 h-4" /> {t('Saved!', 'تم الحفظ!')}</>
+          ) : isUnchanged && currentUsername ? (
+            t('Username already set', 'اسم المستخدم محدد مسبقاً')
+          ) : (
+            t('Save Username', 'حفظ اسم المستخدم')
+          )}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 const LEVEL_CONFIG = [
   { level: 1, name: 'Food Explorer', nameAr: 'مستكشف الطعام', min: 0, max: 100, color: 'from-green-400 to-emerald-500', icon: '🌱' },
@@ -481,6 +654,8 @@ export function UserDashboardPage() {
           <div className="space-y-8 max-w-2xl">
 
             <LocalizationSettings />
+
+            <UsernameSection />
 
             <div className="bg-card border border-border rounded-2xl p-5">
               <AddressBook />

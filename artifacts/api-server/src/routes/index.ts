@@ -18,6 +18,7 @@ import adminStatsRouter from "./admin-stats.js";
 import adminOffersRouter from "./admin-offers.js";
 import adminReferralsRouter from "./admin-referrals.js";
 import addressesRouter from "./addresses.js";
+import storiesRouter from "./stories.js";
 
 const router: IRouter = Router();
 
@@ -40,5 +41,6 @@ router.use(adminStatsRouter);
 router.use(adminOffersRouter);
 router.use(adminReferralsRouter);
 router.use(addressesRouter);
+router.use(storiesRouter);
 
 export default router;

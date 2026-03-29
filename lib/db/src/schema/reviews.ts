@@ -20,6 +20,12 @@ export const reviewsTable = pgTable("reviews", {
   likeCount: integer("like_count").default(0).notNull(),
   commentCount: integer("comment_count").default(0).notNull(),
   visitDate: text("visit_date"),
+  isExpertReview: boolean("is_expert_review").default(false).notNull(),
+  ratingPresentation: numeric("rating_presentation", { precision: 3, scale: 2 }),
+  ratingIngredients: numeric("rating_ingredients", { precision: 3, scale: 2 }),
+  ratingTechnique: numeric("rating_technique", { precision: 3, scale: 2 }),
+  ratingCreativity: numeric("rating_creativity", { precision: 3, scale: 2 }),
+  ratingPortionSize: numeric("rating_portion_size", { precision: 3, scale: 2 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

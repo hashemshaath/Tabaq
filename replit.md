@@ -104,6 +104,12 @@ Express 5 API server.
 - App: `src/app.ts` — CORS, JSON parsing, routes at `/api`
 - Routes: `src/routes/index.ts` mounts all sub-routers:
   - health, countries, categories, restaurants, dishes, menus, bookings, offers, reviews, users, search, events
+  - referrals (`/me/referral`, `/referrals/use`)
+  - username (`/username/check`, `/me/username`)
+  - stories (`/restaurants/:id/stories`, `/admin/stories`)
+  - admin-stats (`/admin/stats`, `/admin/modules`, `/admin/modules/:id`)
+  - admin-offers, admin-referrals, addresses
+  - users also has `/me/points/history`
 - Depends on: `@workspace/db`, `@workspace/api-zod`
 
 ### `artifacts/tabaq` (`@workspace/tabaq`)
@@ -119,16 +125,19 @@ React + Vite frontend. Full bilingual RTL/LTR support.
 Drizzle ORM with PostgreSQL. Schema files:
 
 - `countries`, `cities` — location data
-- `users` — user profiles with points and level system
+- `users` — profiles, username, referralCode, points, level, levelTitle
 - `restaurants`, `restaurant_categories`, `restaurant_occasions`, `opening_hours`, `restaurant_follows`
 - `categories`, `occasions`
-- `menus`, `menu_sections`, `dishes`
+- `menus`, `menu_sections`, `dishes` — dishes have: allergens (jsonb), prepTimeMinutes, isTabaqStar, isMostOrdered, isHealthy, isDairyFree, isNutFree, spiceLevel
+- `restaurant_stories` — user-submitted photos/videos, status (pending/approved/rejected), admin approval workflow
 - `bookings`
 - `offers`, `vouchers`
-- `reviews`, `review_likes`
+- `reviews`, `review_likes` — reviews have expert mode fields: isExpertReview, ratingPresentation, ratingIngredients, ratingTechnique, ratingCreativity, ratingPortionSize
 - `events`
+- `loyalty` — pointsTransactionsTable, referralConversionsTable
+- `platform` — platformModulesTable (feature flags with enable/disable)
 
-Run schema push: `pnpm --filter @workspace/db run push`
+Run schema push: `pnpm --filter @workspace/db run push` (or `push-force` for non-interactive)
 
 ### `lib/api-spec` (`@workspace/api-spec`)
 
@@ -147,14 +156,21 @@ Output goes to `lib/api-client-react/src/generated/` and `lib/api-zod/src/genera
 - **DB push**: `pnpm --filter @workspace/db run push`
 - **Codegen**: `pnpm --filter @workspace/api-spec run codegen`
 
-## Task Progress
+## Feature Status
 
-- **Task #1** (Foundation & Core Infrastructure) — COMPLETE
-- **Task #2** (Authentication & User System) — PENDING
-- **Task #3** (Restaurant & Dish Discovery) — PENDING
-- **Task #4** (Bookings, Offers & Vouchers) — PENDING
-- **Task #5** (Social Community & Reviews) — PENDING
-- **Task #6** (Restaurant Business Console) — PENDING
-- **Task #7** (Payments, Wallet & Referral) — PENDING
-- **Task #8** (Admin Dashboard & CRM) — PENDING
+All core features COMPLETE and world-class:
+
+- **Foundation & Core Infrastructure** — COMPLETE
+- **Authentication & User System** (OTP, username, levels, points) — COMPLETE
+- **Restaurant & Dish Discovery** (smart sort, awards, collections, stories) — COMPLETE
+- **Bookings, Offers & Vouchers** (inline booking, QR/barcode, gift mode) — COMPLETE
+- **Social Community & Reviews** (feed, comments, expert ratings) — COMPLETE
+- **Restaurant Business Console** (`/console`) — COMPLETE
+- **Payments, Wallet & Referral** (real API, points history, share) — COMPLETE
+- **Admin Dashboard & CRM** (live stats, module management, offers) — COMPLETE
+- **Username System** (real-time availability check, @handle claiming) — COMPLETE
+- **Provider Registration** (5-step wizard, business types, plan selection) — COMPLETE
+- **Restaurant Stories** (user-submitted photos/videos, admin approval, community grid) — COMPLETE (DB + API + frontend tab)
+- **Enhanced Dish System** (Tabaq Star spotlight, Most Ordered scroll, allergen chips, spice flames, prep time, dietary badges) — COMPLETE (DB + API + frontend MenuTab)
+- **Expert Critic Reviews** (dual-mode composer: Regular / Critic with professional subcriteria) — COMPLETE
 - **Task #9** (AI Features, SEO & Multilingual) — PENDING

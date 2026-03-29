@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useLanguage } from '@/hooks/use-language';
 import { useAuth } from '@/context/AuthContext';
 import { Link } from 'wouter';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Gift, Copy, CheckCircle2, Share2, MessageSquare,
   ExternalLink, Star, Users, TrendingUp, Award,
-  ChevronRight, ArrowRight, Zap, Clock, Info,
-  Twitter, Send
+  ChevronRight, Zap, Clock, Info, Loader2
 } from 'lucide-react';
 
 // ─── Types ─────────────────────────────────────────────────────────
@@ -93,13 +93,67 @@ function timeAgo(dateStr: string): string {
 export function ReferralPage() {
   const { t, lang } = useLanguage();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [copied, setCopied] = useState<'code' | 'link' | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'history' | 'friends'>('overview');
   const [promoInput, setPromoInput] = useState('');
   const [promoStatus, setPromoStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [promoError, setPromoError] = useState('');
 
-  const data = MOCK_REFERRAL;
-  const history = MOCK_HISTORY;
+  const { data: referralData, isLoading: referralLoading } = useQuery({
+    queryKey: ['me-referral'],
+    queryFn: async () => {
+      const res = await fetch('/api/me/referral', { credentials: 'include' });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!user,
+    staleTime: 60000,
+    retry: false,
+  });
+
+  const { data: pointsData, isLoading: pointsLoading } = useQuery({
+    queryKey: ['me-points-history'],
+    queryFn: async () => {
+      const res = await fetch('/api/me/points/history?limit=30', { credentials: 'include' });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!user && activeTab === 'history',
+    staleTime: 60000,
+    retry: false,
+  });
+
+  const applyReferralCode = useMutation({
+    mutationFn: async (code: string) => {
+      if (!user) throw new Error('not_auth');
+      const res = await fetch('/api/referrals/use', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ referralCode: code, newUserId: user.id }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || 'Failed to apply code');
+      return body;
+    },
+    onSuccess: () => {
+      setPromoStatus('success');
+      queryClient.invalidateQueries({ queryKey: ['me-referral'] });
+      queryClient.invalidateQueries({ queryKey: ['me-points-history'] });
+    },
+    onError: (err: Error) => {
+      setPromoStatus('error');
+      setPromoError(err.message === 'User has already used a referral code'
+        ? t('You have already used a referral code.', 'لقد استخدمت كود إحالة من قبل.')
+        : err.message === 'Invalid referral code'
+        ? t('Invalid referral code.', 'كود إحالة غير صحيح.')
+        : t('Could not apply code. Please try again.', 'تعذر تطبيق الكود. حاول مجدداً.'));
+    },
+  });
+
+  const data = referralData ?? MOCK_REFERRAL;
+  const history = pointsData?.transactions ?? MOCK_HISTORY;
 
   const copy = (type: 'code' | 'link') => {
     const text = type === 'code' ? data.referralCode : data.referralLink;
@@ -119,19 +173,16 @@ export function ReferralPage() {
   };
 
   const applyPromoCode = () => {
+    if (!promoInput.trim()) return;
     setPromoStatus('loading');
-    setTimeout(() => {
-      if (promoInput.toUpperCase() === 'TABAQ50') {
-        setPromoStatus('success');
-      } else {
-        setPromoStatus('error');
-      }
-    }, 800);
+    setPromoError('');
+    applyReferralCode.mutate(promoInput.trim());
   };
 
   const LEVEL_NEXT = [0, 100, 500, 1500, 5000];
-  const level = user ? 2 : 2;
-  const points = data.stats.totalPointsEarned;
+  const currentPoints = pointsData?.currentBalance ?? data.stats.totalPointsEarned;
+  const level = pointsData?.level ?? (user ? 2 : 2);
+  const points = currentPoints;
   const nextLevelPoints = LEVEL_NEXT[level] ?? 5000;
   const prevLevelPoints = LEVEL_NEXT[level - 1] ?? 0;
   const progress = Math.min(((points - prevLevelPoints) / (nextLevelPoints - prevLevelPoints)) * 100, 100);
@@ -269,7 +320,7 @@ export function ReferralPage() {
             </div>
           )}
           {promoStatus === 'error' && (
-            <p className="mt-2 text-xs text-red-500">{t('Invalid or already used code.', 'كود غير صحيح أو تم استخدامه من قبل.')}</p>
+            <p className="mt-2 text-xs text-red-500">{promoError || t('Invalid or already used code.', 'كود غير صحيح أو تم استخدامه من قبل.')}</p>
           )}
         </div>
 
