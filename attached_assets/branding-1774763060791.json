@@ -1,0 +1,138 @@
+{
+  "colorScheme": "light",
+  "fonts": [
+    {
+      "family": "Nunito Sans",
+      "role": "body"
+    }
+  ],
+  "colors": {
+    "primary": "#484E59",
+    "accent": "#111827",
+    "background": "#EEEEEE",
+    "textPrimary": "#111827",
+    "link": "#111827"
+  },
+  "typography": {
+    "fontFamilies": {
+      "primary": "Nunito Sans",
+      "heading": "Nunito Sans"
+    },
+    "fontStacks": {
+      "heading": [
+        "Nunito Sans"
+      ],
+      "body": [
+        "Nunito Sans"
+      ],
+      "paragraph": [
+        "Nunito Sans"
+      ]
+    },
+    "fontSizes": {
+      "h1": "24px",
+      "h2": "20px",
+      "body": "14px"
+    }
+  },
+  "spacing": {
+    "baseUnit": 4,
+    "borderRadius": "6px"
+  },
+  "components": {
+    "input": {
+      "background": "transparent",
+      "textColor": "#111827",
+      "borderColor": null,
+      "borderRadius": "8px",
+      "borderRadiusCorners": {
+        "topLeft": "8px",
+        "topRight": "8px",
+        "bottomRight": "8px",
+        "bottomLeft": "8px"
+      },
+      "shadow": "none"
+    },
+    "buttonPrimary": {
+      "background": "#EEEEEE",
+      "textColor": "#111827",
+      "borderColor": "#E7E8E9",
+      "borderRadius": "33554400px",
+      "borderRadiusCorners": {
+        "topLeft": "33554400px",
+        "topRight": "33554400px",
+        "bottomRight": "33554400px",
+        "bottomLeft": "33554400px"
+      },
+      "shadow": "none"
+    },
+    "buttonSecondary": {
+      "background": "#FFFFFF",
+      "textColor": "#111827",
+      "borderColor": "#111827",
+      "borderRadius": "33554400px",
+      "borderRadiusCorners": {
+        "topLeft": "33554400px",
+        "topRight": "33554400px",
+        "bottomRight": "33554400px",
+        "bottomLeft": "33554400px"
+      },
+      "shadow": "none"
+    }
+  },
+  "images": {
+    "logo": "File saved at: attached_assets/logo.svg",
+    "favicon": "File saved at: attached_assets/favicon.png",
+    "ogImage": null,
+    "logoHref": "https://www.groupon.ae/"
+  },
+  "__llm_logo_reasoning": {
+    "selectedIndex": 0,
+    "reasoning": "Selected #0 because it is the most prominent logo in the header, linking to the homepage, and matches the brand inferred from the URL and page title.",
+    "confidence": 0.95,
+    "source": "llm"
+  },
+  "__llm_button_reasoning": {
+    "primary": {
+      "index": 5,
+      "text": "Shop Now",
+      "reasoning": "Button #0 with text 'Shop Now' is likely the primary CTA due to its action-oriented text and prominent placement. It stands out as a call-to-action encouraging users to engage with the site."
+    },
+    "secondary": {
+      "index": 7,
+      "text": "Load more",
+      "reasoning": "Button #7 with text 'Load more' serves as a secondary action, allowing users to explore more content. It has a different background color group, making it suitable as a secondary button."
+    },
+    "confidence": 0.9
+  },
+  "personality": {
+    "tone": "professional",
+    "energy": "medium",
+    "targetAudience": "bargain hunters and deal seekers"
+  },
+  "designSystem": {
+    "framework": "tailwind",
+    "componentLibrary": ""
+  },
+  "confidence": {
+    "buttons": 0.9,
+    "colors": 0.9,
+    "overall": 0.9
+  },
+  "__llm_metadata": {
+    "logoSelection": {
+      "llmCalled": true,
+      "llmSucceeded": true,
+      "finalSource": "llm",
+      "rawLogoSelection": {
+        "selectedLogoIndex": 0,
+        "selectedLogoReasoning": "Selected #0 because it is the most prominent logo in the header, linking to the homepage, and matches the brand inferred from the URL and page title.",
+        "confidence": 0.95
+      }
+    },
+    "buttonClassification": {
+      "llmCalled": true,
+      "llmSucceeded": true
+    }
+  }
+}
