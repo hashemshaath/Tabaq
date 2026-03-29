@@ -6,11 +6,57 @@ import { InlineReviewComposer } from '@/components/InlineReviewComposer';
 import { ReviewCard } from '@/components/ReviewCard';
 import {
   Star, MapPin, Leaf, Wheat, Flame, CheckCircle2, ChevronRight,
-  TrendingUp, MessageSquare, ArrowLeft, CalendarDays
+  TrendingUp, MessageSquare, ArrowLeft, CalendarDays, Clock,
+  AlertCircle, Award, Zap, Shield,
 } from 'lucide-react';
 import { formatPrice } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { DishCard } from '@/components/DishCard';
+import type { Dish } from '@workspace/api-client-react';
+
+type ExtendedDish = Dish & {
+  isTabaqStar?: boolean;
+  isMostOrdered?: boolean;
+  isHealthy?: boolean;
+  isDairyFree?: boolean;
+  isNutFree?: boolean;
+  allergens?: string[];
+  spiceLevel?: number;
+  prepTimeMinutes?: number;
+};
+
+const ALLERGEN_MAP: Record<string, { en: string; ar: string; color: string }> = {
+  nuts: { en: 'Tree Nuts', ar: 'مكسرات', color: 'bg-amber-100 text-amber-800 border-amber-200' },
+  peanuts: { en: 'Peanuts', ar: 'فول سوداني', color: 'bg-amber-100 text-amber-800 border-amber-200' },
+  dairy: { en: 'Dairy', ar: 'منتجات الألبان', color: 'bg-blue-100 text-blue-800 border-blue-200' },
+  gluten: { en: 'Gluten', ar: 'جلوتين', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
+  shellfish: { en: 'Shellfish', ar: 'محار', color: 'bg-red-100 text-red-800 border-red-200' },
+  eggs: { en: 'Eggs', ar: 'بيض', color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
+  soy: { en: 'Soy', ar: 'صويا', color: 'bg-green-100 text-green-800 border-green-200' },
+  fish: { en: 'Fish', ar: 'سمك', color: 'bg-cyan-100 text-cyan-800 border-cyan-200' },
+  sesame: { en: 'Sesame', ar: 'سمسم', color: 'bg-orange-100 text-orange-800 border-orange-200' },
+};
+
+function SpiceMeter({ level }: { level: number }) {
+  const labels: Record<number, { en: string; ar: string; color: string }> = {
+    1: { en: 'Mild', ar: 'خفيف', color: 'text-yellow-600' },
+    2: { en: 'Medium', ar: 'متوسط', color: 'text-orange-500' },
+    3: { en: 'Spicy', ar: 'حار', color: 'text-orange-600' },
+    4: { en: 'Very Spicy', ar: 'حار جداً', color: 'text-red-500' },
+    5: { en: 'Extremely Hot', ar: 'شديد الحرارة', color: 'text-red-700' },
+  };
+  const info = labels[level];
+  return (
+    <div className="flex items-center gap-3 bg-orange-50 border border-orange-200 rounded-2xl px-4 py-3">
+      <div className="flex gap-0.5">
+        {[1, 2, 3, 4, 5].map(i => (
+          <Flame key={i} className={`w-5 h-5 ${i <= level ? 'text-orange-500 fill-orange-500' : 'text-muted-foreground/20'}`} />
+        ))}
+      </div>
+      {info && <span className={`text-sm font-bold ${info.color}`}>{info.en}</span>}
+    </div>
+  );
+}
 
 export function DishDetailPage() {
   const { id } = useParams();
@@ -51,16 +97,32 @@ export function DishDetailPage() {
     );
   }
 
-  const { dish, restaurant, recentReviews, similarDishes } = data;
+  const { restaurant, recentReviews, similarDishes } = data;
+  const dish = data.dish as ExtendedDish;
   const name = lang === 'ar' ? dish.nameAr : dish.nameEn;
   const description = lang === 'ar' ? dish.descriptionAr : dish.descriptionEn;
   const restName = lang === 'ar' ? (restaurant?.nameAr ?? '') : (restaurant?.nameEn ?? '');
 
   const hasRating = Number(dish.reviewCount) > 0;
   const avgRating = Number(dish.avgRating);
+  const allergens = dish.allergens ?? [];
+  const spiceLevel = dish.spiceLevel ?? 0;
 
   return (
     <div className="min-h-screen bg-background pb-20" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+
+      {/* Tabaq Star Banner */}
+      {dish.isTabaqStar && (
+        <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex items-center gap-2.5">
+            <Star className="w-4 h-4 fill-white shrink-0" />
+            <span className="text-sm font-bold">
+              {t("Tabaq Star — Our critics have highlighted this dish for exceptional quality.", "نجمة طبق — أبرز نقادنا هذا الطبق لجودته الاستثنائية.")}
+            </span>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
 
         {/* Breadcrumb */}
@@ -86,12 +148,29 @@ export function DishDetailPage() {
               alt={name}
               className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
             />
-            {dish.popularityScore && Number(dish.popularityScore) > 50 && (
-              <div className="absolute top-4 start-4 bg-primary text-primary-foreground px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-lg">
-                <TrendingUp className="w-3.5 h-3.5" />
-                {t('Trending', 'شائع')}
-              </div>
-            )}
+
+            {/* Overlay badges */}
+            <div className="absolute top-4 start-4 flex flex-col gap-2">
+              {dish.isTabaqStar && (
+                <div className="bg-amber-500 text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-lg">
+                  <Star className="w-3.5 h-3.5 fill-white" />
+                  {t('Tabaq Star', 'نجمة طبق')}
+                </div>
+              )}
+              {dish.isMostOrdered && !dish.isTabaqStar && (
+                <div className="bg-primary text-primary-foreground px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-lg">
+                  <Zap className="w-3.5 h-3.5 fill-current" />
+                  {t('Most Ordered', 'الأكثر طلباً')}
+                </div>
+              )}
+              {dish.popularityScore && Number(dish.popularityScore) > 50 && !dish.isTabaqStar && !dish.isMostOrdered && (
+                <div className="bg-primary text-primary-foreground px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-lg">
+                  <TrendingUp className="w-3.5 h-3.5" />
+                  {t('Trending', 'شائع')}
+                </div>
+              )}
+            </div>
+
             {hasRating && (
               <div className="absolute bottom-4 end-4 bg-black/70 backdrop-blur-sm text-white px-3 py-1.5 rounded-xl flex items-center gap-1.5 text-sm font-bold shadow-lg">
                 <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
@@ -139,11 +218,38 @@ export function DishDetailPage() {
               )}
             </div>
 
-            {/* Dietary / Info Tags */}
+            {/* Quick Stats */}
+            {(dish.prepTimeMinutes || spiceLevel > 0) && (
+              <div className="flex gap-3 flex-wrap">
+                {dish.prepTimeMinutes && (
+                  <div className="flex items-center gap-2 bg-secondary/60 border border-border/60 rounded-2xl px-4 py-2.5">
+                    <Clock className="w-4 h-4 text-primary" />
+                    <div>
+                      <p className="text-xs text-muted-foreground leading-none">{t('Prep Time', 'وقت التحضير')}</p>
+                      <p className="text-sm font-bold text-foreground">{dish.prepTimeMinutes} {t('min', 'دقيقة')}</p>
+                    </div>
+                  </div>
+                )}
+                {dish.calories && (
+                  <div className="flex items-center gap-2 bg-secondary/60 border border-border/60 rounded-2xl px-4 py-2.5">
+                    <Flame className="w-4 h-4 text-orange-500" />
+                    <div>
+                      <p className="text-xs text-muted-foreground leading-none">{t('Calories', 'السعرات')}</p>
+                      <p className="text-sm font-bold text-foreground">{dish.calories} kcal</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Spice Level */}
+            {spiceLevel > 0 && <SpiceMeter level={spiceLevel} />}
+
+            {/* Dietary Tags */}
             <div className="flex flex-wrap gap-2">
               {dish.isHalal && (
                 <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-green-100 text-green-700 font-semibold text-sm border border-green-200">
-                  {t('Halal', 'حلال')}
+                  <Shield className="w-3.5 h-3.5" /> {t('Halal', 'حلال')}
                 </span>
               )}
               {dish.isVegetarian && (
@@ -161,14 +267,24 @@ export function DishDetailPage() {
                   <Wheat className="w-3.5 h-3.5 line-through opacity-50" /> {t('Gluten Free', 'خالٍ من الغلوتين')}
                 </span>
               )}
-              {dish.calories && (
-                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-secondary text-foreground font-semibold text-sm">
-                  <Flame className="w-3.5 h-3.5 text-orange-500" /> {dish.calories} kcal
+              {dish.isHealthy && (
+                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-teal-100 text-teal-700 font-semibold text-sm border border-teal-200">
+                  {t('Healthy Choice', 'خيار صحي')}
+                </span>
+              )}
+              {dish.isDairyFree && (
+                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-sky-100 text-sky-700 font-semibold text-sm border border-sky-200">
+                  {t('Dairy-Free', 'خالٍ من الألبان')}
+                </span>
+              )}
+              {dish.isNutFree && (
+                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-lime-100 text-lime-700 font-semibold text-sm border border-lime-200">
+                  {t('Nut-Free', 'خالٍ من المكسرات')}
                 </span>
               )}
             </div>
 
-            {/* Nutrition if available */}
+            {/* Nutrition */}
             {(dish.protein || dish.carbs || dish.fat) && (
               <div className="grid grid-cols-3 gap-3">
                 {[
@@ -197,7 +313,7 @@ export function DishDetailPage() {
                   <Link href={`/restaurants/${restaurant.id}`}>
                     <Button variant="outline" size="lg" className="gap-2 rounded-2xl px-6">
                       <ArrowLeft className="w-4 h-4" />
-                      {t('View Restaurant', 'عرض المطعم')}
+                      {t('View Menu', 'عرض المنيو')}
                     </Button>
                   </Link>
                 </>
@@ -206,7 +322,55 @@ export function DishDetailPage() {
           </div>
         </div>
 
-        {/* Write a Review — Inline */}
+        {/* Allergens Panel */}
+        {allergens.length > 0 && (
+          <section className="mb-10">
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5">
+              <h3 className="font-bold text-amber-800 mb-3 flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-amber-600" />
+                {t('Allergen Information', 'معلومات المسببات التحسسية')}
+              </h3>
+              <p className="text-xs text-amber-700 mb-3">
+                {t('This dish contains or may contain the following allergens. Please inform the restaurant of any allergies.', 'يحتوي هذا الطبق أو قد يحتوي على المسببات التحسسية التالية. يُرجى إعلام المطعم بأي حساسية.')}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {allergens.map(a => {
+                  const info = ALLERGEN_MAP[a.toLowerCase()];
+                  return (
+                    <span key={a} className={`px-3 py-1.5 rounded-xl border text-sm font-semibold ${info ? info.color : 'bg-muted text-foreground border-border'}`}>
+                      {info ? (lang === 'ar' ? info.ar : info.en) : a}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* Critic Highlight */}
+        {dish.isTabaqStar && (
+          <section className="mb-10">
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-transparent border border-amber-300/40 p-6">
+              <div className="absolute top-0 end-0 text-8xl opacity-10">⭐</div>
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-amber-100 border border-amber-200 flex items-center justify-center shrink-0">
+                  <Award className="w-6 h-6 text-amber-600" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-foreground mb-1">{t("Tabaq Star Dish", "طبق نجمة طبق")}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {t(
+                      "Our expert food critics have visited this restaurant and selected this dish as an exceptional highlight — a must-try experience.",
+                      "زار نقادنا الغذائيون هذا المطعم واختاروا هذا الطبق بوصفه اختياراً استثنائياً يستحق التجربة."
+                    )}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* Reviews */}
         <section className="mb-12">
           <h2 className="text-2xl font-bold text-foreground mb-5 flex items-center gap-2">
             <MessageSquare className="w-5 h-5 text-primary" />

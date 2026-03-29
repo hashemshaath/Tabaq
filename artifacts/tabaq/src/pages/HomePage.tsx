@@ -4,7 +4,7 @@ import { Link, useLocation } from 'wouter';
 import {
   Search, ChevronRight, Star, TrendingUp, Trophy, MapPin,
   Flame, Layers, ArrowRight, CalendarDays, MessageSquare,
-  Utensils, Sparkles, BookOpen, Tag
+  Utensils, Sparkles, BookOpen, Tag, Award, Clock, Zap
 } from 'lucide-react';
 import { RestaurantCard } from '@/components/RestaurantCard';
 import { getRestaurantAwards, COLLECTIONS } from '@/lib/awards';
@@ -127,12 +127,13 @@ export function HomePage() {
   const [, setLocation] = useLocation();
   const [query, setQuery] = useState('');
 
-  const featured   = useApi<any[]>('/api/restaurants/featured?limit=8');
-  const trending   = useApi<any[]>('/api/dishes/trending?limit=6');
-  const occasions  = useApi<any[]>('/api/occasions');
-  const categories = useApi<any[]>('/api/categories');
-  const topRated   = useApi<{ restaurants: any[] }>('/api/restaurants?minRating=4.5&limit=6');
-  const newest     = useApi<{ restaurants: any[] }>('/api/restaurants?limit=4&sortBy=newest');
+  const featured    = useApi<any[]>('/api/restaurants/featured?limit=8');
+  const trending    = useApi<any[]>('/api/dishes/trending?limit=6');
+  const tabaqStars  = useApi<any[]>('/api/dishes/tabaq-stars?limit=6');
+  const occasions   = useApi<any[]>('/api/occasions');
+  const categories  = useApi<any[]>('/api/categories');
+  const topRated    = useApi<{ restaurants: any[] }>('/api/restaurants?minRating=4.5&limit=6');
+  const newest      = useApi<{ restaurants: any[] }>('/api/restaurants?limit=4&sortBy=newest');
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -308,6 +309,86 @@ export function HomePage() {
                 {lang === 'ar' ? cat.nameAr : cat.nameEn}
               </Link>
             ))}
+          </div>
+        </section>
+      )}
+
+      {/* ══ TABAQ STARS ═══════════════════════════════════════════ */}
+      {!tabaqStars.loading && (tabaqStars.data || []).length > 0 && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-14">
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-500 via-orange-500 to-amber-600 p-6 md:p-10">
+            {/* Decorative stars */}
+            <div className="pointer-events-none absolute inset-0 opacity-10 text-[10rem] leading-none select-none overflow-hidden">
+              <span className="absolute top-2 start-4">⭐</span>
+              <span className="absolute bottom-2 end-4">⭐</span>
+            </div>
+
+            <div className="flex justify-between items-end mb-6">
+              <div>
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <Award className="w-3.5 h-3.5 text-white/80" />
+                  <span className="text-white/80 font-medium text-xs tracking-[0.05em] uppercase">{t('Expert Critic Picks', 'اختيارات النقاد')}</span>
+                </div>
+                <h2 className="text-xl md:text-2xl font-bold text-white">{t('Tabaq Stars', 'نجوم طبق')}</h2>
+                <p className="text-white/70 text-sm mt-1 leading-relaxed">{t('Dishes selected and awarded by our expert critics for exceptional quality', 'أطباق اختارها وكرّمها نقادنا المتخصصون لجودتها الاستثنائية')}</p>
+              </div>
+              <Link href="/dishes" className="flex items-center gap-1 text-sm font-medium text-white/70 hover:text-white transition-colors shrink-0">
+                {t('View all', 'عرض الكل')} <ChevronRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {(tabaqStars.data || []).map((dish: any) => {
+                const name = lang === 'ar' ? dish.nameAr : dish.nameEn;
+                const restaurant = lang === 'ar' ? dish.restaurantNameAr : dish.restaurantNameEn;
+                const img = dish.imageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop';
+                return (
+                  <Link key={dish.id} href={`/dishes/${dish.id}`} className="group block">
+                    <div className="bg-white/95 backdrop-blur-sm rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+                      <div className="relative aspect-[16/9] overflow-hidden">
+                        <img src={img} alt={name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                        <div className="absolute top-2 start-2 bg-amber-500 text-white px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1 shadow-md">
+                          <Star className="w-3 h-3 fill-white" />
+                          {t('Tabaq Star', 'نجمة طبق')}
+                        </div>
+                        {dish.spiceLevel > 0 && (
+                          <div className="absolute bottom-2 end-2 bg-black/60 backdrop-blur-sm text-white px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1">
+                            {Array.from({ length: Math.min(dish.spiceLevel, 3) }).map((_, i) => (
+                              <Flame key={i} className="w-3 h-3 fill-orange-400 text-orange-400" />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-4">
+                        <h3 className="font-bold text-foreground text-sm line-clamp-1 mb-0.5">{name}</h3>
+                        <p className="text-xs text-muted-foreground line-clamp-1 mb-2">{restaurant}</p>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            {Number(dish.avgRating) > 0 && (
+                              <div className="flex items-center gap-1">
+                                <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                                <span className="text-xs font-bold">{Number(dish.avgRating).toFixed(1)}</span>
+                              </div>
+                            )}
+                            {dish.prepTimeMinutes && (
+                              <div className="flex items-center gap-1 text-muted-foreground">
+                                <Clock className="w-3 h-3" />
+                                <span className="text-xs">{dish.prepTimeMinutes}{t('m', 'د')}</span>
+                              </div>
+                            )}
+                          </div>
+                          {dish.price && (
+                            <span className="text-sm font-black text-amber-600">
+                              {Number(dish.price).toLocaleString('en-SA', { style: 'currency', currency: dish.currency || 'SAR', minimumFractionDigits: 0 })}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
           </div>
         </section>
       )}

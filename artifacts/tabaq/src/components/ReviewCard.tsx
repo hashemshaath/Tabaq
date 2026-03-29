@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Heart, MessageCircle, Star, Shield, ChevronDown, ChevronUp, Send, Trash2, Pencil, Flag, Check, X } from 'lucide-react';
+import { Heart, MessageCircle, Star, Shield, ChevronDown, ChevronUp, Send, Trash2, Pencil, Flag, Check, X, Award } from 'lucide-react';
 import {
   useListReviewComments,
   useAddReviewComment,
@@ -16,13 +16,21 @@ import { useLanguage } from '@/hooks/use-language';
 import { useAuth } from '@/context/AuthContext';
 import { Link } from 'wouter';
 
+type ExtendedReview = Review & {
+  restaurantNameEn?: string;
+  restaurantNameAr?: string;
+  dishNameEn?: string;
+  dishNameAr?: string;
+  isExpertReview?: boolean;
+  ratingPresentation?: number | string | null;
+  ratingIngredients?: number | string | null;
+  ratingTechnique?: number | string | null;
+  ratingCreativity?: number | string | null;
+  ratingPortionSize?: number | string | null;
+};
+
 interface ReviewCardProps {
-  review: Review & {
-    restaurantNameEn?: string;
-    restaurantNameAr?: string;
-    dishNameEn?: string;
-    dishNameAr?: string;
-  };
+  review: ExtendedReview;
   showTarget?: boolean;
   onDelete?: (id: number) => void;
 }
@@ -156,23 +164,42 @@ export function ReviewCard({ review, showTarget = false, onDelete }: ReviewCardP
   const commentCount = review.commentCount ?? 0;
 
   const hasSubRatings = review.ratingFood || review.ratingService || review.ratingAmbiance || review.ratingValue;
+  const hasExpertSubcriteria = review.isExpertReview && (
+    review.ratingPresentation || review.ratingIngredients ||
+    review.ratingTechnique || review.ratingCreativity || review.ratingPortionSize
+  );
 
   return (
-    <div className="bg-card border border-border/60 rounded-2xl p-5 space-y-4">
+    <div className={`bg-card border rounded-2xl p-5 space-y-4 ${review.isExpertReview ? 'border-amber-300/70 shadow-amber-100/50 shadow-md' : 'border-border/60'}`}>
+
+      {/* Expert Critic Banner */}
+      {review.isExpertReview && (
+        <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+          <Award className="w-4 h-4 text-amber-600 shrink-0" />
+          <span className="text-xs font-bold text-amber-700">{t('Verified Critic Review', 'تقييم ناقد معتمد')}</span>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3">
           {/* Avatar */}
-          <div className="w-10 h-10 rounded-full bg-primary/15 flex items-center justify-center shrink-0 overflow-hidden">
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 overflow-hidden ${review.isExpertReview ? 'bg-amber-100 ring-2 ring-amber-300' : 'bg-primary/15'}`}>
             {review.userAvatarUrl ? (
               <img src={review.userAvatarUrl} alt={userName} className="w-full h-full object-cover" />
             ) : (
-              <span className="text-primary font-bold text-sm">{(userName || 'U')[0].toUpperCase()}</span>
+              <span className={`font-bold text-sm ${review.isExpertReview ? 'text-amber-700' : 'text-primary'}`}>{(userName || 'U')[0].toUpperCase()}</span>
             )}
           </div>
           <div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 flex-wrap">
               <p className="font-semibold text-foreground text-sm">{userName}</p>
+              {review.isExpertReview && (
+                <span className="flex items-center gap-1 bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-md text-xs font-bold border border-amber-200">
+                  <Award className="w-3 h-3" />
+                  {t('Critic', 'ناقد')}
+                </span>
+              )}
               {review.userIsVerified && (
                 <span title={t('Verified Reviewer', 'مراجع موثوق')}>
                   <Shield className="w-3.5 h-3.5 text-primary" />
@@ -182,7 +209,7 @@ export function ReviewCard({ review, showTarget = false, onDelete }: ReviewCardP
             <p className="text-xs text-muted-foreground">{review.userLevelTitle ?? 'Food Explorer'}</p>
           </div>
         </div>
-        <div className="flex items-center gap-1.5 bg-amber-50 px-2.5 py-1 rounded-xl shrink-0">
+        <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl shrink-0 ${review.isExpertReview ? 'bg-amber-100 border border-amber-200' : 'bg-amber-50'}`}>
           <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
           <span className="text-xs font-bold text-amber-700">{Number(review.ratingOverall).toFixed(1)}</span>
         </div>
@@ -325,6 +352,21 @@ export function ReviewCard({ review, showTarget = false, onDelete }: ReviewCardP
           <SubRatingBar label={t('Service', 'الخدمة')} value={Number(review.ratingService)} />
           <SubRatingBar label={t('Ambiance', 'الأجواء')} value={Number(review.ratingAmbiance)} />
           <SubRatingBar label={t('Value', 'القيمة')} value={Number(review.ratingValue)} />
+        </div>
+      )}
+
+      {/* Expert Critic Subcriteria */}
+      {hasExpertSubcriteria && (
+        <div className="space-y-2 bg-amber-50/60 border border-amber-200/60 rounded-xl p-3">
+          <p className="text-xs font-bold text-amber-700 mb-2 flex items-center gap-1.5">
+            <Award className="w-3.5 h-3.5" />
+            {t('Professional Evaluation', 'التقييم الاحترافي')}
+          </p>
+          <SubRatingBar label={t('Presentation', 'التقديم')} value={Number(review.ratingPresentation)} />
+          <SubRatingBar label={t('Ingredients', 'المكونات')} value={Number(review.ratingIngredients)} />
+          <SubRatingBar label={t('Technique', 'الأسلوب')} value={Number(review.ratingTechnique)} />
+          <SubRatingBar label={t('Creativity', 'الإبداع')} value={Number(review.ratingCreativity)} />
+          <SubRatingBar label={t('Portion', 'الكمية')} value={Number(review.ratingPortionSize)} />
         </div>
       )}
 

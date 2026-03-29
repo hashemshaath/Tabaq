@@ -6,12 +6,19 @@ import {
   useGetTrendingDishes,
   type ListDishesDietaryTag,
   type ListDishesSortBy,
+  type DishCard as TDishCard,
   ListDishesDietaryTag as DietaryTagEnum,
 } from '@workspace/api-client-react';
 import { Link, useLocation } from 'wouter';
-import { Star, Flame, Leaf, Wheat, Coffee, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Star, Flame, Leaf, Wheat, Coffee, Filter, ChevronLeft, ChevronRight, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatPrice } from '@/lib/utils';
+
+type ExtendedDishCard = TDishCard & {
+  isTabaqStar?: boolean;
+  isMostOrdered?: boolean;
+  spiceLevel?: number;
+};
 
 const LIMIT = 16;
 
@@ -228,37 +235,62 @@ export function DishesPage() {
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {dishes.map(dish => (
-              <Link key={dish.id} href={`/dishes/${dish.id}`}>
-                <div className="rounded-2xl border border-border/60 overflow-hidden hover:border-primary/30 hover:shadow-md transition-all group cursor-pointer h-full">
-                  <div className="relative overflow-hidden bg-muted h-40">
-                    <img
-                      src={dish.imageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop'}
-                      alt={lang === 'ar' ? dish.nameAr : dish.nameEn}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                    {dish.price && (
-                      <div className="absolute bottom-2 end-2 bg-background/90 backdrop-blur-sm rounded-full px-2 py-0.5 text-xs font-bold text-primary">
-                        {formatPrice(dish.price, dish.currency, lang)}
+            {dishes.map(rawDish => {
+              const dish = rawDish as ExtendedDishCard;
+              return (
+                <Link key={dish.id} href={`/dishes/${dish.id}`}>
+                  <div className={`rounded-2xl border overflow-hidden hover:shadow-md transition-all group cursor-pointer h-full ${dish.isTabaqStar ? 'border-amber-300/70' : 'border-border/60 hover:border-primary/30'}`}>
+                    <div className="relative overflow-hidden bg-muted h-40">
+                      <img
+                        src={dish.imageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop'}
+                        alt={lang === 'ar' ? dish.nameAr : dish.nameEn}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      {dish.isTabaqStar && (
+                        <div className="absolute top-0 start-0 bg-amber-500 text-white px-2 py-1 rounded-br-xl rounded-tl-2xl flex items-center gap-1 shadow-sm">
+                          <Star className="w-3 h-3 fill-white" />
+                          <span className="text-[10px] font-bold">{t('Star', 'نجمة')}</span>
+                        </div>
+                      )}
+                      {dish.isMostOrdered && !dish.isTabaqStar && (
+                        <div className="absolute top-0 start-0 bg-primary text-primary-foreground px-2 py-1 rounded-br-xl rounded-tl-2xl flex items-center gap-1 shadow-sm">
+                          <Zap className="w-3 h-3 fill-current" />
+                          <span className="text-[10px] font-bold">{t('Top', 'الأكثر')}</span>
+                        </div>
+                      )}
+                      {dish.price && (
+                        <div className="absolute bottom-2 end-2 bg-background/90 backdrop-blur-sm rounded-full px-2 py-0.5 text-xs font-bold text-primary">
+                          {formatPrice(dish.price, dish.currency, lang)}
+                        </div>
+                      )}
+                      {dish.spiceLevel && dish.spiceLevel > 0 ? (
+                        <div className="absolute bottom-2 start-2 flex gap-0.5">
+                          {Array.from({ length: Math.min(dish.spiceLevel, 3) }).map((_, i) => (
+                            <Flame key={i} className="w-3.5 h-3.5 fill-orange-400 text-orange-400 drop-shadow" />
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                    <div className="p-3">
+                      <h3 className="font-semibold text-sm line-clamp-1 group-hover:text-primary transition-colors">
+                        {lang === 'ar' ? dish.nameAr : dish.nameEn}
+                      </h3>
+                      <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
+                        {lang === 'ar' ? dish.restaurantNameAr : dish.restaurantNameEn}
+                      </p>
+                      <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+                        <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                        <span className="text-xs font-semibold">{Number(dish.avgRating).toFixed(1)}</span>
+                        <span className="text-xs text-muted-foreground">({dish.reviewCount})</span>
+                        {dish.isTabaqStar && (
+                          <span className="ms-auto text-[10px] font-bold text-amber-600">{t('Tabaq Star', 'نجمة طبق')}</span>
+                        )}
                       </div>
-                    )}
-                  </div>
-                  <div className="p-3">
-                    <h3 className="font-semibold text-sm line-clamp-1 group-hover:text-primary transition-colors">
-                      {lang === 'ar' ? dish.nameAr : dish.nameEn}
-                    </h3>
-                    <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
-                      {lang === 'ar' ? dish.restaurantNameAr : dish.restaurantNameEn}
-                    </p>
-                    <div className="flex items-center gap-1 mt-1.5">
-                      <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                      <span className="text-xs font-semibold">{Number(dish.avgRating).toFixed(1)}</span>
-                      <span className="text-xs text-muted-foreground">({dish.reviewCount})</span>
                     </div>
                   </div>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              );
+            })}
           </div>
         )}
 

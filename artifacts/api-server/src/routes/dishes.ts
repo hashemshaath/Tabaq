@@ -47,6 +47,13 @@ router.get("/dishes", async (req, res) => {
       restaurantNameEn: restaurantsTable.nameEn,
       restaurantNameAr: restaurantsTable.nameAr,
       cityId: restaurantsTable.cityId,
+      isTabaqStar: dishesTable.isTabaqStar,
+      isMostOrdered: dishesTable.isMostOrdered,
+      spiceLevel: dishesTable.spiceLevel,
+      prepTimeMinutes: dishesTable.prepTimeMinutes,
+      isHalal: dishesTable.isHalal,
+      isVegetarian: dishesTable.isVegetarian,
+      allergens: dishesTable.allergens,
     }).from(dishesTable)
       .innerJoin(restaurantsTable, eq(dishesTable.restaurantId, restaurantsTable.id))
       .where(and(...conditions))
@@ -123,6 +130,39 @@ router.get("/dishes/trending", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "Failed to fetch trending dishes");
     res.status(500).json({ error: "internal_error", message: "Failed to fetch trending dishes" });
+  }
+});
+
+// Tabaq Star dishes — highlighted by expert critics
+router.get("/dishes/tabaq-stars", async (req, res) => {
+  try {
+    const { limit = "8" } = req.query;
+    const dishes = await db.select({
+      id: dishesTable.id,
+      nameEn: dishesTable.nameEn,
+      nameAr: dishesTable.nameAr,
+      imageUrl: dishesTable.imageUrl,
+      price: dishesTable.price,
+      currency: dishesTable.currency,
+      avgRating: dishesTable.avgRating,
+      reviewCount: dishesTable.reviewCount,
+      restaurantId: dishesTable.restaurantId,
+      restaurantNameEn: restaurantsTable.nameEn,
+      restaurantNameAr: restaurantsTable.nameAr,
+      spiceLevel: dishesTable.spiceLevel,
+      prepTimeMinutes: dishesTable.prepTimeMinutes,
+      isHalal: dishesTable.isHalal,
+      isVegetarian: dishesTable.isVegetarian,
+      allergens: dishesTable.allergens,
+    }).from(dishesTable)
+      .innerJoin(restaurantsTable, eq(dishesTable.restaurantId, restaurantsTable.id))
+      .where(and(eq(dishesTable.isTabaqStar, true), eq(dishesTable.isAvailable, true)))
+      .orderBy(desc(dishesTable.avgRating))
+      .limit(parseInt(limit as string));
+    res.json(dishes);
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch Tabaq Star dishes");
+    res.status(500).json({ error: "internal_error", message: "Failed to fetch Tabaq Star dishes" });
   }
 });
 
