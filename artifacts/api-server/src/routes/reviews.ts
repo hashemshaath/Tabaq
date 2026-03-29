@@ -43,6 +43,24 @@ async function enrichReview(review: ReviewRow, viewerUserId: number | null) {
     user?.credibilityScore !== undefined &&
     Number(user.credibilityScore) >= 70;
 
+  let restaurantNameEn: string | null = null;
+  let restaurantNameAr: string | null = null;
+  if (review.restaurantId) {
+    const [rest] = await db.select({ nameEn: restaurantsTable.nameEn, nameAr: restaurantsTable.nameAr })
+      .from(restaurantsTable).where(eq(restaurantsTable.id, review.restaurantId));
+    restaurantNameEn = rest?.nameEn ?? null;
+    restaurantNameAr = rest?.nameAr ?? null;
+  }
+
+  let dishNameEn: string | null = null;
+  let dishNameAr: string | null = null;
+  if (review.dishId) {
+    const [dish] = await db.select({ nameEn: dishesTable.nameEn, nameAr: dishesTable.nameAr })
+      .from(dishesTable).where(eq(dishesTable.id, review.dishId));
+    dishNameEn = dish?.nameEn ?? null;
+    dishNameAr = dish?.nameAr ?? null;
+  }
+
   return {
     ...review,
     userNameEn: user?.nameEn ?? "User",
@@ -53,6 +71,10 @@ async function enrichReview(review: ReviewRow, viewerUserId: number | null) {
     userIsVerified: isVerified,
     photoUrls: photos.map(p => p.photoUrl),
     isLiked,
+    restaurantNameEn,
+    restaurantNameAr,
+    dishNameEn,
+    dishNameAr,
   };
 }
 

@@ -4,6 +4,7 @@ import {
   Star, Award, ChevronRight, Utensils, Camera, Flame, Bookmark,
   Plus, ArrowUp, MapPin, Clock, CheckCircle2
 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { useGetFeed, useListReviews } from '@workspace/api-client-react';
 import { ReviewCard } from '@/components/ReviewCard';
 import { useLanguage } from '@/hooks/use-language';
@@ -186,6 +187,18 @@ function TrendingCriticsCard({ t, lang }: { t: (en: string, ar: string) => strin
 }
 
 function TrendingRestaurantsCard({ t, lang }: { t: (en: string, ar: string) => string; lang: string }) {
+  const { data } = useQuery({
+    queryKey: ['feed-trending-restaurants'],
+    queryFn: async () => {
+      const res = await fetch('/api/restaurants?limit=3&sortBy=rating');
+      if (!res.ok) return null;
+      return res.json();
+    },
+    staleTime: 120000,
+  });
+
+  const restaurants = (data?.restaurants ?? TRENDING_RESTAURANTS).slice(0, 3);
+
   return (
     <div className="bg-card border border-border/60 rounded-3xl p-4">
       <div className="flex items-center gap-2 mb-4">
@@ -193,21 +206,21 @@ function TrendingRestaurantsCard({ t, lang }: { t: (en: string, ar: string) => s
         <h3 className="font-bold text-foreground text-sm">{t('Trending This Week', 'الأكثر رواجاً هذا الأسبوع')}</h3>
       </div>
       <div className="space-y-3">
-        {TRENDING_RESTAURANTS.map(r => (
+        {restaurants.map((r: any) => (
           <Link key={r.id} href={`/restaurants/${r.id}`}>
             <div className="flex items-center gap-3 hover:bg-secondary/40 rounded-2xl p-1.5 transition-colors cursor-pointer">
-              <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0">
-                <img src={r.image} alt={r.nameEn} className="w-full h-full object-cover" />
+              <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 bg-muted">
+                <img src={r.coverImageUrl ?? r.image ?? 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=200&h=200&fit=crop'} alt={r.nameEn} className="w-full h-full object-cover" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold text-foreground truncate">{lang === 'ar' ? r.nameAr : r.nameEn}</p>
+                <p className="text-xs font-bold text-foreground truncate">{lang === 'ar' ? (r.nameAr ?? r.nameEn) : r.nameEn}</p>
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                  <span className="text-[10px] text-muted-foreground">{r.rating} · {r.city}</span>
+                  <span className="text-[10px] text-muted-foreground">{Number(r.avgRating ?? r.rating ?? 0).toFixed(1)} · {r.cityNameEn ?? r.city ?? 'Riyadh'}</span>
                 </div>
               </div>
               <span className="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full flex items-center gap-0.5 shrink-0">
-                <ArrowUp className="w-2.5 h-2.5" />{r.trend}
+                <ArrowUp className="w-2.5 h-2.5" />{r.trend ?? '+12%'}
               </span>
             </div>
           </Link>
@@ -223,6 +236,18 @@ function TrendingRestaurantsCard({ t, lang }: { t: (en: string, ar: string) => s
 }
 
 function TrendingDishesCard({ t, lang }: { t: (en: string, ar: string) => string; lang: string }) {
+  const { data } = useQuery({
+    queryKey: ['feed-trending-dishes'],
+    queryFn: async () => {
+      const res = await fetch('/api/dishes/trending?limit=3');
+      if (!res.ok) return null;
+      return res.json();
+    },
+    staleTime: 120000,
+  });
+
+  const dishes = (data?.dishes ?? TRENDING_DISHES).slice(0, 3);
+
   return (
     <div className="bg-card border border-border/60 rounded-3xl p-4">
       <div className="flex items-center gap-2 mb-4">
@@ -230,20 +255,24 @@ function TrendingDishesCard({ t, lang }: { t: (en: string, ar: string) => string
         <h3 className="font-bold text-foreground text-sm">{t("Today's Top Dishes", 'أفضل الأطباق اليوم')}</h3>
       </div>
       <div className="space-y-3">
-        {TRENDING_DISHES.map((dish, i) => (
-          <div key={i} className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0">
-              <img src={dish.image} alt={dish.nameEn} className="w-full h-full object-cover" />
+        {dishes.map((dish: any, i: number) => (
+          <Link key={dish.id ?? i} href={dish.id ? `/restaurants/${dish.restaurantId ?? ''}` : '#'}>
+            <div className="flex items-center gap-3 hover:bg-secondary/40 rounded-xl p-1 transition-colors cursor-pointer">
+              <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 bg-muted">
+                <img src={dish.imageUrl ?? dish.image ?? 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=120&h=120&fit=crop'} alt={dish.nameEn} className="w-full h-full object-cover" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold text-foreground truncate">{lang === 'ar' ? (dish.nameAr ?? dish.nameEn) : dish.nameEn}</p>
+                <p className="text-[10px] text-muted-foreground truncate">
+                  {lang === 'ar' ? (dish.restaurantNameAr ?? dish.restaurant ?? '') : (dish.restaurantNameEn ?? dish.restaurant ?? '')} · {dish.price} {dish.currency ?? 'SAR'}
+                </p>
+              </div>
+              <div className="flex items-center gap-1 text-[10px] text-muted-foreground shrink-0">
+                <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                {Number(dish.avgRating ?? 0).toFixed(1)}
+              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-bold text-foreground truncate">{lang === 'ar' ? dish.nameAr : dish.nameEn}</p>
-              <p className="text-[10px] text-muted-foreground truncate">{dish.restaurant} · {dish.price}</p>
-            </div>
-            <div className="flex items-center gap-1 text-[10px] text-muted-foreground shrink-0">
-              <Heart className="w-3 h-3 fill-red-400 text-red-400" />
-              {dish.likes}
-            </div>
-          </div>
+          </Link>
         ))}
       </div>
       <Link href="/dishes">

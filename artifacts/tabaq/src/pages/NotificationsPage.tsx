@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Bell, CalendarDays, Star, Users, Tag, Gift, Award, ChevronRight,
   Check, CheckCheck, Settings, Trash2, Clock, Heart, MessageSquare, Zap
 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { useLanguage } from '@/hooks/use-language';
 import { useAuth } from '@/context/AuthContext';
 import { Link } from 'wouter';
@@ -133,7 +134,24 @@ export default function NotificationsPage() {
   const t = (en: string, ar: string) => lang === 'ar' ? ar : en;
   const { user } = useAuth();
   const [filterTab, setFilterTab] = useState('all');
-  const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState<Notification[]>(MOCK_NOTIFICATIONS);
+
+  const { data: liveData } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: async () => {
+      const res = await fetch('/api/notifications', { credentials: 'include' });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!user,
+    staleTime: 30000,
+  });
+
+  useEffect(() => {
+    if (liveData?.notifications?.length) {
+      setNotifications(liveData.notifications as Notification[]);
+    }
+  }, [liveData]);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
