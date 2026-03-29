@@ -1,26 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useLocalization } from '@/context/LocalizationContext';
 
 export type Language = 'en' | 'ar';
 
-function safeStorage(fn: () => string | null | void): string | null {
-  try { return (fn() as string | null) ?? null; } catch { return null; }
-}
-
 export function useLanguage() {
-  const [lang, setLang] = useState<Language>(() => {
-    const stored = safeStorage(() => localStorage.getItem('tabaq_lang'));
-    return (stored as Language) || 'en';
-  });
+  const { language, setLanguage, t, isRtl, country } = useLocalization();
 
-  useEffect(() => {
-    document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
-    document.documentElement.lang = lang;
-    safeStorage(() => { localStorage.setItem('tabaq_lang', lang); return null; });
-  }, [lang]);
+  const toggleLanguage = () => setLanguage(language === 'en' ? 'ar' : 'en');
 
-  const toggleLanguage = () => setLang(prev => prev === 'en' ? 'ar' : 'en');
-
-  const t = (en: string, ar: string) => lang === 'ar' ? ar : en;
-
-  return { lang, setLang, toggleLanguage, t, isRtl: lang === 'ar' };
+  return {
+    lang: language,
+    setLang: setLanguage,
+    toggleLanguage,
+    t,
+    isRtl,
+    country,
+  };
 }

@@ -8,7 +8,9 @@ import {
   Trophy, Zap, Gift, Bell, Settings, ArrowRight, BookOpen
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useListBookings, useListVouchers } from '@workspace/api-client-react';
+import { useQuery } from '@tanstack/react-query';
+import { AddressBook } from '@/components/AddressBook';
+import { LocalizationSettings } from '@/components/LocalizationSettings';
 
 const LEVEL_CONFIG = [
   { level: 1, name: 'Food Explorer', nameAr: 'مستكشف الطعام', min: 0, max: 100, color: 'from-green-400 to-emerald-500', icon: '🌱' },
@@ -50,10 +52,18 @@ export function UserDashboardPage() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<DashTab>('overview');
 
-  const { data: bookingsData } = useListBookings();
-  const { data: vouchersData } = useListVouchers();
-  const bookings = bookingsData ?? MOCK_BOOKINGS;
-  const vouchers = vouchersData ?? [];
+  const { data: bookingsData } = useQuery({
+    queryKey: ['bookings'],
+    queryFn: () => fetch('/api/bookings').then(r => r.ok ? r.json() : null),
+    retry: false,
+  });
+  const { data: vouchersData } = useQuery({
+    queryKey: ['vouchers'],
+    queryFn: () => fetch('/api/vouchers').then(r => r.ok ? r.json() : null),
+    retry: false,
+  });
+  const bookings = (Array.isArray(bookingsData) ? bookingsData : null) ?? MOCK_BOOKINGS;
+  const vouchers = (Array.isArray(vouchersData) ? vouchersData : null) ?? [];
 
   const levelConfig = LEVEL_CONFIG[MOCK_POINTS.level - 1];
   const progress = ((MOCK_POINTS.total - levelConfig.min) / (levelConfig.max - levelConfig.min)) * 100;
@@ -468,7 +478,14 @@ export function UserDashboardPage() {
 
         {/* ── SETTINGS ── */}
         {activeTab === 'settings' && (
-          <div className="space-y-5 max-w-lg">
+          <div className="space-y-8 max-w-2xl">
+
+            <LocalizationSettings />
+
+            <div className="bg-card border border-border rounded-2xl p-5">
+              <AddressBook />
+            </div>
+
             <div className="bg-card border border-border rounded-2xl overflow-hidden">
               <div className="px-5 py-4 border-b border-border">
                 <h3 className="font-bold text-foreground">{t('Personal Information', 'المعلومات الشخصية')}</h3>

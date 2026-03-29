@@ -1,6 +1,7 @@
 export * from "./countries";
 export * from "./categories";
 export * from "./users";
+export * from "./addresses";
 export * from "./restaurants";
 export * from "./menus";
 export * from "./bookings";

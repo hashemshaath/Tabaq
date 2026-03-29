@@ -17,6 +17,7 @@ import usernameRouter from "./username.js";
 import adminStatsRouter from "./admin-stats.js";
 import adminOffersRouter from "./admin-offers.js";
 import adminReferralsRouter from "./admin-referrals.js";
+import addressesRouter from "./addresses.js";
 
 const router: IRouter = Router();
 
@@ -38,5 +39,6 @@ router.use(usernameRouter);
 router.use(adminStatsRouter);
 router.use(adminOffersRouter);
 router.use(adminReferralsRouter);
+router.use(addressesRouter);
 
 export default router;
