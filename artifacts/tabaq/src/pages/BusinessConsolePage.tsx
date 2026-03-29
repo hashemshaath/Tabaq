@@ -83,6 +83,56 @@ export function BusinessConsolePage() {
   // The demo restaurant ID — in production this comes from auth context
   const RESTAURANT_ID = 2;
 
+  // Real stats for this restaurant
+  const { data: statsData } = useQuery({
+    queryKey: ['console-stats', RESTAURANT_ID],
+    queryFn: async () => {
+      const res = await fetch(`/api/restaurants/${RESTAURANT_ID}/stats`);
+      if (!res.ok) return null;
+      return res.json();
+    },
+    staleTime: 60000,
+  });
+
+  // Real bookings for this restaurant
+  const { data: bookingsData } = useQuery({
+    queryKey: ['console-bookings', RESTAURANT_ID],
+    queryFn: async () => {
+      const res = await fetch(`/api/restaurants/${RESTAURANT_ID}/bookings?limit=50`);
+      if (!res.ok) return null;
+      return res.json();
+    },
+    staleTime: 30000,
+  });
+
+  // Real reviews for this restaurant
+  const { data: reviewsData } = useQuery({
+    queryKey: ['console-reviews', RESTAURANT_ID],
+    queryFn: async () => {
+      const res = await fetch(`/api/reviews?restaurantId=${RESTAURANT_ID}&limit=20`);
+      if (!res.ok) return null;
+      return res.json();
+    },
+    staleTime: 30000,
+  });
+
+  // Real contract for this restaurant
+  const { data: contractData } = useQuery({
+    queryKey: ['console-contract', RESTAURANT_ID],
+    queryFn: async () => {
+      const res = await fetch(`/api/restaurants/${RESTAURANT_ID}/contract`);
+      if (!res.ok) return null;
+      return res.json();
+    },
+    staleTime: 60000,
+  });
+
+  const liveBookings: any[] = bookingsData?.bookings ?? MOCK_BOOKINGS;
+  const liveReviews: any[] = reviewsData?.reviews ?? MOCK_REVIEWS;
+  const liveContract = contractData?.contract ?? MOCK_CONTRACT;
+  const today = new Date().toISOString().split('T')[0];
+  const todayBookings = liveBookings.filter((b: any) => b.date === today);
+
   // Fetch real offers from the API for this restaurant
   const { data: liveOffersData, refetch: refetchLiveOffers } = useQuery({
     queryKey: ['console-offers', RESTAURANT_ID],
@@ -99,6 +149,13 @@ export function BusinessConsolePage() {
   const displayOffers = liveOffersData?.offers?.length
     ? liveOffersData.offers
     : consoleOffers;
+
+  const liveStats = statsData ? [
+    { labelEn: 'Total Bookings', labelAr: 'إجمالي الحجوزات', value: statsData.totalBookings.toLocaleString(), change: 'Live data', up: true, icon: CalendarDays, color: 'text-blue-600 bg-blue-50' },
+    { labelEn: 'Avg. Rating', labelAr: 'متوسط التقييم', value: parseFloat(statsData.avgRating).toFixed(1), change: `${statsData.reviewCount} reviews`, up: true, icon: Star, color: 'text-amber-600 bg-amber-50' },
+    { labelEn: 'Total Diners', labelAr: 'إجمالي الزوار', value: statsData.totalDiners.toLocaleString(), change: 'Live data', up: true, icon: Users, color: 'text-green-600 bg-green-50' },
+    { labelEn: 'Active Offers', labelAr: 'عروض نشطة', value: (displayOffers as any[]).filter((o: any) => o.isActive).length.toString(), change: 'Live data', up: true, icon: Tag, color: 'text-primary bg-primary/10' },
+  ] : MOCK_STATS;
 
   // Create offer form state
   const EMPTY_FORM = {
@@ -215,7 +272,7 @@ export function BusinessConsolePage() {
           <div className="space-y-8">
             {/* Stats */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              {MOCK_STATS.map(stat => {
+              {liveStats.map(stat => {
                 const Icon = stat.icon;
                 return (
                   <div key={stat.labelEn} className="bg-card border border-border rounded-2xl p-5">
@@ -240,20 +297,23 @@ export function BusinessConsolePage() {
                 <div className="flex items-center justify-between p-5 border-b border-border">
                   <h2 className="font-bold text-foreground">{t("Today's Bookings", 'حجوزات اليوم')}</h2>
                   <span className="bg-primary/10 text-primary text-xs font-bold px-2.5 py-1 rounded-full">
-                    {MOCK_BOOKINGS.filter(b => b.date === '2026-03-29').length}
+                    {todayBookings.length}
                   </span>
                 </div>
                 <div className="divide-y divide-border">
-                  {MOCK_BOOKINGS.filter(b => b.date === '2026-03-29').map(booking => {
-                    const st = STATUS_MAP[booking.status];
+                  {todayBookings.length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-8">{t('No bookings today', 'لا توجد حجوزات اليوم')}</p>
+                  )}
+                  {todayBookings.map((booking: any) => {
+                    const st = STATUS_MAP[booking.status] ?? STATUS_MAP.pending;
                     const StatusIcon = st.icon;
                     return (
-                      <div key={booking.ref} className="flex items-center gap-3 p-4">
+                      <div key={booking.id ?? booking.ref} className="flex items-center gap-3 p-4">
                         <div className="w-9 h-9 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
-                          <span className="text-primary font-bold text-sm">{booking.guests}</span>
+                          <span className="text-primary font-bold text-sm">{booking.partySize ?? booking.guests}</span>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-foreground text-sm truncate">{booking.name}</p>
+                          <p className="font-semibold text-foreground text-sm truncate font-mono">{booking.referenceCode ?? booking.refCode ?? booking.ref}</p>
                           <p className="text-xs text-muted-foreground">{booking.time}</p>
                         </div>
                         <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${st.className}`}>
@@ -277,29 +337,26 @@ export function BusinessConsolePage() {
                   <h2 className="font-bold text-foreground">{t('Recent Reviews', 'التقييمات الأخيرة')}</h2>
                   <div className="flex items-center gap-1.5 bg-amber-50 border border-amber-100 px-2.5 py-1 rounded-full">
                     <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-                    <span className="text-amber-700 text-xs font-bold">4.7</span>
+                    <span className="text-amber-700 text-xs font-bold">{statsData ? parseFloat(statsData.avgRating).toFixed(1) : '4.7'}</span>
                   </div>
                 </div>
                 <div className="divide-y divide-border">
-                  {MOCK_REVIEWS.map((review, idx) => (
-                    <div key={idx} className="p-4">
+                  {liveReviews.slice(0, 3).map((review: any, idx: number) => (
+                    <div key={review.id ?? idx} className="p-4">
                       <div className="flex items-start justify-between gap-3 mb-2">
                         <div>
-                          <p className="font-semibold text-foreground text-sm">{review.name}</p>
+                          <p className="font-semibold text-foreground text-sm">{review.name ?? `User #${review.userId}`}</p>
                           <div className="flex gap-0.5 mt-0.5">
                             {[1,2,3,4,5].map(s => (
-                              <Star key={s} className={`w-3 h-3 ${s <= review.rating ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground/20'}`} />
+                              <Star key={s} className={`w-3 h-3 ${s <= Math.round(parseFloat(review.ratingOverall ?? review.rating ?? 0)) ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground/20'}`} />
                             ))}
                           </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                          <span className="text-xs text-muted-foreground">{review.date}</span>
-                          {review.replied && (
-                            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">Replied</span>
-                          )}
+                          <span className="text-xs text-muted-foreground">{review.date ?? (review.createdAt ? new Date(review.createdAt).toLocaleDateString() : '')}</span>
                         </div>
                       </div>
-                      <p className="text-sm text-muted-foreground line-clamp-2">{review.text}</p>
+                      <p className="text-sm text-muted-foreground line-clamp-2">{lang === 'ar' ? (review.textAr ?? review.text) : (review.textEn ?? review.text)}</p>
                     </div>
                   ))}
                 </div>
@@ -320,10 +377,10 @@ export function BusinessConsolePage() {
               <div className="p-5">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {[
-                    { label: t('Contract Ref', 'رقم العقد'), val: MOCK_CONTRACT.refCode, mono: true },
-                    { label: t('Commission Rate', 'نسبة العمولة'), val: `${MOCK_CONTRACT.commissionPercent}%`, highlight: true },
-                    { label: t('Payment Model', 'نموذج الدفع'), val: MOCK_CONTRACT.paymentModel.replace(/_/g, ' '), capitalize: true },
-                    { label: t('Settlement', 'التسوية'), val: `${MOCK_CONTRACT.settlementDays} days` },
+                    { label: t('Contract Ref', 'رقم العقد'), val: liveContract.refCode, mono: true },
+                    { label: t('Commission Rate', 'نسبة العمولة'), val: `${liveContract.commissionPercent}%`, highlight: true },
+                    { label: t('Payment Model', 'نموذج الدفع'), val: (liveContract.paymentModel ?? '').replace(/_/g, ' '), capitalize: true },
+                    { label: t('Settlement', 'التسوية'), val: `${liveContract.settlementDays} days` },
                   ].map(item => (
                     <div key={item.label} className="bg-secondary/40 rounded-xl p-3">
                       <p className="text-xs text-muted-foreground mb-1">{item.label}</p>
@@ -337,7 +394,7 @@ export function BusinessConsolePage() {
                   <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 text-xs font-semibold px-2.5 py-1 rounded-full">
                     <BadgeCheck className="w-3 h-3" /> {t('Active Contract', 'عقد نشط')}
                   </span>
-                  <span className="text-xs text-muted-foreground">{t('Valid from', 'صالح من')} {MOCK_CONTRACT.validFrom}</span>
+                  <span className="text-xs text-muted-foreground">{t('Valid from', 'صالح من')} {liveContract.validFrom ? new Date(liveContract.validFrom).toLocaleDateString() : '—'}</span>
                 </div>
               </div>
             </div>
@@ -393,27 +450,31 @@ export function BusinessConsolePage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {MOCK_BOOKINGS.map(booking => {
-                    const st = STATUS_MAP[booking.status];
+                  {liveBookings.length === 0 && (
+                    <tr><td colSpan={6} className="text-center py-12 text-muted-foreground text-sm">{t('No bookings yet', 'لا توجد حجوزات بعد')}</td></tr>
+                  )}
+                  {liveBookings.map((booking: any) => {
+                    const st = STATUS_MAP[booking.status] ?? STATUS_MAP.pending;
                     const StatusIcon = st.icon;
+                    const ref = booking.referenceCode ?? booking.refCode ?? booking.ref ?? '';
                     return (
-                      <tr key={booking.ref} className="hover:bg-secondary/20 transition-colors">
+                      <tr key={booking.id ?? ref} className="hover:bg-secondary/20 transition-colors">
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary font-bold text-sm">
-                              {booking.name[0]}
+                              {(booking.partySize ?? booking.guests ?? '?')}
                             </div>
-                            <span className="font-medium text-foreground text-sm">{booking.name}</span>
+                            <span className="font-medium text-foreground text-sm font-mono text-xs">{ref.slice(-8)}</span>
                           </div>
                         </td>
                         <td className="px-5 py-4 text-sm text-muted-foreground">{booking.date} · {booking.time}</td>
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                             <Users className="w-3.5 h-3.5" />
-                            {booking.guests}
+                            {booking.partySize ?? booking.guests}
                           </div>
                         </td>
-                        <td className="px-5 py-4 text-xs font-mono text-muted-foreground">{booking.ref}</td>
+                        <td className="px-5 py-4 text-xs font-mono text-muted-foreground">{ref}</td>
                         <td className="px-5 py-4">
                           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${st.className}`}>
                             <StatusIcon className="w-3 h-3" />
@@ -444,36 +505,35 @@ export function BusinessConsolePage() {
               <h2 className="text-xl font-bold text-foreground">{t('Guest Reviews', 'تقييمات الضيوف')}</h2>
               <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-2">
                 <Star className="w-4 h-4 fill-amber-500 text-amber-500" />
-                <span className="font-bold text-amber-700">4.7</span>
+                <span className="font-bold text-amber-700">{statsData ? parseFloat(statsData.avgRating).toFixed(1) : '4.7'}</span>
                 <span className="text-amber-600/70 text-sm">avg rating</span>
               </div>
             </div>
-            {MOCK_REVIEWS.map((review, idx) => (
-              <div key={idx} className="bg-card border border-border rounded-2xl p-5">
+            {liveReviews.length === 0 && (
+              <div className="text-center py-16 text-muted-foreground">{t('No reviews yet', 'لا توجد تقييمات بعد')}</div>
+            )}
+            {liveReviews.map((review: any, idx: number) => (
+              <div key={review.id ?? idx} className="bg-card border border-border rounded-2xl p-5">
                 <div className="flex items-start justify-between gap-4 mb-3">
                   <div className="flex items-start gap-3">
                     <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary font-bold shrink-0">
-                      {review.name[0]}
+                      {(review.name ?? `U${review.userId ?? idx}`)[0]}
                     </div>
                     <div>
-                      <p className="font-bold text-foreground">{review.name}</p>
+                      <p className="font-bold text-foreground">{review.name ?? `User #${review.userId}`}</p>
                       <div className="flex items-center gap-1.5 mt-0.5">
                         <div className="flex gap-0.5">
                           {[1,2,3,4,5].map(s => (
-                            <Star key={s} className={`w-3.5 h-3.5 ${s <= review.rating ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground/20'}`} />
+                            <Star key={s} className={`w-3.5 h-3.5 ${s <= Math.round(parseFloat(review.ratingOverall ?? review.rating ?? 0)) ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground/20'}`} />
                           ))}
                         </div>
-                        <span className="text-xs text-muted-foreground">{review.date}</span>
+                        <span className="text-xs text-muted-foreground">{review.date ?? (review.createdAt ? new Date(review.createdAt).toLocaleDateString() : '')}</span>
                       </div>
                     </div>
                   </div>
-                  {review.replied ? (
-                    <span className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full font-semibold shrink-0">{t('Replied', 'تم الرد')}</span>
-                  ) : (
-                    <button className="text-xs bg-primary text-primary-foreground px-3 py-1 rounded-full font-semibold shrink-0 hover:bg-primary/90 transition-colors">{t('Reply', 'رد')}</button>
-                  )}
+                  <button className="text-xs bg-primary text-primary-foreground px-3 py-1 rounded-full font-semibold shrink-0 hover:bg-primary/90 transition-colors">{t('Reply', 'رد')}</button>
                 </div>
-                <p className="text-muted-foreground text-sm leading-relaxed">{review.text}</p>
+                <p className="text-muted-foreground text-sm leading-relaxed">{lang === 'ar' ? (review.textAr ?? review.text) : (review.textEn ?? review.text)}</p>
               </div>
             ))}
           </div>

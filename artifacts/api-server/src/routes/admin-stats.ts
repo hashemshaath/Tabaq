@@ -9,7 +9,7 @@ import {
   vouchersTable,
   platformModulesTable,
 } from "@workspace/db/schema";
-import { count, avg, sql, eq, desc } from "drizzle-orm";
+import { count, avg, sql, eq, desc, and, like } from "drizzle-orm";
 
 const router = Router();
 
@@ -70,6 +70,75 @@ router.get("/admin/stats", async (req, res) => {
       recentRestaurants,
       recentUsers,
     });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+router.get("/admin/users", async (req, res) => {
+  try {
+    const { limit = "50", offset = "0", search = "" } = req.query as Record<string, string>;
+    const users = await db
+      .select({
+        id: usersTable.id,
+        refCode: usersTable.refCode,
+        nameEn: usersTable.nameEn,
+        nameAr: usersTable.nameAr,
+        email: usersTable.email,
+        phone: usersTable.phone,
+        username: usersTable.username,
+        points: usersTable.points,
+        level: usersTable.level,
+        levelTitle: usersTable.levelTitle,
+        isVerified: usersTable.isVerified,
+        credibilityScore: usersTable.credibilityScore,
+        createdAt: usersTable.createdAt,
+      })
+      .from(usersTable)
+      .orderBy(desc(usersTable.createdAt))
+      .limit(parseInt(limit))
+      .offset(parseInt(offset));
+    const [{ total }] = await db.select({ total: count() }).from(usersTable);
+    res.json({ users, total: Number(total) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+router.get("/admin/bookings", async (req, res) => {
+  try {
+    const { limit = "50", offset = "0", status } = req.query as Record<string, string>;
+    const conditions = [];
+    if (status) conditions.push(eq(bookingsTable.status, status as any));
+
+    const bookings = await db
+      .select({
+        id: bookingsTable.id,
+        referenceCode: bookingsTable.referenceCode,
+        date: bookingsTable.date,
+        time: bookingsTable.time,
+        partySize: bookingsTable.partySize,
+        status: bookingsTable.status,
+        specialRequests: bookingsTable.specialRequests,
+        createdAt: bookingsTable.createdAt,
+        userId: bookingsTable.userId,
+        restaurantId: bookingsTable.restaurantId,
+        restaurantNameEn: restaurantsTable.nameEn,
+        restaurantNameAr: restaurantsTable.nameAr,
+        userName: usersTable.nameEn,
+      })
+      .from(bookingsTable)
+      .leftJoin(restaurantsTable, eq(bookingsTable.restaurantId, restaurantsTable.id))
+      .leftJoin(usersTable, eq(bookingsTable.userId, usersTable.id))
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(bookingsTable.createdAt))
+      .limit(parseInt(limit))
+      .offset(parseInt(offset));
+
+    const [{ total }] = await db.select({ total: count() }).from(bookingsTable);
+    res.json({ bookings, total: Number(total) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });

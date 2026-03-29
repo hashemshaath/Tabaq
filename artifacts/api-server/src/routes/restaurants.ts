@@ -378,4 +378,57 @@ router.get("/restaurants/:restaurantId/availability", async (req, res) => {
   }
 });
 
+// Restaurant console: bookings for a restaurant (no user auth - restaurant-owner view)
+router.get("/restaurants/:restaurantId/bookings", async (req, res) => {
+  try {
+    const restaurantId = parseInt(req.params["restaurantId"] as string, 10);
+    const { status, date, limit = "20", offset = "0" } = req.query as Record<string, string>;
+    const conditions: SQL[] = [eq(bookingsTable.restaurantId, restaurantId)];
+    if (status) conditions.push(eq(bookingsTable.status, status));
+    if (date) conditions.push(eq(bookingsTable.date, date));
+    const bookings = await db.select({
+      id: bookingsTable.id,
+      referenceCode: bookingsTable.referenceCode,
+      date: bookingsTable.date,
+      time: bookingsTable.time,
+      partySize: bookingsTable.partySize,
+      status: bookingsTable.status,
+      specialRequests: bookingsTable.specialRequests,
+      createdAt: bookingsTable.createdAt,
+    }).from(bookingsTable)
+      .where(conditions.length > 1 ? and(...conditions) : conditions[0])
+      .limit(parseInt(limit)).offset(parseInt(offset));
+    res.json({ bookings, total: bookings.length });
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch restaurant bookings");
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// Restaurant console stats
+router.get("/restaurants/:restaurantId/stats", async (req, res) => {
+  try {
+    const restaurantId = parseInt(req.params["restaurantId"] as string, 10);
+    const [restaurant] = await db.select({
+      avgRating: restaurantsTable.avgRating,
+      reviewCount: restaurantsTable.reviewCount,
+    }).from(restaurantsTable).where(eq(restaurantsTable.id, restaurantId));
+
+    const [bookingStats] = await db.select({
+      totalBookings: count(bookingsTable.id),
+      totalDiners: sql<number>`coalesce(sum(${bookingsTable.partySize}), 0)`,
+    }).from(bookingsTable).where(eq(bookingsTable.restaurantId, restaurantId));
+
+    res.json({
+      avgRating: restaurant?.avgRating ?? '0',
+      reviewCount: restaurant?.reviewCount ?? 0,
+      totalBookings: bookingStats?.totalBookings ?? 0,
+      totalDiners: Number(bookingStats?.totalDiners ?? 0),
+    });
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch restaurant stats");
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
 export default router;

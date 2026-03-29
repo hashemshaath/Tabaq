@@ -31,13 +31,6 @@ const PENDING_RESTAURANTS = [
   { id: 104, name: 'The Greenhouse', nameAr: 'البيت الزجاجي', category: 'Vegetarian', city: 'NEOM', appliedAt: '2 days ago', owner: 'Nour Al-Faisal', phone: '+966 50 987 6543' },
 ];
 
-const ALL_RESTAURANTS = [
-  { id: 1, name: 'Najd Village', city: 'Riyadh', status: 'active', rating: 4.8, bookings: 342, tier: 'Professional', verified: true },
-  { id: 2, name: 'Reem Al Bawadi', city: 'Riyadh', status: 'active', rating: 4.5, bookings: 218, tier: 'Professional', verified: true },
-  { id: 3, name: 'Sushi Sama', city: 'Riyadh', status: 'active', rating: 4.9, bookings: 156, tier: 'Starter', verified: false },
-  { id: 4, name: 'Burger & Lobster', city: 'Jeddah', status: 'suspended', rating: 3.2, bookings: 45, tier: 'Starter', verified: false },
-  { id: 5, name: 'Hakkasan', city: 'Riyadh', status: 'active', rating: 4.7, bookings: 289, tier: 'Enterprise', verified: true },
-];
 
 const RECENT_REVIEWS = [
   { id: 1, user: 'Ahmed K.', restaurant: 'Najd Village', rating: 5, text: 'Amazing food and ambiance.', status: 'approved', date: '1 hour ago' },
@@ -148,6 +141,59 @@ export function AdminPanelPage() {
   };
 
   const displayStats = realStats?.stats ?? null;
+
+  const { data: adminRestaurantsData } = useQuery({
+    queryKey: ['admin-restaurants'],
+    queryFn: async () => {
+      const res = await fetch('/api/restaurants?limit=100', { credentials: 'include' });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data?.restaurants ?? data ?? null;
+    },
+    retry: false,
+    staleTime: 60000,
+  });
+
+  const { data: adminUsersData } = useQuery({
+    queryKey: ['admin-users'],
+    queryFn: async () => {
+      const res = await fetch('/api/admin/users?limit=100', { credentials: 'include' });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    retry: false,
+    staleTime: 60000,
+    enabled: activeTab === 'users',
+  });
+
+  const { data: adminBookingsData } = useQuery({
+    queryKey: ['admin-bookings'],
+    queryFn: async () => {
+      const res = await fetch('/api/admin/bookings?limit=100', { credentials: 'include' });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    retry: false,
+    staleTime: 60000,
+    enabled: activeTab === 'bookings',
+  });
+
+  const { data: adminReviewsData } = useQuery({
+    queryKey: ['admin-reviews'],
+    queryFn: async () => {
+      const res = await fetch('/api/reviews?limit=50', { credentials: 'include' });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    retry: false,
+    staleTime: 60000,
+    enabled: activeTab === 'reviews',
+  });
+
+  const liveRestaurants: any[] = adminRestaurantsData ?? [];
+  const liveAdminUsers: any[] = adminUsersData?.users ?? [];
+  const liveAdminBookings: any[] = adminBookingsData?.bookings ?? [];
+  const liveAdminReviews: any[] = adminReviewsData?.reviews ?? [];
 
   const { data: adminOffersData, refetch: refetchOffers } = useQuery({
     queryKey: ['admin-offers'],
@@ -666,31 +712,36 @@ export function AdminPanelPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {ALL_RESTAURANTS.filter(r => restaurantStatusFilter === 'all' || r.status === restaurantStatusFilter).map(r => (
+                    {liveRestaurants.length === 0 && (
+                      <tr><td colSpan={7} className="px-5 py-8 text-center text-sm text-muted-foreground">Loading restaurants...</td></tr>
+                    )}
+                    {liveRestaurants.map((r: any) => (
                       <tr key={r.id} className="hover:bg-secondary/20 transition-colors">
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
-                              <Utensils className="w-4 h-4 text-primary" />
+                            <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center overflow-hidden shrink-0">
+                              {r.coverImageUrl
+                                ? <img src={r.coverImageUrl} alt="" className="w-full h-full object-cover" />
+                                : <Utensils className="w-4 h-4 text-primary" />}
                             </div>
                             <div>
-                              <p className="font-semibold text-sm text-foreground">{r.name}</p>
-                              {r.verified && <span className="text-xs text-primary flex items-center gap-0.5"><CheckCircle2 className="w-3 h-3" /> Verified</span>}
+                              <p className="font-semibold text-sm text-foreground">{r.nameEn}</p>
+                              {r.isVerified && <span className="text-xs text-primary flex items-center gap-0.5"><CheckCircle2 className="w-3 h-3" /> Verified</span>}
                             </div>
                           </div>
                         </td>
-                        <td className="px-5 py-4 text-sm text-muted-foreground">{r.city}</td>
+                        <td className="px-5 py-4 text-sm text-muted-foreground">{r.cityNameEn ?? r.cityId}</td>
                         <td className="px-5 py-4">
-                          <span className="flex items-center gap-1 text-sm font-bold"><Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />{r.rating}</span>
+                          <span className="flex items-center gap-1 text-sm font-bold"><Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />{Number(r.avgRating ?? 0).toFixed(1)}</span>
                         </td>
-                        <td className="px-5 py-4 text-sm text-muted-foreground font-medium">{r.bookings}</td>
+                        <td className="px-5 py-4 text-sm text-muted-foreground font-medium">{r.reviewCount ?? 0}</td>
                         <td className="px-5 py-4">
-                          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${r.tier === 'Enterprise' ? 'bg-purple-100 text-purple-700' : r.tier === 'Professional' ? 'bg-primary/10 text-primary' : 'bg-secondary text-secondary-foreground'}`}>{r.tier}</span>
+                          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${r.priceTier === '$$$$' ? 'bg-purple-100 text-purple-700' : r.priceTier === '$$$' ? 'bg-primary/10 text-primary' : 'bg-secondary text-secondary-foreground'}`}>{r.priceTier ?? 'Standard'}</span>
                         </td>
                         <td className="px-5 py-4">
-                          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1 w-fit ${r.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${r.status === 'active' ? 'bg-green-500' : 'bg-red-500'}`} />
-                            {r.status}
+                          <span className="text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1 w-fit bg-green-100 text-green-700">
+                            <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                            active
                           </span>
                         </td>
                         <td className="px-5 py-4">
@@ -713,9 +764,9 @@ export function AdminPanelPage() {
             <div className="space-y-5">
               <div className="grid grid-cols-3 gap-4">
                 {[
-                  { label: 'Total Users', val: '42,891', icon: Users, color: 'bg-primary/10 text-primary' },
-                  { label: 'Active This Month', val: '18,432', icon: Activity, color: 'bg-green-50 text-green-600' },
-                  { label: 'New This Week', val: '1,247', icon: ArrowUpRight, color: 'bg-blue-50 text-blue-600' },
+                  { label: 'Total Users', val: adminUsersData?.total ?? displayStats?.totalUsers ?? '—', icon: Users, color: 'bg-primary/10 text-primary' },
+                  { label: 'Verified Users', val: liveAdminUsers.filter((u: any) => u.isVerified).length || '—', icon: CheckCircle2, color: 'bg-green-50 text-green-600' },
+                  { label: 'Avg Points', val: liveAdminUsers.length > 0 ? Math.round(liveAdminUsers.reduce((s: number, u: any) => s + (u.points ?? 0), 0) / liveAdminUsers.length) : '—', icon: ArrowUpRight, color: 'bg-blue-50 text-blue-600' },
                 ].map(s => {
                   const Icon = s.icon;
                   return (
@@ -743,39 +794,36 @@ export function AdminPanelPage() {
                     <tr className="border-b border-border">
                       <th className="text-start py-2 text-xs font-semibold text-muted-foreground">User</th>
                       <th className="text-start py-2 text-xs font-semibold text-muted-foreground">Joined</th>
-                      <th className="text-start py-2 text-xs font-semibold text-muted-foreground">Bookings</th>
-                      <th className="text-start py-2 text-xs font-semibold text-muted-foreground">Reviews</th>
+                      <th className="text-start py-2 text-xs font-semibold text-muted-foreground">Points</th>
+                      <th className="text-start py-2 text-xs font-semibold text-muted-foreground">Level</th>
                       <th className="text-start py-2 text-xs font-semibold text-muted-foreground">Status</th>
                       <th className="text-start py-2 text-xs font-semibold text-muted-foreground">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {[
-                      { name: 'Ahmed Al-Rashidi', email: 'ahmed@example.com', joined: '2025-12-01', bookings: 24, reviews: 12, status: 'active', role: 'Diner' },
-                      { name: 'Noura Al-Faisal', email: 'noura@example.com', joined: '2025-11-15', bookings: 8, reviews: 5, status: 'active', role: 'Diner' },
-                      { name: 'Fahad Al-Otaibi', email: 'fahad@restaurant.com', joined: '2025-10-08', bookings: 1, reviews: 0, status: 'active', role: 'Business Owner' },
-                      { name: 'James Thompson', email: 'james@example.com', joined: '2026-01-22', bookings: 3, reviews: 2, status: 'banned', role: 'Diner' },
-                    ].map((user, idx) => (
-                      <tr key={idx} className="hover:bg-secondary/20">
+                    {liveAdminUsers.length === 0 && (
+                      <tr><td colSpan={6} className="py-8 text-center text-sm text-muted-foreground">Loading users...</td></tr>
+                    )}
+                    {liveAdminUsers.map((user: any) => (
+                      <tr key={user.id} className="hover:bg-secondary/20">
                         <td className="py-3">
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary font-bold text-xs">{user.name[0]}</div>
+                            <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary font-bold text-xs">{(user.nameEn || 'U')[0]}</div>
                             <div>
-                              <p className="text-sm font-semibold text-foreground">{user.name}</p>
-                              <p className="text-xs text-muted-foreground">{user.email}</p>
+                              <p className="text-sm font-semibold text-foreground">{user.nameEn || user.nameAr || 'Unknown'}</p>
+                              <p className="text-xs text-muted-foreground">{user.email || user.phone || user.username || user.refCode}</p>
                             </div>
                           </div>
                         </td>
-                        <td className="py-3 text-xs text-muted-foreground">{user.joined}</td>
-                        <td className="py-3 text-sm font-medium text-foreground">{user.bookings}</td>
-                        <td className="py-3 text-sm font-medium text-foreground">{user.reviews}</td>
+                        <td className="py-3 text-xs text-muted-foreground">{user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '—'}</td>
+                        <td className="py-3 text-sm font-medium text-foreground">{user.points ?? 0} pts</td>
+                        <td className="py-3 text-sm font-medium text-foreground">L{user.level} · {user.levelTitle}</td>
                         <td className="py-3">
-                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${user.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{user.status}</span>
+                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${user.isVerified ? 'bg-green-100 text-green-700' : 'bg-secondary text-muted-foreground'}`}>{user.isVerified ? 'Verified' : 'Unverified'}</span>
                         </td>
                         <td className="py-3">
                           <div className="flex gap-1">
                             <button className="p-1.5 rounded hover:bg-secondary text-muted-foreground text-xs">View</button>
-                            <button className={`p-1.5 rounded text-xs ${user.status === 'banned' ? 'hover:bg-green-50 text-green-600' : 'hover:bg-red-50 text-red-600'}`}>{user.status === 'banned' ? 'Unban' : 'Ban'}</button>
                           </div>
                         </td>
                       </tr>
@@ -791,10 +839,10 @@ export function AdminPanelPage() {
             <div className="space-y-5">
               <div className="grid grid-cols-4 gap-4 mb-2">
                 {[
-                  { label: 'Today', val: '347', color: 'text-primary' },
-                  { label: 'This Week', val: '2,891', color: 'text-blue-600' },
-                  { label: 'This Month', val: '11,342', color: 'text-green-600' },
-                  { label: 'Cancellation Rate', val: '4.2%', color: 'text-amber-600' },
+                  { label: 'Total Bookings', val: adminBookingsData?.total ?? displayStats?.totalBookings ?? '—', color: 'text-primary' },
+                  { label: 'Confirmed', val: liveAdminBookings.filter((b: any) => b.status === 'confirmed').length || 0, color: 'text-green-600' },
+                  { label: 'Pending', val: liveAdminBookings.filter((b: any) => b.status === 'pending').length || 0, color: 'text-amber-600' },
+                  { label: 'Cancelled', val: liveAdminBookings.filter((b: any) => b.status === 'cancelled').length || 0, color: 'text-red-600' },
                 ].map(s => (
                   <div key={s.label} className="bg-card border border-border rounded-2xl p-4 text-center">
                     <p className={`text-2xl font-extrabold ${s.color}`}>{s.val}</p>
@@ -818,20 +866,18 @@ export function AdminPanelPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {[
-                      { ref: 'TBQ-A1B2C3', diner: 'Ahmed K.', restaurant: 'Najd Village', date: 'Mar 29, 7:30 PM', guests: 4, status: 'confirmed' },
-                      { ref: 'TBQ-D4E5F6', diner: 'Sarah M.', restaurant: 'Sushi Sama', date: 'Mar 29, 8:00 PM', guests: 2, status: 'confirmed' },
-                      { ref: 'TBQ-G7H8I9', diner: 'Mohammed A.', restaurant: 'Hakkasan', date: 'Mar 30, 1:00 PM', guests: 6, status: 'pending' },
-                      { ref: 'TBQ-J0K1L2', diner: 'Noura F.', restaurant: 'Reem Al Bawadi', date: 'Mar 28, 7:00 PM', guests: 3, status: 'cancelled' },
-                    ].map(b => (
-                      <tr key={b.ref} className="hover:bg-secondary/20">
-                        <td className="py-3 font-mono text-xs text-muted-foreground">{b.ref}</td>
-                        <td className="py-3 font-medium text-foreground">{b.diner}</td>
-                        <td className="py-3 text-muted-foreground">{b.restaurant}</td>
-                        <td className="py-3 text-muted-foreground">{b.date}</td>
-                        <td className="py-3 text-muted-foreground">{b.guests}</td>
+                    {liveAdminBookings.length === 0 && (
+                      <tr><td colSpan={6} className="py-8 text-center text-sm text-muted-foreground">Loading bookings...</td></tr>
+                    )}
+                    {liveAdminBookings.map((b: any) => (
+                      <tr key={b.id} className="hover:bg-secondary/20">
+                        <td className="py-3 font-mono text-xs text-muted-foreground">{b.referenceCode}</td>
+                        <td className="py-3 font-medium text-foreground">{b.userName || `User #${b.userId}`}</td>
+                        <td className="py-3 text-muted-foreground">{b.restaurantNameEn || `Restaurant #${b.restaurantId}`}</td>
+                        <td className="py-3 text-muted-foreground">{b.date} · {b.time}</td>
+                        <td className="py-3 text-muted-foreground">{b.partySize}</td>
                         <td className="py-3">
-                          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${b.status === 'confirmed' ? 'bg-green-100 text-green-700' : b.status === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>{b.status}</span>
+                          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${b.status === 'confirmed' ? 'bg-green-100 text-green-700' : b.status === 'pending' ? 'bg-amber-100 text-amber-700' : b.status === 'cancelled' ? 'bg-red-100 text-red-700' : b.status === 'completed' ? 'bg-blue-100 text-blue-700' : 'bg-secondary text-muted-foreground'}`}>{b.status}</span>
                         </td>
                       </tr>
                     ))}
@@ -849,31 +895,43 @@ export function AdminPanelPage() {
                   <button key={f} className={`px-4 py-2 rounded-full text-sm font-semibold border transition-all ${f === 'All' ? 'bg-primary text-primary-foreground border-primary' : 'border-border'}`}>{f}</button>
                 ))}
               </div>
-              {RECENT_REVIEWS.map(review => (
+              {liveAdminReviews.length === 0 && (
+                <div className="bg-card border border-border rounded-2xl p-8 text-center text-sm text-muted-foreground">Loading reviews...</div>
+              )}
+              {liveAdminReviews.map((review: any) => {
+                const userName = review.userNameEn || review.userNameAr || `User #${review.userId}`;
+                const reviewText = review.textEn || review.textAr || '';
+                const createdAt = review.createdAt ? new Date(review.createdAt).toLocaleDateString() : '';
+                return (
                 <div key={review.id} className="bg-card border border-border rounded-2xl p-5">
                   <div className="flex items-start justify-between gap-4 mb-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 bg-primary/10 rounded-xl flex items-center justify-center text-primary font-bold text-sm">{review.user[0]}</div>
+                      <div className="w-9 h-9 bg-primary/10 rounded-xl flex items-center justify-center overflow-hidden shrink-0">
+                        {review.userAvatarUrl
+                          ? <img src={review.userAvatarUrl} alt="" className="w-full h-full object-cover" />
+                          : <span className="text-primary font-bold text-sm">{userName[0]}</span>}
+                      </div>
                       <div>
-                        <p className="font-semibold text-foreground text-sm">{review.user}</p>
-                        <p className="text-xs text-muted-foreground">on {review.restaurant} · {review.date}</p>
+                        <p className="font-semibold text-foreground text-sm">{userName}</p>
+                        <p className="text-xs text-muted-foreground">{liveRestaurants.find((r: any) => r.id === review.restaurantId)?.nameEn ?? `Restaurant #${review.restaurantId}`} · {createdAt}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="flex gap-0.5">
-                        {[1,2,3,4,5].map(s => <Star key={s} className={`w-3.5 h-3.5 ${s <= review.rating ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground/20'}`} />)}
+                        {[1,2,3,4,5].map(s => <Star key={s} className={`w-3.5 h-3.5 ${s <= review.ratingOverall ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground/20'}`} />)}
                       </div>
-                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${review.status === 'approved' ? 'bg-green-100 text-green-700' : review.status === 'flagged' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-500'}`}>{review.status}</span>
+                      {review.isExpertReview && <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-100 text-amber-700">Critic</span>}
+                      <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-green-100 text-green-700">approved</span>
                     </div>
                   </div>
-                  <p className="text-sm text-muted-foreground mb-3">"{review.text}"</p>
+                  {reviewText && <p className="text-sm text-muted-foreground mb-3">"{reviewText}"</p>}
                   <div className="flex gap-2">
-                    {review.status !== 'approved' && <button className="text-xs bg-green-100 text-green-700 px-3 py-1.5 rounded-lg font-semibold hover:bg-green-200">Approve</button>}
-                    {review.status !== 'removed' && <button className="text-xs bg-red-100 text-red-700 px-3 py-1.5 rounded-lg font-semibold hover:bg-red-200">Remove</button>}
+                    <button className="text-xs bg-red-100 text-red-700 px-3 py-1.5 rounded-lg font-semibold hover:bg-red-200">Remove</button>
                     <button className="text-xs bg-secondary text-foreground px-3 py-1.5 rounded-lg font-semibold hover:bg-secondary/80">View Context</button>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
