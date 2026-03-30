@@ -205,12 +205,42 @@ const FEATURES_GRID = [
 
 export function PartnerLandingPage() {
   const { t, lang } = useLanguage();
+  const [restaurantName, setRestaurantName] = useState('');
+  const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email) setSubmitted(true);
+    if (!email) return;
+    setSubmitting(true);
+    setSubmitError('');
+    try {
+      const res = await fetch('/api/partner-applications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nameEn: restaurantName,
+          phone,
+          email,
+          ownerEmail: email,
+          ownerName: restaurantName || 'Partner',
+          businessType: 'restaurant',
+        }),
+      });
+      if (res.ok) {
+        setSubmitted(true);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setSubmitError(err.message || t('Submission failed. Please try again.', 'فشل الإرسال. يرجى المحاولة مرة أخرى.'));
+      }
+    } catch {
+      setSubmitError(t('Network error. Please check your connection.', 'خطأ في الاتصال. يرجى التحقق من الاتصال.'));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -275,11 +305,39 @@ export function PartnerLandingPage() {
             <p className="text-white/60 text-sm mb-6">{t('No credit card required. Setup in under 10 minutes.', 'لا يلزم بطاقة ائتمان. الإعداد في أقل من 10 دقائق.')}</p>
             {!submitted ? (
               <form onSubmit={handleSubmit} className="space-y-4">
-                <input type="text" placeholder={t('Restaurant name', 'اسم المطعم')} className="w-full h-12 px-4 rounded-xl bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:outline-none focus:border-primary" />
-                <input type="tel" placeholder={t('Your phone number', 'رقم هاتفك')} className="w-full h-12 px-4 rounded-xl bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:outline-none focus:border-primary" />
-                <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={t('Business email', 'البريد الإلكتروني التجاري')} className="w-full h-12 px-4 rounded-xl bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:outline-none focus:border-primary" />
-                <button type="submit" className="w-full py-3.5 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-base transition-all shadow-lg">
-                  {t('Get Started — Free', 'ابدأ مجاناً')}
+                <input
+                  type="text"
+                  value={restaurantName}
+                  onChange={e => setRestaurantName(e.target.value)}
+                  placeholder={t('Restaurant name', 'اسم المطعم')}
+                  required
+                  className="w-full h-12 px-4 rounded-xl bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:outline-none focus:border-primary"
+                />
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={e => setPhone(e.target.value)}
+                  placeholder={t('Your phone number', 'رقم هاتفك')}
+                  className="w-full h-12 px-4 rounded-xl bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:outline-none focus:border-primary"
+                />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder={t('Business email', 'البريد الإلكتروني التجاري')}
+                  required
+                  className="w-full h-12 px-4 rounded-xl bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:outline-none focus:border-primary"
+                />
+                {submitError && (
+                  <p className="text-red-400 text-xs font-medium">{submitError}</p>
+                )}
+                <button
+                  type="submit"
+                  disabled={submitting || !email || !restaurantName}
+                  className="w-full py-3.5 bg-primary hover:bg-primary/90 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-xl font-bold text-base transition-all shadow-lg flex items-center justify-center gap-2"
+                >
+                  {submitting && <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />}
+                  {submitting ? t('Sending...', 'جارٍ الإرسال...') : t('Get Started — Free', 'ابدأ مجاناً')}
                 </button>
               </form>
             ) : (
@@ -287,6 +345,7 @@ export function PartnerLandingPage() {
                 <CheckCircle2 className="w-14 h-14 text-green-400 mx-auto mb-4" />
                 <h4 className="text-white text-xl font-bold mb-2">{t("You're on the list!", 'أنت في القائمة!')}</h4>
                 <p className="text-white/60 text-sm">{t("Our team will reach out within 24 hours to complete your setup.", 'سيتواصل معك فريقنا خلال 24 ساعة لإكمال إعدادك.')}</p>
+                <p className="text-white/40 text-xs mt-2">{restaurantName && t(`Application received for ${restaurantName}.`, `تم استلام طلب ${restaurantName}.`)}</p>
               </div>
             )}
           </div>

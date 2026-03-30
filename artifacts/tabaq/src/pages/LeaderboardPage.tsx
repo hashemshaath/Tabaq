@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLanguage } from '@/hooks/use-language';
-import { useGetLeaderboard } from '@workspace/api-client-react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Trophy, Medal, Star, Crown, TrendingUp, Zap, Award, Target,
   Flame, Heart, ChefHat, Users, CheckCircle2
@@ -98,32 +98,46 @@ function PodiumBlock({ entry, rank, lang, t }: {
   );
 }
 
+const LEADERBOARD_BADGES = ['👑', '🥈', '🥉', '⭐', '🍽️', '🌱', '🥢', '🍜', '🫐', '🥙'];
+
 export function LeaderboardPage() {
   const { t, lang } = useLanguage();
   const [period, setPeriod] = useState<Period>('alltime');
-  const { data: liveData, isLoading } = useGetLeaderboard({ limit: 20 });
 
-  const liveEntries = (liveData ?? []).map((e, i) => ({
+  const { data: liveData, isLoading } = useQuery({
+    queryKey: ['leaderboard', period],
+    queryFn: async () => {
+      const res = await fetch(`/api/leaderboard?limit=20&period=${period}`);
+      if (!res.ok) throw new Error('Failed to fetch');
+      return res.json();
+    },
+    staleTime: 60000,
+  });
+
+  const liveEntries = (liveData ?? []).map((e: any, i: number) => ({
     rank: i + 1,
     nameEn: e.user.nameEn,
     nameAr: e.user.nameAr,
     avatar: e.user.avatarUrl || `https://i.pravatar.cc/80?u=${e.user.id}`,
     points: e.points,
     reviewCount: e.reviewCount,
-    badge: i === 0 ? '👑' : i === 1 ? '🥈' : '🥉',
+    periodReviewCount: e.periodReviewCount ?? e.reviewCount,
+    badge: LEADERBOARD_BADGES[i] ?? '⭐',
     levelTitle: e.user.levelTitle || 'Food Explorer',
     levelTitleAr: e.user.levelTitle || 'مستكشف الطعام',
     specialty: 'Gourmet',
-    trending: false,
+    trending: i < 3,
   }));
 
   const allEntries = [...liveEntries];
-  const liveRanks = new Set(liveEntries.map((_, i) => i + 1));
-  MOCK_COMMUNITY.forEach(m => {
-    if (!liveRanks.has(m.rank) && allEntries.length < 10) {
-      allEntries.push({ ...m, trending: m.trending ?? false });
-    }
-  });
+  if (allEntries.length < 5) {
+    const liveIds = new Set(liveEntries.map((e: any) => e.nameEn));
+    MOCK_COMMUNITY.forEach(m => {
+      if (!liveIds.has(m.nameEn) && allEntries.length < 10) {
+        allEntries.push({ ...m, periodReviewCount: m.reviewCount, trending: m.trending ?? false });
+      }
+    });
+  }
   allEntries.sort((a, b) => b.points - a.points);
   allEntries.forEach((e, i) => { e.rank = i + 1; });
 
@@ -166,6 +180,11 @@ export function LeaderboardPage() {
               </button>
             ))}
           </div>
+          <p className="text-sm text-primary-foreground/60 mt-3">
+            {period === 'weekly' && t('Ranked by reviews posted in the last 7 days', 'مرتبون حسب التقييمات خلال آخر 7 أيام')}
+            {period === 'monthly' && t('Ranked by reviews posted in the last 30 days', 'مرتبون حسب التقييمات خلال آخر 30 يوماً')}
+            {period === 'alltime' && t('Ranked by total points earned', 'مرتبون حسب مجموع النقاط المكتسبة')}
+          </p>
         </div>
       </div>
 
@@ -226,8 +245,17 @@ export function LeaderboardPage() {
                       </div>
                     </div>
                     <div className="text-end shrink-0">
-                      <div className="text-xl font-black text-primary">{entry.points.toLocaleString()}</div>
-                      <div className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">{t('pts', 'نقطة')}</div>
+                      {period === 'alltime' ? (
+                        <>
+                          <div className="text-xl font-black text-primary">{entry.points.toLocaleString()}</div>
+                          <div className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">{t('pts', 'نقطة')}</div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="text-xl font-black text-primary">{(entry as any).periodReviewCount ?? entry.reviewCount}</div>
+                          <div className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">{t('reviews', 'تقييم')}</div>
+                        </>
+                      )}
                     </div>
                   </div>
                 );
@@ -266,8 +294,17 @@ export function LeaderboardPage() {
                         <p className="text-xs text-muted-foreground mt-0.5">{lang === 'ar' ? entry.levelTitleAr : entry.levelTitle} · {entry.reviewCount} {t('reviews', 'تقييم')}</p>
                       </div>
                       <div className="text-end shrink-0">
-                        <div className="text-base font-bold text-foreground">{entry.points.toLocaleString()}</div>
-                        <div className="text-[10px] text-muted-foreground">{t('pts', 'نقطة')}</div>
+                        {period === 'alltime' ? (
+                          <>
+                            <div className="text-base font-bold text-foreground">{entry.points.toLocaleString()}</div>
+                            <div className="text-[10px] text-muted-foreground">{t('pts', 'نقطة')}</div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="text-base font-bold text-foreground">{(entry as any).periodReviewCount ?? entry.reviewCount}</div>
+                            <div className="text-[10px] text-muted-foreground">{t('reviews', 'تقييم')}</div>
+                          </>
+                        )}
                       </div>
                     </div>
                   ))}

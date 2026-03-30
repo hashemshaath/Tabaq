@@ -152,31 +152,71 @@ function ActivityCard({ activity, lang, t }: { activity: typeof MOCK_FEED_ACTIVI
   );
 }
 
+const CRITIC_BADGES = ['👑', '🥈', '🥉', '⭐', '🍽️'];
+
 function TrendingCriticsCard({ t, lang }: { t: (en: string, ar: string) => string; lang: string }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ['feed-top-critics'],
+    queryFn: async () => {
+      const res = await fetch('/api/leaderboard?limit=4');
+      if (!res.ok) return null;
+      return res.json();
+    },
+    staleTime: 120000,
+  });
+
+  const critics = (data ?? []).slice(0, 4).map((entry: any, i: number) => ({
+    id: entry.user.id,
+    name: entry.user.nameEn,
+    nameAr: entry.user.nameAr,
+    avatar: entry.user.avatarUrl || `https://i.pravatar.cc/40?u=${entry.user.id}`,
+    badge: CRITIC_BADGES[i] ?? '⭐',
+    reviews: entry.reviewCount,
+    levelTitle: entry.user.levelTitle || 'Food Explorer',
+  }));
+
+  const displayCritics = critics.length > 0 ? critics : TRENDING_CRITICS.map((c, i) => ({
+    id: c.id, name: c.name, nameAr: c.nameAr, avatar: c.avatar, badge: c.badge, reviews: c.reviews, levelTitle: c.specialty,
+  }));
+
   return (
     <div className="bg-card border border-border/60 rounded-3xl p-4">
       <div className="flex items-center gap-2 mb-4">
         <Award className="w-5 h-5 text-primary" />
         <h3 className="font-bold text-foreground text-sm">{t('Top Food Critics', 'أبرز نقاد الطعام')}</h3>
       </div>
-      <div className="space-y-3">
-        {TRENDING_CRITICS.map((critic, i) => (
-          <div key={critic.id} className="flex items-center gap-3">
-            <span className="text-xs font-black text-muted-foreground w-4 shrink-0">#{i + 1}</span>
-            <img src={critic.avatar} alt={critic.name} className="w-9 h-9 rounded-full object-cover shrink-0" />
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1">
-                <p className="text-xs font-bold text-foreground truncate">{lang === 'ar' ? critic.nameAr : critic.name}</p>
-                <span className="text-sm">{critic.badge}</span>
+      {isLoading ? (
+        <div className="space-y-3">
+          {[1,2,3,4].map(i => (
+            <div key={i} className="flex items-center gap-3 animate-pulse">
+              <div className="w-4 h-3 bg-muted rounded" />
+              <div className="w-9 h-9 rounded-full bg-muted shrink-0" />
+              <div className="flex-1 space-y-1.5">
+                <div className="h-2.5 bg-muted rounded w-24" />
+                <div className="h-2 bg-muted rounded w-16" />
               </div>
-              <p className="text-[10px] text-muted-foreground">{critic.reviews} {t('reviews', 'تقييم')} · {critic.specialty}</p>
             </div>
-            <button className="text-[10px] font-bold text-primary border border-primary/20 px-2 py-0.5 rounded-full hover:bg-primary/5 transition-colors shrink-0">
-              {t('Follow', 'تابع')}
-            </button>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {displayCritics.map((critic, i) => (
+            <Link key={critic.id} href="/leaderboard">
+              <div className="flex items-center gap-3 hover:bg-secondary/40 rounded-xl p-1 transition-colors cursor-pointer">
+                <span className="text-xs font-black text-muted-foreground w-4 shrink-0">#{i + 1}</span>
+                <img src={critic.avatar} alt={critic.name} className="w-9 h-9 rounded-full object-cover shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1">
+                    <p className="text-xs font-bold text-foreground truncate">{lang === 'ar' ? critic.nameAr : critic.name}</p>
+                    <span className="text-sm">{critic.badge}</span>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">{critic.reviews} {t('reviews', 'تقييم')} · {critic.levelTitle}</p>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
       <Link href="/leaderboard">
         <button className="w-full mt-3 text-xs text-primary font-semibold hover:underline flex items-center justify-center gap-1">
           {t('View all critics', 'عرض جميع النقاد')} <ChevronRight className="w-3 h-3" />
@@ -256,7 +296,7 @@ function TrendingDishesCard({ t, lang }: { t: (en: string, ar: string) => string
       </div>
       <div className="space-y-3">
         {dishes.map((dish: any, i: number) => (
-          <Link key={dish.id ?? i} href={dish.id ? `/restaurants/${dish.restaurantId ?? ''}` : '#'}>
+          <Link key={dish.id ?? i} href={dish.restaurantId ? `/restaurants/${dish.restaurantId}` : '/restaurants'}>
             <div className="flex items-center gap-3 hover:bg-secondary/40 rounded-xl p-1 transition-colors cursor-pointer">
               <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 bg-muted">
                 <img src={dish.imageUrl ?? dish.image ?? 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=120&h=120&fit=crop'} alt={dish.nameEn} className="w-full h-full object-cover" />

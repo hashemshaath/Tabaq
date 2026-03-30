@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { usersTable, userFollowsTable, reviewsTable, bookingsTable, restaurantsTable, pointsTransactionsTable } from "@workspace/db/schema";
-import { eq, and, sql, desc, type SQL } from "drizzle-orm";
+import { eq, and, sql, desc, gte, type SQL } from "drizzle-orm";
 import { requireAuth, optionalAuth } from "../middleware/requireAuth.js";
 
 const router: IRouter = Router();
@@ -282,10 +282,58 @@ router.get("/users/:userId/leaderboard-rank", async (req, res) => {
 
 router.get("/leaderboard", async (req, res) => {
   try {
-    const { limit = "20" } = req.query;
+    const { limit = "20", period = "alltime" } = req.query;
+    const lim = parseInt(limit as string);
+
+    // Compute date cutoff for weekly/monthly periods
+    const now = new Date();
+    let cutoff: Date | null = null;
+    if (period === "weekly") {
+      cutoff = new Date(now.getTime() - 7 * 24 * 3600 * 1000);
+    } else if (period === "monthly") {
+      cutoff = new Date(now.getTime() - 30 * 24 * 3600 * 1000);
+    }
+
+    if (cutoff) {
+      // For period-based rankings: rank users by their review count in the period
+      const usersBase = await db.select().from(usersTable).limit(100);
+      const enriched = await Promise.all(usersBase.map(async (u) => {
+        const [periodCnt] = await db.select({ count: sql<number>`count(*)` })
+          .from(reviewsTable)
+          .where(and(eq(reviewsTable.userId, u.id), gte(reviewsTable.createdAt, cutoff!)));
+        const [totalCnt] = await db.select({ count: sql<number>`count(*)` })
+          .from(reviewsTable).where(eq(reviewsTable.userId, u.id));
+        return {
+          user: {
+            id: u.id,
+            nameEn: u.nameEn,
+            nameAr: u.nameAr,
+            avatarUrl: u.avatarUrl,
+            isVerified: u.isVerified,
+            level: u.level,
+            levelTitle: u.levelTitle,
+          },
+          points: u.points,
+          reviewCount: Number(totalCnt?.count ?? 0),
+          periodReviewCount: Number(periodCnt?.count ?? 0),
+        };
+      }));
+
+      // Sort by period review count desc, then by total points as tie-breaker
+      const sorted = enriched
+        .sort((a, b) => b.periodReviewCount - a.periodReviewCount || b.points - a.points)
+        .filter((e) => e.periodReviewCount > 0 || e.points > 0)
+        .slice(0, lim)
+        .map((e, i) => ({ ...e, rank: i + 1 }));
+
+      res.json(sorted);
+      return;
+    }
+
+    // All-time: rank by points (existing behavior)
     const users = await db.select().from(usersTable)
       .orderBy(desc(usersTable.points))
-      .limit(parseInt(limit as string));
+      .limit(lim);
 
     const enriched = await Promise.all(users.map(async (u, i) => {
       const [cnt] = await db.select({ count: sql<number>`count(*)` })
