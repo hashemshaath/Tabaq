@@ -14,6 +14,7 @@ import {
   Globe, Phone, MessageCircle, MoreVertical, Copy
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { StarRating } from '@/components/StarRating';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -71,55 +72,11 @@ function QRCodeDisplay({ code }: { code: string }) {
   return <canvas ref={canvasRef} className="rounded-md mx-auto" style={{ width: 160, height: 160 }} />;
 }
 
-const MOCK_STATS = [
-  { labelEn: 'Total Bookings', labelAr: 'إجمالي الحجوزات', value: '1,248', change: '+12%', up: true, icon: CalendarDays, color: 'text-blue-600 bg-blue-50' },
-  { labelEn: 'Avg. Rating', labelAr: 'متوسط التقييم', value: '4.7', change: '+0.2', up: true, icon: Star, color: 'text-amber-600 bg-amber-50' },
-  { labelEn: 'Total Diners', labelAr: 'إجمالي الزوار', value: '4,891', change: '+8%', up: true, icon: Users, color: 'text-green-600 bg-green-50' },
-  { labelEn: 'Revenue (SAR)', labelAr: 'الإيرادات (ر.س)', value: '83,420', change: '+5%', up: true, icon: TrendingUp, color: 'text-primary bg-primary/10' },
-];
-
-const MOCK_BOOKINGS = [
-  { name: 'Ahmed Al Rashidi', date: '2026-03-29', time: '7:30 PM', guests: 4, status: 'confirmed', ref: 'TBQ-A1B2C3D4' },
-  { name: 'Sarah Johnson', date: '2026-03-29', time: '8:00 PM', guests: 2, status: 'confirmed', ref: 'TBQ-E5F6G7H8' },
-  { name: 'Mohammed Al Qahtani', date: '2026-03-29', time: '8:30 PM', guests: 6, status: 'pending', ref: 'TBQ-I9J0K1L2' },
-  { name: 'Fatima Al Mansouri', date: '2026-03-30', time: '1:00 PM', guests: 3, status: 'confirmed', ref: 'TBQ-M3N4O5P6' },
-  { name: 'Ali Hassan', date: '2026-03-30', time: '7:00 PM', guests: 8, status: 'pending', ref: 'TBQ-Q7R8S9T0' },
-];
-
-const MOCK_REVIEWS = [
-  { name: 'Ahmed K.', rating: 5, text: 'Absolutely incredible experience. The lamb chops were perfectly cooked!', date: '2 hours ago', replied: false },
-  { name: 'Noura F.', rating: 4, text: 'Great food and ambiance. Service could be a bit faster during peak hours.', date: '1 day ago', replied: true },
-  { name: 'James T.', rating: 5, text: 'Best restaurant in Riyadh by far. Will definitely return.', date: '2 days ago', replied: false },
-];
-
 const STATUS_MAP: Record<string, { icon: React.ElementType; labelEn: string; className: string }> = {
   confirmed: { icon: CheckCircle2, labelEn: 'Confirmed', className: 'text-green-700 bg-green-100' },
   pending: { icon: AlertCircle, labelEn: 'Pending', className: 'text-yellow-700 bg-yellow-100' },
   cancelled: { icon: XCircle, labelEn: 'Cancelled', className: 'text-red-700 bg-red-100' },
 };
-
-const MOCK_CONSOLE_OFFERS = [
-  {
-    id: 1, titleEn: '50% Off Premium Dining Set Menu', titleAr: 'خصم 50% على قائمة الطعام المميزة',
-    discountPercent: 50, originalPrice: 280, discountedPrice: 140, currency: 'SAR',
-    isActive: true, validUntil: '2026-04-30', redemptions: 34, totalCapacity: 100,
-    status: 'live', approvalStatus: 'approved' as const, refCode: 'TBQ-OFR-2026-000001',
-    type: 'discount_deal', startAt: '2026-03-01', endAt: '2026-04-30',
-  },
-  {
-    id: 2, titleEn: 'Weekend Brunch for Two', titleAr: 'برانش نهاية الأسبوع لاثنين',
-    discountPercent: 30, originalPrice: 220, discountedPrice: 154, currency: 'SAR',
-    isActive: false, validUntil: '2026-05-15', redemptions: 0, totalCapacity: 50,
-    status: 'under_review', approvalStatus: 'pending' as const, refCode: 'TBQ-OFR-2026-000002',
-    type: 'discount_deal', startAt: '2026-04-01', endAt: '2026-05-15',
-  },
-];
-
-const MOCK_VOUCHERS = [
-  { id: 1, code: 'VCH-827K92P1', campaignNameEn: '50% Off Premium Dining', optionNameEn: 'Single Person Set', customerName: 'A***d A.', purchaseDate: '2026-03-15', faceValue: 280, purchasePrice: 140, status: 'active' },
-  { id: 2, code: 'VCH-192L55X8', campaignNameEn: 'Weekend Brunch', optionNameEn: 'Brunch for Two', customerName: 'S***h J.', purchaseDate: '2026-03-20', faceValue: 220, purchasePrice: 154, status: 'redeemed' },
-  { id: 3, code: 'VCH-Q91M22Z4', campaignNameEn: '50% Off Premium Dining', optionNameEn: 'Single Person Set', customerName: 'M***m K.', purchaseDate: '2026-03-22', faceValue: 280, purchasePrice: 140, status: 'expired' },
-];
 
 const CAMPAIGN_STATUS_MAP: Record<string, { labelEn: string; labelAr: string; className: string }> = {
   draft: { labelEn: 'Draft', labelAr: 'مسودة', className: 'text-gray-600 bg-gray-100' },
@@ -234,27 +191,18 @@ export function BusinessConsolePage() {
     staleTime: 60000,
   });
 
-  const MOCK_CONTRACT = {
-    refCode: 'TBQ-CTR-2026-000001',
-    status: 'active',
-    paymentModel: 'full_collection',
-    commissionPercent: '15.00',
-    settlementDays: 7,
-    validFrom: '2026-01-01',
-  };
-
-  const liveBookings: any[] = bookingsData?.bookings ?? MOCK_BOOKINGS;
-  const liveReviews: any[] = reviewsData?.reviews ?? MOCK_REVIEWS;
-  const liveContract = contractData?.contract ?? MOCK_CONTRACT;
+  const liveBookings: any[] = bookingsData?.bookings ?? [];
+  const liveReviews: any[] = reviewsData?.reviews ?? [];
+  const liveContract = contractData?.contract ?? null;
   const today = new Date().toISOString().split('T')[0];
   const todayBookings = liveBookings.filter((b: any) => b.date === today);
 
-  const displayCampaigns = campaignsData?.campaigns || MOCK_CONSOLE_OFFERS;
+  const displayCampaigns: any[] = campaignsData?.campaigns ?? [];
   const filteredCampaigns = displayCampaigns.filter((c: any) =>
     activeCampaignFilter === 'All' ? true : c.status === activeCampaignFilter.toLowerCase().replace(/ /g, '_')
   );
 
-  const displayVouchers = vouchersData?.vouchers || MOCK_VOUCHERS;
+  const displayVouchers: any[] = vouchersData?.vouchers ?? [];
   const filteredVouchers = displayVouchers.filter((v: any) =>
     activeVoucherFilter === 'All' ? true : v.status === activeVoucherFilter.toLowerCase()
   );
@@ -264,7 +212,7 @@ export function BusinessConsolePage() {
     { labelEn: 'Avg. Rating', labelAr: 'متوسط التقييم', value: statsData.stats.avgPlatformRating, change: `${statsData.stats.totalReviews} reviews`, up: true, icon: Star, color: 'text-amber-600 bg-amber-50' },
     { labelEn: 'Total Diners', labelAr: 'إجمالي الزوار', value: statsData.stats.totalUsers.toLocaleString(), change: 'Live data', up: true, icon: Users, color: 'text-green-600 bg-green-50' },
     { labelEn: 'Active Offers', labelAr: 'عروض نشطة', value: statsData.stats.activeOffers.toString(), change: 'Live data', up: true, icon: Tag, color: 'text-primary bg-primary/10' },
-  ] : MOCK_STATS;
+  ] : [];
 
   // Create offer form state
   const EMPTY_FORM = {
@@ -456,11 +404,7 @@ export function BusinessConsolePage() {
                       <div className="flex items-start justify-between gap-3 mb-2">
                         <div>
                           <p className="font-semibold text-foreground text-sm">{review.name ?? `User #${review.userId}`}</p>
-                          <div className="flex gap-0.5 mt-0.5">
-                            {[1,2,3,4,5].map(s => (
-                              <Star key={s} className={`w-3 h-3 ${s <= Math.round(parseFloat(review.ratingOverall ?? review.rating ?? 0)) ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground/20'}`} />
-                            ))}
-                          </div>
+                          <StarRating rating={Math.round(parseFloat(review.ratingOverall ?? review.rating ?? 0))} size="xs" className="mt-0.5" />
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           <span className="text-xs text-muted-foreground">{review.date ?? (review.createdAt ? new Date(review.createdAt).toLocaleDateString() : '')}</span>
@@ -1566,9 +1510,7 @@ export function BusinessConsolePage() {
                             <h4 className="font-bold text-sm leading-tight">{wizardData.titleEn || 'Campaign Title'}</h4>
                           </div>
                           <div className="flex items-center gap-1">
-                            <div className="flex gap-0.5">
-                              {[1,2,3,4,5].map(s => <Star key={s} className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />)}
-                            </div>
+                            <StarRating rating={5} size="xs" />
                             <span className="text-[10px] text-muted-foreground font-bold">(124)</span>
                           </div>
                           <div className="flex items-baseline gap-1.5 border-t border-border pt-3">
@@ -1681,11 +1623,7 @@ export function BusinessConsolePage() {
                     <div>
                       <p className="font-bold text-foreground">{review.name ?? `User #${review.userId}`}</p>
                       <div className="flex items-center gap-1.5 mt-0.5">
-                        <div className="flex gap-0.5">
-                          {[1,2,3,4,5].map(s => (
-                            <Star key={s} className={`w-3.5 h-3.5 ${s <= Math.round(parseFloat(review.ratingOverall ?? review.rating ?? 0)) ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground/20'}`} />
-                          ))}
-                        </div>
+                        <StarRating rating={Math.round(parseFloat(review.ratingOverall ?? review.rating ?? 0))} size="md" />
                         <span className="text-xs text-muted-foreground">{review.date ?? (review.createdAt ? new Date(review.createdAt).toLocaleDateString() : '')}</span>
                       </div>
                     </div>

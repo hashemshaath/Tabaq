@@ -13,17 +13,7 @@ import {
   CheckSquare, X, Hash
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-
-// ─── Mock Data ──────────────────────────────────────────────────
-const OVERVIEW_STATS = [
-  { label: 'Total Restaurants', val: '547', change: '+12', up: true, icon: Utensils, color: 'bg-blue-50 text-blue-600' },
-  { label: 'Total Users', val: '42,891', change: '+1.2K', up: true, icon: Users, color: 'bg-purple-50 text-purple-600' },
-  { label: 'Bookings This Month', val: '11,342', change: '+8%', up: true, icon: CalendarDays, color: 'bg-primary/10 text-primary' },
-  { label: 'Pending Approvals', val: '23', change: '-5', up: false, icon: AlertCircle, color: 'bg-amber-50 text-amber-600' },
-  { label: 'Platform Revenue', val: 'SAR 198K', change: '+15%', up: true, icon: TrendingUp, color: 'bg-green-50 text-green-600' },
-  { label: 'Avg. Platform Rating', val: '4.65', change: '+0.1', up: true, icon: Star, color: 'bg-amber-50 text-amber-600' },
-];
-
+import { StarRating } from '@/components/StarRating';
 
 const BLOG_POSTS = [
   { id: 1, title: 'Top 10 Fine Dining Restaurants in Riyadh 2026', status: 'published', views: 12450, date: '2026-03-25' },
@@ -541,16 +531,16 @@ export function AdminPanelPage() {
             <div className="space-y-6">
               {/* Stats Grid */}
               <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                {(displayStats ? [
-                  { label: 'Total Restaurants', val: displayStats.totalRestaurants.toLocaleString(), change: 'Live data', up: true, icon: Utensils, color: 'bg-blue-50 text-blue-600' },
-                  { label: 'Total Users', val: displayStats.totalUsers.toLocaleString(), change: 'Live data', up: true, icon: Users, color: 'bg-purple-50 text-purple-600' },
-                  { label: 'Total Bookings', val: displayStats.totalBookings.toLocaleString(), change: 'Live data', up: true, icon: CalendarDays, color: 'bg-primary/10 text-primary' },
-                  { label: 'Total Reviews', val: displayStats.totalReviews.toLocaleString(), change: 'Live data', up: true, icon: Star, color: 'bg-amber-50 text-amber-600' },
-                  { label: 'Active Offers', val: displayStats.activeOffers.toLocaleString(), change: 'Live data', up: true, icon: Tag, color: 'bg-green-50 text-green-600' },
-                  { label: 'Avg. Platform Rating', val: Number(displayStats.avgPlatformRating) > 0 ? Number(displayStats.avgPlatformRating).toFixed(2) : 'N/A', change: 'Live data', up: true, icon: TrendingUp, color: 'bg-emerald-50 text-emerald-600' },
-                  { label: 'Platform Revenue', val: displayStats.platformRevenue ? `SAR ${Number(displayStats.platformRevenue).toLocaleString('en-SA', {maximumFractionDigits:0})}` : '—', change: 'Live data', up: true, icon: DollarSign, color: 'bg-violet-50 text-violet-600' },
-                  { label: 'Gross Volume', val: displayStats.grossVolume ? `SAR ${Number(displayStats.grossVolume).toLocaleString('en-SA', {maximumFractionDigits:0})}` : '—', change: 'Live data', up: true, icon: BarChart3, color: 'bg-green-50 text-green-600' },
-                ] : OVERVIEW_STATS).map(stat => {
+                {displayStats ? [
+                  { label: 'Total Restaurants', val: displayStats.totalRestaurants.toLocaleString(), icon: Utensils, color: 'bg-blue-50 text-blue-600' },
+                  { label: 'Total Users', val: displayStats.totalUsers.toLocaleString(), icon: Users, color: 'bg-purple-50 text-purple-600' },
+                  { label: 'Total Bookings', val: displayStats.totalBookings.toLocaleString(), icon: CalendarDays, color: 'bg-primary/10 text-primary' },
+                  { label: 'Total Reviews', val: displayStats.totalReviews.toLocaleString(), icon: Star, color: 'bg-amber-50 text-amber-600' },
+                  { label: 'Active Offers', val: displayStats.activeOffers.toLocaleString(), icon: Tag, color: 'bg-green-50 text-green-600' },
+                  { label: 'Avg. Platform Rating', val: Number(displayStats.avgPlatformRating) > 0 ? Number(displayStats.avgPlatformRating).toFixed(2) : 'N/A', icon: TrendingUp, color: 'bg-emerald-50 text-emerald-600' },
+                  { label: 'Platform Revenue', val: displayStats.platformRevenue ? `SAR ${Number(displayStats.platformRevenue).toLocaleString('en-SA', {maximumFractionDigits:0})}` : '—', icon: DollarSign, color: 'bg-violet-50 text-violet-600' },
+                  { label: 'Gross Volume', val: displayStats.grossVolume ? `SAR ${Number(displayStats.grossVolume).toLocaleString('en-SA', {maximumFractionDigits:0})}` : '—', icon: BarChart3, color: 'bg-green-50 text-green-600' },
+                ].map(stat => {
                   const Icon = stat.icon;
                   return (
                     <div key={stat.label} className="bg-card border border-border rounded-2xl p-5">
@@ -559,13 +549,15 @@ export function AdminPanelPage() {
                       </div>
                       <p className="text-2xl font-extrabold text-foreground">{stat.val}</p>
                       <p className="text-xs text-muted-foreground mt-0.5">{stat.label}</p>
-                      <div className={`flex items-center gap-1 mt-2 text-xs font-semibold ${stat.up ? 'text-green-600' : 'text-red-600'}`}>
-                        <ArrowUpRight className={`w-3 h-3 ${!stat.up ? 'rotate-180' : ''}`} />
-                        {stat.change}{stat.change === 'Live data' ? '' : ' this month'}
-                      </div>
                     </div>
                   );
-                })}
+                }) : Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className="bg-card border border-border rounded-2xl p-5 animate-pulse">
+                    <div className="w-10 h-10 rounded-xl bg-muted mb-3" />
+                    <div className="h-7 w-24 bg-muted rounded mb-2" />
+                    <div className="h-3 w-32 bg-muted/70 rounded" />
+                  </div>
+                ))}
               </div>
 
               {/* Modules Status Banner */}
@@ -630,11 +622,7 @@ export function AdminPanelPage() {
                             <span className="font-semibold text-sm text-foreground">{review.userNameEn ?? 'User'}</span>
                             <span className="text-xs text-muted-foreground ms-2">on {review.restaurantNameEn ?? '—'}</span>
                           </div>
-                          <div className="flex items-center gap-1">
-                            {[1,2,3,4,5].map(s => (
-                              <Star key={s} className={`w-3 h-3 ${s <= (review.ratingOverall ?? 0) ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground/20'}`} />
-                            ))}
-                          </div>
+                          <StarRating rating={review.ratingOverall ?? 0} size="xs" />
                         </div>
                         <p className="text-sm text-muted-foreground mb-3 line-clamp-2">"{review.textEn ?? review.textAr ?? ''}"</p>
                         <div className="flex gap-2">
@@ -963,9 +951,7 @@ export function AdminPanelPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="flex gap-0.5">
-                        {[1,2,3,4,5].map(s => <Star key={s} className={`w-3.5 h-3.5 ${s <= review.ratingOverall ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground/20'}`} />)}
-                      </div>
+                      <StarRating rating={review.ratingOverall} size="md" />
                       {review.isExpertReview && <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-100 text-amber-700">Critic</span>}
                       <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-green-100 text-green-700">approved</span>
                     </div>

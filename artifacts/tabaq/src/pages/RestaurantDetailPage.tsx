@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { StarRating } from '@/components/StarRating';
 import { useLanguage } from '@/hooks/use-language';
 import {
   useGetRestaurant,
@@ -899,11 +900,7 @@ export function RestaurantDetailPage() {
                 <h3 className="font-bold text-foreground mb-4">{t('Rating Breakdown', 'تفاصيل التقييم')}</h3>
                 <div className="text-center mb-4">
                   <span className="text-5xl font-black text-foreground">{ratingBreakdown.overall.toFixed(1)}</span>
-                  <div className="flex justify-center gap-0.5 mt-2">
-                    {[1, 2, 3, 4, 5].map(s => (
-                      <Star key={s} className={`w-4 h-4 ${s <= Math.round(ratingBreakdown.overall) ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground/20'}`} />
-                    ))}
-                  </div>
+                  <StarRating rating={ratingBreakdown.overall} size="lg" className="justify-center mt-2" />
                   <p className="text-sm text-muted-foreground mt-1">{ratingBreakdown.count} {t('reviews', 'تقييم')}</p>
                 </div>
                 <div className="space-y-2">

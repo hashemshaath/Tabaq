@@ -1,5 +1,6 @@
 import React from 'react';
 import { useParams, Link } from 'wouter';
+import { StarRating } from '@/components/StarRating';
 import { useLanguage } from '@/hooks/use-language';
 import { useGetDish } from '@workspace/api-client-react';
 import { InlineReviewComposer } from '@/components/InlineReviewComposer';
@@ -207,11 +208,7 @@ export function DishDetailPage() {
               )}
               {hasRating && (
                 <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 px-4 py-2 rounded-2xl">
-                  <div className="flex gap-0.5">
-                    {[1, 2, 3, 4, 5].map(s => (
-                      <Star key={s} className={`w-4 h-4 ${s <= Math.round(avgRating) ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground/20'}`} />
-                    ))}
-                  </div>
+                  <StarRating rating={avgRating} size="lg" />
                   <span className="font-bold text-amber-700">{avgRating.toFixed(1)}</span>
                   <span className="text-amber-600/70 text-sm">({dish.reviewCount} {t('reviews', 'تقييم')})</span>
                 </div>

@@ -8,6 +8,7 @@ import {
   Heart, Navigation, Percent, BadgeCheck, ScanQrCode, CalendarCheck, BadgeDollarSign
 } from 'lucide-react';
 import { RestaurantCard } from '@/components/RestaurantCard';
+import { StarRating } from '@/components/StarRating';
 import { getRestaurantAwards, COLLECTIONS } from '@/lib/awards';
 
 // ── Images ─────────────────────────────────────────────────────────
@@ -828,7 +829,7 @@ export function HomePage() {
                             </div>
                           )}
                           <div className="flex items-center gap-1 mb-3">
-                            {[1,2,3,4,5].map(s => <Star key={s} className={`w-3 h-3 ${s <= Math.floor(deal.rating) ? 'fill-amber-400 text-amber-400' : 'fill-muted text-muted-foreground/20'}`} />)}
+                            <StarRating rating={deal.rating} size="xs" />
                             <span className="text-[11px] font-bold ms-0.5">{deal.rating}</span>
                             <span className="text-[11px] text-muted-foreground">({deal.reviews})</span>
                           </div>

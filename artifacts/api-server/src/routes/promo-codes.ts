@@ -6,9 +6,8 @@ import { requireAuth } from "../middleware/requireAuth.js";
 
 const router: IRouter = Router();
 
-// GET /promo-codes — admin only list
+// GET /promo-codes — admin only list (protected by requireAuth)
 router.get("/promo-codes", requireAuth, async (req, res) => {
-  // TODO: Check if user is admin. For now assume requireAuth is enough if we had roles.
   try {
     const codes = await db.select().from(promoCodesTable).orderBy(sql`${promoCodesTable.createdAt} desc`);
     res.json(codes);

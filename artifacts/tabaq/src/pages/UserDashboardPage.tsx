@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AddressBook } from '@/components/AddressBook';
 import { LocalizationSettings } from '@/components/LocalizationSettings';
+import { StarRating } from '@/components/StarRating';
 
 // ─── Username Section Component ───────────────────────────────────────────────
 function UsernameSection() {
@@ -539,7 +540,7 @@ export function UserDashboardPage() {
                   <div>
                     <h3 className="font-bold text-foreground">{lang === 'ar' ? review.restaurantNameAr : review.restaurant}</h3>
                     <div className="flex items-center gap-1.5 mt-1">
-                      {[1,2,3,4,5].map(s => <Star key={s} className={`w-3.5 h-3.5 ${s <= review.rating ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground/20'}`} />)}
+                      <StarRating rating={review.rating} size="md" />
                       <span className="text-xs text-muted-foreground">{review.date}</span>
                     </div>
                   </div>

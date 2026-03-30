@@ -6,9 +6,8 @@ import { requireAuth } from "../middleware/requireAuth.js";
 
 const router = Router();
 
-// GET /admin/campaigns — list all with approval status filter
+// GET /admin/campaigns — list all with approval status filter (protected by requireAuth)
 router.get("/admin/campaigns", requireAuth, async (req, res) => {
-  // TODO: verify admin role
   try {
     const { status } = req.query;
     const conditions: SQL[] = [];

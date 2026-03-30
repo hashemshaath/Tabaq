@@ -7,6 +7,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { useGetFeed, useListReviews } from '@workspace/api-client-react';
 import { ReviewCard } from '@/components/ReviewCard';
+import { StarRating } from '@/components/StarRating';
 import { useLanguage } from '@/hooks/use-language';
 import { useAuth } from '@/context/AuthContext';
 import { Link } from 'wouter';
@@ -75,16 +76,6 @@ const MOCK_FEED_ACTIVITIES = [
   },
 ];
 
-function StarRow({ rating }: { rating: number }) {
-  return (
-    <div className="flex gap-0.5">
-      {[1, 2, 3, 4, 5].map(s => (
-        <Star key={s} className={`w-3.5 h-3.5 ${s <= Math.round(rating) ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground/20'}`} />
-      ))}
-    </div>
-  );
-}
-
 function ActivityCard({ activity, lang, t }: { activity: typeof MOCK_FEED_ACTIVITIES[0]; lang: string; t: (en: string, ar: string) => string }) {
   const [liked, setLiked] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
@@ -98,7 +89,7 @@ function ActivityCard({ activity, lang, t }: { activity: typeof MOCK_FEED_ACTIVI
           <div className="absolute bottom-3 start-3 end-3 flex items-end justify-between">
             <div>
               <p className="text-white font-bold text-lg leading-tight">{lang === 'ar' ? activity.restaurant.nameAr : activity.restaurant.nameEn}</p>
-              <StarRow rating={activity.rating} />
+              <StarRating rating={activity.rating} size="md" />
             </div>
             <span className="bg-amber-400 text-black font-black text-sm px-2.5 py-1 rounded-xl">{activity.rating.toFixed(1)}</span>
           </div>

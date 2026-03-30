@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Link } from 'wouter';
+import { StarRating } from '@/components/StarRating';
 
 // ─── Types ────────────────────────────────────────────────────────
 interface OfferTier {
@@ -252,15 +253,9 @@ function Countdown({ until }: { until: string }) {
 
 // ─── Star Row ─────────────────────────────────────────────────────
 function StarRow({ rating, reviews, size = 'sm' }: { rating: number; reviews: number; size?: 'sm' | 'md' }) {
-  const sz = size === 'md' ? 'w-4 h-4' : 'w-3.5 h-3.5';
   return (
     <div className="flex items-center gap-1">
-      {[1,2,3,4,5].map(s => (
-        <Star
-          key={s}
-          className={`${sz} ${s <= Math.floor(rating) ? 'fill-amber-400 text-amber-400' : 'fill-muted text-muted-foreground/30'}`}
-        />
-      ))}
+      <StarRating rating={rating} size={size === 'md' ? 'lg' : 'md'} />
       <span className={`font-bold text-foreground ms-0.5 ${size === 'md' ? 'text-sm' : 'text-xs'}`}>{rating}</span>
       <span className={`text-muted-foreground ${size === 'md' ? 'text-sm' : 'text-xs'}`}>({reviews})</span>
     </div>

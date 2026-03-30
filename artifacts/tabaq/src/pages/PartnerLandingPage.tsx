@@ -8,6 +8,7 @@ import {
   Utensils, Settings, Bell, Eye, HeartHandshake, Rocket
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { StarRating } from '@/components/StarRating';
 
 const PARTNER_HERO = 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=1920&h=1200&fit=crop';
 const RESTAURANT_1 = 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=600&h=400&fit=crop';
@@ -293,7 +294,7 @@ export function PartnerLandingPage() {
               <div>
                 <p className="text-white font-semibold text-sm">{t('Trusted by 500+ restaurants', 'موثوق به من قِبل 500+ مطعم')}</p>
                 <div className="flex gap-0.5 mt-0.5">
-                  {[1,2,3,4,5].map(s => <Star key={s} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />)}
+                  <StarRating rating={5} size="md" />
                 </div>
               </div>
             </div>
@@ -541,7 +542,7 @@ export function PartnerLandingPage() {
             {TESTIMONIALS.map(t_ => (
               <div key={t_.name} className="bg-card border border-border rounded-3xl p-7 flex flex-col hover:shadow-xl hover:border-primary/20 transition-all">
                 <div className="flex gap-0.5 mb-4">
-                  {[1,2,3,4,5].map(s => <Star key={s} className="w-4 h-4 fill-amber-400 text-amber-400" />)}
+                  <StarRating rating={5} size="lg" />
                 </div>
                 <blockquote className="text-foreground text-sm leading-relaxed flex-1 mb-6">"{t_.text}"</blockquote>
                 <div className="flex items-center gap-3 pt-4 border-t border-border">

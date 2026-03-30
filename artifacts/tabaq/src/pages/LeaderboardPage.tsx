@@ -9,29 +9,6 @@ import { Link } from 'wouter';
 
 type Period = 'weekly' | 'monthly' | 'alltime';
 
-const MOCK_COMMUNITY: Array<{
-  rank: number;
-  nameEn: string;
-  nameAr: string;
-  avatar: string;
-  points: number;
-  reviewCount: number;
-  badge: string;
-  levelTitle: string;
-  levelTitleAr: string;
-  specialty: string;
-  trending?: boolean;
-}> = [
-  { rank: 3, nameEn: 'Noura Al-Rashid', nameAr: 'نورة الراشد', avatar: 'https://i.pravatar.cc/80?img=47', points: 980, reviewCount: 38, badge: '👑', levelTitle: 'Grand Gourmet', levelTitleAr: 'جورميه كبير', specialty: 'Fine Dining', trending: true },
-  { rank: 4, nameEn: 'Faisal Al-Harbi', nameAr: 'فيصل الحربي', avatar: 'https://i.pravatar.cc/80?img=12', points: 840, reviewCount: 32, badge: '🍽️', levelTitle: 'Taste Expert', levelTitleAr: 'خبير الذوق', specialty: 'Grills', trending: true },
-  { rank: 5, nameEn: 'Lama Khalid', nameAr: 'لمى خالد', avatar: 'https://i.pravatar.cc/80?img=32', points: 720, reviewCount: 28, badge: '⭐', levelTitle: 'Food Critic', levelTitleAr: 'ناقد طعام', specialty: 'Desserts' },
-  { rank: 6, nameEn: 'Sultan Al-Qahtani', nameAr: 'سلطان القحطاني', avatar: 'https://i.pravatar.cc/80?img=15', points: 615, reviewCount: 25, badge: '🌱', levelTitle: 'Food Critic', levelTitleAr: 'ناقد طعام', specialty: 'Healthy' },
-  { rank: 7, nameEn: 'Rawan Al-Shehri', nameAr: 'روان الشهري', avatar: 'https://i.pravatar.cc/80?img=5', points: 530, reviewCount: 20, badge: '🥢', levelTitle: 'Taste Enthusiast', levelTitleAr: 'عاشق الذوق', specialty: 'Asian' },
-  { rank: 8, nameEn: 'Ahmed Al-Dosari', nameAr: 'أحمد الدوسري', avatar: 'https://i.pravatar.cc/80?img=33', points: 460, reviewCount: 17, badge: '🍜', levelTitle: 'Taste Enthusiast', levelTitleAr: 'عاشق الذوق', specialty: 'Street Food' },
-  { rank: 9, nameEn: 'Fatima Al-Mutairi', nameAr: 'فاطمة المطيري', avatar: 'https://i.pravatar.cc/80?img=23', points: 390, reviewCount: 14, badge: '🫐', levelTitle: 'Food Explorer', levelTitleAr: 'مستكشف الطعام', specialty: 'Cafes' },
-  { rank: 10, nameEn: 'Khalid Al-Ghamdi', nameAr: 'خالد الغامدي', avatar: 'https://i.pravatar.cc/80?img=8', points: 310, reviewCount: 11, badge: '🥙', levelTitle: 'Food Explorer', levelTitleAr: 'مستكشف الطعام', specialty: 'Saudi Cuisine' },
-];
-
 const LEVELS = [
   { level: 1, nameEn: 'Food Explorer', nameAr: 'مستكشف الطعام', icon: '🌱', color: 'from-green-400 to-emerald-500', min: 0, max: 100 },
   { level: 2, nameEn: 'Taste Enthusiast', nameAr: 'عاشق الذوق', icon: '🍽️', color: 'from-blue-400 to-cyan-500', min: 100, max: 300 },
@@ -130,14 +107,6 @@ export function LeaderboardPage() {
   }));
 
   const allEntries = [...liveEntries];
-  if (allEntries.length < 5) {
-    const liveIds = new Set(liveEntries.map((e: any) => e.nameEn));
-    MOCK_COMMUNITY.forEach(m => {
-      if (!liveIds.has(m.nameEn) && allEntries.length < 10) {
-        allEntries.push({ ...m, periodReviewCount: m.reviewCount, trending: m.trending ?? false });
-      }
-    });
-  }
   allEntries.sort((a, b) => b.points - a.points);
   allEntries.forEach((e, i) => { e.rank = i + 1; });
 

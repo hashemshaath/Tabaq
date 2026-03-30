@@ -24,25 +24,6 @@ const LABEL_OPTIONS = [
   { key: 'Other', keyAr: 'أخرى', icon: MapPin },
 ];
 
-const MOCK_ADDRESSES: UserAddress[] = [
-  {
-    id: 1, label: 'Home', labelAr: 'البيت', isDefault: true,
-    addressLine1: '2457 King Fahd Road', district: 'Al Olaya',
-    city: 'Riyadh', region: 'Riyadh', postalCode: '12211', countryCode: 'SA',
-    nationalAddress: 'RRCA 2457', buildingNumber: '2457', additionalNumber: '3456',
-    contactName: 'Ahmed Al Rashidi', contactPhone: '+966501234567',
-    latitude: 24.7136, longitude: 46.6753,
-  },
-  {
-    id: 2, label: 'Office', labelAr: 'المكتب', isDefault: false,
-    addressLine1: '1200 Al Urubah Road', district: 'Al Malaz',
-    city: 'Riyadh', region: 'Riyadh', postalCode: '12835', countryCode: 'SA',
-    nationalAddress: 'RRMZ 1200', buildingNumber: '1200',
-    contactName: 'Ahmed Al Rashidi', contactPhone: '+966501234567',
-    latitude: 24.6877, longitude: 46.7219,
-  },
-];
-
 const DEFAULT_COORDS = { lat: 24.7136, lon: 46.6753 };
 
 interface AddressFormData {
@@ -329,8 +310,7 @@ export function AddressBook() {
 
   const { data: addresses = [], isLoading } = useQuery<UserAddress[]>({
     queryKey: ['addresses'],
-    queryFn: () => fetch('/api/me/addresses').then(r => r.ok ? r.json() : MOCK_ADDRESSES),
-    placeholderData: MOCK_ADDRESSES,
+    queryFn: () => fetch('/api/me/addresses', { credentials: 'include' }).then(r => r.ok ? r.json() : []),
   });
 
   const saveMutation = useMutation({
