@@ -26,7 +26,7 @@ export function Footer() {
             <h4 className="font-semibold text-foreground mb-4">{t('Discover', 'استكشف')}</h4>
             <ul className="space-y-3 text-sm text-muted-foreground">
               <li><Link href="/restaurants" className="hover:text-primary transition-colors">{t('Restaurants', 'المطاعم')}</Link></li>
-              <li><Link href="/search?type=dishes" className="hover:text-primary transition-colors">{t('Trending Dishes', 'الأطباق الشائعة')}</Link></li>
+              <li><Link href="/dishes" className="hover:text-primary transition-colors">{t('Trending Dishes', 'الأطباق الشائعة')}</Link></li>
               <li><Link href="/offers" className="hover:text-primary transition-colors">{t('Special Offers', 'عروض خاصة')}</Link></li>
             </ul>
           </div>
@@ -36,15 +36,15 @@ export function Footer() {
             <ul className="space-y-3 text-sm text-muted-foreground">
               <li><Link href="/leaderboard" className="hover:text-primary transition-colors">{t('Top Reviewers', 'أفضل المراجعين')}</Link></li>
               <li><Link href="/profile" className="hover:text-primary transition-colors">{t('My Profile', 'ملفي الشخصي')}</Link></li>
-              <li><Link href="#" className="hover:text-primary transition-colors">{t('Refer a Friend', 'دعوة صديق')}</Link></li>
+              <li><Link href="/referral" className="hover:text-primary transition-colors">{t('Refer a Friend', 'دعوة صديق')}</Link></li>
             </ul>
           </div>
 
           <div>
             <h4 className="font-semibold text-foreground mb-4">{t('Business', 'للأعمال')}</h4>
             <ul className="space-y-3 text-sm text-muted-foreground">
-              <li><Link href="#" className="hover:text-primary transition-colors">{t('Add Restaurant', 'أضف مطعمك')}</Link></li>
-              <li><Link href="#" className="hover:text-primary transition-colors">{t('Partner Console', 'لوحة الشركاء')}</Link></li>
+              <li><Link href="/partners/register" className="hover:text-primary transition-colors">{t('Add Restaurant', 'أضف مطعمك')}</Link></li>
+              <li><Link href="/console" className="hover:text-primary transition-colors">{t('Partner Console', 'لوحة الشركاء')}</Link></li>
             </ul>
           </div>
         </div>
@@ -54,8 +54,8 @@ export function Footer() {
             © {new Date().getFullYear()} Tabaq. {t('All rights reserved.', 'جميع الحقوق محفوظة.')}
           </p>
           <div className="flex gap-4 text-sm text-muted-foreground">
-            <Link href="#" className="hover:text-primary">{t('Privacy', 'الخصوصية')}</Link>
-            <Link href="#" className="hover:text-primary">{t('Terms', 'الشروط')}</Link>
+            <Link href="/privacy" className="hover:text-primary transition-colors">{t('Privacy', 'الخصوصية')}</Link>
+            <Link href="/terms" className="hover:text-primary transition-colors">{t('Terms', 'الشروط')}</Link>
           </div>
         </div>
       </div>

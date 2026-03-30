@@ -236,21 +236,21 @@ export function UserDashboardPage() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<DashTab>('overview');
 
-  const DEMO_USER_ID = 1;
+  const userId = (user as any)?.id ?? 1;
 
   const { data: userData } = useQuery({
-    queryKey: ['user-profile', DEMO_USER_ID],
-    queryFn: () => fetch(`/api/users/${DEMO_USER_ID}`).then(r => r.ok ? r.json() : null),
+    queryKey: ['user-profile', userId],
+    queryFn: () => fetch(`/api/users/${userId}`).then(r => r.ok ? r.json() : null),
     retry: false,
   });
   const { data: bookingsData } = useQuery({
-    queryKey: ['user-bookings', DEMO_USER_ID],
-    queryFn: () => fetch(`/api/users/${DEMO_USER_ID}/bookings`).then(r => r.ok ? r.json() : null),
+    queryKey: ['user-bookings', userId],
+    queryFn: () => fetch(`/api/users/${userId}/bookings`).then(r => r.ok ? r.json() : null),
     retry: false,
   });
   const { data: reviewsData } = useQuery({
-    queryKey: ['user-reviews', DEMO_USER_ID],
-    queryFn: () => fetch(`/api/users/${DEMO_USER_ID}/reviews`).then(r => r.ok ? r.json() : null),
+    queryKey: ['user-reviews', userId],
+    queryFn: () => fetch(`/api/users/${userId}/reviews`).then(r => r.ok ? r.json() : null),
     retry: false,
   });
   const { data: vouchersData } = useQuery({

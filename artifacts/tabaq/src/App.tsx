@@ -29,6 +29,7 @@ import { ProviderRegistrationPage } from "@/pages/ProviderRegistrationPage";
 import FeedPage from "@/pages/FeedPage";
 import NotificationsPage from "@/pages/NotificationsPage";
 import NotFound from "@/pages/not-found";
+import { TermsPage, PrivacyPage } from "@/pages/StaticPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -69,6 +70,8 @@ function Router() {
               <Route path="/referral" component={ReferralPage} />
               <Route path="/notifications" component={NotificationsPage} />
               <Route path="/admin" component={AdminPanelPage} />
+              <Route path="/terms" component={TermsPage} />
+              <Route path="/privacy" component={PrivacyPage} />
               <Route component={NotFound} />
             </Switch>
           </main>

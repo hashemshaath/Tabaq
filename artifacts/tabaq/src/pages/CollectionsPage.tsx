@@ -10,7 +10,16 @@ import { Button } from '@/components/ui/button';
 function CollectionGrid({ collectionId }: { collectionId: string }) {
   const { t, lang } = useLanguage();
   const col = COLLECTIONS.find(c => c.slug === collectionId);
-  if (!col) return null;
+  if (!col) return (
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 text-center px-4">
+      <div className="text-5xl">🍽️</div>
+      <h2 className="text-2xl font-bold text-foreground">{t('Collection not found', 'المجموعة غير موجودة')}</h2>
+      <p className="text-muted-foreground">{t('This collection doesn\'t exist or has been removed.', 'هذه المجموعة غير موجودة أو تم إزالتها.')}</p>
+      <Link href="/collections">
+        <Button>{t('Back to Collections', 'العودة إلى المجموعات')}</Button>
+      </Link>
+    </div>
+  );
 
   const { data, isLoading } = useListRestaurants(
     col.params as Record<string, string | number | boolean | undefined>,

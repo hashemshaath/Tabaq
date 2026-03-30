@@ -1123,7 +1123,7 @@ export function OffersPage() {
             </div>
             <div
               onClick={() => setSelectedOffer(featuredOffer)}
-              className="group relative rounded-2xl overflow-hidden cursor-pointer shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5"
+              className="group relative rounded-2xl overflow-hidden cursor-pointer shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 bg-muted"
               style={{ height: 280 }}
             >
               <img src={featuredOffer.imageUrl} alt={lang === 'ar' ? featuredOffer.titleAr : featuredOffer.titleEn} className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500" />

@@ -101,6 +101,7 @@ export function DishesPage() {
                         src={dish.imageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300&h=200&fit=crop'}
                         alt={lang === 'ar' ? dish.nameAr : dish.nameEn}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        onError={(e) => { (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=300&h=200&fit=crop'; }}
                       />
                     </div>
                     <div className="p-2.5">
@@ -245,6 +246,7 @@ export function DishesPage() {
                         src={dish.imageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop'}
                         alt={lang === 'ar' ? dish.nameAr : dish.nameEn}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        onError={(e) => { (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&h=300&fit=crop'; }}
                       />
                       {dish.isTabaqStar && (
                         <div className="absolute top-0 start-0 bg-amber-500 text-white px-2 py-1 rounded-br-xl rounded-tl-2xl flex items-center gap-1 shadow-sm">
