@@ -14,7 +14,7 @@ export const experienceCategoryEnum = pgEnum("experience_category", [
 ]);
 
 export const experienceStatusEnum = pgEnum("experience_status", [
-  "draft", "pending_approval", "active", "suspended"
+  "draft", "pending_approval", "active", "suspended", "rejected"
 ]);
 
 export const experienceBookingStatusEnum = pgEnum("experience_booking_status", [
@@ -46,6 +46,8 @@ export const commissionStatusEnum = pgEnum("commission_status", [
 ]);
 
 // ─── Experience Providers (from Task #3 — provider dashboard table) ───────────
+// ─── Experience Provider Applications (admin queue) ───────────────────────────
+// Used by the admin control panel to manage provider onboarding
 
 export const experienceProvidersTable = pgTable("experience_providers", {
   id: serial("id").primaryKey(),
@@ -54,16 +56,24 @@ export const experienceProvidersTable = pgTable("experience_providers", {
   businessNameEn: text("business_name_en").notNull(),
   businessNameAr: text("business_name_ar"),
   businessType: text("business_type"),
+  contactName: text("contact_name"),
   contactEmail: text("contact_email").notNull(),
   contactPhone: text("contact_phone"),
-  logoUrl: text("logo_url"),
-  coverUrl: text("cover_url"),
+  description: text("description"),
   descriptionEn: text("description_en"),
   descriptionAr: text("description_ar"),
+  categoryType: text("category_type"),
   city: text("city"),
+  website: text("website"),
+  instagramHandle: text("instagram_handle"),
+  logoUrl: text("logo_url"),
+  coverUrl: text("cover_url"),
+  crNumber: text("cr_number"),
   status: text("status").default("pending").notNull(),
+  adminNote: text("admin_note"),
   reviewedBy: integer("reviewed_by"),
   reviewNotes: text("review_notes"),
+  reviewedAt: timestamp("reviewed_at"),
   extraData: jsonb("extra_data"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -89,11 +99,16 @@ export const experiencesTable = pgTable("experiences", {
   address: text("address"),
   city: text("city"),
   cityId: integer("city_id").references(() => citiesTable.id),
+  coverImageUrl: text("cover_image_url"),
   durationMinutes: integer("duration_minutes"),
   pricePerPerson: numeric("price_per_person", { precision: 10, scale: 2 }),
   depositAmount: numeric("deposit_amount", { precision: 10, scale: 2 }),
+  depositPercent: numeric("deposit_percent", { precision: 5, scale: 2 }).default("100"),
+  commissionPercent: numeric("commission_percent", { precision: 5, scale: 2 }),
   currency: text("currency").default("SAR").notNull(),
   capacity: integer("capacity"),
+  maxGuests: integer("max_guests"),
+  minGuests: integer("min_guests").default(1),
   menuDetailsEn: text("menu_details_en"),
   menuDetailsAr: text("menu_details_ar"),
   rulesEn: text("rules_en"),
@@ -104,7 +119,12 @@ export const experiencesTable = pgTable("experiences", {
   reviewCount: integer("review_count").default(0).notNull(),
   totalBookings: integer("total_bookings").default(0).notNull(),
   totalReviews: integer("total_reviews").default(0).notNull(),
-  status: text("status").default("draft").notNull(),
+  status: experienceStatusEnum("status").default("draft").notNull(),
+  adminNote: text("admin_note"),
+  reviewedBy: integer("reviewed_by"),
+  reviewedAt: timestamp("reviewed_at"),
+  isPublished: boolean("is_published").default(false).notNull(),
+  submittedAt: timestamp("submitted_at").defaultNow().notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -143,22 +163,31 @@ export const experienceSlotsTable = pgTable("experience_slots", {
 export const experienceBookingsTable = pgTable("experience_bookings", {
   id: serial("id").primaryKey(),
   referenceCode: text("reference_code").unique(),
-  userId: integer("user_id").notNull().references(() => usersTable.id),
+  refCode: text("ref_code").unique(),
+  userId: integer("user_id").references(() => usersTable.id),
   experienceId: integer("experience_id").notNull().references(() => experiencesTable.id),
+  providerId: integer("provider_id").references(() => experienceProvidersTable.id),
   slotId: integer("slot_id").references(() => experienceSlotsTable.id),
   guestCount: integer("guest_count").default(1).notNull(),
-  status: text("status").default("pending").notNull(),
-  totalAmount: numeric("total_amount", { precision: 10, scale: 2 }),
-  depositAmount: numeric("deposit_amount", { precision: 10, scale: 2 }),
-  isDepositPaid: boolean("deposit_paid").default(false).notNull(),
-  isFullPaid: boolean("full_paid").default(false).notNull(),
-  specialRequests: text("special_requests"),
   guestName: text("guest_name"),
+  guestNameEn: text("guest_name_en"),
   guestPhone: text("guest_phone"),
   guestEmail: text("guest_email"),
+  scheduledDate: text("scheduled_date"),
+  scheduledTime: text("scheduled_time"),
+  status: experienceBookingStatusEnum("status").default("pending").notNull(),
+  totalAmount: numeric("total_amount", { precision: 10, scale: 2 }),
+  depositAmount: numeric("deposit_amount", { precision: 10, scale: 2 }),
+  commissionAmount: numeric("commission_amount", { precision: 10, scale: 2 }),
+  depositPaid: boolean("deposit_paid").default(false).notNull(),
+  fullPaid: boolean("full_paid").default(false).notNull(),
+  isDepositPaid: boolean("is_deposit_paid").default(false).notNull(),
+  isFullPaid: boolean("is_full_paid").default(false).notNull(),
+  specialRequests: text("special_requests"),
   confirmedAt: timestamp("confirmed_at"),
-  cancelledAt: timestamp("cancelled_at"),
   cancelReason: text("cancel_reason"),
+  cancelledBy: integer("cancelled_by"),
+  cancelledAt: timestamp("cancelled_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -225,7 +254,7 @@ export const experienceGiftsTable = pgTable("experience_gifts", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-// ─── Provider Applications ────────────────────────────────────────────────────
+// ─── Provider Applications (legacy/alternative model) ────────────────────────
 
 export const providerApplicationsTable = pgTable("provider_applications", {
   id: serial("id").primaryKey(),
@@ -257,11 +286,17 @@ export const providersTable = pgTable("providers", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-// ─── Experience Settings ──────────────────────────────────────────────────────
+// ─── Experience Module Settings (admin-configurable global settings) ──────────
 
 export const experienceSettingsTable = pgTable("experience_settings", {
-  key: text("key").primaryKey(),
-  value: text("value").notNull(),
+  id: serial("id").primaryKey(),
+  moduleEnabled: boolean("module_enabled").default(true).notNull(),
+  defaultCommissionPercent: numeric("default_commission_percent", { precision: 5, scale: 2 }).default("15"),
+  defaultDepositPercent: numeric("default_deposit_percent", { precision: 5, scale: 2 }).default("100"),
+  refundPolicyEn: text("refund_policy_en"),
+  refundPolicyAr: text("refund_policy_ar"),
+  updatedBy: integer("updated_by"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 // ─── Experience Commissions ───────────────────────────────────────────────────
@@ -302,6 +337,7 @@ export const insertProviderApplicationSchema = createInsertSchema(providerApplic
   id: true, status: true, adminNotes: true, submittedAt: true, reviewedAt: true, reviewedByAdminId: true,
 });
 export const insertProviderSchema = createInsertSchema(providersTable).omit({ id: true, createdAt: true });
+export const insertExperienceSettingsSchema = createInsertSchema(experienceSettingsTable).omit({ id: true });
 
 // ─── TypeScript Types ─────────────────────────────────────────────────────────
 
@@ -326,5 +362,6 @@ export type ProviderApplication = typeof providerApplicationsTable.$inferSelect;
 export type InsertProviderApplication = z.infer<typeof insertProviderApplicationSchema>;
 export type Provider = typeof providersTable.$inferSelect;
 export type InsertProvider = z.infer<typeof insertProviderSchema>;
-export type ExperienceSetting = typeof experienceSettingsTable.$inferSelect;
+export type ExperienceSettings = typeof experienceSettingsTable.$inferSelect;
+export type InsertExperienceSettings = z.infer<typeof insertExperienceSettingsSchema>;
 export type ExperienceCommission = typeof experienceCommissionsTable.$inferSelect;

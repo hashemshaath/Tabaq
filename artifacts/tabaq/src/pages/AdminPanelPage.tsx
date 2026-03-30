@@ -58,7 +58,7 @@ const INITIAL_MODULES: Module[] = [
 ];
 
 // ─── Types ──────────────────────────────────────────────────────
-type AdminTab = 'overview' | 'offers' | 'contracts' | 'finance' | 'messages' | 'referrals' | 'restaurants' | 'registrations' | 'users' | 'bookings' | 'reviews' | 'blog' | 'seo' | 'modules' | 'settings' | 'review-queue' | 'promo-codes' | 'settlement' | 'experiences';
+type AdminTab = 'overview' | 'offers' | 'contracts' | 'finance' | 'messages' | 'referrals' | 'restaurants' | 'registrations' | 'users' | 'bookings' | 'reviews' | 'blog' | 'seo' | 'modules' | 'settings' | 'review-queue' | 'promo-codes' | 'settlement' | 'exp-providers' | 'exp-listings' | 'exp-bookings' | 'exp-settings';
 
 // ─── Component ──────────────────────────────────────────────────
 export function AdminPanelPage() {
@@ -441,7 +441,136 @@ export function AdminPanelPage() {
 
   const pendingOffersCount = (adminOffersData?.offers as any[])?.filter((o: any) => o.approvalStatus === 'pending')?.length ?? 0;
 
-  const navItems: { id: AdminTab; label: string; icon: React.ElementType; badge?: number }[] = [
+  // ─── Experiences State ───────────────────────────────────────────
+  const [expProviderFilter, setExpProviderFilter] = useState('all');
+  const [expListingFilter, setExpListingFilter] = useState('all');
+  const [expBookingFilter, setExpBookingFilter] = useState('all');
+  const [expDateFrom, setExpDateFrom] = useState('');
+  const [expDateTo, setExpDateTo] = useState('');
+  const [selectedProvider, setSelectedProvider] = useState<any>(null);
+  const [providerActionState, setProviderActionState] = useState<{ id: number; action: 'approve' | 'reject'; note: string } | null>(null);
+  const [expActionState, setExpActionState] = useState<{ id: number; action: 'active' | 'suspended' | 'rejected'; note: string } | null>(null);
+  const [expCancelState, setExpCancelState] = useState<{ id: number; reason: string } | null>(null);
+  const [expSettings, setExpSettings] = useState<any>(null);
+  const [expSettingsSaving, setExpSettingsSaving] = useState(false);
+
+  const isExpTab = ['exp-providers', 'exp-listings', 'exp-bookings', 'exp-settings'].includes(activeTab);
+
+  const { data: expProvidersData, refetch: refetchExpProviders } = useQuery({
+    queryKey: ['admin-exp-providers', expProviderFilter],
+    queryFn: async () => {
+      const res = await fetch(`/api/provider-applications?status=${expProviderFilter}`, { headers: getAuthHeaders() });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    retry: false,
+    staleTime: 30000,
+    enabled: activeTab === 'exp-providers',
+  });
+
+  const { data: expListingsData, refetch: refetchExpListings } = useQuery({
+    queryKey: ['admin-exp-listings', expListingFilter],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/experiences?status=${expListingFilter}`, { headers: getAuthHeaders() });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    retry: false,
+    staleTime: 30000,
+    enabled: activeTab === 'exp-listings',
+  });
+
+  const { data: expBookingsData, refetch: refetchExpBookings } = useQuery({
+    queryKey: ['admin-exp-bookings', expBookingFilter, expDateFrom, expDateTo],
+    queryFn: async () => {
+      const params = new URLSearchParams({ status: expBookingFilter });
+      if (expDateFrom) params.set('dateFrom', expDateFrom);
+      if (expDateTo) params.set('dateTo', expDateTo);
+      const res = await fetch(`/api/admin/experience-bookings?${params.toString()}`, { headers: getAuthHeaders() });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    retry: false,
+    staleTime: 30000,
+    enabled: activeTab === 'exp-bookings',
+  });
+
+  const { data: expSettingsData, refetch: refetchExpSettings } = useQuery({
+    queryKey: ['admin-exp-settings'],
+    queryFn: async () => {
+      const res = await fetch('/api/admin/experience-settings', { headers: getAuthHeaders() });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    retry: false,
+    staleTime: 60000,
+    enabled: activeTab === 'exp-settings',
+  });
+
+  useEffect(() => {
+    if (expSettingsData && !expSettings) {
+      setExpSettings(expSettingsData);
+    }
+  }, [expSettingsData]);
+
+  const approveProviderMutation = useMutation({
+    mutationFn: async ({ id, status, adminNote }: { id: number; status: string; adminNote?: string }) => {
+      const res = await fetch(`/api/provider-applications/${id}`, {
+        method: 'PATCH',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ status, adminNote }),
+      });
+      return res.json();
+    },
+    onSuccess: () => { refetchExpProviders(); setProviderActionState(null); setSelectedProvider(null); },
+  });
+
+  const updateExpStatusMutation = useMutation({
+    mutationFn: async ({ id, status, adminNote }: { id: number; status: string; adminNote?: string }) => {
+      const res = await fetch(`/api/admin/experiences/${id}/status`, {
+        method: 'PATCH',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ status, adminNote }),
+      });
+      return res.json();
+    },
+    onSuccess: () => { refetchExpListings(); setExpActionState(null); },
+  });
+
+  const cancelExpBookingMutation = useMutation({
+    mutationFn: async ({ id, cancelReason }: { id: number; cancelReason: string }) => {
+      const res = await fetch(`/api/admin/experience-bookings/${id}/cancel`, {
+        method: 'PATCH',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ cancelReason }),
+      });
+      return res.json();
+    },
+    onSuccess: () => { refetchExpBookings(); setExpCancelState(null); },
+  });
+
+  const saveExpSettings = async () => {
+    if (!expSettings) return;
+    setExpSettingsSaving(true);
+    try {
+      const res = await fetch('/api/admin/experience-settings', {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(expSettings),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setExpSettings(updated);
+        refetchExpSettings();
+      }
+    } finally {
+      setExpSettingsSaving(false);
+    }
+  };
+
+  const pendingProviderCount = (expProvidersData?.providers as any[])?.filter((p: any) => p.status === 'pending')?.length ?? 0;
+
+  const navItems: { id: AdminTab; label: string; icon: React.ElementType; badge?: number; group?: string }[] = [
     { id: 'overview', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'review-queue', label: 'Review Queue', icon: CheckSquare, badge: undefined },
     { id: 'promo-codes', label: 'Promo Codes', icon: Tag },
@@ -461,6 +590,13 @@ export function AdminPanelPage() {
     { id: 'seo', label: 'SEO Manager', icon: Globe },
     { id: 'modules', label: 'Modules', icon: Layers },
     { id: 'settings', label: 'Settings', icon: Settings },
+  ];
+
+  const expNavItems: { id: AdminTab; label: string; icon: React.ElementType; badge?: number }[] = [
+    { id: 'exp-providers', label: 'Providers', icon: Users },
+    { id: 'exp-listings', label: 'Experiences', icon: MapPin },
+    { id: 'exp-bookings', label: 'Bookings', icon: CalendarDays },
+    { id: 'exp-settings', label: 'Settings', icon: Settings },
   ];
 
   const enabledCount = modules.filter(m => m.enabled).length;
@@ -505,6 +641,33 @@ export function AdminPanelPage() {
               </button>
             );
           })}
+
+          {/* Experiences Section */}
+          <div className="pt-2 pb-1">
+            <p className="px-3 text-xs font-bold text-muted-foreground/60 uppercase tracking-wider mb-1">Experiences</p>
+          </div>
+          {expNavItems.map(item => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                  activeTab === item.id
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+                }`}
+              >
+                <Icon className="w-4 h-4 shrink-0" />
+                <span className="flex-1 text-start">{item.label}</span>
+                {item.badge !== undefined && item.badge > 0 && (
+                  <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${activeTab === item.id ? 'bg-white/20 text-white' : 'bg-primary/15 text-primary'}`}>
+                    {item.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </nav>
 
         {/* Bottom */}
@@ -529,7 +692,11 @@ export function AdminPanelPage() {
       <main className="flex-1 min-w-0 overflow-y-auto">
         {/* Top bar */}
         <div className="sticky top-0 z-30 bg-card border-b border-border px-6 py-3.5 flex items-center justify-between gap-4">
-          <h1 className="text-lg font-bold text-foreground capitalize">{navItems.find(n => n.id === activeTab)?.label}</h1>
+          <h1 className="text-lg font-bold text-foreground capitalize">
+            {isExpTab
+              ? `Experiences — ${expNavItems.find(n => n.id === activeTab)?.label}`
+              : navItems.find(n => n.id === activeTab)?.label}
+          </h1>
           <div className="flex items-center gap-3">
             <div className="relative">
               <Search className="w-4 h-4 absolute start-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -2385,6 +2552,513 @@ export function AdminPanelPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* ── EXPERIENCES: PROVIDER APPLICATIONS ── */}
+          {activeTab === 'exp-providers' && (
+            <div className="space-y-5">
+              {/* Provider Detail Panel */}
+              {selectedProvider && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                  <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-lg p-6 overflow-y-auto max-h-[90vh]">
+                    <div className="flex items-center justify-between mb-5">
+                      <h3 className="font-bold text-foreground flex items-center gap-2">
+                        <Users className="w-5 h-5 text-primary" /> Provider Application
+                      </h3>
+                      <button onClick={() => setSelectedProvider(null)} className="p-1.5 rounded-lg hover:bg-secondary text-muted-foreground"><X className="w-4 h-4" /></button>
+                    </div>
+                    <div className="space-y-3 text-sm mb-5">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div><p className="text-xs text-muted-foreground mb-0.5">Business Name</p><p className="font-semibold text-foreground">{selectedProvider.businessNameEn}</p></div>
+                        <div><p className="text-xs text-muted-foreground mb-0.5">Arabic Name</p><p className="font-semibold text-foreground">{selectedProvider.businessNameAr || '—'}</p></div>
+                        <div><p className="text-xs text-muted-foreground mb-0.5">Contact</p><p className="font-semibold text-foreground">{selectedProvider.contactName}</p></div>
+                        <div><p className="text-xs text-muted-foreground mb-0.5">Email</p><p className="font-semibold text-foreground truncate">{selectedProvider.contactEmail}</p></div>
+                        <div><p className="text-xs text-muted-foreground mb-0.5">Phone</p><p className="font-semibold text-foreground">{selectedProvider.contactPhone || '—'}</p></div>
+                        <div><p className="text-xs text-muted-foreground mb-0.5">City</p><p className="font-semibold text-foreground">{selectedProvider.city || '—'}</p></div>
+                        <div><p className="text-xs text-muted-foreground mb-0.5">Category</p><p className="font-semibold text-foreground capitalize">{selectedProvider.categoryType || '—'}</p></div>
+                        <div><p className="text-xs text-muted-foreground mb-0.5">CR Number</p><p className="font-semibold text-foreground">{selectedProvider.crNumber || '—'}</p></div>
+                      </div>
+                      {selectedProvider.description && (
+                        <div><p className="text-xs text-muted-foreground mb-0.5">Description</p><p className="text-sm text-foreground">{selectedProvider.description}</p></div>
+                      )}
+                      <div><p className="text-xs text-muted-foreground mb-0.5">Submitted</p><p className="font-semibold text-foreground">{new Date(selectedProvider.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p></div>
+                    </div>
+
+                    {selectedProvider.status === 'pending' && (
+                      <div className="space-y-3">
+                        <div>
+                          <label className="text-xs font-semibold text-muted-foreground block mb-1.5">Admin Note (optional)</label>
+                          <textarea
+                            rows={3}
+                            placeholder="Reason for decision..."
+                            value={providerActionState?.id === selectedProvider.id ? providerActionState.note : ''}
+                            onChange={e => setProviderActionState(s => s ? { ...s, note: e.target.value } : { id: selectedProvider.id, action: 'approve', note: e.target.value })}
+                            className="w-full px-3 py-2 rounded-xl border border-input bg-background text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/20"
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => approveProviderMutation.mutate({ id: selectedProvider.id, status: 'rejected', adminNote: providerActionState?.note })}
+                            className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-semibold transition-colors">
+                            <XCircle className="w-4 h-4" /> Reject
+                          </button>
+                          <button
+                            onClick={() => approveProviderMutation.mutate({ id: selectedProvider.id, status: 'approved', adminNote: providerActionState?.note })}
+                            className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-semibold transition-colors">
+                            <BadgeCheck className="w-4 h-4" /> Approve
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedProvider.status !== 'pending' && (
+                      <div className={`px-4 py-3 rounded-xl text-sm font-semibold flex items-center gap-2 ${selectedProvider.status === 'approved' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                        {selectedProvider.status === 'approved' ? <BadgeCheck className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+                        Application {selectedProvider.status}
+                        {selectedProvider.adminNote && <span className="font-normal text-xs ms-1">— {selectedProvider.adminNote}</span>}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Filters */}
+              <div className="flex items-center gap-3 flex-wrap">
+                {['all', 'pending', 'approved', 'rejected'].map(f => (
+                  <button
+                    key={f}
+                    onClick={() => setExpProviderFilter(f)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors capitalize ${expProviderFilter === f ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground'}`}>
+                    {f}
+                  </button>
+                ))}
+              </div>
+
+              {/* Provider Table */}
+              <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border bg-secondary/30">
+                        {['Business Name', 'Contact', 'City', 'Submitted', 'Status', ''].map(h => (
+                          <th key={h} className="text-start px-5 py-3.5 text-xs font-semibold text-muted-foreground">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {!(expProvidersData?.providers as any[])?.length ? (
+                        <tr>
+                          <td colSpan={6} className="py-16 text-center text-muted-foreground">
+                            <Users className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                            <p className="font-medium">No provider applications</p>
+                            <p className="text-xs mt-1">Providers submit applications through the partner portal</p>
+                          </td>
+                        </tr>
+                      ) : (
+                        (expProvidersData.providers as any[]).map((p: any) => (
+                          <tr key={p.id} className={`hover:bg-secondary/30 transition-colors cursor-pointer ${p.status === 'pending' ? 'bg-amber-50/30' : ''}`} onClick={() => setSelectedProvider(p)}>
+                            <td className="px-5 py-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center shrink-0">
+                                  <MapPin className="w-3.5 h-3.5 text-primary" />
+                                </div>
+                                <div>
+                                  <p className="font-semibold text-foreground">{p.businessNameEn}</p>
+                                  {p.refCode && <p className="text-xs font-mono text-muted-foreground">{p.refCode}</p>}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-5 py-4">
+                              <p className="text-sm font-medium text-foreground">{p.contactName}</p>
+                              <p className="text-xs text-muted-foreground">{p.contactEmail}</p>
+                            </td>
+                            <td className="px-5 py-4 text-sm text-muted-foreground">{p.city || '—'}</td>
+                            <td className="px-5 py-4 text-xs text-muted-foreground whitespace-nowrap">
+                              {new Date(p.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                            </td>
+                            <td className="px-5 py-4">
+                              {p.status === 'pending' && <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-700 text-xs font-semibold px-2 py-0.5 rounded-full"><Clock className="w-3 h-3" /> Pending</span>}
+                              {p.status === 'approved' && <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 text-xs font-semibold px-2 py-0.5 rounded-full"><BadgeCheck className="w-3 h-3" /> Approved</span>}
+                              {p.status === 'rejected' && <span className="inline-flex items-center gap-1 bg-red-100 text-red-700 text-xs font-semibold px-2 py-0.5 rounded-full"><XCircle className="w-3 h-3" /> Rejected</span>}
+                            </td>
+                            <td className="px-5 py-4">
+                              <button onClick={e => { e.stopPropagation(); setSelectedProvider(p); }}
+                                className="p-1.5 rounded-lg hover:bg-secondary text-muted-foreground"><Eye className="w-3.5 h-3.5" /></button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── EXPERIENCES: LISTINGS ── */}
+          {activeTab === 'exp-listings' && (
+            <div className="space-y-5">
+              {/* Action modal */}
+              {expActionState && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                  <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      {expActionState.action === 'active' && <BadgeCheck className="w-5 h-5 text-green-600" />}
+                      {expActionState.action === 'suspended' && <Ban className="w-5 h-5 text-amber-600" />}
+                      {expActionState.action === 'rejected' && <XCircle className="w-5 h-5 text-red-600" />}
+                      <h3 className="font-bold text-foreground capitalize">
+                        {expActionState.action === 'active' ? 'Approve Experience' : expActionState.action === 'suspended' ? 'Suspend Experience' : 'Reject Experience'}
+                      </h3>
+                    </div>
+                    <div className="mb-4">
+                      <label className="text-xs font-semibold text-muted-foreground block mb-1.5">Admin Note (optional)</label>
+                      <textarea
+                        value={expActionState.note}
+                        onChange={e => setExpActionState(s => s ? { ...s, note: e.target.value } : s)}
+                        rows={3}
+                        placeholder="Reason or instructions..."
+                        className="w-full px-3 py-2 rounded-xl border border-input bg-background text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => setExpActionState(null)} className="flex-1 px-4 py-2.5 rounded-xl border border-border text-sm font-semibold text-muted-foreground hover:bg-secondary">Cancel</button>
+                      <button
+                        onClick={() => updateExpStatusMutation.mutate({ id: expActionState.id, status: expActionState.action, adminNote: expActionState.note || undefined })}
+                        className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-colors ${expActionState.action === 'active' ? 'bg-green-600 hover:bg-green-700' : expActionState.action === 'suspended' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-red-600 hover:bg-red-700'}`}>
+                        Confirm
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Filters */}
+              <div className="flex items-center gap-3 flex-wrap">
+                {['all', 'pending_approval', 'active', 'suspended', 'rejected'].map(f => (
+                  <button
+                    key={f}
+                    onClick={() => setExpListingFilter(f)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors capitalize ${expListingFilter === f ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground'}`}>
+                    {f.replace('_', ' ')}
+                  </button>
+                ))}
+              </div>
+
+              {/* Listings Table */}
+              <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border bg-secondary/30">
+                        {['Title', 'Provider', 'Category', 'Price', 'Submitted', 'Status', 'Actions'].map(h => (
+                          <th key={h} className="text-start px-4 py-3.5 text-xs font-semibold text-muted-foreground">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {!(expListingsData?.experiences as any[])?.length ? (
+                        <tr>
+                          <td colSpan={7} className="py-16 text-center text-muted-foreground">
+                            <MapPin className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                            <p className="font-medium">No experiences yet</p>
+                            <p className="text-xs mt-1">Approved providers will submit experiences for review</p>
+                          </td>
+                        </tr>
+                      ) : (
+                        (expListingsData.experiences as any[]).map((exp: any) => (
+                          <tr key={exp.id} className={`hover:bg-secondary/30 transition-colors ${exp.status === 'pending_approval' ? 'bg-amber-50/30' : ''}`}>
+                            <td className="px-4 py-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center shrink-0">
+                                  <MapPin className="w-3.5 h-3.5 text-primary" />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="font-semibold text-foreground truncate max-w-[160px]">{exp.titleEn}</p>
+                                  {exp.refCode && <p className="text-xs font-mono text-muted-foreground">{exp.refCode}</p>}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-4 text-sm text-foreground">{exp.providerName || `#${exp.providerId}`}</td>
+                            <td className="px-4 py-4 text-xs text-muted-foreground capitalize">{exp.categoryType || '—'}</td>
+                            <td className="px-4 py-4">
+                              <span className="text-sm font-semibold text-foreground">
+                                {exp.pricePerPerson ? `SAR ${Number(exp.pricePerPerson).toFixed(0)}` : '—'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-4 text-xs text-muted-foreground whitespace-nowrap">
+                              {new Date(exp.submittedAt || exp.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                            </td>
+                            <td className="px-4 py-4">
+                              {exp.status === 'pending_approval' && <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-700 text-xs font-semibold px-2 py-0.5 rounded-full"><Clock className="w-3 h-3" /> Pending</span>}
+                              {exp.status === 'active' && <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 text-xs font-semibold px-2 py-0.5 rounded-full"><BadgeCheck className="w-3 h-3" /> Active</span>}
+                              {exp.status === 'suspended' && <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-700 text-xs font-semibold px-2 py-0.5 rounded-full"><Ban className="w-3 h-3" /> Suspended</span>}
+                              {exp.status === 'rejected' && <span className="inline-flex items-center gap-1 bg-red-100 text-red-700 text-xs font-semibold px-2 py-0.5 rounded-full"><XCircle className="w-3 h-3" /> Rejected</span>}
+                            </td>
+                            <td className="px-4 py-4">
+                              <div className="flex items-center gap-1">
+                                {exp.status !== 'active' && (
+                                  <button
+                                    onClick={() => setExpActionState({ id: exp.id, action: 'active', note: '' })}
+                                    className="p-1.5 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 transition-colors" title="Approve">
+                                    <BadgeCheck className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                                {exp.status !== 'suspended' && exp.status !== 'rejected' && (
+                                  <button
+                                    onClick={() => setExpActionState({ id: exp.id, action: 'suspended', note: '' })}
+                                    className="p-1.5 rounded-lg bg-amber-100 text-amber-700 hover:bg-amber-200 transition-colors" title="Suspend">
+                                    <Ban className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                                {exp.status !== 'rejected' && (
+                                  <button
+                                    onClick={() => setExpActionState({ id: exp.id, action: 'rejected', note: '' })}
+                                    className="p-1.5 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 transition-colors" title="Reject">
+                                    <XCircle className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── EXPERIENCES: BOOKINGS ── */}
+          {activeTab === 'exp-bookings' && (
+            <div className="space-y-5">
+              {/* Cancel modal */}
+              {expCancelState && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                  <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <XCircle className="w-5 h-5 text-red-600" />
+                      <h3 className="font-bold text-foreground">Cancel Booking</h3>
+                    </div>
+                    <div className="mb-4">
+                      <label className="text-xs font-semibold text-muted-foreground block mb-1.5">Cancellation Reason *</label>
+                      <textarea
+                        value={expCancelState.reason}
+                        onChange={e => setExpCancelState(s => s ? { ...s, reason: e.target.value } : s)}
+                        rows={3}
+                        placeholder="Explain the reason for cancellation..."
+                        className="w-full px-3 py-2 rounded-xl border border-input bg-background text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => setExpCancelState(null)} className="flex-1 px-4 py-2.5 rounded-xl border border-border text-sm font-semibold text-muted-foreground hover:bg-secondary">Back</button>
+                      <button
+                        onClick={() => cancelExpBookingMutation.mutate({ id: expCancelState.id, cancelReason: expCancelState.reason })}
+                        disabled={!expCancelState.reason}
+                        className="flex-1 px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-semibold transition-colors disabled:opacity-50">
+                        Cancel Booking
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Filters */}
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-2">
+                  {['all', 'confirmed', 'cancelled'].map(f => (
+                    <button
+                      key={f}
+                      onClick={() => setExpBookingFilter(f)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors capitalize ${expBookingFilter === f ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground'}`}>
+                      {f}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2 ms-auto">
+                  <input
+                    type="date"
+                    value={expDateFrom}
+                    onChange={e => setExpDateFrom(e.target.value)}
+                    className="h-8 px-2 rounded-lg border border-input bg-background text-xs focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    placeholder="From"
+                  />
+                  <span className="text-xs text-muted-foreground">to</span>
+                  <input
+                    type="date"
+                    value={expDateTo}
+                    onChange={e => setExpDateTo(e.target.value)}
+                    className="h-8 px-2 rounded-lg border border-input bg-background text-xs focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    placeholder="To"
+                  />
+                </div>
+              </div>
+
+              {/* Bookings Table */}
+              <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border bg-secondary/30">
+                        {['Ref Code', 'Guest', 'Experience', 'Provider', 'Date', 'Guests', 'Status', 'Amount', ''].map(h => (
+                          <th key={h} className="text-start px-4 py-3.5 text-xs font-semibold text-muted-foreground">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {!(expBookingsData?.bookings as any[])?.length ? (
+                        <tr>
+                          <td colSpan={9} className="py-16 text-center text-muted-foreground">
+                            <CalendarDays className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                            <p className="font-medium">No experience bookings yet</p>
+                            <p className="text-xs mt-1">Bookings will appear here once guests start booking experiences</p>
+                          </td>
+                        </tr>
+                      ) : (
+                        (expBookingsData.bookings as any[]).map((b: any) => (
+                          <tr key={b.id} className="hover:bg-secondary/30 transition-colors">
+                            <td className="px-4 py-4 font-mono text-xs text-muted-foreground">{b.refCode || `#${b.id}`}</td>
+                            <td className="px-4 py-4">
+                              <p className="text-sm font-medium text-foreground">{b.guestNameEn || '—'}</p>
+                              <p className="text-xs text-muted-foreground">{b.guestEmail || ''}</p>
+                            </td>
+                            <td className="px-4 py-4 text-sm text-foreground truncate max-w-[120px]">{b.experienceTitleEn || `#${b.experienceId}`}</td>
+                            <td className="px-4 py-4 text-sm text-muted-foreground">{b.providerName || `#${b.providerId}`}</td>
+                            <td className="px-4 py-4 text-xs text-muted-foreground whitespace-nowrap">
+                              {b.scheduledDate || '—'} {b.scheduledTime ? `@ ${b.scheduledTime}` : ''}
+                            </td>
+                            <td className="px-4 py-4 text-sm text-center text-foreground">{b.guestCount}</td>
+                            <td className="px-4 py-4">
+                              {b.status === 'confirmed' && <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 text-xs font-semibold px-2 py-0.5 rounded-full"><CheckCircle2 className="w-3 h-3" /> Confirmed</span>}
+                              {b.status === 'cancelled' && <span className="inline-flex items-center gap-1 bg-red-100 text-red-700 text-xs font-semibold px-2 py-0.5 rounded-full"><XCircle className="w-3 h-3" /> Cancelled</span>}
+                              {!['confirmed', 'cancelled'].includes(b.status) && <span className="text-xs text-muted-foreground capitalize">{b.status}</span>}
+                            </td>
+                            <td className="px-4 py-4">
+                              <span className="text-sm font-semibold text-foreground">{b.totalAmount ? `SAR ${Number(b.totalAmount).toFixed(0)}` : '—'}</span>
+                            </td>
+                            <td className="px-4 py-4">
+                              {b.status !== 'cancelled' && (
+                                <button
+                                  onClick={() => setExpCancelState({ id: b.id, reason: '' })}
+                                  className="p-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors" title="Cancel Booking">
+                                  <XCircle className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── EXPERIENCES: SETTINGS ── */}
+          {activeTab === 'exp-settings' && (
+            <div className="space-y-5 max-w-2xl">
+              <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                <div className="px-5 py-4 border-b border-border bg-secondary/30 flex items-center justify-between">
+                  <div>
+                    <h3 className="font-bold text-foreground">Experiences Module Settings</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">Configure global defaults for the experiences module</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={saveExpSettings}
+                    disabled={expSettingsSaving || !expSettings}
+                    className="gap-2">
+                    {expSettingsSaving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : null}
+                    Save Settings
+                  </Button>
+                </div>
+
+                <div className="p-5 space-y-5">
+                  {/* Module Toggle */}
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">Module Enabled</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">When disabled, the experiences section is hidden from consumers and providers</p>
+                    </div>
+                    <button
+                      onClick={() => setExpSettings((s: any) => s ? { ...s, moduleEnabled: !s.moduleEnabled } : s)}
+                      className={`relative rounded-full transition-all duration-300 ${expSettings?.moduleEnabled ? 'bg-primary' : 'bg-muted'}`}
+                      style={{ width: 44, height: 24 }}>
+                      <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-all duration-300 ${expSettings?.moduleEnabled ? 'start-[22px]' : 'start-0.5'}`} />
+                    </button>
+                  </div>
+
+                  <div className="border-t border-border" />
+
+                  {/* Commission Rate */}
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">Default Commission Rate</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Applied to all experiences unless overridden per listing</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        step="0.5"
+                        min="0"
+                        max="100"
+                        value={expSettings?.defaultCommissionPercent ?? '15'}
+                        onChange={e => setExpSettings((s: any) => s ? { ...s, defaultCommissionPercent: e.target.value } : s)}
+                        className="w-20 h-10 px-3 text-end rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 font-mono"
+                      />
+                      <span className="text-sm text-muted-foreground flex items-center gap-0.5"><Percent className="w-3.5 h-3.5" /></span>
+                    </div>
+                  </div>
+
+                  {/* Minimum Deposit */}
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">Default Deposit Percentage</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Percentage of total price collected at booking (100% = full payment)</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        step="5"
+                        min="0"
+                        max="100"
+                        value={expSettings?.defaultDepositPercent ?? '100'}
+                        onChange={e => setExpSettings((s: any) => s ? { ...s, defaultDepositPercent: e.target.value } : s)}
+                        className="w-20 h-10 px-3 text-end rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 font-mono"
+                      />
+                      <span className="text-sm text-muted-foreground flex items-center gap-0.5"><Percent className="w-3.5 h-3.5" /></span>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-border" />
+
+                  {/* Refund Policy */}
+                  <div>
+                    <p className="text-sm font-semibold text-foreground mb-1.5">Refund Policy (English)</p>
+                    <textarea
+                      rows={4}
+                      value={expSettings?.refundPolicyEn ?? ''}
+                      onChange={e => setExpSettings((s: any) => s ? { ...s, refundPolicyEn: e.target.value } : s)}
+                      placeholder="Enter the refund policy displayed to consumers in English..."
+                      className="w-full px-3 py-2 rounded-xl border border-input bg-background text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    />
+                  </div>
+
+                  <div>
+                    <p className="text-sm font-semibold text-foreground mb-1.5">Refund Policy (Arabic)</p>
+                    <textarea
+                      rows={4}
+                      dir="rtl"
+                      value={expSettings?.refundPolicyAr ?? ''}
+                      onChange={e => setExpSettings((s: any) => s ? { ...s, refundPolicyAr: e.target.value } : s)}
+                      placeholder="أدخل سياسة الاسترداد بالعربية..."
+                      className="w-full px-3 py-2 rounded-xl border border-input bg-background text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
