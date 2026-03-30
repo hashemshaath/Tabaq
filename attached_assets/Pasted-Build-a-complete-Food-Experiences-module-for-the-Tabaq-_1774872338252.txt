@@ -1,0 +1,135 @@
+Build a complete “Food Experiences” module for the Tabaq platform as a scalable microservice.
+
+GOAL:
+Create a professional system where providers can list and manage food experiences (heritage dining, live cooking shows, street food, cultural experiences), and users can discover, book, review, and gift these experiences.
+
+---
+
+CORE FEATURES:
+
+1. Experiences Listing Page:
+- Grid + list view
+- Advanced filters:
+  - City
+  - Category (heritage, street food, fine dining, live show)
+  - Provider
+  - Price range
+  - Rating
+  - Experience type
+- Sorting (popular, highest rated, trending, newest)
+
+---
+
+2. Experience Detail Page:
+- Tabbed layout:
+  - Overview
+  - Menu / Experience details
+  - Reviews
+  - Rules & policies
+- Image gallery (slider)
+- Show:
+  - Duration
+  - Price
+  - Location + map
+  - Available slots
+  - Capacity
+  - Host/provider profile
+  - Highlights and tags
+
+---
+
+3. Booking System:
+- 3-step booking flow:
+  1. Select date & number of guests
+  2. Enter details
+  3. Payment
+- Support deposits (partial payment)
+- Show availability calendar
+- Prevent overbooking
+- Confirmation + notifications
+
+---
+
+4. Gifting System:
+- Send experience as a gift
+- Choose:
+  - Gift card design
+  - Personalized message
+  - Recipient details
+- Generate redeemable code / QR
+- Track gift usage
+
+---
+
+5. Reviews System:
+- Multi-dimensional ratings:
+  - Food
+  - Hospitality
+  - Ambiance
+  - Value
+- Allow photo uploads
+- Verified reviews (only after booking)
+- Show rating breakdown
+
+---
+
+6. Host / Provider Registration:
+- Multi-step onboarding:
+  - Business info
+  - Experience details
+  - Pricing
+  - Availability
+  - Media upload
+- Approval flow (admin approval required)
+
+---
+
+7. Provider Dashboard:
+- Manage experiences:
+  - Create / edit / publish
+- Manage bookings:
+  - Accept / reject
+  - View calendar
+- View analytics:
+  - Bookings
+  - Revenue
+  - Ratings
+- Respond to reviews
+
+---
+
+8. Admin Controls:
+- Approve/reject experiences
+- Manage providers
+- Manage bookings
+- Control settings (enable/disable module)
+- Commission setup
+
+---
+
+TECHNICAL REQUIREMENTS:
+
+- Build as a microservice module (independent and scalable)
+- Fully connected to database (no demo data)
+- Use clean architecture (services, controllers, components)
+- Ensure Arabic (RTL) and English (LTR) support
+- All UI must be responsive and modern
+- No popups — everything should be in-page UX
+- Add proper loading, empty, success, and error states
+- Add notifications and email triggers
+
+---
+
+INTEGRATIONS:
+
+- Maps (location selection + display)
+- Payment system (full + deposit)
+- Notifications (in-app + email)
+- Points & rewards system
+- Referral system (optional future integration)
+
+---
+
+FINAL REQUIREMENT:
+
+Deliver a production-ready, professional, scalable Food Experiences system that can compete with global platforms. Ensure full functionality, clean UI/UX, and complete end-to-end flows.

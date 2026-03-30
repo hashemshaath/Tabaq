@@ -6,8 +6,12 @@ import {
 } from "@workspace/db/schema";
 import { eq, desc, and, gte, lte, sql, count, sum } from "drizzle-orm";
 import { generateRefCode } from "../lib/refcode.js";
+import { requireAdmin } from "../middleware/requireAuth.js";
 
 const router = Router();
+
+// Protect all /admin/* routes
+router.use(/^\/admin/, requireAdmin);
 
 // ─── CONTRACTS ────────────────────────────────────────────────────────────────
 

@@ -3,7 +3,11 @@ import { db } from "@workspace/db";
 import { referralConversionsTable, pointsTransactionsTable, usersTable } from "@workspace/db/schema";
 import { count, sum, eq, desc, sql } from "drizzle-orm";
 
+import { requireAdmin } from "../middleware/requireAuth.js";
+
 const router = Router();
+
+router.use(/^\/admin/, requireAdmin);
 
 router.get("/admin/referrals", async (req, res) => {
   try {

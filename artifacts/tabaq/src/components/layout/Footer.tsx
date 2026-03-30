@@ -12,7 +12,7 @@ export function Footer() {
           
           <div className="md:col-span-1">
             <Link href="/" className="flex items-center gap-2 mb-4">
-              <img src={`${import.meta.env.BASE_URL}images/logo.png`} alt="Tabaq" className="w-8 h-8 opacity-80 grayscale" />
+              <img src={`${import.meta.env.BASE_URL}images/tabaq-logo.png`} alt="Tabaq" className="w-8 h-8 opacity-80 grayscale" />
               <span className="text-xl font-bold text-foreground">
                 {t('Tabaq', 'طبق')}
               </span>

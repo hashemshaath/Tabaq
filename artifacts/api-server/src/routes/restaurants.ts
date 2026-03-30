@@ -5,7 +5,7 @@ import {
   restaurantFollowsTable, openingHoursTable, categoriesTable, occasionsTable,
   reviewsTable, offersTable, citiesTable, bookingsTable
 } from "@workspace/db/schema";
-import { eq, and, gte, sql, inArray, count, type SQL } from "drizzle-orm";
+import { eq, and, gte, sql, inArray, count, asc, desc, type SQL } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { requireAuth } from "../middleware/requireAuth.js";
 
@@ -17,7 +17,7 @@ router.get("/restaurants", async (req, res) => {
     const {
       cityId, countryId, categoryId, occasionId, priceTier,
       minRating, featured, hasParking, hasOutdoorSeating, openNow,
-      limit = "20", offset = "0"
+      sortBy, limit = "20", offset = "0"
     } = req.query;
 
     let query = db.select({
@@ -88,8 +88,19 @@ router.get("/restaurants", async (req, res) => {
       }
     }
 
+    const orderExpr = sortBy === "newest"
+      ? desc(restaurantsTable.createdAt)
+      : sortBy === "topRated"
+      ? desc(restaurantsTable.avgRating)
+      : sortBy === "featured"
+      ? desc(restaurantsTable.isFeatured)
+      : sortBy === "mostReviewed"
+      ? desc(restaurantsTable.reviewCount)
+      : desc(restaurantsTable.isFeatured);
+
     const restaurants = await query
       .where(and(...conditions))
+      .orderBy(orderExpr)
       .limit(parseInt(limit as string))
       .offset(parseInt(offset as string));
 

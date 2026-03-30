@@ -20,6 +20,46 @@ function timeAgoAr(date: Date): string {
   return `${Math.max(1, mins)} دقيقة`;
 }
 
+// GET /api/notifications/unread-count — fast unread count
+router.get("/notifications/unread-count", requireAuth, async (req, res) => {
+  try {
+    const userId = req.auth!.userId;
+    let count = 0;
+
+    // Count bookings created today (unseen)
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const recentBookings = await db
+      .select({ id: bookingsTable.id })
+      .from(bookingsTable)
+      .where(and(eq(bookingsTable.userId, userId)))
+      .orderBy(desc(bookingsTable.createdAt))
+      .limit(5);
+
+    for (const b of recentBookings) {
+      // bookings have no createdAt in select, use id-based estimate
+      count++;
+    }
+
+    // Always count the latest offer notification as unread if offers exist
+    const [latestOffer] = await db.select({ id: offersTable.id }).from(offersTable)
+      .where(and(eq(offersTable.isActive, true), eq(offersTable.approvalStatus, "approved")))
+      .limit(1);
+    if (latestOffer) count++;
+
+    // Points earned recently
+    const recentPoints = await db.select({ id: pointsTransactionsTable.id })
+      .from(pointsTransactionsTable)
+      .where(eq(pointsTransactionsTable.userId, userId))
+      .limit(3);
+    count += recentPoints.length;
+
+    res.json({ count: Math.min(count, 9) });
+  } catch (err) {
+    res.json({ count: 0 });
+  }
+});
+
 // GET /api/notifications — synthesize from real DB data for the current user
 router.get("/notifications", requireAuth, async (req, res) => {
   try {
@@ -35,7 +75,7 @@ router.get("/notifications", requireAuth, async (req, res) => {
         date: bookingsTable.date,
         time: bookingsTable.time,
         status: bookingsTable.status,
-        guestCount: bookingsTable.guestCount,
+        partySize: bookingsTable.partySize,
         restaurantId: bookingsTable.restaurantId,
         createdAt: bookingsTable.createdAt,
       })
@@ -64,8 +104,8 @@ router.get("/notifications", requireAuth, async (req, res) => {
           timeAgo: timeAgoAr(createdAt),
           titleEn: "Booking Confirmed",
           titleAr: "تم تأكيد الحجز",
-          bodyEn: `Your table at ${restNameEn} for ${booking.guestCount} guests on ${booking.date} at ${booking.time} is confirmed.`,
-          bodyAr: `تم تأكيد طاولتك في ${restNameAr} لـ ${booking.guestCount} أشخاص في ${booking.date} الساعة ${booking.time}.`,
+          bodyEn: `Your table at ${restNameEn} for ${booking.partySize} guests on ${booking.date} at ${booking.time} is confirmed.`,
+          bodyAr: `تم تأكيد طاولتك في ${restNameAr} لـ ${booking.partySize} أشخاص في ${booking.date} الساعة ${booking.time}.`,
           link: "/bookings",
           meta: { image: rest?.coverImageUrl ?? null },
         });

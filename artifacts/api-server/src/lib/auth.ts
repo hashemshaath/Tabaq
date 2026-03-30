@@ -8,6 +8,8 @@ export interface JwtPayload {
   userId: number;
   phone?: string | null;
   email?: string | null;
+  isAdmin?: boolean;
+  isOwner?: boolean;
 }
 
 export function signToken(payload: JwtPayload): string {

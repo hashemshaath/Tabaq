@@ -22,6 +22,8 @@ export const usersTable = pgTable("users", {
   referralCode: text("referral_code").unique(),
   preferredLanguage: text("preferred_language").default("en").notNull(),
   cityId: integer("city_id").references(() => citiesTable.id),
+  isAdmin: boolean("is_admin").default(false).notNull(),
+  isOwner: boolean("is_owner").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

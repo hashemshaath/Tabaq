@@ -12,7 +12,11 @@ import {
 } from "@workspace/db/schema";
 import { count, avg, sql, eq, desc, and, like, sum } from "drizzle-orm";
 
+import { requireAdmin } from "../middleware/requireAuth.js";
+
 const router = Router();
+
+router.use(/^\/admin/, requireAdmin);
 
 const DEFAULT_MODULES = [
   { moduleId: "reservations", nameEn: "Reservations Engine", description: "Table booking, availability management, and confirmation flows", isEnabled: true, version: "2.1.0", dependencies: "[]" },

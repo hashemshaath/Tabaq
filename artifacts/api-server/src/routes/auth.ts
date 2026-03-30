@@ -167,7 +167,7 @@ router.post("/auth/verify-otp", async (req, res) => {
       user = updated!;
     }
 
-    const token = signToken({ userId: user.id, phone: user.phone, email: user.email });
+    const token = signToken({ userId: user.id, phone: user.phone, email: user.email, isAdmin: user.isAdmin, isOwner: user.isOwner });
 
     res.cookie("tabaq_token", token, {
       httpOnly: true,

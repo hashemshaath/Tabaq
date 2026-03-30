@@ -989,7 +989,7 @@ function DealDetailPage({ offer, onBack }: { offer: ExtendedOffer; onBack: () =>
 // ─── Main Page ────────────────────────────────────────────────────
 export function OffersPage() {
   const { t, lang } = useLanguage();
-  const { data: rawApiOffers } = useListOffers({});
+  const { data: rawApiOffers, isLoading: offersLoading } = useListOffers({});
   const apiOffers = Array.isArray(rawApiOffers) ? rawApiOffers : (rawApiOffers as any)?.offers ?? (rawApiOffers as any)?.data ?? [];
   const [selectedOffer, setSelectedOffer] = useState<ExtendedOffer | null>(null);
   const [category, setCategory] = useState('All');
@@ -1030,7 +1030,7 @@ export function OffersPage() {
         boughtCount: o.boughtCount ?? 0,
       }] as OfferTier[],
     }));
-    return api.length > 0 ? api : MOCK_OFFERS;
+    return api;
   }, [apiOffers]);
 
   const filtered = useMemo(() => {
@@ -1152,7 +1152,22 @@ export function OffersPage() {
         </div>
 
         {/* Grid */}
-        {filtered.length > 0 ? (
+        {offersLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="bg-card rounded-xl overflow-hidden border border-border animate-pulse">
+                <div className="bg-muted" style={{ aspectRatio: '4/3' }} />
+                <div className="p-3.5 space-y-2">
+                  <div className="h-3 bg-muted rounded w-2/3" />
+                  <div className="h-4 bg-muted rounded w-full" />
+                  <div className="h-4 bg-muted rounded w-3/4" />
+                  <div className="h-3 bg-muted rounded w-1/2 mt-3" />
+                  <div className="h-5 bg-muted rounded w-1/3" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : filtered.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
             {filtered.map(offer => (
               <DealCard key={offer.id} offer={offer} onSelect={() => setSelectedOffer(offer)} />

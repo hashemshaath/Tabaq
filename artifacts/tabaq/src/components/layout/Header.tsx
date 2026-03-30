@@ -1,31 +1,68 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import {
   Search, MapPin, Globe, User, LogOut, ChevronDown, Tag,
-  CalendarDays, LayoutDashboard, Trophy, Star, Shield, Utensils, ArrowRight, Bell
+  CalendarDays, LayoutDashboard, Trophy, Shield, Utensils,
+  Bell, Menu, X, Home, Sparkles, BarChart3
 } from "lucide-react";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 
+function useUnreadCount(token: string | null, user: unknown) {
+  const [count, setCount] = useState(0);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const apiBase = typeof window !== "undefined"
+    ? (import.meta.env.BASE_URL?.replace(/\/$/, "") || "")
+    : "";
+
+  useEffect(() => {
+    if (!user || !token) { setCount(0); return; }
+
+    const fetch_ = async () => {
+      try {
+        const res = await fetch(`${apiBase}/api/notifications/unread-count`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setCount(data.count ?? 0);
+        }
+      } catch {
+        setCount(0);
+      }
+    };
+
+    fetch_();
+    intervalRef.current = setInterval(fetch_, 60_000);
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, [user, token, apiBase]);
+
+  return count;
+}
+
 export function Header() {
   const { lang, toggleLanguage, t } = useLanguage();
   const [location] = useLocation();
-  const { user, logout } = useAuth();
+  const { user, token, logout } = useAuth();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const unreadCount = useUnreadCount(token, user);
+
+  const isAdmin = (user as any)?.isAdmin === true;
+  const isOwner = (user as any)?.isOwner === true;
 
   const navLinks = [
-    { href: "/", en: "Home", ar: "الرئيسية" },
-    { href: "/restaurants", en: "Discovery", ar: "استكشف" },
-    { href: "/collections", en: "Collections", ar: "المجموعات" },
-    { href: "/offers", en: "Offers", ar: "العروض" },
-    { href: "/leaderboard", en: "Leaderboard", ar: "المتصدرين" },
+    { href: "/", en: "Home", ar: "الرئيسية", icon: Home },
+    { href: "/restaurants", en: "Discovery", ar: "استكشف", icon: Search },
+    { href: "/offers", en: "Offers", ar: "العروض", icon: Sparkles },
+    { href: "/leaderboard", en: "Leaderboard", ar: "المتصدرين", icon: Trophy },
   ];
 
   const displayName = user
     ? lang === "ar"
-      ? user.nameAr || user.nameEn
-      : user.nameEn || user.nameAr
+      ? (user as any).nameAr || (user as any).nameEn
+      : (user as any).nameEn || (user as any).nameAr
     : null;
 
   const isActive = (href: string) =>
@@ -61,7 +98,6 @@ export function Header() {
               )}
             </Link>
           ))}
-          {/* For Partners link */}
           <Link
             href="/partners"
             className={cn(
@@ -91,7 +127,11 @@ export function Header() {
           {user && (
             <Link href="/notifications" className="relative p-2.5 rounded-full hover:bg-accent text-foreground transition-colors">
               <Bell className="w-5 h-5" />
-              <span className="absolute top-1.5 end-1.5 w-2.5 h-2.5 bg-primary rounded-full border-2 border-background" />
+              {unreadCount > 0 && (
+                <span className="absolute top-1.5 end-1.5 min-w-[10px] h-[10px] bg-primary rounded-full border-2 border-background flex items-center justify-center">
+                  {unreadCount > 9 ? null : null}
+                </span>
+              )}
             </Link>
           )}
 
@@ -104,16 +144,16 @@ export function Header() {
             <span className="z-10">{lang === "en" ? "ع" : "EN"}</span>
           </button>
 
-          {/* Auth area */}
+          {/* Auth area — desktop */}
           {user ? (
-            <div className="relative">
+            <div className="relative hidden sm:block">
               <button
                 onClick={() => setUserMenuOpen((v) => !v)}
                 className="flex items-center gap-2 rounded-full border border-border hover:border-primary transition-colors px-2 py-1 bg-secondary"
               >
                 <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden">
-                  {user.avatarUrl ? (
-                    <img src={user.avatarUrl} alt={displayName || ""} className="w-full h-full object-cover" />
+                  {(user as any).avatarUrl ? (
+                    <img src={(user as any).avatarUrl} alt={displayName || ""} className="w-full h-full object-cover" />
                   ) : (
                     <User className="w-4 h-4 text-primary" />
                   )}
@@ -129,16 +169,11 @@ export function Header() {
                   <div className="fixed inset-0 z-40" onClick={() => setUserMenuOpen(false)} />
                   <div className="absolute end-0 top-12 z-50 bg-popover border border-border rounded-2xl shadow-xl py-2 w-56 animate-in fade-in zoom-in-95 duration-150">
 
-                    {/* User section header */}
                     <div className="px-4 py-2 border-b border-border mb-1">
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("My Account", "حسابي")}</p>
                     </div>
 
-                    <Link
-                      href="/dashboard"
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors"
-                      onClick={() => setUserMenuOpen(false)}
-                    >
+                    <Link href="/dashboard" className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors" onClick={() => setUserMenuOpen(false)}>
                       <div className="w-7 h-7 bg-primary/10 rounded-lg flex items-center justify-center">
                         <User className="w-3.5 h-3.5 text-primary" />
                       </div>
@@ -148,26 +183,22 @@ export function Header() {
                       </div>
                     </Link>
 
-                    <Link
-                      href="/notifications"
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors"
-                      onClick={() => setUserMenuOpen(false)}
-                    >
+                    <Link href="/notifications" className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors" onClick={() => setUserMenuOpen(false)}>
                       <div className="w-7 h-7 bg-primary/10 rounded-lg flex items-center justify-center relative">
                         <Bell className="w-3.5 h-3.5 text-primary" />
-                        <span className="absolute -top-0.5 -end-0.5 w-2 h-2 bg-primary rounded-full" />
+                        {unreadCount > 0 && (
+                          <span className="absolute -top-0.5 -end-0.5 w-2 h-2 bg-primary rounded-full" />
+                        )}
                       </div>
                       <div>
                         <p className="font-semibold text-foreground leading-none">{t("Notifications", "الإشعارات")}</p>
-                        <p className="text-xs text-muted-foreground">{t("Bookings, offers & more", "الحجوزات والعروض وأكثر")}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {unreadCount > 0 ? t(`${unreadCount} unread`, `${unreadCount} غير مقروء`) : t("Bookings, offers & more", "الحجوزات والعروض وأكثر")}
+                        </p>
                       </div>
                     </Link>
 
-                    <Link
-                      href="/bookings"
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors"
-                      onClick={() => setUserMenuOpen(false)}
-                    >
+                    <Link href="/bookings" className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors" onClick={() => setUserMenuOpen(false)}>
                       <div className="w-7 h-7 bg-blue-50 rounded-lg flex items-center justify-center">
                         <CalendarDays className="w-3.5 h-3.5 text-blue-600" />
                       </div>
@@ -177,11 +208,7 @@ export function Header() {
                       </div>
                     </Link>
 
-                    <Link
-                      href="/vouchers"
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors"
-                      onClick={() => setUserMenuOpen(false)}
-                    >
+                    <Link href="/vouchers" className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors" onClick={() => setUserMenuOpen(false)}>
                       <div className="w-7 h-7 bg-purple-50 rounded-lg flex items-center justify-center">
                         <Tag className="w-3.5 h-3.5 text-purple-600" />
                       </div>
@@ -191,11 +218,7 @@ export function Header() {
                       </div>
                     </Link>
 
-                    <Link
-                      href="/leaderboard"
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors"
-                      onClick={() => setUserMenuOpen(false)}
-                    >
+                    <Link href="/leaderboard" className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors" onClick={() => setUserMenuOpen(false)}>
                       <div className="w-7 h-7 bg-amber-50 rounded-lg flex items-center justify-center">
                         <Trophy className="w-3.5 h-3.5 text-amber-600" />
                       </div>
@@ -205,38 +228,38 @@ export function Header() {
                       </div>
                     </Link>
 
-                    {/* Business section */}
-                    <div className="px-4 py-2 border-t border-b border-border mt-1 mb-1">
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("Business", "الأعمال")}</p>
-                    </div>
+                    {/* Business/Admin section — only for owners or admins */}
+                    {(isOwner || isAdmin) && (
+                      <>
+                        <div className="px-4 py-2 border-t border-b border-border mt-1 mb-1">
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("Business", "الأعمال")}</p>
+                        </div>
 
-                    <Link
-                      href="/console"
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors"
-                      onClick={() => setUserMenuOpen(false)}
-                    >
-                      <div className="w-7 h-7 bg-green-50 rounded-lg flex items-center justify-center">
-                        <LayoutDashboard className="w-3.5 h-3.5 text-green-600" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-foreground leading-none">{t("Business Console", "لوحة الأعمال")}</p>
-                        <p className="text-xs text-muted-foreground">{t("Manage your restaurant", "إدارة مطعمك")}</p>
-                      </div>
-                    </Link>
+                        {isOwner && (
+                          <Link href="/console" className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors" onClick={() => setUserMenuOpen(false)}>
+                            <div className="w-7 h-7 bg-green-50 rounded-lg flex items-center justify-center">
+                              <LayoutDashboard className="w-3.5 h-3.5 text-green-600" />
+                            </div>
+                            <div>
+                              <p className="font-semibold text-foreground leading-none">{t("Business Console", "لوحة الأعمال")}</p>
+                              <p className="text-xs text-muted-foreground">{t("Manage your restaurant", "إدارة مطعمك")}</p>
+                            </div>
+                          </Link>
+                        )}
 
-                    <Link
-                      href="/admin"
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors"
-                      onClick={() => setUserMenuOpen(false)}
-                    >
-                      <div className="w-7 h-7 bg-red-50 rounded-lg flex items-center justify-center">
-                        <Shield className="w-3.5 h-3.5 text-red-600" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-foreground leading-none">{t("Admin Panel", "لوحة الإدارة")}</p>
-                        <p className="text-xs text-muted-foreground">{t("Platform management", "إدارة المنصة")}</p>
-                      </div>
-                    </Link>
+                        {isAdmin && (
+                          <Link href="/admin" className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors" onClick={() => setUserMenuOpen(false)}>
+                            <div className="w-7 h-7 bg-red-50 rounded-lg flex items-center justify-center">
+                              <Shield className="w-3.5 h-3.5 text-red-600" />
+                            </div>
+                            <div>
+                              <p className="font-semibold text-foreground leading-none">{t("Admin Panel", "لوحة الإدارة")}</p>
+                              <p className="text-xs text-muted-foreground">{t("Platform management", "إدارة المنصة")}</p>
+                            </div>
+                          </Link>
+                        )}
+                      </>
+                    )}
 
                     <hr className="border-border my-1" />
                     <button
@@ -251,10 +274,10 @@ export function Header() {
               )}
             </div>
           ) : (
-            <div className="flex items-center gap-2">
+            <div className="hidden sm:flex items-center gap-2">
               <Link
                 href="/partners"
-                className="hidden sm:flex items-center gap-1.5 px-4 py-2 rounded-full border border-border text-sm font-semibold hover:border-primary hover:text-primary transition-colors"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-full border border-border text-sm font-semibold hover:border-primary hover:text-primary transition-colors"
               >
                 <Utensils className="w-3.5 h-3.5" />
                 {t("For Restaurants", "للمطاعم")}
@@ -268,8 +291,147 @@ export function Header() {
               </Link>
             </div>
           )}
+
+          {/* Mobile hamburger */}
+          <button
+            onClick={() => setMobileMenuOpen((v) => !v)}
+            className="lg:hidden p-2.5 rounded-full hover:bg-accent text-foreground transition-colors"
+            aria-label="Toggle menu"
+          >
+            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
         </div>
       </div>
+
+      {/* Mobile Menu */}
+      {mobileMenuOpen && (
+        <>
+          <div className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)} />
+          <div className="absolute top-full start-0 end-0 z-50 bg-popover border-b border-border shadow-xl animate-in slide-in-from-top-2 duration-200">
+            <div className="max-w-7xl mx-auto px-4 py-4 space-y-1">
+
+              {/* Nav links */}
+              {navLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors",
+                    isActive(link.href)
+                      ? "bg-primary/10 text-primary"
+                      : "text-foreground hover:bg-accent"
+                  )}
+                >
+                  <link.icon className="w-4 h-4" />
+                  {t(link.en, link.ar)}
+                </Link>
+              ))}
+
+              <Link
+                href="/partners"
+                onClick={() => setMobileMenuOpen(false)}
+                className={cn(
+                  "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors",
+                  isActive("/partners") ? "bg-primary/10 text-primary" : "text-foreground hover:bg-accent"
+                )}
+              >
+                <Utensils className="w-4 h-4" />
+                {t("For Partners", "للشركاء")}
+              </Link>
+
+              <div className="h-px bg-border my-2" />
+
+              {/* Auth section */}
+              {user ? (
+                <>
+                  <div className="px-4 py-2">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden shrink-0">
+                        {(user as any).avatarUrl ? (
+                          <img src={(user as any).avatarUrl} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <User className="w-5 h-5 text-primary" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-foreground">{displayName}</p>
+                        <p className="text-xs text-muted-foreground">{t("Diner Account", "حساب متذوق")}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-foreground hover:bg-accent transition-colors">
+                    <LayoutDashboard className="w-4 h-4" />
+                    {t("My Dashboard", "لوحتي")}
+                  </Link>
+                  <Link href="/bookings" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-foreground hover:bg-accent transition-colors">
+                    <CalendarDays className="w-4 h-4" />
+                    {t("My Bookings", "حجوزاتي")}
+                  </Link>
+                  <Link href="/notifications" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-foreground hover:bg-accent transition-colors">
+                    <div className="relative">
+                      <Bell className="w-4 h-4" />
+                      {unreadCount > 0 && <span className="absolute -top-1 -end-1 w-2 h-2 bg-primary rounded-full" />}
+                    </div>
+                    <span>{t("Notifications", "الإشعارات")}</span>
+                    {unreadCount > 0 && <span className="ms-auto text-xs font-bold text-primary">{unreadCount}</span>}
+                  </Link>
+
+                  {(isOwner || isAdmin) && (
+                    <>
+                      <div className="h-px bg-border my-1" />
+                      {isOwner && (
+                        <Link href="/console" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-foreground hover:bg-accent transition-colors">
+                          <BarChart3 className="w-4 h-4 text-green-600" />
+                          {t("Business Console", "لوحة الأعمال")}
+                        </Link>
+                      )}
+                      {isAdmin && (
+                        <Link href="/admin" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-foreground hover:bg-accent transition-colors">
+                          <Shield className="w-4 h-4 text-red-500" />
+                          {t("Admin Panel", "لوحة الإدارة")}
+                        </Link>
+                      )}
+                    </>
+                  )}
+
+                  <div className="h-px bg-border my-1" />
+                  <button
+                    onClick={() => { logout(); setMobileMenuOpen(false); }}
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors w-full"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    {t("Sign Out", "تسجيل الخروج")}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link href="/signin" onClick={() => setMobileMenuOpen(false)} className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors">
+                    <User className="w-4 h-4" />
+                    {t("Sign In", "دخول")}
+                  </Link>
+                  <Link href="/partners" onClick={() => setMobileMenuOpen(false)} className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-border text-sm font-semibold hover:border-primary hover:text-primary transition-colors">
+                    <Utensils className="w-4 h-4" />
+                    {t("Register Your Restaurant", "سجّل مطعمك")}
+                  </Link>
+                </>
+              )}
+
+              <div className="h-px bg-border my-2" />
+              <div className="px-4 pb-2 flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">{t("Language", "اللغة")}</span>
+                <button
+                  onClick={() => { toggleLanguage(); }}
+                  className="px-3 py-1.5 rounded-lg border border-border text-xs font-semibold hover:border-primary hover:text-primary transition-colors"
+                >
+                  {lang === "en" ? "العربية" : "English"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </header>
   );
 }

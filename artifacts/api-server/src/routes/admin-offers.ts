@@ -2,12 +2,14 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { offersTable, restaurantsTable, vouchersTable, usersTable, campaignsTable, promoCodesTable } from "@workspace/db/schema";
 import { count, eq, desc, sql, and, type SQL } from "drizzle-orm";
-import { requireAuth } from "../middleware/requireAuth.js";
+import { requireAdmin } from "../middleware/requireAuth.js";
 
 const router = Router();
 
+router.use(/^\/admin/, requireAdmin);
+
 // GET /admin/campaigns — list all with approval status filter (protected by requireAuth)
-router.get("/admin/campaigns", requireAuth, async (req, res) => {
+router.get("/admin/campaigns", async (req, res) => {
   try {
     const { status } = req.query;
     const conditions: SQL[] = [];
@@ -36,7 +38,7 @@ router.get("/admin/campaigns", requireAuth, async (req, res) => {
 });
 
 // PATCH /admin/campaigns/:id/review — approve/reject/request changes
-router.patch("/admin/campaigns/:id/review", requireAuth, async (req, res) => {
+router.patch("/admin/campaigns/:id/review", async (req, res) => {
   try {
     const id = parseInt(req.params.id as string);
     const { status, adminNotes, commissionOverridePercent } = req.body;
@@ -64,7 +66,7 @@ router.patch("/admin/campaigns/:id/review", requireAuth, async (req, res) => {
 });
 
 // GET /admin/promo-codes — all promo codes
-router.get("/admin/promo-codes", requireAuth, async (req, res) => {
+router.get("/admin/promo-codes", async (req, res) => {
   try {
     const codes = await db.select().from(promoCodesTable).orderBy(sql`${promoCodesTable.createdAt} desc`);
     res.json(codes);
@@ -75,7 +77,7 @@ router.get("/admin/promo-codes", requireAuth, async (req, res) => {
 });
 
 // POST /admin/settlement/create-batch — create settlement batch
-router.post("/admin/settlement/create-batch", requireAuth, async (req, res) => {
+router.post("/admin/settlement/create-batch", async (req, res) => {
   try {
     // This is a placeholder for a complex settlement logic
     res.json({ message: "Settlement batch creation not fully implemented" });
