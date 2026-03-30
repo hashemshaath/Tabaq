@@ -675,6 +675,93 @@ export function HomePage() {
         </div>
       </section>
 
+      {/* ══ MICHELIN GUIDE TEASER ════════════════════════════════ */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-14">
+        <div className="relative rounded-2xl overflow-hidden bg-[#0d0d0f]">
+          {/* Background image */}
+          <img
+            src="https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=1200&h=400&fit=crop"
+            alt="Michelin Guide"
+            className="absolute inset-0 w-full h-full object-cover opacity-25"
+            style={{ filter: 'saturate(0.5)' }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#0d0d0f] via-[#0d0d0f]/90 to-[#0d0d0f]/50" />
+
+          <div className="relative z-10 p-8 md:p-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+            <div>
+              {/* Michelin star icon */}
+              <div className="flex items-center gap-3 mb-4">
+                <svg viewBox="0 0 24 24" fill="none" className="w-8 h-8 shrink-0">
+                  <circle cx="12" cy="12" r="11" fill="#e23744" />
+                  <path d="M12 5l1.5 4.5H18l-3.75 2.75L15.75 17 12 14.25 8.25 17l1.5-4.75L6 9.5h4.5z" fill="white" />
+                </svg>
+                <span className="text-amber-400 text-xs font-bold tracking-[0.2em] uppercase">
+                  {t('Michelin Guide Saudi Arabia 2024', 'دليل ميشلان المملكة العربية السعودية ٢٠٢٤')}
+                </span>
+              </div>
+              <h2 className="text-white text-2xl md:text-3xl font-bold mb-2">
+                {t('Discover Saudi Arabia\'s', 'اكتشف مطاعم')}
+                <span className="text-amber-400 block mt-0.5">{t('Starred Restaurants', 'المرصعة بالنجوم في المملكة')}</span>
+              </h2>
+              <p className="text-white/50 text-sm max-w-lg">
+                {t(
+                  '6 Michelin-starred establishments and 2 Bib Gourmand restaurants across Riyadh and Jeddah, recognized by the world\'s most prestigious culinary authority.',
+                  '٦ مطاعم حاصلة على نجمة ميشلان و٢ بيب جورمان في الرياض وجدة، معترف بها من أرقى سلطة طهوية في العالم.'
+                )}
+              </p>
+
+              {/* Mini stats */}
+              <div className="flex items-center gap-6 mt-5">
+                {[
+                  { count: '6', label: t('Starred', 'نجمة') },
+                  { count: '2', label: t('Bib Gourmand', 'بيب جورمان') },
+                  { count: '2', label: t('Cities', 'مدينة') },
+                ].map(s => (
+                  <div key={s.label} className="flex items-center gap-2">
+                    <span className="text-amber-400 font-black text-xl">{s.count}</span>
+                    <span className="text-white/40 text-xs">{s.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Mini cards preview */}
+            <div className="flex gap-3 shrink-0">
+              {[
+                { name: 'Nobu Riyadh', img: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=150&h=150&fit=crop' },
+                { name: 'The Globe', img: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=150&h=150&fit=crop' },
+                { name: 'Najd Village', img: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=150&h=150&fit=crop' },
+              ].map(r => (
+                <div key={r.name} className="relative hidden sm:block">
+                  <img
+                    src={r.img}
+                    alt={r.name}
+                    className="w-20 h-20 rounded-xl object-cover"
+                    style={{ filter: 'brightness(0.7) saturate(0.6)' }}
+                  />
+                  <div className="absolute top-1.5 start-1.5 bg-black/50 backdrop-blur-sm rounded-md px-1.5 py-0.5">
+                    <svg viewBox="0 0 24 24" fill="none" className="w-3 h-3 inline">
+                      <circle cx="12" cy="12" r="11" fill="#e23744" />
+                      <path d="M12 5l1.5 4.5H18l-3.75 2.75L15.75 17 12 14.25 8.25 17l1.5-4.75L6 9.5h4.5z" fill="white" />
+                    </svg>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* CTA button */}
+          <div className="relative z-10 px-8 md:px-10 pb-8">
+            <Link href="/michelin">
+              <button className="flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-black font-bold text-sm px-6 py-2.5 rounded-lg transition-colors">
+                {t('Explore Michelin Guide', 'استكشف دليل ميشلان')}
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* ══ FOOD EXPERIENCES ═════════════════════════════════════ */}
       <FoodExperiencesSection />
 

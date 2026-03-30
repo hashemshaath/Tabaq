@@ -1,0 +1,195 @@
+You are a senior full-stack engineer and product designer.
+
+Your task is to UPGRADE and COMPLETE a professional restaurant & service platform into a premium, production-level experience similar to Zomato + Michelin Guide style.
+
+========================
+
+1. CORE IMPROVEMENTS (FILL ALL MISSING FEATURES)
+   ========================
+   Complete all missing parts across all pages:
+
+Restaurant Page must include:
+
+* About restaurant section (description, story, chef info)
+* Nearby places (restaurants, cafes, attractions)
+* Directions to restaurant (map + route simulation)
+* Pickup from restaurant (UI + option)
+* Table reservation system (date, time, guests)
+* Live crowd indicator (low / medium / busy simulation)
+* Offers & discounts:
+
+  * Time-based (happy hours)
+  * Day-based (weekend offers)
+
+========================
+2. PROFESSIONAL MENU SYSTEM
+===========================
+
+Build a high-end menu experience:
+
+Each menu item must include:
+
+* Name
+* Price
+* Calories
+* Preparation time
+* Rating
+* Popularity ranking
+* Dish badges (e.g. Chef Choice, Bestseller)
+* Awards (if any)
+
+Menu features:
+
+* Categories with tabs
+* Filtering (veg, spicy, popular)
+* Sorting (price, rating)
+* Add to cart
+* Clean card layout (premium design)
+
+========================
+3. MICHELIN STAR SECTION (LUXURY EXPERIENCE)
+============================================
+
+Create a FULL premium section for Michelin Star restaurants in Saudi Arabia:
+
+Data source:
+https://guide.michelin.com/en/food-and-travel-saudi-arabia
+
+Requirements:
+
+* Fetch or simulate fetching Michelin restaurant data
+* Include:
+
+  * Restaurant name
+  * Michelin stars ⭐
+  * Description
+  * Chef
+  * Cuisine
+  * Images (gallery)
+  * Signature dishes
+
+Design:
+
+* Luxury UI (dark theme option)
+* Elegant typography
+* Gold accents
+* Fine dining style
+
+Features:
+
+* Dedicated Michelin listing page
+* Michelin restaurant detail page
+* Use Michelin-style icons (stars, awards)
+* Highlight:
+
+  * Signature dishes
+  * Awards
+  * Experience level
+
+User Experience:
+
+* Smooth animations
+* Premium feel (like luxury brands)
+* Reservation priority UI
+
+========================
+4. ADVANCED UX FEATURES
+=======================
+
+* Smart recommendations (AI-based mock logic)
+* “People also visited”
+* Personalized suggestions
+* Smooth animations (hover, transitions)
+* Skeleton loading
+
+========================
+5. BOOKING & ORDER SYSTEM
+=========================
+
+* Reservation system:
+
+  * Select date/time
+  * Guests count
+* Order system:
+
+  * Add to cart
+  * Checkout simulation
+* Pickup vs Delivery toggle
+
+========================
+6. MAP & LOCATION
+=================
+
+* Integrate map (Google Maps or mock)
+* Show:
+
+  * Restaurant location
+  * Nearby places
+  * Directions button
+
+========================
+7. SETTINGS & INTEGRATIONS
+==========================
+
+Add advanced settings page:
+
+* Google Analytics
+* Google Tag Manager
+* Meta Pixel
+* SMTP Email config
+* SMS API config
+* Push notifications (Firebase)
+
+Apply settings globally.
+
+========================
+8. SEO & PERFORMANCE
+====================
+
+* Dynamic meta tags
+* Structured data (Restaurant schema)
+* Lazy load images
+* Clean URLs
+* Fast performance
+
+========================
+9. DESIGN SYSTEM
+================
+
+* Font: IBM Plex Sans Arabic
+* Border radius: 6px–10px
+* Clean spacing
+* Zomato-like layout
+* Michelin section = luxury design system
+
+========================
+10. TECH STACK
+==============
+
+Use:
+
+* React + Vite
+* Tailwind CSS
+* Optional: Framer Motion
+
+========================
+11. OUTPUT
+==========
+
+* Full working project
+* Organized structure
+* Reusable components
+* Ready to run
+
+========================
+FINAL GOAL
+==========
+
+Create a world-class restaurant platform combining:
+
+* Zomato usability
+* Michelin luxury experience
+* Full professional features
+* Premium UI/UX
+
+The Michelin section must feel exclusive and high-end.

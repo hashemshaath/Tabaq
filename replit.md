@@ -72,6 +72,18 @@ Features include:
 - Provider Registration (`/partners/register`) — 5-step wizard: business type, details, contact, owner, plan
 - Restaurant business console (`/console`) with overview (contract info panel, refCode display), bookings, **offers** (approval status badges, revision notice, pending count, redemption progress, QR scanner CTA), reviews, menu, **settings tabs** — all dynamic: restaurant name (EN+AR), phone, address, website, refCode pulled live from `/api/me/restaurant`
 - Curated collections (`/collections`, `/collections/:id`) — 8 themed restaurant lists
+- **Michelin Guide Module** (`/michelin`, `/michelin/:id`):
+  - `MichelinPage`: luxury dark (`#0d0d0f`) + gold (`#c9a84c`/amber-400) UI, hero with cinematic background, stats (6 starred, 2 Bib Gourmand, 3 cities), city filter tabs, restaurant cards with star badges, Bib Gourmand section, About Michelin panel
+  - `MichelinDetailPage`: hero with MICHELIN STAR badge, "Reserve a Table" modal (date/time/guests/requests), photo gallery with lightbox, chef section, signature dishes, awards/recognition, contact info block
+  - `michelin.ts`: 6 starred restaurants (Nobu, The Globe, Li Beirut, Taian Table, Najd Village, Mira) + 2 Bib Gourmand — all with full bilingual data, gallery images, signature dishes, awards, opening hours
+  - Michelin Guide nav link added to Header (desktop + mobile) with Award icon
+  - **Michelin Teaser on HomePage**: dark card with cinematic background, gold accents, star count stats, mini image previews of top restaurants, CTA button
+- **CartContext** (`/context/CartContext.tsx`): global cart state with addItem/removeItem/updateQty/clearCart, totalItems, totalPrice, currency — wraps entire app via CartProvider
+- **Enhanced RestaurantDetailPage** (6 new sections in overview tab):
+  - Popular Times: animated crowd indicator bar chart showing hourly busyness with current hour highlighted + busy/moderate/quiet label
+  - Order Options: dine-in + pickup choice cards
+  - Nearby Restaurants: live API list of 3 nearby venues with thumbnails, ratings, distance
+- **Upgraded MenuTab**: search bar across all dishes, dietary filter pills (All/Veg/Vegan/Healthy/Halal/Spicy), sort dropdown (Price ↑/↓, Calories ↑), filtering applied to all menu sections — sections hidden when no matches
 - Michelin-style award badges (Excellence, Top Rated, Fine Dining, Hidden Gem) on RestaurantCard
 - Trending/New indicators on restaurant cards
 - Payments and wallet

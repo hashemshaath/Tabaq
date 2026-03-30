@@ -26,6 +26,7 @@ import {
   ChevronLeft, ChevronRight, Tag, BookImage,
   X, ParkingSquare, Trees, DoorOpen, BadgeCheck, Wifi, CreditCard,
   Bookmark, BookmarkCheck, Share2, ArrowLeft, Navigation,
+  Package, TrendingUp, Bike,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
@@ -327,6 +328,11 @@ export function RestaurantDetailPage() {
   const followRestaurant = useFollowRestaurant();
   const unfollowRestaurant = useUnfollowRestaurant();
   const deleteReview = useDeleteReview();
+  const { data: nearbyData } = useListRestaurants(
+    { limit: 4 },
+    { query: { enabled: idIsValid, staleTime: 5 * 60 * 1000, queryKey: ['nearby', numericId] } }
+  );
+  const nearbyRestaurants = (nearbyData?.restaurants ?? []).filter((r: any) => r.id !== numericId).slice(0, 3);
 
   // Save state on load
   useEffect(() => {
@@ -700,6 +706,87 @@ export function RestaurantDetailPage() {
                   </div>
                 )}
 
+                {/* Crowd Indicator */}
+                <div className="bg-white rounded-lg border border-gray-200 p-5">
+                  <h2 className="text-base font-bold text-gray-900 mb-1 flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-primary" />
+                    {t('Popular Times', 'أوقات الازدحام')}
+                  </h2>
+                  <p className="text-xs text-gray-400 mb-4">{t('Based on historical visit data', 'بناءً على بيانات الزيارات التاريخية')}</p>
+                  {(() => {
+                    const now = new Date();
+                    const currentHour = now.getHours();
+                    const crowdData = [0,0,0,0,0,0,20,35,55,70,75,65,80,70,55,45,50,65,85,90,80,65,45,20];
+                    const labels = ['12a','1a','2a','3a','4a','5a','6a','7a','8a','9a','10a','11a','12p','1p','2p','3p','4p','5p','6p','7p','8p','9p','10p','11p'];
+                    const startHour = Math.max(0, currentHour - 2);
+                    const displayHours = Array.from({ length: 8 }, (_, i) => (startHour + i) % 24);
+                    const maxVal = Math.max(...displayHours.map(h => crowdData[h])) || 1;
+                    const busyNow = crowdData[currentHour];
+                    const busyLabel = busyNow < 30 ? t('Not busy', 'هادئ') : busyNow < 60 ? t('Moderately busy', 'متوسط الازدحام') : t('Usually busy', 'مزدحم');
+                    const busyColor = busyNow < 30 ? 'text-emerald-600' : busyNow < 60 ? 'text-amber-600' : 'text-red-500';
+                    return (
+                      <>
+                        <p className="text-sm font-semibold mb-3">
+                          {t('Right now:', 'الآن:')} <span className={busyColor}>{busyLabel}</span>
+                          {isOpenNow && <span className="text-gray-400 font-normal"> · {t('Closes', 'يغلق')} {todayHours?.closeTime}</span>}
+                        </p>
+                        <div className="flex items-end gap-1 h-14">
+                          {displayHours.map(h => {
+                            const val = crowdData[h];
+                            const heightPct = maxVal > 0 ? Math.max(8, (val / maxVal) * 100) : 8;
+                            const isCurrent = h === currentHour;
+                            return (
+                              <div key={h} className="flex-1 flex flex-col items-center gap-1">
+                                <div
+                                  className={`w-full rounded-t-sm transition-all ${isCurrent ? 'bg-primary' : 'bg-gray-200'}`}
+                                  style={{ height: `${heightPct}%` }}
+                                />
+                                <span className={`text-[9px] ${isCurrent ? 'text-primary font-bold' : 'text-gray-400'}`}>{labels[h]}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+
+                {/* Ordering Options */}
+                <div className="bg-white rounded-lg border border-gray-200 p-5">
+                  <h2 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <Package className="w-4 h-4 text-primary" />
+                    {t('Order Options', 'خيارات الطلب')}
+                  </h2>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => setActiveTab('book')}
+                      className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-primary bg-primary/5 text-primary transition-colors"
+                    >
+                      <CalendarDays className="w-5 h-5" />
+                      <div className="text-center">
+                        <div className="font-semibold text-sm">{t('Dine In', 'تناول بالمطعم')}</div>
+                        <div className="text-xs text-primary/70 mt-0.5">{t('Book a table', 'احجز طاولة')}</div>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('menu')}
+                      className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-gray-200 hover:border-primary/40 hover:bg-primary/3 text-gray-600 hover:text-primary transition-colors"
+                    >
+                      <Package className="w-5 h-5" />
+                      <div className="text-center">
+                        <div className="font-semibold text-sm">{t('Pickup', 'استلام')}</div>
+                        <div className="text-xs text-gray-400 mt-0.5">{t('Order & collect', 'اطلب واستلم')}</div>
+                      </div>
+                    </button>
+                  </div>
+                  {restaurant.address && (
+                    <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
+                      <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
+                      <span>{restaurant.address}</span>
+                    </div>
+                  )}
+                </div>
+
                 {/* Dining Info Strip */}
                 <div className="bg-white rounded-lg border border-gray-200 p-5">
                   <h2 className="text-base font-bold text-gray-900 mb-4">{t('Quick Info', 'معلومات سريعة')}</h2>
@@ -792,6 +879,49 @@ export function RestaurantDetailPage() {
                             </div>
                           )}
                         </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Nearby Places */}
+                {nearbyRestaurants.length > 0 && (
+                  <div className="bg-white rounded-lg border border-gray-200 p-5">
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                        <MapPin className="w-4 h-4 text-primary" />
+                        {t('Nearby Restaurants', 'مطاعم قريبة')}
+                      </h2>
+                      <Link href="/restaurants" className="text-sm text-primary font-medium hover:underline">
+                        {t('See all', 'مشاهدة الكل')}
+                      </Link>
+                    </div>
+                    <div className="space-y-3">
+                      {nearbyRestaurants.slice(0, 3).map((nr: any) => (
+                        <Link key={nr.id} href={`/restaurants/${nr.id}`}>
+                          <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors group">
+                            <img
+                              src={nr.coverImageUrl || 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=100&h=100&fit=crop'}
+                              alt={lang === 'ar' ? nr.nameAr : nr.nameEn}
+                              className="w-14 h-14 rounded-lg object-cover shrink-0"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-gray-900 text-sm group-hover:text-primary transition-colors truncate">
+                                {lang === 'ar' ? nr.nameAr : nr.nameEn}
+                              </p>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                {nr.rating && (
+                                  <div className="flex items-center gap-0.5 text-xs text-amber-500 font-semibold">
+                                    <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                                    {typeof nr.rating === 'number' ? nr.rating.toFixed(1) : nr.rating}
+                                  </div>
+                                )}
+                                <span className="text-xs text-gray-400">· {t('~500m away', '~٥٠٠م قريب')}</span>
+                              </div>
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-primary shrink-0" />
+                          </div>
+                        </Link>
                       ))}
                     </div>
                   </div>

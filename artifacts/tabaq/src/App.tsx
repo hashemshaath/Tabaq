@@ -5,6 +5,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import { LocalizationProvider } from "@/context/LocalizationContext";
 import { CityProvider } from "@/context/CityContext";
 import { SettingsProvider } from "@/context/SettingsContext";
+import { CartProvider } from "@/context/CartContext";
 import { AnalyticsInjector } from "@/components/AnalyticsInjector";
 
 import { Header } from "@/components/layout/Header";
@@ -32,6 +33,8 @@ import { ProviderRegistrationPage } from "@/pages/ProviderRegistrationPage";
 import { ProviderRegisterPage } from "@/pages/ProviderRegisterPage";
 import { ExperiencesConsolePage } from "@/pages/ExperiencesConsolePage";
 import { SettingsPage } from "@/pages/SettingsPage";
+import { MichelinPage } from "@/pages/MichelinPage";
+import { MichelinDetailPage } from "@/pages/MichelinDetailPage";
 import FeedPage from "@/pages/FeedPage";
 import NotificationsPage from "@/pages/NotificationsPage";
 import NotFound from "@/pages/not-found";
@@ -84,6 +87,8 @@ function Router() {
               <Route path="/notifications" component={NotificationsPage} />
               <Route path="/admin" component={AdminPanelPage} />
               <Route path="/settings" component={SettingsPage} />
+              <Route path="/michelin/:id" component={MichelinDetailPage} />
+              <Route path="/michelin" component={MichelinPage} />
               <Route path="/experiences" component={ExperiencesPage} />
               <Route path="/experiences/:id" component={ExperienceDetailPage} />
               <Route path="/gift-redeem/:code" component={GiftRedeemPage} />
@@ -104,14 +109,16 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <LocalizationProvider>
         <SettingsProvider>
-          <CityProvider>
-            <AuthProvider>
-              <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-                <AnalyticsInjector />
-                <Router />
-              </WouterRouter>
-            </AuthProvider>
-          </CityProvider>
+          <CartProvider>
+            <CityProvider>
+              <AuthProvider>
+                <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+                  <AnalyticsInjector />
+                  <Router />
+                </WouterRouter>
+              </AuthProvider>
+            </CityProvider>
+          </CartProvider>
         </SettingsProvider>
       </LocalizationProvider>
     </QueryClientProvider>

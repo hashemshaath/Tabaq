@@ -4,7 +4,7 @@ import {
   Search, MapPin, Globe, User, LogOut, ChevronDown, Tag,
   CalendarDays, LayoutDashboard, Trophy, Shield, Utensils,
   Bell, Menu, X, Home, Sparkles, BarChart3, ChefHat, Check,
-  Settings
+  Settings, Award
 } from "lucide-react";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/context/AuthContext";
@@ -82,6 +82,7 @@ export function Header() {
   const navLinks = [
     { href: "/", en: "Home", ar: "الرئيسية", icon: Home },
     { href: "/restaurants", en: "Discovery", ar: "استكشف", icon: Search },
+    { href: "/michelin", en: "Michelin Guide", ar: "دليل ميشلان", icon: Award },
     { href: "/experiences", en: "Experiences", ar: "التجارب", icon: ChefHat },
     { href: "/offers", en: "Offers", ar: "العروض", icon: Sparkles },
     { href: "/leaderboard", en: "Leaderboard", ar: "المتصدرين", icon: Trophy },

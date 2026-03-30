@@ -245,11 +245,17 @@ interface MenuTabProps {
   menuData: Menu[] | undefined;
 }
 
+type FilterType = 'all' | 'veg' | 'healthy' | 'halal' | 'vegan' | 'spicy';
+type SortType = 'default' | 'price_asc' | 'price_desc' | 'cal_asc';
+
 export function MenuTab({ menuData }: MenuTabProps) {
   const { t, lang } = useLanguage();
   const [expandedSections, setExpandedSections] = useState<Set<number>>(new Set());
   const [cart, setCart] = useState<CartState>({});
   const [cartOpen, setCartOpen] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<FilterType>('all');
+  const [sortBy, setSortBy] = useState<SortType>('default');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const toggleSection = (sectionId: number) => {
     setExpandedSections(prev => {
@@ -318,8 +324,92 @@ export function MenuTab({ menuData }: MenuTabProps) {
       subtotal: cart[d.id] * Number(d.price ?? 0),
     }));
 
+  const FILTERS: { id: FilterType; en: string; ar: string }[] = [
+    { id: 'all', en: 'All', ar: 'الكل' },
+    { id: 'veg', en: 'Vegetarian', ar: 'نباتي' },
+    { id: 'vegan', en: 'Vegan', ar: 'نباتي كلي' },
+    { id: 'healthy', en: 'Healthy', ar: 'صحي' },
+    { id: 'halal', en: 'Halal', ar: 'حلال' },
+    { id: 'spicy', en: 'Spicy', ar: 'حار' },
+  ];
+
+  const filterDish = (dish: ExtendedDish): boolean => {
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      const name = (lang === 'ar' ? dish.nameAr : dish.nameEn) ?? '';
+      const desc = (lang === 'ar' ? dish.descriptionAr : dish.descriptionEn) ?? '';
+      if (!name.toLowerCase().includes(q) && !desc.toLowerCase().includes(q)) return false;
+    }
+    if (activeFilter === 'all') return true;
+    if (activeFilter === 'veg') return !!(dish.isVegetarian || dish.isVegan);
+    if (activeFilter === 'vegan') return !!dish.isVegan;
+    if (activeFilter === 'healthy') return !!(dish as ExtendedDish).isHealthy;
+    if (activeFilter === 'halal') return !!dish.isHalal;
+    if (activeFilter === 'spicy') return !!((dish as ExtendedDish).spiceLevel && (dish as ExtendedDish).spiceLevel! >= 3);
+    return true;
+  };
+
+  const sortDishes = (dishes: ExtendedDish[]): ExtendedDish[] => {
+    if (sortBy === 'price_asc') return [...dishes].sort((a, b) => Number(a.price ?? 0) - Number(b.price ?? 0));
+    if (sortBy === 'price_desc') return [...dishes].sort((a, b) => Number(b.price ?? 0) - Number(a.price ?? 0));
+    if (sortBy === 'cal_asc') return [...dishes].sort((a, b) => (a.calories ?? 999) - (b.calories ?? 999));
+    return dishes;
+  };
+
   return (
     <div className="relative">
+
+      {/* Filter & Sort bar */}
+      <div className="mb-5 space-y-3">
+        {/* Search */}
+        <div className="relative">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder={t('Search dishes...', 'ابحث عن الأطباق...')}
+            className="w-full text-sm border border-border rounded-xl px-3 py-2.5 ps-9 bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary placeholder:text-muted-foreground/50"
+          />
+          <svg className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          {searchQuery && (
+            <button onClick={() => setSearchQuery('')} className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+
+        {/* Filters + Sort */}
+        <div className="flex items-center gap-2">
+          <div className="flex gap-1.5 overflow-x-auto pb-0.5 hide-scrollbar flex-1">
+            {FILTERS.map(f => (
+              <button
+                key={f.id}
+                onClick={() => setActiveFilter(f.id)}
+                className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                  activeFilter === f.id
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'bg-secondary text-muted-foreground hover:text-foreground hover:bg-secondary/80'
+                }`}
+              >
+                {lang === 'ar' ? f.ar : f.en}
+              </button>
+            ))}
+          </div>
+          <select
+            value={sortBy}
+            onChange={e => setSortBy(e.target.value as SortType)}
+            className="shrink-0 text-xs border border-border rounded-lg px-2 py-1.5 bg-background focus:outline-none focus:border-primary text-muted-foreground"
+          >
+            <option value="default">{t('Sort', 'ترتيب')}</option>
+            <option value="price_asc">{t('Price ↑', 'السعر ↑')}</option>
+            <option value="price_desc">{t('Price ↓', 'السعر ↓')}</option>
+            <option value="cal_asc">{t('Calories ↑', 'السعرات ↑')}</option>
+          </select>
+        </div>
+      </div>
+
       <div className={`space-y-8 ${hasCart ? 'pb-28' : ''}`}>
         {tabaqStarDishes.length > 0 && (
           <section>
@@ -375,7 +465,9 @@ export function MenuTab({ menuData }: MenuTabProps) {
 
             {(menu.sections ?? []).map(section => {
               const isCollapsed = expandedSections.has(section.id);
-              const items = (section.items ?? []) as ExtendedDish[];
+              const rawItems = (section.items ?? []) as ExtendedDish[];
+              const items = sortDishes(rawItems.filter(filterDish));
+              if (items.length === 0 && (activeFilter !== 'all' || searchQuery)) return null;
               return (
                 <div key={section.id} className="border border-border/50 rounded-2xl overflow-hidden">
                   <button
