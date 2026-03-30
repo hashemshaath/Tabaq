@@ -955,12 +955,12 @@ function DealDetailPage({ offer, onBack }: { offer: ExtendedOffer; onBack: () =>
                       />
                       <span className="text-xs text-muted-foreground leading-relaxed group-hover:text-foreground transition-colors">
                         {t('I agree to the ', 'أوافق على ')}
-                        <span className="text-primary font-semibold hover:underline cursor-pointer">{t('Terms & Conditions', 'الشروط والأحكام')}</span>
+                        <Link href="/terms" target="_blank" className="text-primary font-semibold hover:underline">{t('Terms & Conditions', 'الشروط والأحكام')}</Link>
                         {t(' and confirm this purchase is non-refundable once processed.', ' وأؤكد أن هذا الشراء غير قابل للاسترداد بعد المعالجة.')}
                       </span>
                     </label>
                     {!user ? (
-                      <Link href="/login" className="block">
+                      <Link href="/signin" className="block">
                         <button className="w-full bg-[#1b5e20] hover:bg-[#2e7d32] text-white font-bold py-3.5 rounded-xl transition-colors text-base shadow">
                           {t('Sign in to Buy Now', 'سجّل دخولك للشراء')}
                         </button>
