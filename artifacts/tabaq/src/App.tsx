@@ -4,6 +4,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/context/AuthContext";
 import { LocalizationProvider } from "@/context/LocalizationContext";
 import { CityProvider } from "@/context/CityContext";
+import { SettingsProvider } from "@/context/SettingsContext";
+import { AnalyticsInjector } from "@/components/AnalyticsInjector";
 
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
@@ -29,6 +31,7 @@ import { ReferralPage } from "@/pages/ReferralPage";
 import { ProviderRegistrationPage } from "@/pages/ProviderRegistrationPage";
 import { ProviderRegisterPage } from "@/pages/ProviderRegisterPage";
 import { ExperiencesConsolePage } from "@/pages/ExperiencesConsolePage";
+import { SettingsPage } from "@/pages/SettingsPage";
 import FeedPage from "@/pages/FeedPage";
 import NotificationsPage from "@/pages/NotificationsPage";
 import NotFound from "@/pages/not-found";
@@ -80,6 +83,7 @@ function Router() {
               <Route path="/referral" component={ReferralPage} />
               <Route path="/notifications" component={NotificationsPage} />
               <Route path="/admin" component={AdminPanelPage} />
+              <Route path="/settings" component={SettingsPage} />
               <Route path="/experiences" component={ExperiencesPage} />
               <Route path="/experiences/:id" component={ExperienceDetailPage} />
               <Route path="/gift-redeem/:code" component={GiftRedeemPage} />
@@ -99,13 +103,16 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <LocalizationProvider>
-        <CityProvider>
-          <AuthProvider>
-            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-              <Router />
-            </WouterRouter>
-          </AuthProvider>
-        </CityProvider>
+        <SettingsProvider>
+          <CityProvider>
+            <AuthProvider>
+              <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+                <AnalyticsInjector />
+                <Router />
+              </WouterRouter>
+            </AuthProvider>
+          </CityProvider>
+        </SettingsProvider>
       </LocalizationProvider>
     </QueryClientProvider>
   );

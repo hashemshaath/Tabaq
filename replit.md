@@ -1,5 +1,50 @@
 # Tabaq | طبق — Workspace
 
+## Design System (Zomato-Level Upgrade)
+
+- **Font**: IBM Plex Sans Arabic (RTL) + IBM Plex Sans (LTR) — loaded via Google Fonts in `index.css`
+- **Primary Color**: `#e23744` (Zomato Red, HSL 355 73% 55%) — used throughout as `--primary`
+- **Background**: `#f8f9fb` (page), `#ffffff` (cards)
+- **Typography**: H1: 26px/700, H2: 20px/600, H3: 17px/600, H4: 15px/600, Body: 14px
+- **Shadows**: `.shadow-elevation-1/2/3/4` utility classes (soft, professional)
+- **Spacing**: 8px grid system, `.section-gap` (48px), `.section-gap-sm` (32px)
+- **Card hover**: `.card-hover` class with translateY(-1px) + shadow transition
+
+## Platform Settings (`/settings`)
+
+New settings page with 6 sections (sidebar navigation + mobile tab scrollbar):
+- **Analytics**: Google Analytics 4 ID, GTM Container ID, Meta Pixel ID — with live active/off status indicators
+- **SEO**: Meta title, description (character count), keywords, OG image, Twitter handle, canonical domain
+- **Email (SMTP)**: Host, port, email address, password (show/hide), From name
+- **SMS Gateway**: Provider (Unifonic, Twilio, MessageBird, Vonage, STC, Mobily), API key, Sender ID
+- **Google Maps**: API key with required APIs list
+- **Firebase**: All 6 config fields for push notifications
+
+Settings are persisted in `localStorage` key `tabaq_platform_settings` via `SettingsContext.tsx`.
+
+## Analytics Infrastructure
+
+`AnalyticsInjector.tsx` — dynamically injects scripts based on saved settings:
+- **GA4**: Inserts `gtag.js` + init script when `googleAnalyticsId` is set
+- **GTM**: Injects GTM snippet + noscript when `googleTagManagerId` is set  
+- **Meta Pixel**: Injects Facebook pixel init when `metaPixelId` is set
+
+## Enhanced SEO (`use-page-meta.ts`)
+
+Now supports: `keywords`, `imageUrl`, `type` (website/article/restaurant), and `structuredData` for JSON-LD schema.org injection. Also exports `buildRestaurantSchema()` helper.
+
+## Database Status
+
+Database is seeded with real data:
+- 8 restaurants (Nobu, Lusin, Najd Village, Sushi Sama, etc.)
+- 4 countries, 7 cities (Riyadh, Jeddah, Dammam, Dubai, etc.)
+- Categories, occasions, opening hours, menus, dishes
+- 6 offers with discount percentages
+- 16 reviews (2 per restaurant, ratings updated)
+- 10 bookings, 6 contracts, 8 transactions, 4 invoices
+
+---
+
 ## Project Overview
 
 **Tabaq** (طبق) is a comprehensive food and dining platform for the Middle East (primarily Saudi Arabia) with full bilingual Arabic RTL / English LTR support.

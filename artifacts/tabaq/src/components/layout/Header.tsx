@@ -3,7 +3,8 @@ import { Link, useLocation } from "wouter";
 import {
   Search, MapPin, Globe, User, LogOut, ChevronDown, Tag,
   CalendarDays, LayoutDashboard, Trophy, Shield, Utensils,
-  Bell, Menu, X, Home, Sparkles, BarChart3, ChefHat, Check
+  Bell, Menu, X, Home, Sparkles, BarChart3, ChefHat, Check,
+  Settings
 } from "lucide-react";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/context/AuthContext";
@@ -399,6 +400,16 @@ export function Header() {
                         </div>
                       </Link>
                     )}
+
+                    <Link href="/settings" className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors" onClick={() => setUserMenuOpen(false)}>
+                      <div className="w-7 h-7 bg-slate-100 rounded-lg flex items-center justify-center">
+                        <Settings className="w-3.5 h-3.5 text-slate-600" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-foreground leading-none">{t("Platform Settings", "إعدادات المنصة")}</p>
+                        <p className="text-xs text-muted-foreground">{t("Analytics, SEO & integrations", "التحليلات وتحسين البحث")}</p>
+                      </div>
+                    </Link>
 
                     <hr className="border-border my-1" />
                     <button

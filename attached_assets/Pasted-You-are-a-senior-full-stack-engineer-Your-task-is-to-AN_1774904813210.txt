@@ -1,0 +1,122 @@
+You are a senior full-stack engineer.
+
+Your task is to ANALYZE, REFACTOR, and UPGRADE an existing restaurant & service platform project into a production-level application similar to Zomato.
+
+Scan the entire existing codebase
+Identify:
+UI/UX inconsistencies
+Bad structure / duplicated code
+Performance issues
+Accessibility issues
+Fix all issues before adding new features
+Apply IBM Plex Sans Arabic globally
+Improve typography hierarchy:
+H1: 26px
+H2: 20px
+Body: 14px
+Reduce border radius (6px–10px only)
+Improve spacing consistency (8px system)
+Use modern color palette:
+Primary: #e23744
+Background: #ffffff / #f8f9fb
+Text: #222 / #666
+Improve shadows (soft elevation)
+Ensure full RTL support (Arabic first)
+Make layout fully responsive
+Create reusable components:
+Navbar (sticky)
+Footer
+Cards (restaurant, service, review)
+Buttons (primary / secondary)
+Inputs (validated)
+Modal system
+Tabs system
+Standardize all pages visually
+
+Ensure ALL pages are fully implemented and connected:
+
+Home (city-based discovery)
+Restaurant details page (Zomato-like)
+Service provider page
+Listing page with filters
+Search results page
+User dashboard
+Orders page
+Favorites page
+Reviews page
+Authentication (login/register)
+SETTINGS PAGE (IMPORTANT)
+Admin dashboard (basic)
+
+Upgrade to Zomato-like experience:
+
+Cover image with overlay
+Restaurant info + badges
+Ratings system
+Tabs:
+Overview
+Menu
+Reviews
+Photos
+Menu filtering system
+Add to cart simulation
+Image gallery slider
+Similar restaurants section
+Google Maps integration
+
+Build a full settings dashboard:
+
+Google Analytics ID
+Google Tag Manager ID
+Meta Pixel ID
+SMTP Email config:
+host, port, email, password
+SMS Gateway:
+API key
+sender ID
+Firebase config (push notifications)
+SEO settings:
+meta title
+meta description
+keywords
+
+Requirements:
+
+Save settings (localStorage or mock API)
+Apply settings globally across all pages
+
+Implement (mock or real structure):
+
+Google Analytics (script injection)
+GTM integration
+Email sending simulation
+SMS API simulation
+Maps API
+Social login UI (Google/Facebook)
+
+Add smart features:
+
+Recommended restaurants (based on rating/category)
+Smart search suggestions
+Personalized UI sections (mock logic)
+Dynamic meta tags per page
+Semantic HTML
+Clean URLs (slug-based)
+Schema.org structured data (Restaurant)
+Lazy load images
+Generate sitemap.xml (mock)
+robots.txt (mock)
+Optimize images
+Lazy loading
+Code splitting (if React)
+Skeleton loaders
+Ensure consistent spacing across ALL pages
+Improve alignment and layout balance
+Fix all font sizes
+Adjust all corner radii
+Improve hover states and animations
+Make it look like a global premium product
+Return FULL updated code
+Clean folder structure
+Comment major parts
+Ensure project runs without errors
