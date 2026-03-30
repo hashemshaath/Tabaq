@@ -66,9 +66,16 @@ export function DishDetailPage() {
   const { id } = useParams();
   const { t, lang } = useLanguage();
 
-  const { data, isLoading } = useGetDish(Number(id), {
-    query: { enabled: !!id, queryKey: ['dish', id] },
+  const numericId = id ? parseInt(id, 10) : NaN;
+  const idIsValid = !isNaN(numericId);
+
+  const { data, isLoading } = useGetDish(numericId, {
+    query: { enabled: idIsValid, queryKey: ['dish', id] },
   });
+
+  if (!idIsValid) {
+    return <div className="p-20 text-center text-xl">{t('Dish not found', 'الطبق غير موجود')}</div>;
+  }
 
   if (isLoading) {
     return (
@@ -379,7 +386,7 @@ export function DishDetailPage() {
 
           <div className="space-y-5">
             <InlineReviewComposer
-              dishId={Number(id)}
+              dishId={numericId}
               dishNameEn={dish.nameEn}
               dishNameAr={dish.nameAr}
               invalidateKey={['dish', id]}

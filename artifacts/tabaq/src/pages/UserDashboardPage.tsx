@@ -621,10 +621,10 @@ export function UserDashboardPage() {
               </div>
               <div className="divide-y divide-border">
                 {[
-                  { icon: Star, text: t('You reviewed Reem Al Bawadi', 'قيّمت ريم البوادي'), pts: '+25 pts', time: '2 days ago', color: 'bg-amber-50 text-amber-600' },
-                  { icon: CalendarDays, text: t('Booking confirmed: Najd Village', 'تأكيد الحجز: قرية نجد'), pts: '+10 pts', time: '3 days ago', color: 'bg-primary/10 text-primary' },
-                  { icon: Award, text: t('Reached Level 3 — Culinary Critic!', 'وصلت إلى المستوى 3!'), pts: '+50 pts', time: '1 week ago', color: 'bg-purple-50 text-purple-600' },
-                  { icon: Tag, text: t('Voucher redeemed: 20% off', 'تم استبدال القسيمة: خصم 20٪'), pts: '', time: '2 weeks ago', color: 'bg-green-50 text-green-600' },
+                  { icon: Star, text: t('You reviewed Reem Al Bawadi', 'قيّمت ريم البوادي'), pts: 25, timeEn: '2 days ago', timeAr: 'منذ يومين', color: 'bg-amber-50 text-amber-600' },
+                  { icon: CalendarDays, text: t('Booking confirmed: Najd Village', 'تأكيد الحجز: قرية نجد'), pts: 10, timeEn: '3 days ago', timeAr: 'منذ 3 أيام', color: 'bg-primary/10 text-primary' },
+                  { icon: Award, text: t('Reached Level 3 — Culinary Critic!', 'وصلت إلى المستوى 3!'), pts: 50, timeEn: '1 week ago', timeAr: 'منذ أسبوع', color: 'bg-purple-50 text-purple-600' },
+                  { icon: Tag, text: t('Voucher redeemed: 20% off', 'تم استبدال القسيمة: خصم 20٪'), pts: 0, timeEn: '2 weeks ago', timeAr: 'منذ أسبوعين', color: 'bg-green-50 text-green-600' },
                 ].map((activity, idx) => {
                   const Icon = activity.icon;
                   return (
@@ -634,10 +634,10 @@ export function UserDashboardPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-foreground">{activity.text}</p>
-                        <p className="text-xs text-muted-foreground">{activity.time}</p>
+                        <p className="text-xs text-muted-foreground">{lang === 'ar' ? activity.timeAr : activity.timeEn}</p>
                       </div>
-                      {activity.pts && (
-                        <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full shrink-0">{activity.pts}</span>
+                      {activity.pts > 0 && (
+                        <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full shrink-0">+{activity.pts} {t('pts', 'نقطة')}</span>
                       )}
                     </div>
                   );
@@ -716,7 +716,7 @@ export function UserDashboardPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">+{review.points} pts</span>
+                    <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">+{review.points} {t('pts', 'نقطة')}</span>
                     <Link href={`/restaurants/${review.restaurantId}`}>
                       <button className="p-1.5 rounded hover:bg-secondary text-muted-foreground"><Edit className="w-3.5 h-3.5" /></button>
                     </Link>
@@ -817,11 +817,68 @@ export function UserDashboardPage() {
               </div>
             ) : (
               <div className="space-y-3">
-                {vouchers.map((v: any) => (
-                  <div key={v.id} className="bg-card border border-border rounded-2xl p-5">
-                    <p className="font-bold text-foreground">{v.code}</p>
-                  </div>
-                ))}
+                {vouchers.map((v: any) => {
+                  const isUsed = v.status === 'used';
+                  const isExpired = v.status === 'expired';
+                  const isActive = v.status === 'active';
+                  const statusLabel = isUsed
+                    ? t('Used', 'مُستخدمة')
+                    : isExpired
+                      ? t('Expired', 'منتهية الصلاحية')
+                      : t('Active', 'فعّالة');
+                  const statusColor = isUsed
+                    ? 'bg-muted text-muted-foreground'
+                    : isExpired
+                      ? 'bg-red-50 text-red-600'
+                      : 'bg-green-50 text-green-700';
+                  const expiryText = v.validUntil
+                    ? new Date(v.validUntil).toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'en-SA', { year: 'numeric', month: 'short', day: 'numeric' })
+                    : null;
+                  const restaurantName = lang === 'ar' ? (v.restaurantNameAr || v.restaurantNameEn) : (v.restaurantNameEn || v.restaurantNameAr);
+
+                  return (
+                    <div key={v.id} className={`bg-card border rounded-2xl overflow-hidden transition-all ${isActive ? 'border-primary/30 shadow-sm' : 'border-border opacity-70'}`}>
+                      <div className="flex items-stretch">
+                        {/* Restaurant image strip */}
+                        {v.restaurantCoverImageUrl && (
+                          <div className="w-20 shrink-0 relative overflow-hidden">
+                            <img src={v.restaurantCoverImageUrl} alt={restaurantName} className="w-full h-full object-cover" />
+                            {!isActive && <div className="absolute inset-0 bg-black/30" />}
+                          </div>
+                        )}
+                        {/* Content */}
+                        <div className="flex-1 p-4">
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <div>
+                              <p className="text-xs text-muted-foreground">{restaurantName}</p>
+                              <p className="font-extrabold text-foreground text-lg leading-tight">
+                                {v.value} {v.currency ?? 'SAR'}
+                              </p>
+                            </div>
+                            <span className={`text-xs font-bold px-2.5 py-1 rounded-full shrink-0 ${statusColor}`}>{statusLabel}</span>
+                          </div>
+                          {/* Voucher code */}
+                          <div className={`flex items-center gap-2 rounded-xl px-3 py-2 mb-2 ${isActive ? 'bg-primary/5 border border-primary/20' : 'bg-muted/50'}`}>
+                            <Tag className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
+                            <span className={`font-mono font-bold text-sm tracking-widest select-all ${isActive ? 'text-primary' : 'text-muted-foreground'}`}>{v.code}</span>
+                          </div>
+                          {/* Meta row */}
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+                            {expiryText && (
+                              <span>{t('Valid until', 'صالحة حتى')} {expiryText}</span>
+                            )}
+                            {v.isGift && (
+                              <span className="text-purple-600 font-semibold">🎁 {t('Gift Voucher', 'قسيمة هدية')}</span>
+                            )}
+                            {isUsed && v.redeemedAt && (
+                              <span>{t('Used on', 'استُخدمت في')} {new Date(v.redeemedAt).toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'en-SA', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -854,10 +911,10 @@ export function UserDashboardPage() {
               </div>
               <div className="divide-y divide-border">
                 {[
-                  { icon: CalendarDays, labelEn: 'Completed Bookings', labelAr: 'الحجوزات المكتملة', pts: 180, desc: '18 bookings × 10 pts', color: 'bg-primary/10 text-primary' },
-                  { icon: Star, labelEn: 'Reviews Written', labelAr: 'التقييمات المكتوبة', pts: 300, desc: '12 reviews × 25 pts', color: 'bg-amber-50 text-amber-600' },
-                  { icon: Award, labelEn: 'Level Up Bonus', labelAr: 'مكافأة الترقية', pts: 50, desc: 'Reached Level 3', color: 'bg-purple-50 text-purple-600' },
-                  { icon: Gift, labelEn: 'Referral Bonus', labelAr: 'مكافأة الإحالة', pts: 0, desc: 'Invite friends to earn 50 pts each', color: 'bg-green-50 text-green-600' },
+                  { icon: CalendarDays, labelEn: 'Completed Bookings', labelAr: 'الحجوزات المكتملة', pts: 180, descEn: '18 bookings × 10 pts each', descAr: '١٨ حجزاً × ١٠ نقاط لكل حجز', color: 'bg-primary/10 text-primary' },
+                  { icon: Star, labelEn: 'Reviews Written', labelAr: 'التقييمات المكتوبة', pts: 300, descEn: '12 reviews × 25 pts each', descAr: '١٢ تقييماً × ٢٥ نقطة لكل تقييم', color: 'bg-amber-50 text-amber-600' },
+                  { icon: Award, labelEn: 'Level Up Bonus', labelAr: 'مكافأة الترقية', pts: 50, descEn: 'Reached Level 3', descAr: 'وصلت إلى المستوى ٣', color: 'bg-purple-50 text-purple-600' },
+                  { icon: Gift, labelEn: 'Referral Bonus', labelAr: 'مكافأة الإحالة', pts: 0, descEn: 'Invite friends to earn 50 pts each', descAr: 'ادعُ أصدقاءك واكسب ٥٠ نقطة لكل دعوة', color: 'bg-green-50 text-green-600' },
                 ].map(item => {
                   const Icon = item.icon;
                   return (
@@ -867,7 +924,7 @@ export function UserDashboardPage() {
                       </div>
                       <div className="flex-1">
                         <p className="font-semibold text-foreground text-sm">{lang === 'ar' ? item.labelAr : item.labelEn}</p>
-                        <p className="text-xs text-muted-foreground">{item.desc}</p>
+                        <p className="text-xs text-muted-foreground">{lang === 'ar' ? item.descAr : item.descEn}</p>
                       </div>
                       <span className="font-extrabold text-foreground text-sm shrink-0">{item.pts > 0 ? `+${item.pts}` : '—'}</span>
                     </div>

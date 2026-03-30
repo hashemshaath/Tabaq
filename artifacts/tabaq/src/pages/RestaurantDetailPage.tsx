@@ -417,11 +417,14 @@ export function RestaurantDetailPage() {
   const { t, lang } = useLanguage();
   const { user } = useAuth();
 
-  const { data, isLoading } = useGetRestaurant(Number(id), {
-    query: { enabled: !!id, queryKey: ['restaurant', id] },
+  const numericId = id ? parseInt(id, 10) : NaN;
+  const idIsValid = !isNaN(numericId);
+
+  const { data, isLoading } = useGetRestaurant(numericId, {
+    query: { enabled: idIsValid, queryKey: ['restaurant', id] },
   });
-  const { data: menuData } = useGetRestaurantMenus(Number(id), {
-    query: { enabled: !!id, queryKey: ['restaurant-menus', id] },
+  const { data: menuData } = useGetRestaurantMenus(numericId, {
+    query: { enabled: idIsValid, queryKey: ['restaurant-menus', id] },
   });
 
   const [activeTab, setActiveTab] = useState<Tab>('menu');
@@ -450,7 +453,7 @@ export function RestaurantDetailPage() {
 
   const toggleFollow = () => {
     if (!user) return;
-    const restaurantId = Number(id);
+    const restaurantId = numericId;
     if (isFollowing) {
       unfollowRestaurant({ restaurantId }, { onSuccess: () => setIsFollowing(false) });
     } else {
@@ -460,7 +463,7 @@ export function RestaurantDetailPage() {
 
   const toggleSave = async () => {
     if (!user) return;
-    const restaurantId = Number(id);
+    const restaurantId = numericId;
     const method = isSaved ? 'DELETE' : 'POST';
     const res = await fetch(`/api/me/saved-restaurants/${restaurantId}`, { method, headers: getAuthHeaders() });
     if (res.ok) {
@@ -468,6 +471,10 @@ export function RestaurantDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['saved-restaurants'] });
     }
   };
+
+  if (!idIsValid) {
+    return <div className="p-20 text-center text-xl">{t('Restaurant not found', 'المطعم غير موجود')}</div>;
+  }
 
   if (isLoading) {
     return (
@@ -766,7 +773,7 @@ export function RestaurantDetailPage() {
             {/* Tab: Book */}
             {activeTab === 'book' && (
               <BookingSection
-                restaurantId={Number(id)}
+                restaurantId={numericId}
                 restaurantNameEn={restaurant.nameEn}
                 restaurantNameAr={restaurant.nameAr}
               />
@@ -776,10 +783,10 @@ export function RestaurantDetailPage() {
             {activeTab === 'reviews' && (
               <div className="space-y-5">
                 <InlineReviewComposer
-                  restaurantId={Number(id)}
+                  restaurantId={numericId}
                   restaurantNameEn={restaurant.nameEn}
                   restaurantNameAr={restaurant.nameAr}
-                  invalidateKey={[...getGetRestaurantQueryKey(Number(id))]}
+                  invalidateKey={[...getGetRestaurantQueryKey(numericId)]}
                 />
 
                 {recentReviews.length > 0 ? (
@@ -791,7 +798,7 @@ export function RestaurantDetailPage() {
                         review={review}
                         onDelete={reviewId => {
                           deleteReview.mutate({ reviewId }, {
-                            onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetRestaurantQueryKey(Number(id)) }),
+                            onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetRestaurantQueryKey(numericId) }),
                           });
                         }}
                       />
@@ -847,7 +854,7 @@ export function RestaurantDetailPage() {
 
             {/* Tab: Stories */}
             {activeTab === 'stories' && (
-              <StoriesTab restaurantId={Number(id)} />
+              <StoriesTab restaurantId={numericId} />
             )}
 
             {/* Tab: Info */}

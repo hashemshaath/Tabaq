@@ -9,6 +9,7 @@ const router: IRouter = Router();
 router.get("/restaurants/:restaurantId/menus", async (req, res) => {
   try {
     const restaurantId = parseInt(req.params["restaurantId"] as string, 10);
+    if (isNaN(restaurantId)) return void res.status(400).json({ error: "invalid_id", message: "Restaurant ID must be a number" });
     const menus = await db.select().from(menusTable)
       .where(eq(menusTable.restaurantId, restaurantId));
 
