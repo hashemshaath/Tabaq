@@ -403,7 +403,7 @@ export function BusinessConsolePage() {
                     <div key={review.id ?? idx} className="p-4">
                       <div className="flex items-start justify-between gap-3 mb-2">
                         <div>
-                          <p className="font-semibold text-foreground text-sm">{review.name ?? `User #${review.userId}`}</p>
+                          <p className="font-semibold text-foreground text-sm">{(lang === 'ar' ? review.userNameAr : review.userNameEn) ?? review.name ?? `User #${review.userId}`}</p>
                           <StarRating rating={Math.round(parseFloat(review.ratingOverall ?? review.rating ?? 0))} size="xs" className="mt-0.5" />
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
@@ -429,27 +429,36 @@ export function BusinessConsolePage() {
                 <h2 className="font-bold text-foreground">{t('Platform Contract', 'عقد المنصة')}</h2>
               </div>
               <div className="p-5">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {[
-                    { label: t('Contract Ref', 'رقم العقد'), val: liveContract.refCode, mono: true },
-                    { label: t('Commission Rate', 'نسبة العمولة'), val: `${liveContract.commissionPercent}%`, highlight: true },
-                    { label: t('Payment Model', 'نموذج الدفع'), val: (liveContract.paymentModel ?? '').replace(/_/g, ' '), capitalize: true },
-                    { label: t('Settlement', 'التسوية'), val: `${liveContract.settlementDays} days` },
-                  ].map(item => (
-                    <div key={item.label} className="bg-secondary/40 rounded-xl p-3">
-                      <p className="text-xs text-muted-foreground mb-1">{item.label}</p>
-                      <p className={`font-semibold text-sm ${item.mono ? 'font-mono text-xs' : ''} ${item.highlight ? 'text-primary' : 'text-foreground'} ${item.capitalize ? 'capitalize' : ''}`}>
-                        {item.val}
-                      </p>
+                {liveContract ? (
+                  <>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      {[
+                        { label: t('Contract Ref', 'رقم العقد'), val: liveContract.refCode, mono: true },
+                        { label: t('Commission Rate', 'نسبة العمولة'), val: `${liveContract.commissionPercent}%`, highlight: true },
+                        { label: t('Payment Model', 'نموذج الدفع'), val: (liveContract.paymentModel ?? '').replace(/_/g, ' '), capitalize: true },
+                        { label: t('Settlement', 'التسوية'), val: `${liveContract.settlementDays} days` },
+                      ].map(item => (
+                        <div key={item.label} className="bg-secondary/40 rounded-xl p-3">
+                          <p className="text-xs text-muted-foreground mb-1">{item.label}</p>
+                          <p className={`font-semibold text-sm ${item.mono ? 'font-mono text-xs' : ''} ${item.highlight ? 'text-primary' : 'text-foreground'} ${item.capitalize ? 'capitalize' : ''}`}>
+                            {item.val}
+                          </p>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-                <div className="mt-3 flex items-center gap-2">
-                  <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 text-xs font-semibold px-2.5 py-1 rounded-full">
-                    <BadgeCheck className="w-3 h-3" /> {t('Active Contract', 'عقد نشط')}
-                  </span>
-                  <span className="text-xs text-muted-foreground">{t('Valid from', 'صالح من')} {liveContract.validFrom ? new Date(liveContract.validFrom).toLocaleDateString() : '—'}</span>
-                </div>
+                    <div className="mt-3 flex items-center gap-2">
+                      <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 text-xs font-semibold px-2.5 py-1 rounded-full">
+                        <BadgeCheck className="w-3 h-3" /> {t('Active Contract', 'عقد نشط')}
+                      </span>
+                      <span className="text-xs text-muted-foreground">{t('Valid from', 'صالح من')} {liveContract.validFrom ? new Date(liveContract.validFrom).toLocaleDateString() : '—'}</span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <FileSignature className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                    <p className="text-sm">{t('No contract on file', 'لا يوجد عقد مسجل')}</p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1618,10 +1627,10 @@ export function BusinessConsolePage() {
                 <div className="flex items-start justify-between gap-4 mb-3">
                   <div className="flex items-start gap-3">
                     <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary font-bold shrink-0">
-                      {(review.name ?? `U${review.userId ?? idx}`)[0]}
+                      {((lang === 'ar' ? review.userNameAr : review.userNameEn) ?? review.name ?? `U${review.userId ?? idx}`)[0]}
                     </div>
                     <div>
-                      <p className="font-bold text-foreground">{review.name ?? `User #${review.userId}`}</p>
+                      <p className="font-bold text-foreground">{(lang === 'ar' ? review.userNameAr : review.userNameEn) ?? review.name ?? `User #${review.userId}`}</p>
                       <div className="flex items-center gap-1.5 mt-0.5">
                         <StarRating rating={Math.round(parseFloat(review.ratingOverall ?? review.rating ?? 0))} size="md" />
                         <span className="text-xs text-muted-foreground">{review.date ?? (review.createdAt ? new Date(review.createdAt).toLocaleDateString() : '')}</span>

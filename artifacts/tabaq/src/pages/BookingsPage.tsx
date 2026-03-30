@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLanguage } from '@/hooks/use-language';
+import { useAuth } from '@/context/AuthContext';
 import { useListBookings, useUpdateBookingStatus } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   CalendarDays, Clock, Users, CheckCircle2, XCircle, AlertCircle,
-  QrCode, ChevronDown, ChevronUp, MapPin
+  QrCode, ChevronDown, ChevronUp, MapPin, LogIn
 } from 'lucide-react';
 import { Link } from 'wouter';
 import { Button } from '@/components/ui/button';
@@ -191,6 +192,7 @@ function BookingCard({ booking, lang, t, onCancel }: {
 
 export function BookingsPage() {
   const { t, lang } = useLanguage();
+  const { user, isLoading: authLoading } = useAuth();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
   const { data, isLoading } = useListBookings({ limit: 50, offset: 0 }, {
@@ -213,6 +215,37 @@ export function BookingsPage() {
   const past = allBookings.filter(b => b.status === 'cancelled' || b.status === 'completed' || b.date < today);
 
   const displayedBookings = activeTab === 'upcoming' ? upcoming : past;
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-background pb-20 flex flex-col items-center justify-center gap-6 px-4 text-center" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+        <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-2">
+          <CalendarDays className="w-10 h-10 text-primary/60" />
+        </div>
+        <h2 className="text-2xl font-extrabold text-foreground">{t('Sign in to view your reservations', 'سجّل دخولك لرؤية حجوزاتك')}</h2>
+        <p className="text-muted-foreground max-w-sm">{t('Manage all your upcoming and past table bookings in one place.', 'أدر جميع حجوزاتك القادمة والسابقة في مكان واحد.')}</p>
+        <Link href="/signin">
+          <Button className="gap-2 rounded-xl px-8 h-12 text-base font-semibold shadow-lg shadow-primary/20">
+            <LogIn className="w-5 h-5" />
+            {t('Sign In', 'تسجيل الدخول')}
+          </Button>
+        </Link>
+        <Link href="/restaurants">
+          <Button variant="outline" className="rounded-xl px-6">
+            {t('Explore Restaurants', 'استكشف المطاعم')}
+          </Button>
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background pb-20" dir={lang === 'ar' ? 'rtl' : 'ltr'}>

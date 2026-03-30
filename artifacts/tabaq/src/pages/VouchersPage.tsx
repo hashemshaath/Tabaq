@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useLanguage } from '@/hooks/use-language';
+import { useAuth } from '@/context/AuthContext';
 import { useListVouchers, type Voucher } from '@workspace/api-client-react';
 import {
   Tag, Clock, CheckCircle2, XCircle, Gift, Copy, Check, ScanLine,
   ChevronDown, ChevronUp, QrCode, RotateCcw, ExternalLink, AlertTriangle,
-  X, Shield, Info, ChevronRight
+  X, Shield, Info, ChevronRight, LogIn
 } from 'lucide-react';
 import { Link } from 'wouter';
 import { Button } from '@/components/ui/button';
@@ -410,11 +411,43 @@ function VoucherCard({ voucher, lang, t }: {
 
 export function VouchersPage() {
   const { t, lang } = useLanguage();
+  const { user, isLoading: authLoading } = useAuth();
   const [tab, setTab] = useState<VoucherTab>('active');
 
   const { data, isLoading } = useListVouchers(undefined, {
     query: { queryKey: ['vouchers'] },
   });
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-background pb-20 flex flex-col items-center justify-center gap-6 px-4 text-center" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+        <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-2">
+          <Tag className="w-10 h-10 text-primary/60" />
+        </div>
+        <h2 className="text-2xl font-extrabold text-foreground">{t('Sign in to view your vouchers', 'سجّل دخولك لرؤية قسائمك')}</h2>
+        <p className="text-muted-foreground max-w-sm">{t('Your vouchers and dining rewards are waiting for you.', 'قسائمك ومكافآت الطعام في انتظارك.')}</p>
+        <Link href="/signin">
+          <Button className="gap-2 rounded-xl px-8 h-12 text-base font-semibold shadow-lg shadow-primary/20">
+            <LogIn className="w-5 h-5" />
+            {t('Sign In', 'تسجيل الدخول')}
+          </Button>
+        </Link>
+        <Link href="/offers">
+          <Button variant="outline" className="rounded-xl px-6">
+            {t('Browse Offers', 'تصفح العروض')}
+          </Button>
+        </Link>
+      </div>
+    );
+  }
 
   const allVouchers: Voucher[] = (data ?? []) as Voucher[];
 
