@@ -14,6 +14,13 @@ Features include:
   - **Campaign Wizard** in BusinessConsolePage: 7-step modal (Basics → Options → Photos → Highlights → Fine Print → Redemption → Review & Submit)
   - **Admin Review Queue, Promo Codes & Settlement** tabs in AdminPanelPage — all three now wire to real APIs (`/api/campaigns?status=submitted`, `/api/promo-codes`, `/api/admin/transactions?status=pending`)
 - Gifting system
+- **Food Experiences module** (`/experiences`, `/experiences/:id`, `/gift-redeem/:code`):
+  - `ExperiencesPage`: filterable/sortable grid+list of experiences (city, category, price range, min rating), sort pills, view toggle, search bar, 12 mock experiences
+  - `ExperienceCard`: reusable card (grid + list layouts) with image, title (bilingual), category badge, duration, price/person, rating, city, Book CTA
+  - `ExperienceDetailPage`: image gallery with thumbnails, tabbed layout (Overview, Details, Reviews, Policies), sticky booking widget, 3-step booking flow (date/slot/guests → guest details → payment with deposit option), in-page gifting flow with gift card design selector, recipient details, generated gift code
+  - `GiftRedeemPage`: beautiful gradient gift card visual, redeem flow
+  - Home page "Food Experiences" section with 6 featured cards (horizontal scroll on mobile, grid on desktop) + "Browse all" link
+  - "Experiences" nav link added to Header (desktop + mobile) with ChefHat icon
 - Social reviews and leaderboard/levels
 - Referral & Points System (`/referral`) — unique codes, WhatsApp/Twitter sharing, points history
 - Username System — claim @username on profile Settings tab, real-time availability check via `/api/username/check`
@@ -27,7 +34,7 @@ Features include:
 - **Exclusive Deals section on Homepage**: dark violet gradient section with 4 Groupon-style mini deal cards, TABAQ10 promo banner, "View all deals" CTA — pulls from live `/api/offers` with fallback mock data
 - **Leaderboard**: 10 real community users seeded (DB users 3–10: Noura, Faisal, Lama, Sultan, Rawan, Ahmed, Fatima, Khalid) with proper avatars and 21+ seeded reviews — full podium + rising explorers visible
 
-**Pages**: HomePage, DiscoveryPage, CollectionsPage (list + detail), RestaurantDetailPage, DishDetailPage, BookingsPage, VouchersPage, OffersPage, LeaderboardPage, ProfilePage (with Settings tab + username management), FeedPage (world-class social feed with two-column layout, rich activity cards, trending restaurants/critics/dishes sidebar), NotificationsPage (`/notifications` — grouped notifications with 8 types, filter chips, mark read/dismiss), BusinessConsolePage (`/console`), UserDashboardPage (`/dashboard`), PartnerLandingPage (`/partners`), ProviderRegistrationPage (`/partners/register` — 5-step wizard), ReferralPage (`/referral`), AdminPanelPage (`/admin`), SignInPage, SearchPage, TermsPage (`/terms`), PrivacyPage (`/privacy`), NotFound
+**Pages**: HomePage, DiscoveryPage, CollectionsPage (list + detail), RestaurantDetailPage, DishDetailPage, BookingsPage, VouchersPage, OffersPage, LeaderboardPage, ProfilePage (with Settings tab + username management), FeedPage (world-class social feed with two-column layout, rich activity cards, trending restaurants/critics/dishes sidebar), NotificationsPage (`/notifications` — grouped notifications with 8 types, filter chips, mark read/dismiss), BusinessConsolePage (`/console`), UserDashboardPage (`/dashboard`), PartnerLandingPage (`/partners`), ProviderRegistrationPage (`/partners/register` — 5-step wizard), ReferralPage (`/referral`), AdminPanelPage (`/admin`), SignInPage, SearchPage, TermsPage (`/terms`), PrivacyPage (`/privacy`), NotFound, **ExperiencesPage** (`/experiences`), **ExperienceDetailPage** (`/experiences/:id`), **GiftRedeemPage** (`/gift-redeem/:code`)
 
 **Award badge logic** (client-side, `src/lib/awards.ts`):
 - Excellence: 4.8+ rating, 30+ reviews

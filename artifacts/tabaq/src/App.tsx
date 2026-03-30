@@ -32,6 +32,9 @@ import FeedPage from "@/pages/FeedPage";
 import NotificationsPage from "@/pages/NotificationsPage";
 import NotFound from "@/pages/not-found";
 import { TermsPage, PrivacyPage } from "@/pages/StaticPage";
+import { ExperiencesPage } from "@/pages/ExperiencesPage";
+import { ExperienceDetailPage } from "@/pages/ExperienceDetailPage";
+import { GiftRedeemPage } from "@/pages/GiftRedeemPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -74,6 +77,9 @@ function Router() {
               <Route path="/referral" component={ReferralPage} />
               <Route path="/notifications" component={NotificationsPage} />
               <Route path="/admin" component={AdminPanelPage} />
+              <Route path="/experiences" component={ExperiencesPage} />
+              <Route path="/experiences/:id" component={ExperienceDetailPage} />
+              <Route path="/gift-redeem/:code" component={GiftRedeemPage} />
               <Route path="/terms" component={TermsPage} />
               <Route path="/privacy" component={PrivacyPage} />
               <Route component={NotFound} />

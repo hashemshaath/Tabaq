@@ -5,8 +5,12 @@ import {
   Search, ChevronRight, Star, TrendingUp, Trophy, MapPin,
   Flame, Layers, ArrowRight, CalendarDays, MessageSquare,
   Utensils, Sparkles, BookOpen, Tag, Award, Clock, Zap,
-  Heart, Navigation, Percent, BadgeCheck, ScanQrCode, CalendarCheck, BadgeDollarSign
+  Heart, Navigation, Percent, BadgeCheck, ScanQrCode, CalendarCheck, BadgeDollarSign,
+  ChefHat,
 } from 'lucide-react';
+import { ExperienceCard } from '@/components/ExperienceCard';
+import { useListExperiences, type Experience } from '@workspace/api-client-react';
+import { ListExperiencesSortBy } from '@workspace/api-client-react';
 import { RestaurantCard } from '@/components/RestaurantCard';
 import { StarRating } from '@/components/StarRating';
 import { getRestaurantAwards, COLLECTIONS } from '@/lib/awards';
@@ -102,6 +106,38 @@ function DishItem({ d, rank }: { d: any; rank: number }) {
 }
 
 // ── SectionHeader ──────────────────────────────────────────────────
+function FoodExperiencesSection() {
+  const { t } = useLanguage();
+  const { data: listData, isLoading } = useListExperiences(
+    { sortBy: ListExperiencesSortBy.popular, limit: 6 },
+    { query: { staleTime: 5 * 60 * 1000 } }
+  );
+  const experiences = listData?.experiences ?? [];
+
+  if (isLoading) return null;
+  if (experiences.length === 0) return null;
+
+  return (
+    <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-14">
+      <SectionHeader
+        badge={t('Immersive Experiences', 'تجارب غامرة')}
+        badgeIcon={ChefHat}
+        title={t('Food Experiences', 'تجارب الطعام')}
+        subtitle={t('Private chef dinners, cooking classes & culinary adventures across Saudi Arabia', 'عشاءات الشيف الخاصة، دروس الطبخ والمغامرات الطهوية في جميع أنحاء المملكة')}
+        viewAllHref="/experiences"
+        viewAllLabel={t('Browse all', 'تصفح الكل')}
+      />
+      <div className="flex gap-4 overflow-x-auto pb-3 hide-scrollbar md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 md:overflow-visible">
+        {experiences.map(exp => (
+          <div key={exp.id} className="shrink-0 w-64 md:w-auto">
+            <ExperienceCard experience={exp} layout="grid" />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function SectionHeader({ badge, badgeIcon: Icon, title, subtitle, viewAllHref, viewAllLabel }: {
   badge?: string; badgeIcon?: React.ElementType; title: string; subtitle?: string;
   viewAllHref?: string; viewAllLabel?: string;
@@ -543,6 +579,9 @@ export function HomePage() {
           })}
         </div>
       </section>
+
+      {/* ══ FOOD EXPERIENCES ═════════════════════════════════════ */}
+      <FoodExperiencesSection />
 
       {/* ══ FEATURED RESTAURANTS ═════════════════════════════════ */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-14">
