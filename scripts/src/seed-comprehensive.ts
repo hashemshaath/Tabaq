@@ -10,6 +10,9 @@ import {
   adminMessagesTable,
   restaurantsTable,
   dishesTable,
+  experiencesTable,
+  experienceSlotsTable,
+  experienceImagesTable,
 } from "@workspace/db/schema";
 import { eq, and } from "drizzle-orm";
 
@@ -306,6 +309,152 @@ async function main() {
     if (exists.length) { continue; }
     await db.insert(adminMessagesTable).values(msg);
     console.log(`  ✅ Message ${msg.refCode}: ${msg.subject}`);
+  }
+
+  // ─── 10. Experiences ──────────────────────────────────────────────────────
+  console.log("\n🎪 Seeding experiences...");
+  const experienceSeed = [
+    {
+      refCode: "EXP-SEED-001",
+      slug: "private-chef-wagyu-dinner",
+      titleEn: "Private Chef Wagyu Dinner",
+      titleAr: "عشاء واغيو مع شيف خاص",
+      descriptionEn: "An unforgettable 6-course wagyu dinner prepared tableside by Chef Hassan Al-Zahrani. Featuring A5 Japanese wagyu, truffle accompaniments, and a curated sake pairing. Limited to 8 guests for an intimate fine-dining experience.",
+      descriptionAr: "عشاء واغيو من 6 مقبلات لا يُنسى يُحضَّر على الطاولة بواسطة الشيف حسن الزهراني. يضم واغيو ياباني A5 ومرافقات الكمأ وإقران الساكي المنتقى. يقتصر على 8 ضيوف لتجربة عشاء راقية حميمة.",
+      category: "fine_dining",
+      hostUserId: 1,
+      city: "Riyadh",
+      cityId: 1,
+      address: "Al Olaya District, Riyadh",
+      latitude: 24.6877,
+      longitude: 46.7219,
+      durationMinutes: 180,
+      pricePerPerson: "450",
+      depositAmount: "150",
+      capacity: 8,
+      primaryImageUrl: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&h=600&fit=crop",
+      galleryUrls: [
+        "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&h=600&fit=crop",
+        "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&h=600&fit=crop",
+      ],
+      highlights: ["A5 Japanese Wagyu", "6-Course Menu", "Tableside Preparation", "Sake Pairing"],
+      tags: ["wagyu", "fine-dining", "private-chef", "intimate"],
+      avgRating: 4.9,
+      reviewCount: 12,
+      status: "active",
+    },
+    {
+      refCode: "EXP-SEED-002",
+      slug: "omakase-sushi-masterclass",
+      titleEn: "Omakase Sushi Masterclass",
+      titleAr: "ورشة عمل سوشي أوماكاسي",
+      descriptionEn: "Join Chef Kenji for an immersive 3-hour omakase masterclass. Learn the art of nigiri, maki, and uramaki while creating your own 8-piece tasting menu. All skill levels welcome. Includes sake and yuzu cocktail.",
+      descriptionAr: "انضم إلى الشيف كنجي لتعلم فن السوشي في ورشة عمل أوماكاسي لمدة 3 ساعات. تعلم صناعة النيغيري والماكي والأوراماكي وأنشئ قائمة تذوق خاصة من 8 قطع. جميع المستويات مرحب بها.",
+      category: "cooking_class",
+      hostUserId: 1,
+      city: "Riyadh",
+      cityId: 1,
+      address: "Diplomatic Quarter, Riyadh",
+      latitude: 24.6936,
+      longitude: 46.6393,
+      durationMinutes: 180,
+      pricePerPerson: "280",
+      depositAmount: "80",
+      capacity: 12,
+      primaryImageUrl: "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=800&h=600&fit=crop",
+      galleryUrls: [
+        "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=800&h=600&fit=crop",
+      ],
+      highlights: ["3-Hour Class", "8-Piece Tasting Menu", "Sake & Cocktail", "Certificate"],
+      tags: ["sushi", "masterclass", "cooking", "japanese"],
+      avgRating: 4.8,
+      reviewCount: 24,
+      status: "active",
+    },
+    {
+      refCode: "EXP-SEED-003",
+      slug: "desert-dining-al-ula",
+      titleEn: "Desert Starlight Dining — Al Ula",
+      titleAr: "عشاء تحت نجوم الصحراء — العلا",
+      descriptionEn: "Dine under a sky blazing with stars in the heart of Al Ula's ancient landscape. A 7-course contemporary Saudi cuisine menu served on a hand-laid table among towering sandstone formations. Live oud performance included.",
+      descriptionAr: "تناول العشاء تحت سماء مضيئة بالنجوم في قلب المشهد الطبيعي القديم للعلا. قائمة من 7 أطباق من المطبخ السعودي المعاصر تُقدَّم على طاولة وسط تكوينات الحجر الرملي الشاهقة. يشمل عرضاً موسيقياً بالعود.",
+      category: "outdoor",
+      hostUserId: 1,
+      city: "Al Ula",
+      cityId: 1,
+      address: "Al Ula Old Town, Al Ula",
+      latitude: 26.5862,
+      longitude: 37.9206,
+      durationMinutes: 240,
+      pricePerPerson: "650",
+      depositAmount: "200",
+      capacity: 20,
+      primaryImageUrl: "https://images.unsplash.com/photo-1529543544282-ea669407fca3?w=800&h=600&fit=crop",
+      galleryUrls: [
+        "https://images.unsplash.com/photo-1529543544282-ea669407fca3?w=800&h=600&fit=crop",
+        "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&h=600&fit=crop",
+      ],
+      highlights: ["Starlit Desert Setting", "7-Course Saudi Cuisine", "Live Oud", "Private Transport"],
+      tags: ["desert", "outdoor", "saudi-cuisine", "romantic", "al-ula"],
+      avgRating: 5.0,
+      reviewCount: 8,
+      status: "active",
+    },
+    {
+      refCode: "EXP-SEED-004",
+      slug: "levantine-mezze-workshop",
+      titleEn: "Levantine Mezze & Bread Workshop",
+      titleAr: "ورشة المزة الشامية والخبز",
+      descriptionEn: "A hands-on 2.5-hour workshop exploring the art of Levantine mezze. Learn to make hummus from scratch, authentic tabbouleh, fattoush, and bake fresh khubz in a traditional wood-fired oven. Enjoy what you make for lunch.",
+      descriptionAr: "ورشة عملية لمدة ساعتين ونصف لاستكشاف فن المزة الشامية. تعلم تحضير الحمص من الصفر، والتبولة الأصيلة، والفتوش، وخبز الخبز الطازج في فرن الحطب التقليدي.",
+      category: "cooking_class",
+      hostUserId: 1,
+      city: "Jeddah",
+      cityId: 2,
+      address: "Al-Balad Historic District, Jeddah",
+      latitude: 21.4858,
+      longitude: 39.1880,
+      durationMinutes: 150,
+      pricePerPerson: "195",
+      depositAmount: "60",
+      capacity: 16,
+      primaryImageUrl: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&h=600&fit=crop",
+      galleryUrls: [
+        "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&h=600&fit=crop",
+      ],
+      highlights: ["Wood-Fired Oven", "Take Home Recipes", "Lunch Included", "Al-Balad Setting"],
+      tags: ["levantine", "mezze", "bread", "workshop", "jeddah"],
+      avgRating: 4.7,
+      reviewCount: 31,
+      status: "active",
+    },
+  ];
+
+  for (const exp of experienceSeed) {
+    const existing = await db.select({ id: experiencesTable.id })
+      .from(experiencesTable).where(eq(experiencesTable.refCode, exp.refCode));
+    if (existing.length) { console.log(`  ⏭️  Experience ${exp.refCode} already exists`); continue; }
+    const [newExp] = await db.insert(experiencesTable).values(exp).returning({ id: experiencesTable.id });
+    console.log(`  ✅ Experience: ${exp.titleEn}`);
+
+    const slotBase = new Date();
+    const slotDays = [3, 5, 8, 12, 15, 19];
+    for (const daysAhead of slotDays) {
+      const slotDate = new Date(slotBase);
+      slotDate.setDate(slotDate.getDate() + daysAhead);
+      await db.insert(experienceSlotsTable).values({
+        experienceId: newExp.id,
+        date: slotDate.toISOString().split("T")[0],
+        startTime: "19:00",
+        endTime: "22:00",
+        capacity: exp.capacity,
+        remainingCapacity: exp.capacity,
+        isActive: true,
+        isCancelled: false,
+        bookedCount: 0,
+      });
+    }
+    console.log(`     ↳ 6 upcoming slots added`);
   }
 
   console.log("\n✅ All seeding complete!");

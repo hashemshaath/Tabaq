@@ -34,6 +34,11 @@ const CATEGORY_LABELS: Record<string, { en: string; ar: string }> = {
   fine_dining: { en: 'Fine Dining', ar: 'مطاعم راقية' },
   live_show: { en: 'Live Show', ar: 'عروض حية' },
   cultural: { en: 'Cultural', ar: 'ثقافي' },
+  cooking_class: { en: 'Cooking Class', ar: 'دروس الطبخ' },
+  outdoor: { en: 'Outdoor', ar: 'في الهواء الطلق' },
+  tasting: { en: 'Tasting', ar: 'تذوق' },
+  brunch: { en: 'Brunch', ar: 'برانش' },
+  pop_up: { en: 'Pop-Up', ar: 'مؤقت' },
 };
 
 interface ExperienceCardProps {
@@ -52,7 +57,9 @@ export function ExperienceCard({ experience, layout = 'grid' }: ExperienceCardPr
   const title = lang === 'ar' ? experience.titleAr : experience.titleEn;
   const catLabel = CATEGORY_LABELS[experience.category] ?? { en: experience.category, ar: experience.category };
   const category = lang === 'ar' ? catLabel.ar : catLabel.en;
-  const city = lang === 'ar' ? (experience.cityNameAr ?? '') : (experience.cityNameEn ?? '');
+  const city = lang === 'ar'
+    ? (experience.cityNameAr ?? experience.city ?? '')
+    : (experience.cityNameEn ?? experience.city ?? '');
   const img = getImageForExp(experience.id, experience.images);
   const duration = experience.durationMinutes ? formatDuration(experience.durationMinutes) : null;
 

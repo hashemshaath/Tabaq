@@ -201,7 +201,7 @@ All core features COMPLETE and world-class:
   - Additional DB tables: `experience_gifts`, `experience_commissions`, `experience_settings`, `provider_applications`
   - Auth fix: all fetch calls in ExperiencesConsolePage and ProviderRegisterPage use `getAuthHeaders()`
   - Schema corrected: `experience_bookings` uses `isDepositPaid: boolean("deposit_paid")` and `isFullPaid: boolean("full_paid")` matching actual DB columns; duplicate `ref_code` column removed
-- **Task #2** (Experiences consumer frontend) — IN PROGRESS
+- **Task #2** (Experiences consumer frontend) — COMPLETE: ExperiencesPage (/experiences), ExperienceDetailPage (/experiences/:id), GiftRedeemPage (/gift-redeem/:code), ExperienceCard component; Header nav updated with Experiences link; seed data added (4 experiences, 6 slots each); category labels fixed (outdoor/cooking_class); slots API fixed to return array (not `{ slots: [...] }`)
 - **Task #4** (Experiences admin controls) — IN PROGRESS
 - **Task #5** (City & neighborhood filter) — IN PROGRESS
 - **Task #9** (AI Features, SEO & Multilingual) — PENDING

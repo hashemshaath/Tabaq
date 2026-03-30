@@ -333,7 +333,7 @@ router.get("/experiences/:experienceId/slots", async (req, res) => {
       .where(and(...conditions))
       .orderBy(asc(experienceSlotsTable.date), asc(experienceSlotsTable.startTime));
 
-    res.json({ slots });
+    res.json(slots);
   } catch (err) {
     req.log.error({ err }, "Failed to list experience slots");
     res.status(500).json({ error: "internal_error", message: "Failed to list slots" });
