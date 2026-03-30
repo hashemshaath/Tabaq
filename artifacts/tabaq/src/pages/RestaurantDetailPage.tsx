@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useLanguage } from '@/hooks/use-language';
 import {
   useGetRestaurant,
@@ -20,10 +20,59 @@ import {
   Star, MapPin, Phone, Globe, Clock, CheckCircle2, Heart, HeartOff,
   Utensils, Info, Camera, MessageSquare, CalendarDays, Users,
   ChevronLeft, ChevronRight, Tag, Bell, BellRing, BookImage,
+  X, ParkingSquare, Trees, DoorOpen, BadgeCheck, Wifi, CreditCard,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
+
+// ── Photo Lightbox ──────────────────────────────────────────────────
+function Lightbox({ photos, index, onClose }: { photos: { url: string; alt: string }[]; index: number; onClose: () => void }) {
+  const [current, setCurrent] = useState(index);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'ArrowLeft') setCurrent(c => (c - 1 + photos.length) % photos.length);
+      if (e.key === 'ArrowRight') setCurrent(c => (c + 1) % photos.length);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [photos.length, onClose]);
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center" onClick={onClose}>
+      <button onClick={onClose} className="absolute top-4 end-4 z-10 w-10 h-10 bg-white/15 hover:bg-white/25 rounded-full flex items-center justify-center text-white transition-colors">
+        <X className="w-5 h-5" />
+      </button>
+      <button
+        onClick={e => { e.stopPropagation(); setCurrent(c => (c - 1 + photos.length) % photos.length); }}
+        className="absolute start-4 z-10 w-10 h-10 bg-white/15 hover:bg-white/25 rounded-full flex items-center justify-center text-white transition-colors"
+      >
+        <ChevronLeft className="w-5 h-5" />
+      </button>
+      <button
+        onClick={e => { e.stopPropagation(); setCurrent(c => (c + 1) % photos.length); }}
+        className="absolute end-16 z-10 w-10 h-10 bg-white/15 hover:bg-white/25 rounded-full flex items-center justify-center text-white transition-colors"
+      >
+        <ChevronRight className="w-5 h-5" />
+      </button>
+      <img
+        src={photos[current].url}
+        alt={photos[current].alt}
+        className="max-h-[90vh] max-w-[90vw] object-contain rounded-xl"
+        onClick={e => e.stopPropagation()}
+      />
+      <div className="absolute bottom-4 inset-x-0 flex justify-center gap-1.5">
+        {photos.map((_, i) => (
+          <button key={i} onClick={e => { e.stopPropagation(); setCurrent(i); }}
+            className={`rounded-full transition-all ${i === current ? 'w-5 h-1.5 bg-white' : 'w-1.5 h-1.5 bg-white/40 hover:bg-white/70'}`}
+          />
+        ))}
+      </div>
+      <p className="absolute bottom-10 inset-x-0 text-center text-white/60 text-xs">{current + 1} / {photos.length}</p>
+    </div>
+  );
+}
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const DAYS_AR = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
@@ -374,6 +423,9 @@ export function RestaurantDetailPage() {
 
   const [activeTab, setActiveTab] = useState<Tab>('menu');
   const [isFollowing, setIsFollowing] = useState(false);
+  const [lightboxPhotos, setLightboxPhotos] = useState<{ url: string; alt: string }[] | null>(null);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+  const tabBarRef = useRef<HTMLDivElement>(null);
 
   const { mutate: followRestaurant } = useFollowRestaurant();
   const { mutate: unfollowRestaurant } = useUnfollowRestaurant();
@@ -418,6 +470,38 @@ export function RestaurantDetailPage() {
 
   const priceTierLabel = ({ budget: t('Budget', 'اقتصادي'), mid: t('Mid-Range', 'متوسط'), upscale: t('Upscale', 'راقٍ'), fine_dining: t('Fine Dining', 'فاخر') } as Record<string, string>)[restaurant.priceTier as string] ?? restaurant.priceTier;
 
+  // ── Gallery photos (hero strip + Photos tab + Lightbox) ───────────
+  const rid = Number(restaurant.id) || 1;
+  const GALLERY_SEEDS = [
+    'restaurant,food,plating', 'gourmet,dish,food', 'fine-dining,cuisine,meal',
+    'restaurant,interior,ambiance', 'chef,kitchen,cooking', 'dessert,pastry,sweet',
+    'salad,healthy,fresh', 'grilled,meat,steak',
+  ];
+  const dishPhotos = menuData
+    ? menuData.flatMap(m => m.sections).flatMap(s => (s.items || []) as any[]).filter((d: any) => d.imageUrl).map((d: any) => ({ url: d.imageUrl, alt: lang === 'ar' ? d.nameAr : d.nameEn }))
+    : [];
+  const curatedPhotos = GALLERY_SEEDS.map((seed, i) => ({ url: `https://images.unsplash.com/photo-${['1414235077428-338989a2e8c0','1555396273-367ea4eb4db5','1517248135467-4c7edcad34c4','1504674900247-0877df9cc836','1579871494447-9811cf80d66c','1556742049-0cfed4f6a45d','1546069901-ba9599a7e63c','1551218808-94e220e084d2'][i]}?w=800&h=600&fit=crop`, alt: seed }));
+  const allGalleryPhotos = [
+    ...(restaurant.coverImageUrl ? [{ url: restaurant.coverImageUrl, alt: name }] : []),
+    ...dishPhotos,
+    ...curatedPhotos,
+  ];
+
+  const openLightbox = (photos: { url: string; alt: string }[], index: number) => {
+    setLightboxPhotos(photos);
+    setLightboxIndex(index);
+  };
+
+  // Today's opening hours
+  const todayHours = openingHours.find(h => h.dayOfWeek === today);
+  const isOpenNow = todayHours && !todayHours.isClosed;
+  const quickInfoFeatures = [
+    restaurant.hasParking && { icon: ParkingSquare, en: 'Parking', ar: 'مواقف' },
+    restaurant.hasOutdoorSeating && { icon: Trees, en: 'Outdoor', ar: 'خارجي' },
+    restaurant.hasPrivateRoom && { icon: DoorOpen, en: 'Private Room', ar: 'غرفة خاصة' },
+    restaurant.isHalal && { icon: BadgeCheck, en: 'Halal', ar: 'حلال' },
+  ].filter(Boolean) as { icon: React.ElementType; en: string; ar: string }[];
+
   const tabs: { id: Tab; label: string; labelAr: string; icon: React.ReactNode }[] = [
     { id: 'menu', label: 'Menu', labelAr: 'المنيو', icon: <Utensils className="w-4 h-4" /> },
     { id: 'book', label: 'Book', labelAr: 'حجز', icon: <CalendarDays className="w-4 h-4" /> },
@@ -429,6 +513,11 @@ export function RestaurantDetailPage() {
 
   return (
     <div className="min-h-screen bg-background pb-16">
+      {/* Lightbox */}
+      {lightboxPhotos && (
+        <Lightbox photos={lightboxPhotos} index={lightboxIndex} onClose={() => setLightboxPhotos(null)} />
+      )}
+
       {/* Cover */}
       <div className="relative h-[45vh] md:h-[55vh] bg-muted w-full">
         <img
@@ -442,6 +531,33 @@ export function RestaurantDetailPage() {
             <ChevronLeft className="w-4 h-4" /> {t('Restaurants', 'المطاعم')}
           </Link>
         </div>
+
+        {/* Gallery thumbnail strip — bottom-right corner */}
+        {allGalleryPhotos.length > 1 && (
+          <div className="absolute bottom-4 end-4 z-10 hidden md:flex items-end gap-1.5">
+            {allGalleryPhotos.slice(1, 4).map((photo, i) => (
+              <button
+                key={i}
+                onClick={() => { setActiveTab('photos'); openLightbox(allGalleryPhotos, i + 1); }}
+                className="relative w-20 h-20 rounded-xl overflow-hidden border-2 border-white/40 hover:border-white transition-all hover:scale-105 shadow-lg group"
+              >
+                <img src={photo.url} alt={photo.alt} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
+              </button>
+            ))}
+            {allGalleryPhotos.length > 4 && (
+              <button
+                onClick={() => { setActiveTab('photos'); }}
+                className="relative w-20 h-20 rounded-xl overflow-hidden border-2 border-white/40 hover:border-white transition-all shadow-lg group"
+              >
+                <img src={allGalleryPhotos[4].url} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
+                <div className="absolute inset-0 bg-black/55 flex flex-col items-center justify-center">
+                  <Camera className="w-4 h-4 text-white mb-0.5" />
+                  <span className="text-white text-xs font-bold">+{allGalleryPhotos.length - 4}</span>
+                </div>
+              </button>
+            )}
+          </div>
+        )}
 
         <div className="absolute bottom-0 w-full">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-6 flex flex-col md:flex-row md:items-end justify-between gap-6">
@@ -461,7 +577,7 @@ export function RestaurantDetailPage() {
                 </h1>
                 <div className="flex flex-wrap items-center gap-2 mt-2 text-sm">
                   <span className="flex items-center gap-1.5 bg-black/40 backdrop-blur-sm px-3 py-1 rounded-full">
-                    <Star className="w-4 h-4 text-primary fill-primary" />
+                    <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
                     <span className="font-bold">{Number(restaurant.avgRating)?.toFixed(1) || 'NEW'}</span>
                     <span className="opacity-70">({restaurant.reviewCount || 0})</span>
                   </span>
@@ -480,18 +596,12 @@ export function RestaurantDetailPage() {
             </div>
 
             <div className="flex gap-3 pb-2 z-10">
-              <Button
-                onClick={() => setActiveTab('book')}
-                size="lg"
-                className="font-bold px-6 shadow-lg"
-              >
+              <Button onClick={() => setActiveTab('book')} size="lg" className="font-bold px-6 shadow-lg">
                 <CalendarDays className="w-4 h-4 me-2" />
                 {t('Book a Table', 'احجز طاولة')}
               </Button>
               <Button
-                variant="secondary"
-                size="icon"
-                onClick={toggleFollow}
+                variant="secondary" size="icon" onClick={toggleFollow}
                 className="w-12 h-12 shrink-0 rounded-2xl border border-border"
                 title={isFollowing ? t('Unfollow', 'إلغاء المتابعة') : t('Follow', 'متابعة')}
               >
@@ -502,19 +612,57 @@ export function RestaurantDetailPage() {
         </div>
       </div>
 
-      {/* Stats */}
+      {/* Stats + quick info */}
       <div className="bg-card border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 mt-10 md:mt-16 flex flex-wrap gap-x-8 gap-y-2 text-sm">
-          {ratingBreakdown && ratingBreakdown.count > 0 && (
-            <div className="flex items-center gap-2">
-              <Star className="w-4 h-4 fill-primary text-primary" />
-              <span className="font-bold">{ratingBreakdown.overall.toFixed(1)}</span>
-              <span className="text-muted-foreground">({ratingBreakdown.count} {t('reviews', 'تقييم')})</span>
-            </div>
-          )}
-          <span className="font-medium text-foreground">{priceTierLabel}</span>
-          <span className="text-muted-foreground">{restaurant.followerCount ?? 0} {t('followers', 'متابع')}</span>
-          {restaurant.isHalal && <span className="text-green-600 font-medium bg-green-50 px-2 py-0.5 rounded-md">{t('Halal', 'حلال')}</span>}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-10 md:mt-16">
+          {/* Primary stats */}
+          <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm py-4 border-b border-border/40">
+            {ratingBreakdown && ratingBreakdown.count > 0 && (
+              <div className="flex items-center gap-1.5">
+                <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+                <span className="font-bold">{ratingBreakdown.overall.toFixed(1)}</span>
+                <span className="text-muted-foreground">({ratingBreakdown.count} {t('reviews', 'تقييم')})</span>
+              </div>
+            )}
+            <span className="font-medium text-foreground">{priceTierLabel}</span>
+            <span className="text-muted-foreground">{restaurant.followerCount ?? 0} {t('followers', 'متابع')}</span>
+            {restaurant.isHalal && (
+              <span className="flex items-center gap-1 text-green-600 font-medium bg-green-50 dark:bg-green-950/30 px-2.5 py-0.5 rounded-full text-xs border border-green-200 dark:border-green-900/50">
+                <BadgeCheck className="w-3.5 h-3.5" /> {t('Halal', 'حلال')}
+              </span>
+            )}
+          </div>
+          {/* Quick-info pill strip */}
+          <div className="flex flex-wrap items-center gap-3 py-3 text-sm overflow-x-auto hide-scrollbar">
+            {/* Open/Closed status */}
+            {todayHours && (
+              <div className={`flex items-center gap-1.5 font-semibold ${isOpenNow ? 'text-emerald-600' : 'text-red-500'}`}>
+                <div className={`w-2 h-2 rounded-full ${isOpenNow ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                {isOpenNow
+                  ? t(`Open · Closes at ${todayHours.closeTime}`, `مفتوح · يغلق عند ${todayHours.closeTime}`)
+                  : t('Closed today', 'مغلق اليوم')}
+              </div>
+            )}
+            {todayHours && quickInfoFeatures.length > 0 && <span className="text-border">·</span>}
+            {quickInfoFeatures.map(({ icon: Icon, en, ar }) => (
+              <div key={en} className="flex items-center gap-1 text-muted-foreground">
+                <Icon className="w-3.5 h-3.5" />
+                <span>{lang === 'ar' ? ar : en}</span>
+              </div>
+            ))}
+            {allGalleryPhotos.length > 1 && (
+              <>
+                <span className="text-border">·</span>
+                <button
+                  onClick={() => setActiveTab('photos')}
+                  className="flex items-center gap-1 text-primary font-medium hover:underline"
+                >
+                  <Camera className="w-3.5 h-3.5" />
+                  {allGalleryPhotos.length} {t('photos', 'صورة')}
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -561,19 +709,21 @@ export function RestaurantDetailPage() {
               ))}
             </div>
 
-            {/* Tabs */}
-            <div className="border-b border-border flex gap-0 mb-6 overflow-x-auto hide-scrollbar">
-              {tabs.map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-5 py-3 text-sm font-semibold whitespace-nowrap border-b-2 transition-all ${activeTab === tab.id ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-                >
-                  {tab.icon}
-                  {lang === 'ar' ? tab.labelAr : tab.label}
-                  {tab.id === 'book' && <span className="text-[10px] bg-primary text-white rounded-full px-1.5 py-0.5 font-bold leading-none">{t('NEW', 'جديد')}</span>}
-                </button>
-              ))}
+            {/* Tabs — sticky below navbar */}
+            <div ref={tabBarRef} className="sticky top-[57px] z-20 bg-card -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 border-b border-border shadow-sm mb-6">
+              <div className="flex gap-0 overflow-x-auto hide-scrollbar">
+                {tabs.map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center gap-2 px-5 py-3.5 text-sm font-semibold whitespace-nowrap border-b-2 transition-all ${activeTab === tab.id ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'}`}
+                  >
+                    {tab.icon}
+                    {lang === 'ar' ? tab.labelAr : tab.label}
+                    {tab.id === 'book' && <span className="text-[10px] bg-primary text-white rounded-full px-1.5 py-0.5 font-bold leading-none">{t('NEW', 'جديد')}</span>}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Tab: Menu */}
@@ -627,76 +777,39 @@ export function RestaurantDetailPage() {
             {/* Tab: Photos */}
             {activeTab === 'photos' && (
               <div className="space-y-4">
-                {(() => {
-                  const dishPhotos = menuData
-                    ? menuData.flatMap(m => m.sections).flatMap(s => (s.items || []) as Dish[]).filter(d => d.imageUrl)
-                    : [];
-
-                  const FOOD_PHOTO_SEEDS = [
-                    'restaurant,food,plating',
-                    'gourmet,dish,food',
-                    'fine-dining,cuisine,meal',
-                    'restaurant,interior,ambiance',
-                    'chef,kitchen,cooking',
-                    'dessert,pastry,sweet',
-                    'salad,healthy,fresh',
-                    'grilled,meat,steak',
-                  ];
-                  const rid = Number(restaurant.id) || 1;
-                  const curatedPhotos = FOOD_PHOTO_SEEDS.map((seed, i) => ({
-                    url: `https://source.unsplash.com/featured/800x600?${seed}&sig=${rid * 10 + i}`,
-                    alt: seed,
-                  }));
-
-                  const allPhotos = [
-                    ...(restaurant.coverImageUrl ? [{ url: restaurant.coverImageUrl, alt: name, isCover: true }] : []),
-                    ...dishPhotos.map(d => ({ url: d.imageUrl!, alt: lang === 'ar' ? d.nameAr : d.nameEn, isCover: false, dishId: d.id })),
-                    ...curatedPhotos.map(p => ({ ...p, isCover: false })),
-                  ];
-
-                  return (
-                    <>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                        {allPhotos.slice(0, 1).map((photo, i) => (
-                          <div key={i} className="col-span-2 row-span-2 rounded-2xl overflow-hidden aspect-video group cursor-pointer relative">
-                            <img src={photo.url} alt={photo.alt} className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-500" loading="lazy" />
-                            {(photo as any).isCover && (
-                              <div className="absolute bottom-3 start-3 bg-black/50 backdrop-blur-sm text-white text-xs px-2.5 py-1 rounded-full font-medium">
-                                {t('Cover Photo', 'صورة الغلاف')}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                        {allPhotos.slice(1, 3).map((photo, i) => (
-                          <div key={i + 1} className="rounded-2xl overflow-hidden aspect-square group cursor-pointer relative">
-                            <img src={photo.url} alt={photo.alt} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
-                          </div>
-                        ))}
-                        {allPhotos.slice(3).map((photo, i) => (
-                          'dishId' in photo && (photo as any).dishId ? (
-                            <Link key={i + 3} href={`/dishes/${(photo as any).dishId}`}>
-                              <div className="rounded-2xl overflow-hidden aspect-square group cursor-pointer">
-                                <img src={photo.url} alt={photo.alt} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
-                              </div>
-                            </Link>
-                          ) : (
-                            <div key={i + 3} className="rounded-2xl overflow-hidden aspect-square group cursor-pointer">
-                              <img src={photo.url} alt={photo.alt} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
-                            </div>
-                          )
-                        ))}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                  {/* Hero: first photo spans 2 columns */}
+                  {allGalleryPhotos.slice(0, 1).map((photo, i) => (
+                    <button
+                      key={i}
+                      onClick={() => openLightbox(allGalleryPhotos, 0)}
+                      className="col-span-2 rounded-2xl overflow-hidden aspect-video group cursor-pointer relative text-start"
+                    >
+                      <img src={photo.url} alt={photo.alt} className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500" loading="lazy" />
+                      <div className="absolute bottom-3 start-3 bg-black/50 backdrop-blur-sm text-white text-xs px-2.5 py-1 rounded-full font-medium">
+                        {t('Cover Photo', 'صورة الغلاف')}
                       </div>
-
-                      <div className="flex items-center justify-between pt-2">
-                        <p className="text-sm text-muted-foreground">{allPhotos.length} {t('photos', 'صورة')}</p>
-                        <button className="flex items-center gap-2 text-sm text-primary font-semibold hover:underline">
-                          <Camera className="w-4 h-4" />
-                          {t('Upload a photo', 'ارفع صورة')}
-                        </button>
-                      </div>
-                    </>
-                  );
-                })()}
+                    </button>
+                  ))}
+                  {/* Remaining photos */}
+                  {allGalleryPhotos.slice(1).map((photo, i) => (
+                    <button
+                      key={i + 1}
+                      onClick={() => openLightbox(allGalleryPhotos, i + 1)}
+                      className="rounded-2xl overflow-hidden aspect-square group cursor-pointer relative"
+                    >
+                      <img src={photo.url} alt={photo.alt} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition-colors rounded-2xl" />
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center justify-between pt-2">
+                  <p className="text-sm text-muted-foreground">{allGalleryPhotos.length} {t('photos', 'صورة')}</p>
+                  <button className="flex items-center gap-2 text-sm text-primary font-semibold hover:underline">
+                    <Camera className="w-4 h-4" />
+                    {t('Upload a photo', 'ارفع صورة')}
+                  </button>
+                </div>
               </div>
             )}
 
