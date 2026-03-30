@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useLanguage } from '@/hooks/use-language';
 import { usePageMeta } from '@/hooks/use-page-meta';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { useAuth } from '@/context/AuthContext';
+import { getAuthHeaders } from '@/lib/api';
 import {
   Trophy, Medal, Star, Crown, TrendingUp, Zap, Award, Target,
-  Flame, Heart, ChefHat, Users, CheckCircle2
+  Flame, Heart, ChefHat, Users, CheckCircle2, UserPlus, UserMinus, Loader2,
 } from 'lucide-react';
 import { Link } from 'wouter';
 
@@ -87,6 +89,9 @@ export function LeaderboardPage() {
     descriptionAr: 'تعرّف على أفضل المراجعين في طبق. اكسب نقاطاً وتسلّق السلّم لتفوز بمكافآت حصرية.',
   }, lang);
   const [period, setPeriod] = useState<Period>('alltime');
+  const [followedIds, setFollowedIds] = useState<Set<number>>(new Set());
+  const [pendingId, setPendingId] = useState<number | null>(null);
+  const { user: authUser } = useAuth();
 
   const { data: liveData, isLoading } = useQuery({
     queryKey: ['leaderboard', period],
@@ -98,8 +103,28 @@ export function LeaderboardPage() {
     staleTime: 60000,
   });
 
+  const followMutation = useMutation({
+    mutationFn: async ({ targetId, action }: { targetId: number; action: 'follow' | 'unfollow' }) => {
+      const method = action === 'follow' ? 'POST' : 'DELETE';
+      const res = await fetch(`/api/users/${targetId}/follow`, { method, headers: getAuthHeaders() });
+      if (!res.ok) throw new Error('Failed');
+      return { targetId, action };
+    },
+    onMutate: ({ targetId }) => setPendingId(targetId),
+    onSuccess: ({ targetId, action }) => {
+      setFollowedIds(prev => {
+        const next = new Set(prev);
+        if (action === 'follow') next.add(targetId);
+        else next.delete(targetId);
+        return next;
+      });
+    },
+    onSettled: () => setPendingId(null),
+  });
+
   const liveEntries = (liveData ?? []).map((e: any, i: number) => ({
     rank: i + 1,
+    userId: e.user.id,
     nameEn: e.user.nameEn,
     nameAr: e.user.nameAr,
     avatar: e.user.avatarUrl || `https://i.pravatar.cc/80?u=${e.user.id}`,
@@ -198,6 +223,9 @@ export function LeaderboardPage() {
                   'bg-amber-50 border-amber-200',
                 ];
                 const medalColors = ['text-yellow-500', 'text-slate-400', 'text-amber-700'];
+                const isFollowing = followedIds.has(entry.userId);
+                const isPending = pendingId === entry.userId;
+                const isSelf = authUser && (authUser as any).id === entry.userId;
                 return (
                   <div
                     key={entry.nameEn}
@@ -217,20 +245,30 @@ export function LeaderboardPage() {
                           {lang === 'ar' ? entry.levelTitleAr : entry.levelTitle}
                         </span>
                         <span className="text-xs text-muted-foreground">· {entry.reviewCount} {t('reviews', 'تقييم')}</span>
-                        {entry.specialty && <span className="text-xs text-muted-foreground hidden sm:block">· {entry.specialty}</span>}
                       </div>
                     </div>
-                    <div className="text-end shrink-0">
-                      {period === 'alltime' ? (
-                        <>
-                          <div className="text-xl font-black text-primary">{entry.points.toLocaleString()}</div>
-                          <div className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">{t('pts', 'نقطة')}</div>
-                        </>
-                      ) : (
-                        <>
-                          <div className="text-xl font-black text-primary">{(entry as any).periodReviewCount ?? entry.reviewCount}</div>
-                          <div className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">{t('reviews', 'تقييم')}</div>
-                        </>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <div className="text-end">
+                        {period === 'alltime' ? (
+                          <>
+                            <div className="text-xl font-black text-primary">{entry.points.toLocaleString()}</div>
+                            <div className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">{t('pts', 'نقطة')}</div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="text-xl font-black text-primary">{(entry as any).periodReviewCount ?? entry.reviewCount}</div>
+                            <div className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">{t('reviews', 'تقييم')}</div>
+                          </>
+                        )}
+                      </div>
+                      {authUser && !isSelf && (
+                        <button
+                          disabled={isPending}
+                          onClick={() => followMutation.mutate({ targetId: entry.userId, action: isFollowing ? 'unfollow' : 'follow' })}
+                          className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${isFollowing ? 'border-border text-muted-foreground hover:border-red-300 hover:text-red-500' : 'border-primary text-primary hover:bg-primary hover:text-primary-foreground'}`}
+                        >
+                          {isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : isFollowing ? <><UserMinus className="w-3 h-3" />{t('Unfollow', 'إلغاء')}</> : <><UserPlus className="w-3 h-3" />{t('Follow', 'تابع')}</>}
+                        </button>
                       )}
                     </div>
                   </div>
@@ -246,7 +284,11 @@ export function LeaderboardPage() {
                   <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('Rising Explorers', 'المستكشفون الصاعدون')}</p>
                 </div>
                 <div className="space-y-2">
-                  {rest.map((entry) => (
+                  {rest.map((entry) => {
+                    const isFollowing = followedIds.has(entry.userId);
+                    const isPending = pendingId === entry.userId;
+                    const isSelf = authUser && (authUser as any).id === entry.userId;
+                    return (
                     <div
                       key={entry.nameEn}
                       className="flex items-center gap-4 p-4 rounded-2xl border border-border/60 bg-card hover:bg-accent/30 hover:border-primary/20 transition-all"
@@ -269,21 +311,33 @@ export function LeaderboardPage() {
                         </div>
                         <p className="text-xs text-muted-foreground mt-0.5">{lang === 'ar' ? entry.levelTitleAr : entry.levelTitle} · {entry.reviewCount} {t('reviews', 'تقييم')}</p>
                       </div>
-                      <div className="text-end shrink-0">
-                        {period === 'alltime' ? (
-                          <>
-                            <div className="text-base font-bold text-foreground">{entry.points.toLocaleString()}</div>
-                            <div className="text-[10px] text-muted-foreground">{t('pts', 'نقطة')}</div>
-                          </>
-                        ) : (
-                          <>
-                            <div className="text-base font-bold text-foreground">{(entry as any).periodReviewCount ?? entry.reviewCount}</div>
-                            <div className="text-[10px] text-muted-foreground">{t('reviews', 'تقييم')}</div>
-                          </>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <div className="text-end">
+                          {period === 'alltime' ? (
+                            <>
+                              <div className="text-base font-bold text-foreground">{entry.points.toLocaleString()}</div>
+                              <div className="text-[10px] text-muted-foreground">{t('pts', 'نقطة')}</div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="text-base font-bold text-foreground">{(entry as any).periodReviewCount ?? entry.reviewCount}</div>
+                              <div className="text-[10px] text-muted-foreground">{t('reviews', 'تقييم')}</div>
+                            </>
+                          )}
+                        </div>
+                        {authUser && !isSelf && (
+                          <button
+                            disabled={isPending}
+                            onClick={() => followMutation.mutate({ targetId: entry.userId, action: isFollowing ? 'unfollow' : 'follow' })}
+                            className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all ${isFollowing ? 'border-border text-muted-foreground hover:border-red-300 hover:text-red-500' : 'border-primary text-primary hover:bg-primary hover:text-primary-foreground'}`}
+                          >
+                            {isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : isFollowing ? <><UserMinus className="w-3 h-3" />{t('Unfollow', 'إلغاء')}</> : <><UserPlus className="w-3 h-3" />{t('Follow', 'تابع')}</>}
+                          </button>
                         )}
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}

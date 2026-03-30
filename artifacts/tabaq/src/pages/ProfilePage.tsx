@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { getAuthHeaders } from '@/lib/api';
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/context/AuthContext";
@@ -16,7 +17,7 @@ import { Link } from "wouter";
 import {
   User, Settings, ShieldCheck, MapPin, Calendar, Star, LogIn,
   BookOpen, Clock, Users, AtSign, CheckCircle2, XCircle, Loader2,
-  Gift, Copy, ChevronRight, Sparkles, Lock,
+  Gift, Copy, ChevronRight, Sparkles, Lock, UserPlus, UserMinus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -50,6 +51,7 @@ export function ProfilePage() {
 
   const apiBase = import.meta.env.BASE_URL?.replace(/\/$/, "") || "";
 
+  const queryClient = useQueryClient();
   const userId = authUser?.id ?? 0;
   const { data, isLoading, refetch: refetchUser } = useGetUser(userId, {
     query: { queryKey: getGetUserQueryKey(userId), enabled: !!authUser },
@@ -63,11 +65,26 @@ export function ProfilePage() {
   });
 
   const { data: followersData } = useGetUserFollowers(userId, {
-    query: { queryKey: getGetUserFollowersQueryKey(userId), enabled: !!authUser && tab === "followers" },
+    query: { queryKey: getGetUserFollowersQueryKey(userId), enabled: !!authUser },
   });
 
   const { data: followingData } = useGetUserFollowing(userId, {
-    query: { queryKey: getGetUserFollowingQueryKey(userId), enabled: !!authUser && tab === "following" },
+    query: { queryKey: getGetUserFollowingQueryKey(userId), enabled: !!authUser },
+  });
+
+  const followingIds = new Set<number>((followingData ?? []).map((u: any) => u.id));
+
+  const followMutation = useMutation({
+    mutationFn: async ({ targetId, action }: { targetId: number; action: 'follow' | 'unfollow' }) => {
+      const method = action === 'follow' ? 'POST' : 'DELETE';
+      const res = await fetch(`/api/users/${targetId}/follow`, { method, headers: getAuthHeaders() });
+      if (!res.ok) throw new Error('Failed');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: getGetUserFollowersQueryKey(userId) });
+      queryClient.invalidateQueries({ queryKey: getGetUserFollowingQueryKey(userId) });
+      queryClient.invalidateQueries({ queryKey: getGetUserQueryKey(userId) });
+    },
   });
 
   // Pre-fill username if user already has one
@@ -466,20 +483,40 @@ export function ProfilePage() {
                 <div className="text-center py-16 text-muted-foreground">
                   <Users className="w-12 h-12 mx-auto mb-4 opacity-40" />
                   <p className="font-medium">{t("No followers yet", "لا يوجد متابعون بعد")}</p>
+                  <p className="text-sm mt-1">{t("Share your profile to gain followers.", "شارك ملفك للحصول على متابعين.")}</p>
                 </div>
               ) : (
-                followersData.map((f) => {
+                followersData.map((f: any) => {
                   const uname = lang === "ar" ? f.nameAr || f.nameEn : f.nameEn || f.nameAr;
+                  const isFollowingBack = followingIds.has(f.id);
+                  const isPending = followMutation.isPending && (followMutation.variables as any)?.targetId === f.id;
                   return (
                     <div key={f.id} className="bg-card border border-border rounded-2xl p-4 flex items-center gap-4">
                       <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center overflow-hidden shrink-0">
                         {f.avatarUrl ? <img src={f.avatarUrl} alt="" className="w-full h-full object-cover" /> : <User className="w-5 h-5 text-muted-foreground" />}
                       </div>
-                      <div className="flex-grow">
-                        <p className="font-medium text-foreground">{uname}</p>
+                      <div className="flex-grow min-w-0">
+                        <p className="font-medium text-foreground truncate">{uname}</p>
                         <p className="text-xs text-muted-foreground">{f.levelTitle}</p>
                       </div>
-                      {f.isVerified && <ShieldCheck className="w-4 h-4 text-primary" />}
+                      {f.isVerified && <ShieldCheck className="w-4 h-4 text-primary shrink-0" />}
+                      {authUser && f.id !== authUser.id && (
+                        <Button
+                          size="sm"
+                          variant={isFollowingBack ? "outline" : "default"}
+                          className="shrink-0 gap-1.5"
+                          disabled={isPending}
+                          onClick={() => followMutation.mutate({ targetId: f.id, action: isFollowingBack ? 'unfollow' : 'follow' })}
+                        >
+                          {isPending ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : isFollowingBack ? (
+                            <><UserMinus className="w-3.5 h-3.5" />{t("Unfollow", "إلغاء المتابعة")}</>
+                          ) : (
+                            <><UserPlus className="w-3.5 h-3.5" />{t("Follow Back", "تابع")}</>
+                          )}
+                        </Button>
+                      )}
                     </div>
                   );
                 })
@@ -494,20 +531,40 @@ export function ProfilePage() {
                 <div className="text-center py-16 text-muted-foreground">
                   <Users className="w-12 h-12 mx-auto mb-4 opacity-40" />
                   <p className="font-medium">{t("Not following anyone yet", "لا تتابع أحدًا بعد")}</p>
+                  <p className="text-sm mt-1">{t("Discover food critics on the leaderboard.", "اكتشف نقاد الطعام في قائمة المتصدرين.")}</p>
+                  <Link href="/leaderboard">
+                    <Button size="sm" variant="outline" className="mt-4 rounded-xl">
+                      {t("View Leaderboard", "قائمة المتصدرين")}
+                    </Button>
+                  </Link>
                 </div>
               ) : (
-                followingData.map((f) => {
+                followingData.map((f: any) => {
                   const uname = lang === "ar" ? f.nameAr || f.nameEn : f.nameEn || f.nameAr;
+                  const isPending = followMutation.isPending && (followMutation.variables as any)?.targetId === f.id;
                   return (
                     <div key={f.id} className="bg-card border border-border rounded-2xl p-4 flex items-center gap-4">
                       <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center overflow-hidden shrink-0">
                         {f.avatarUrl ? <img src={f.avatarUrl} alt="" className="w-full h-full object-cover" /> : <User className="w-5 h-5 text-muted-foreground" />}
                       </div>
-                      <div className="flex-grow">
-                        <p className="font-medium text-foreground">{uname}</p>
+                      <div className="flex-grow min-w-0">
+                        <p className="font-medium text-foreground truncate">{uname}</p>
                         <p className="text-xs text-muted-foreground">{f.levelTitle}</p>
                       </div>
-                      {f.isVerified && <ShieldCheck className="w-4 h-4 text-primary" />}
+                      {f.isVerified && <ShieldCheck className="w-4 h-4 text-primary shrink-0" />}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="shrink-0 gap-1.5 text-muted-foreground"
+                        disabled={isPending}
+                        onClick={() => followMutation.mutate({ targetId: f.id, action: 'unfollow' })}
+                      >
+                        {isPending ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <><UserMinus className="w-3.5 h-3.5" />{t("Unfollow", "إلغاء")}</>
+                        )}
+                      </Button>
                     </div>
                   );
                 })

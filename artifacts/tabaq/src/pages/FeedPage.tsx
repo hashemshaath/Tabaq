@@ -221,7 +221,7 @@ function TrendingRestaurantsCard({ t, lang }: { t: (en: string, ar: string) => s
   const { data } = useQuery({
     queryKey: ['feed-trending-restaurants'],
     queryFn: async () => {
-      const res = await fetch('/api/restaurants?limit=3&sortBy=rating');
+      const res = await fetch('/api/restaurants?limit=3&sortBy=topRated');
       if (!res.ok) return null;
       return res.json();
     },
@@ -277,7 +277,7 @@ function TrendingDishesCard({ t, lang }: { t: (en: string, ar: string) => string
     staleTime: 120000,
   });
 
-  const dishes = (data?.dishes ?? TRENDING_DISHES).slice(0, 3);
+  const dishes = (Array.isArray(data) ? data : data?.dishes ?? TRENDING_DISHES).slice(0, 3);
 
   return (
     <div className="bg-card border border-border/60 rounded-3xl p-4">
