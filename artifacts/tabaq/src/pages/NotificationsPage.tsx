@@ -319,7 +319,7 @@ export default function NotificationsPage() {
                           <div className="flex items-center gap-3 mt-2">
                             <span className="text-[10px] text-muted-foreground flex items-center gap-1">
                               <Clock className="w-2.5 h-2.5" />
-                              {t('منذ', 'ago')} {notif.timeAgo}
+                              {t('ago', 'منذ')} {notif.timeAgo}
                             </span>
                             {notif.link && (
                               <Link href={notif.link}>

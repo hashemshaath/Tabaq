@@ -462,4 +462,43 @@ router.get("/me/points/history", requireAuth, async (req, res) => {
   }
 });
 
+// ─── PATCH /me/profile — update own profile fields ───────────────────────────
+router.patch("/me/profile", requireAuth, async (req, res) => {
+  try {
+    const userId = req.auth!.userId;
+    const { nameEn, nameAr, email, bio, avatarUrl } = req.body as {
+      nameEn?: string; nameAr?: string; email?: string; bio?: string; avatarUrl?: string;
+    };
+
+    const updateData: Partial<typeof usersTable.$inferInsert> = { updatedAt: new Date() };
+    if (nameEn !== undefined) updateData.nameEn = nameEn.trim() || null;
+    if (nameAr !== undefined) updateData.nameAr = nameAr.trim() || null;
+    if (bio !== undefined) updateData.bio = bio.trim() || null;
+    if (avatarUrl !== undefined) updateData.avatarUrl = avatarUrl.trim() || null;
+    if (email !== undefined) {
+      const emailLower = email.trim().toLowerCase();
+      if (emailLower && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailLower)) {
+        res.status(400).json({ error: "invalid_email", message: "Invalid email address" });
+        return;
+      }
+      updateData.email = emailLower || null;
+    }
+
+    const [updated] = await db
+      .update(usersTable)
+      .set(updateData)
+      .where(eq(usersTable.id, userId))
+      .returning();
+
+    res.json({ user: updated, message: "Profile updated successfully" });
+  } catch (err: any) {
+    if (err?.constraint === "users_email_unique") {
+      res.status(409).json({ error: "email_taken", message: "That email is already in use" });
+      return;
+    }
+    req.log.error({ err }, "Failed to update profile");
+    res.status(500).json({ error: "internal_error", message: "Failed to update profile" });
+  }
+});
+
 export default router;

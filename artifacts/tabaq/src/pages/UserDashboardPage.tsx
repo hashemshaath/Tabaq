@@ -230,6 +230,175 @@ function normalizeReview(r: any) {
   };
 }
 
+// ─── Personal Information Form Component ──────────────────────────────────────
+function PersonalInfoForm() {
+  const { t } = useLanguage();
+  const { user, token } = useAuth();
+  const queryClient = useQueryClient();
+  const apiBase = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
+
+  const [nameEn, setNameEn] = useState((user as any)?.nameEn ?? '');
+  const [nameAr, setNameAr] = useState((user as any)?.nameAr ?? '');
+  const [email, setEmail] = useState((user as any)?.email ?? '');
+  const [bio, setBio] = useState((user as any)?.bio ?? '');
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [saveError, setSaveError] = useState('');
+
+  const handleSave = async () => {
+    setSaveStatus('saving');
+    setSaveError('');
+    try {
+      const res = await fetch(`${apiBase}/api/me/profile`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ nameEn: nameEn.trim(), nameAr: nameAr.trim(), email: email.trim(), bio: bio.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setSaveStatus('error');
+        setSaveError(data.message || t('Failed to save changes', 'فشل حفظ التغييرات'));
+        return;
+      }
+      setSaveStatus('saved');
+      queryClient.invalidateQueries({ queryKey: ['auth-me'] });
+      setTimeout(() => setSaveStatus('idle'), 3000);
+    } catch {
+      setSaveStatus('error');
+      setSaveError(t('Network error. Please try again.', 'خطأ في الشبكة. حاول مرة أخرى.'));
+    }
+  };
+
+  return (
+    <div className="bg-card border border-border rounded-2xl overflow-hidden">
+      <div className="px-5 py-4 border-b border-border">
+        <h3 className="font-bold text-foreground">{t('Personal Information', 'المعلومات الشخصية')}</h3>
+      </div>
+      <div className="p-5 space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground block mb-1">{t('Name (English)', 'الاسم (إنجليزي)')}</label>
+            <input
+              type="text"
+              value={nameEn}
+              onChange={e => { setNameEn(e.target.value); setSaveStatus('idle'); }}
+              placeholder="e.g. Ahmed Al-Rashid"
+              className="w-full h-11 px-4 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground block mb-1">{t('Name (Arabic)', 'الاسم (عربي)')}</label>
+            <input
+              type="text"
+              value={nameAr}
+              onChange={e => { setNameAr(e.target.value); setSaveStatus('idle'); }}
+              placeholder="مثال: أحمد الراشد"
+              dir="rtl"
+              className="w-full h-11 px-4 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
+          </div>
+        </div>
+        <div>
+          <label className="text-xs font-semibold text-muted-foreground block mb-1">{t('Email Address', 'البريد الإلكتروني')}</label>
+          <input
+            type="email"
+            value={email}
+            onChange={e => { setEmail(e.target.value); setSaveStatus('idle'); }}
+            placeholder="your@email.com"
+            className="w-full h-11 px-4 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+        </div>
+        <div>
+          <label className="text-xs font-semibold text-muted-foreground block mb-1">{t('Bio', 'نبذة شخصية')}</label>
+          <textarea
+            value={bio}
+            onChange={e => { setBio(e.target.value); setSaveStatus('idle'); }}
+            placeholder={t('Tell the community about your food journey...', 'أخبر المجتمع عن رحلتك الغذائية...')}
+            rows={3}
+            className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
+          />
+        </div>
+        <div>
+          <label className="text-xs font-semibold text-muted-foreground block mb-1">{t('Phone Number', 'رقم الهاتف')}</label>
+          <input
+            type="tel"
+            value={(user as any)?.phone ?? ''}
+            readOnly
+            className="w-full h-11 px-4 rounded-xl border border-input bg-secondary/40 text-sm text-muted-foreground cursor-not-allowed"
+          />
+          <p className="text-xs text-muted-foreground mt-1">{t('Phone cannot be changed. Contact support if needed.', 'لا يمكن تغيير رقم الهاتف. تواصل مع الدعم إذا لزم الأمر.')}</p>
+        </div>
+        {saveStatus === 'saved' && (
+          <p className="text-xs text-emerald-600 flex items-center gap-1.5 font-medium">
+            <CheckCircle2 className="w-3.5 h-3.5" /> {t('Changes saved!', 'تم حفظ التغييرات!')}
+          </p>
+        )}
+        {saveStatus === 'error' && (
+          <p className="text-xs text-red-500 flex items-center gap-1.5">
+            <AlertCircle className="w-3.5 h-3.5" /> {saveError}
+          </p>
+        )}
+        <Button
+          className="w-full"
+          onClick={handleSave}
+          disabled={saveStatus === 'saving'}
+        >
+          {saveStatus === 'saving'
+            ? <><Loader2 className="w-4 h-4 animate-spin me-2" />{t('Saving...', 'جارٍ الحفظ...')}</>
+            : t('Save Changes', 'حفظ التغييرات')
+          }
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Notification Preferences Component ───────────────────────────────────────
+function NotificationPreferences() {
+  const { t } = useLanguage();
+  const [prefs, setPrefs] = useState({
+    bookingConfirmations: true,
+    bookingReminders: true,
+    offersVouchers: false,
+    reviewResponses: true,
+    leaderboardUpdates: false,
+  });
+
+  const toggle = (key: keyof typeof prefs) =>
+    setPrefs(prev => ({ ...prev, [key]: !prev[key] }));
+
+  const items: { key: keyof typeof prefs; labelEn: string; labelAr: string }[] = [
+    { key: 'bookingConfirmations', labelEn: 'Booking Confirmations', labelAr: 'تأكيدات الحجز' },
+    { key: 'bookingReminders', labelEn: 'Booking Reminders', labelAr: 'تذكيرات الحجز' },
+    { key: 'offersVouchers', labelEn: 'New Offers & Vouchers', labelAr: 'العروض والقسائم الجديدة' },
+    { key: 'reviewResponses', labelEn: 'Review Responses', labelAr: 'ردود التقييمات' },
+    { key: 'leaderboardUpdates', labelEn: 'Leaderboard Updates', labelAr: 'تحديثات المتصدرين' },
+  ];
+
+  return (
+    <div className="bg-card border border-border rounded-2xl overflow-hidden">
+      <div className="px-5 py-4 border-b border-border">
+        <h3 className="font-bold text-foreground">{t('Notification Preferences', 'تفضيلات الإشعارات')}</h3>
+        <p className="text-xs text-muted-foreground mt-0.5">{t('Manage what notifications you receive', 'أدر الإشعارات التي تصلك')}</p>
+      </div>
+      <div className="divide-y divide-border">
+        {items.map(item => (
+          <div key={item.key} className="flex items-center justify-between px-5 py-3.5">
+            <p className="text-sm font-medium text-foreground">{t(item.labelEn, item.labelAr)}</p>
+            <button
+              onClick={() => toggle(item.key)}
+              className={`relative w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary/30 ${prefs[item.key] ? 'bg-primary' : 'bg-muted'}`}
+              aria-checked={prefs[item.key]}
+              role="switch"
+            >
+              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-all duration-200 ${prefs[item.key] ? 'start-[22px]' : 'start-0.5'}`} />
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 type DashTab = 'overview' | 'bookings' | 'reviews' | 'saved' | 'vouchers' | 'points' | 'settings';
 
 export function UserDashboardPage() {
@@ -700,55 +869,13 @@ export function UserDashboardPage() {
         {/* ── SETTINGS ── */}
         {activeTab === 'settings' && (
           <div className="space-y-8 max-w-2xl">
-
             <LocalizationSettings />
-
             <UsernameSection />
-
             <div className="bg-card border border-border rounded-2xl p-5">
               <AddressBook />
             </div>
-
-            <div className="bg-card border border-border rounded-2xl overflow-hidden">
-              <div className="px-5 py-4 border-b border-border">
-                <h3 className="font-bold text-foreground">{t('Personal Information', 'المعلومات الشخصية')}</h3>
-              </div>
-              <div className="p-5 space-y-4">
-                {[
-                  { label: t('Full Name', 'الاسم الكامل'), value: displayName || '' },
-                  { label: t('Phone Number', 'رقم الهاتف'), value: user?.phone || '' },
-                  { label: t('Email', 'البريد الإلكتروني'), value: '' },
-                ].map(f => (
-                  <div key={f.label}>
-                    <label className="text-xs font-semibold text-muted-foreground block mb-1">{f.label}</label>
-                    <input type="text" defaultValue={f.value} className="w-full h-11 px-4 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
-                  </div>
-                ))}
-                <Button className="w-full">{t('Save Changes', 'حفظ التغييرات')}</Button>
-              </div>
-            </div>
-
-            <div className="bg-card border border-border rounded-2xl overflow-hidden">
-              <div className="px-5 py-4 border-b border-border">
-                <h3 className="font-bold text-foreground">{t('Notification Preferences', 'تفضيلات الإشعارات')}</h3>
-              </div>
-              <div className="divide-y divide-border">
-                {[
-                  { label: t('Booking Confirmations', 'تأكيدات الحجز'), enabled: true },
-                  { label: t('Booking Reminders', 'تذكيرات الحجز'), enabled: true },
-                  { label: t('New Offers & Vouchers', 'العروض والقسائم الجديدة'), enabled: false },
-                  { label: t('Review Responses', 'ردود التقييمات'), enabled: true },
-                  { label: t('Leaderboard Updates', 'تحديثات المتصدرين'), enabled: false },
-                ].map(pref => (
-                  <div key={pref.label} className="flex items-center justify-between px-5 py-3.5">
-                    <p className="text-sm font-medium text-foreground">{pref.label}</p>
-                    <div className={`w-11 h-6 rounded-full transition-all cursor-pointer ${pref.enabled ? 'bg-primary' : 'bg-muted'}`}>
-                      <span className={`block w-5 h-5 bg-white rounded-full shadow-sm transition-all mt-0.5 ${pref.enabled ? 'ms-[22px]' : 'ms-0.5'}`} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <PersonalInfoForm />
+            <NotificationPreferences />
           </div>
         )}
 
