@@ -1,15 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, Link } from 'wouter';
 import { StarRating } from '@/components/StarRating';
 import { useLanguage } from '@/hooks/use-language';
 import { usePageMeta } from '@/hooks/use-page-meta';
 import { useGetDish } from '@workspace/api-client-react';
+import { useCart } from '@/context/CartContext';
 import { InlineReviewComposer } from '@/components/InlineReviewComposer';
 import { ReviewCard } from '@/components/ReviewCard';
 import {
   Star, MapPin, Leaf, Wheat, Flame, CheckCircle2, ChevronRight,
   TrendingUp, MessageSquare, ArrowLeft, CalendarDays, Clock,
-  AlertCircle, Award, Zap, Shield,
+  AlertCircle, Award, Zap, Shield, Plus, Minus, ShoppingBag, ArrowRight,
 } from 'lucide-react';
 import { formatPrice } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -66,6 +67,9 @@ function SpiceMeter({ level }: { level: number }) {
 export function DishDetailPage() {
   const { id } = useParams();
   const { t, lang } = useLanguage();
+  const { addItem, items: cartItems, updateQty } = useCart();
+  const [localQty, setLocalQty] = useState(1);
+  const [addedToCart, setAddedToCart] = useState(false);
 
   const numericId = id ? parseInt(id, 10) : NaN;
   const idIsValid = !isNaN(numericId);
@@ -121,6 +125,26 @@ export function DishDetailPage() {
   const name = lang === 'ar' ? dish.nameAr : dish.nameEn;
   const description = lang === 'ar' ? dish.descriptionAr : dish.descriptionEn;
   const restName = lang === 'ar' ? (restaurant?.nameAr ?? '') : (restaurant?.nameEn ?? '');
+
+  const cartQty = cartItems.find(i => i.dishId === numericId)?.qty ?? 0;
+
+  const handleAddToCart = () => {
+    for (let i = 0; i < localQty; i++) {
+      addItem({
+        dishId: numericId,
+        nameEn: dish.nameEn ?? '',
+        nameAr: dish.nameAr ?? '',
+        price: Number(dish.price ?? 0),
+        currency: dish.currency ?? 'SAR',
+        imageUrl: dish.imageUrl ?? undefined,
+        restaurantId: restaurant?.id ?? 0,
+        restaurantNameEn: restaurant?.nameEn ?? '',
+        restaurantNameAr: restaurant?.nameAr ?? '',
+      });
+    }
+    setAddedToCart(true);
+    setTimeout(() => setAddedToCart(false), 2000);
+  };
 
   const hasRating = Number(dish.reviewCount) > 0;
   const avgRating = Number(dish.avgRating);
@@ -315,18 +339,78 @@ export function DishDetailPage() {
               </div>
             )}
 
-            {/* CTAs */}
+            {/* Add to Cart */}
+            {dish.price && (
+              <div className="space-y-3">
+                {/* Qty stepper */}
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-3 bg-secondary/50 border border-border rounded-xl p-1">
+                    <button
+                      onClick={() => setLocalQty(q => Math.max(1, q - 1))}
+                      disabled={localQty <= 1}
+                      className="w-9 h-9 rounded-lg bg-background border border-border hover:bg-accent flex items-center justify-center transition-colors disabled:opacity-40"
+                    >
+                      <Minus className="w-4 h-4" />
+                    </button>
+                    <span className="text-lg font-black tabular-nums w-6 text-center text-foreground">{localQty}</span>
+                    <button
+                      onClick={() => setLocalQty(q => q + 1)}
+                      className="w-9 h-9 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center transition-colors"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <span className="text-2xl font-black text-primary">
+                    {formatPrice(Number(dish.price) * localQty, dish.currency, lang)}
+                  </span>
+                </div>
+
+                {/* Add to cart button */}
+                <button
+                  onClick={handleAddToCart}
+                  className={`w-full flex items-center justify-center gap-2.5 py-3.5 px-6 rounded-xl font-bold text-base transition-all ${
+                    addedToCart
+                      ? 'bg-emerald-500 text-white'
+                      : 'bg-primary text-primary-foreground hover:bg-primary/90 hover:scale-[1.01] active:scale-[0.99]'
+                  }`}
+                >
+                  {addedToCart ? (
+                    <>
+                      <CheckCircle2 className="w-5 h-5" />
+                      {t('Added to Cart!', 'أُضيف إلى السلة!')}
+                    </>
+                  ) : (
+                    <>
+                      <ShoppingBag className="w-5 h-5" />
+                      {t('Add to Cart', 'أضف إلى السلة')}
+                    </>
+                  )}
+                </button>
+
+                {/* Cart link if items already in cart */}
+                {cartQty > 0 && (
+                  <Link href="/checkout">
+                    <button className="w-full flex items-center justify-between bg-primary/10 text-primary border border-primary/20 px-5 py-3 rounded-xl text-sm font-semibold hover:bg-primary/15 transition-colors">
+                      <span>{t('View Cart', 'عرض السلة')} · {cartQty} {t('in cart', 'في السلة')}</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </Link>
+                )}
+              </div>
+            )}
+
+            {/* Secondary CTAs */}
             <div className="flex gap-3 flex-wrap">
               {restaurant && (
                 <>
                   <Link href={`/restaurants/${restaurant.id}?tab=book`}>
-                    <Button size="lg" className="gap-2 rounded-2xl px-6">
+                    <Button size="lg" className="gap-2 rounded-2xl px-6" variant="outline">
                       <CalendarDays className="w-4 h-4" />
                       {t('Book a Table', 'احجز طاولة')}
                     </Button>
                   </Link>
                   <Link href={`/restaurants/${restaurant.id}`}>
-                    <Button variant="outline" size="lg" className="gap-2 rounded-2xl px-6">
+                    <Button variant="ghost" size="lg" className="gap-2 rounded-2xl px-6">
                       <ArrowLeft className="w-4 h-4" />
                       {t('View Menu', 'عرض المنيو')}
                     </Button>

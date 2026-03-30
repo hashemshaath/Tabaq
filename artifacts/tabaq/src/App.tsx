@@ -36,6 +36,7 @@ import { SettingsPage } from "@/pages/SettingsPage";
 import { MichelinPage } from "@/pages/MichelinPage";
 import { MichelinDetailPage } from "@/pages/MichelinDetailPage";
 import { CheckoutPage } from "@/pages/CheckoutPage";
+import { OrdersPage } from "@/pages/OrdersPage";
 import FeedPage from "@/pages/FeedPage";
 import NotificationsPage from "@/pages/NotificationsPage";
 import NotFound from "@/pages/not-found";
@@ -89,6 +90,7 @@ function Router() {
               <Route path="/admin" component={AdminPanelPage} />
               <Route path="/settings" component={SettingsPage} />
               <Route path="/checkout" component={CheckoutPage} />
+              <Route path="/orders" component={OrdersPage} />
               <Route path="/michelin/:id" component={MichelinDetailPage} />
               <Route path="/michelin" component={MichelinPage} />
               <Route path="/experiences" component={ExperiencesPage} />

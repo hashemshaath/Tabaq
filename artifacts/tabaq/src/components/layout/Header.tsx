@@ -352,6 +352,16 @@ export function Header() {
                       </div>
                     </Link>
 
+                    <Link href="/orders" className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors" onClick={() => setUserMenuOpen(false)}>
+                      <div className="w-7 h-7 bg-primary/10 rounded-lg flex items-center justify-center">
+                        <ShoppingBag className="w-3.5 h-3.5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-foreground leading-none">{t("My Orders", "طلباتي")}</p>
+                        <p className="text-xs text-muted-foreground">{t("Track & reorder", "تتبع وإعادة الطلب")}</p>
+                      </div>
+                    </Link>
+
                     <Link href="/bookings" className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors" onClick={() => setUserMenuOpen(false)}>
                       <div className="w-7 h-7 bg-blue-50 rounded-lg flex items-center justify-center">
                         <CalendarDays className="w-3.5 h-3.5 text-blue-600" />
