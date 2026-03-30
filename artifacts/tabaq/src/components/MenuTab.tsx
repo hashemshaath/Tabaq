@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link } from 'wouter';
-import { Star, Clock, Flame, Leaf, Wheat, AlertCircle, ChevronDown, ChevronUp, Zap, Plus, Minus, ShoppingBag, X } from 'lucide-react';
+import { Star, Clock, Flame, Leaf, Wheat, AlertCircle, ChevronDown, ChevronUp, Zap, Plus, Minus, ShoppingBag, X, ArrowRight } from 'lucide-react';
 import { useLanguage } from '@/hooks/use-language';
+import { useCart } from '@/context/CartContext';
 import { formatPrice } from '@/lib/utils';
 import type { Dish } from '@workspace/api-client-react';
 
@@ -102,7 +103,6 @@ function DietaryBadges({ dish, lang }: { dish: ExtendedDish; lang: string }) {
   );
 }
 
-type CartState = Record<number, number>;
 
 function DishCard({
   dish, lang, compact = false, count, onAdd, onRemove,
@@ -243,16 +243,18 @@ function DishCard({
 
 interface MenuTabProps {
   menuData: Menu[] | undefined;
+  restaurantId?: number;
+  restaurantNameEn?: string;
+  restaurantNameAr?: string;
 }
 
 type FilterType = 'all' | 'veg' | 'healthy' | 'halal' | 'vegan' | 'spicy';
 type SortType = 'default' | 'price_asc' | 'price_desc' | 'cal_asc';
 
-export function MenuTab({ menuData }: MenuTabProps) {
+export function MenuTab({ menuData, restaurantId, restaurantNameEn = 'Restaurant', restaurantNameAr = 'مطعم' }: MenuTabProps) {
   const { t, lang } = useLanguage();
+  const { items: cartItems, addItem, updateQty, totalItems, totalPrice, currency: cartCurrency } = useCart();
   const [expandedSections, setExpandedSections] = useState<Set<number>>(new Set());
-  const [cart, setCart] = useState<CartState>({});
-  const [cartOpen, setCartOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
   const [sortBy, setSortBy] = useState<SortType>('default');
   const [searchQuery, setSearchQuery] = useState('');
@@ -265,23 +267,29 @@ export function MenuTab({ menuData }: MenuTabProps) {
     });
   };
 
+  const getQty = (dishId: number) => cartItems.find(i => i.dishId === dishId)?.qty ?? 0;
+
   const addToCart = (dish: ExtendedDish, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setCart(prev => ({ ...prev, [dish.id]: (prev[dish.id] || 0) + 1 }));
+    addItem({
+      dishId: dish.id,
+      nameEn: dish.nameEn ?? '',
+      nameAr: dish.nameAr ?? '',
+      price: Number(dish.price ?? 0),
+      currency: dish.currency ?? 'SAR',
+      imageUrl: dish.imageUrl ?? undefined,
+      restaurantId: restaurantId ?? 0,
+      restaurantNameEn,
+      restaurantNameAr,
+    });
   };
 
   const removeFromCart = (dish: ExtendedDish, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setCart(prev => {
-      const next = { ...prev };
-      if ((next[dish.id] || 0) > 1) { next[dish.id]--; } else { delete next[dish.id]; }
-      return next;
-    });
+    updateQty(dish.id, getQty(dish.id) - 1);
   };
-
-  const clearCart = () => setCart({});
 
   if (!menuData || menuData.length === 0) {
     return (
@@ -308,21 +316,7 @@ export function MenuTab({ menuData }: MenuTabProps) {
   const tabaqStarDishes = allDishes.filter(d => d.isTabaqStar);
   const mostOrderedDishes = allDishes.filter(d => d.isMostOrdered && !d.isTabaqStar);
 
-  const cartDishCount = Object.values(cart).reduce((s, c) => s + c, 0);
-  const cartTotal = allDishes.reduce((sum, dish) => {
-    const qty = cart[dish.id] || 0;
-    return sum + qty * Number(dish.price ?? 0);
-  }, 0);
-  const currency = allDishes.find(d => cart[d.id])?.currency ?? 'SAR';
-  const hasCart = cartDishCount > 0;
-
-  const cartItems = allDishes
-    .filter(d => cart[d.id] > 0)
-    .map(d => ({
-      dish: d,
-      qty: cart[d.id],
-      subtotal: cart[d.id] * Number(d.price ?? 0),
-    }));
+  const hasCart = totalItems > 0;
 
   const FILTERS: { id: FilterType; en: string; ar: string }[] = [
     { id: 'all', en: 'All', ar: 'الكل' },
@@ -424,7 +418,7 @@ export function MenuTab({ menuData }: MenuTabProps) {
               {tabaqStarDishes.map(dish => (
                 <DishCard
                   key={dish.id} dish={dish} lang={lang}
-                  count={cart[dish.id] || 0}
+                  count={getQty(dish.id)}
                   onAdd={e => addToCart(dish, e)}
                   onRemove={e => removeFromCart(dish, e)}
                 />
@@ -447,7 +441,7 @@ export function MenuTab({ menuData }: MenuTabProps) {
                 <div key={dish.id} className="w-48 shrink-0">
                   <DishCard
                     dish={dish} lang={lang}
-                    count={cart[dish.id] || 0}
+                    count={getQty(dish.id)}
                     onAdd={e => addToCart(dish, e)}
                     onRemove={e => removeFromCart(dish, e)}
                   />
@@ -493,7 +487,7 @@ export function MenuTab({ menuData }: MenuTabProps) {
                       {items.map(dish => (
                         <DishCard
                           key={dish.id} dish={dish} lang={lang} compact
-                          count={cart[dish.id] || 0}
+                          count={getQty(dish.id)}
                           onAdd={e => addToCart(dish, e)}
                           onRemove={e => removeFromCart(dish, e)}
                         />
@@ -510,57 +504,19 @@ export function MenuTab({ menuData }: MenuTabProps) {
       {/* ── Floating order bar ── */}
       {hasCart && (
         <div className="fixed bottom-4 inset-x-4 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:w-[520px] z-50">
-          {cartOpen && (
-            <div className="bg-card border border-border rounded-2xl shadow-2xl mb-2 overflow-hidden animate-in slide-in-from-bottom-2 duration-200">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-secondary/20">
-                <span className="font-bold text-sm text-foreground">{t('Your Order', 'طلبك')}</span>
-                <button onClick={() => setCartOpen(false)} className="text-muted-foreground hover:text-foreground transition-colors">
-                  <ChevronDown className="w-4 h-4" />
-                </button>
+          <Link href="/checkout">
+            <button className="w-full flex items-center gap-3 bg-primary text-primary-foreground rounded-2xl px-4 py-3.5 shadow-2xl hover:bg-primary/90 transition-all hover:scale-[1.01] active:scale-[0.99]">
+              <div className="relative">
+                <ShoppingBag className="w-5 h-5" />
+                <span className="absolute -top-1.5 -end-1.5 bg-amber-400 text-black text-[10px] font-black rounded-full w-4 h-4 flex items-center justify-center leading-none">
+                  {totalItems}
+                </span>
               </div>
-              <div className="divide-y divide-border max-h-52 overflow-y-auto">
-                {cartItems.map(({ dish, qty, subtotal }) => {
-                  const dName = lang === 'ar' ? dish.nameAr : dish.nameEn;
-                  return (
-                    <div key={dish.id} className="flex items-center justify-between px-4 py-2.5 gap-3">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <button onClick={e => removeFromCart(dish, e)} className="w-5 h-5 rounded-full bg-secondary border border-border flex items-center justify-center hover:bg-destructive/10 transition-colors">
-                            <Minus className="w-2.5 h-2.5" />
-                          </button>
-                          <span className="text-xs font-bold tabular-nums w-5 text-center">{qty}</span>
-                          <button onClick={e => addToCart(dish, e)} className="w-5 h-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:bg-primary/90 transition-colors">
-                            <Plus className="w-2.5 h-2.5" />
-                          </button>
-                        </div>
-                        <span className="text-xs text-foreground font-medium truncate">{dName}</span>
-                      </div>
-                      <span className="text-xs font-bold text-foreground shrink-0">{currency} {subtotal.toFixed(0)}</span>
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="px-4 py-2 flex justify-end border-t border-border bg-secondary/10">
-                <button onClick={clearCart} className="text-xs text-muted-foreground hover:text-destructive transition-colors flex items-center gap-1">
-                  <X className="w-3 h-3" /> {t('Clear order', 'مسح الطلب')}
-                </button>
-              </div>
-            </div>
-          )}
-          <button
-            onClick={() => setCartOpen(o => !o)}
-            className="w-full flex items-center gap-3 bg-primary text-primary-foreground rounded-2xl px-4 py-3.5 shadow-2xl hover:bg-primary/90 transition-colors"
-          >
-            <div className="relative">
-              <ShoppingBag className="w-5 h-5" />
-              <span className="absolute -top-1.5 -end-1.5 bg-amber-400 text-black text-[10px] font-black rounded-full w-4 h-4 flex items-center justify-center leading-none">
-                {cartDishCount}
-              </span>
-            </div>
-            <span className="font-bold text-sm flex-1 text-start">{t('View your order', 'عرض طلبك')}</span>
-            <span className="font-black text-sm">{currency} {cartTotal.toFixed(0)}</span>
-            {cartOpen ? <ChevronDown className="w-4 h-4 opacity-70" /> : <ChevronUp className="w-4 h-4 opacity-70" />}
-          </button>
+              <span className="font-bold text-sm flex-1 text-start">{t('View Order & Checkout', 'عرض الطلب والدفع')}</span>
+              <span className="font-black text-sm">{formatPrice(totalPrice, cartCurrency, lang as 'en' | 'ar')}</span>
+              <ArrowRight className="w-4 h-4 opacity-80" />
+            </button>
+          </Link>
         </div>
       )}
     </div>

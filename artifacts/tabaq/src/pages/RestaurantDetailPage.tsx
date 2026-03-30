@@ -936,7 +936,12 @@ export function RestaurantDetailPage() {
                   <h2 className="text-base font-bold text-gray-900 mb-4">{t('Menu', 'القائمة')}</h2>
                 </div>
                 <div className="p-5 pt-0">
-                  <MenuTab menuData={menuData as any} />
+                  <MenuTab
+                    menuData={menuData as any}
+                    restaurantId={numericId}
+                    restaurantNameEn={restaurantNameEn}
+                    restaurantNameAr={restaurantNameAr}
+                  />
                 </div>
               </div>
             )}

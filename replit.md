@@ -78,7 +78,12 @@ Features include:
   - `michelin.ts`: 6 starred restaurants (Nobu, The Globe, Li Beirut, Taian Table, Najd Village, Mira) + 2 Bib Gourmand — all with full bilingual data, gallery images, signature dishes, awards, opening hours
   - Michelin Guide nav link added to Header (desktop + mobile) with Award icon
   - **Michelin Teaser on HomePage**: dark card with cinematic background, gold accents, star count stats, mini image previews of top restaurants, CTA button
-- **CartContext** (`/context/CartContext.tsx`): global cart state with addItem/removeItem/updateQty/clearCart, totalItems, totalPrice, currency — wraps entire app via CartProvider
+- **Full Cart & Checkout Flow**:
+  - `CartContext` (`/context/CartContext.tsx`): global cart state with addItem/removeItem/updateQty/clearCart, totalItems, totalPrice, currency — wraps entire app via CartProvider
+  - **Cart icon in Header**: shopping bag icon with live item count badge (primary red), opens `CartDrawer` on click
+  - `CartDrawer.tsx`: slide-in panel from the right — lists all items with qty stepper (trash icon at qty=1), delivery fee calculation (free ≥ SAR 100), subtotal/total breakdown, "Proceed to Checkout" CTA → links to `/checkout`
+  - `CheckoutPage.tsx` at `/checkout`: 2-step flow (Details → Payment) + Order Confirmed screen — order mode toggle (Delivery/Pickup/Dine-in), contact form, delivery address, special instructions, 4 payment methods (Card/Apple Pay/STC Pay/Cash), card number/expiry/CVV fields with live formatting, place-order loading state, animated success screen with order number + ETA
+  - MenuTab now uses CartContext (items persist across page navigation), floating order bar links directly to `/checkout`
 - **Enhanced RestaurantDetailPage** (6 new sections in overview tab):
   - Popular Times: animated crowd indicator bar chart showing hourly busyness with current hour highlighted + busy/moderate/quiet label
   - Order Options: dine-in + pickup choice cards

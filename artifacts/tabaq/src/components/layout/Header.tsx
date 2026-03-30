@@ -4,11 +4,13 @@ import {
   Search, MapPin, Globe, User, LogOut, ChevronDown, Tag,
   CalendarDays, LayoutDashboard, Trophy, Shield, Utensils,
   Bell, Menu, X, Home, Sparkles, BarChart3, ChefHat, Check,
-  Settings, Award
+  Settings, Award, ShoppingBag
 } from "lucide-react";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/context/AuthContext";
 import { useCity } from "@/context/CityContext";
+import { useCart } from "@/context/CartContext";
+import { CartDrawer } from "@/components/CartDrawer";
 import { useListCitiesByCountry, useListCountries, type City } from "@workspace/api-client-react";
 import { useLocalization } from "@/context/LocalizationContext";
 import { cn } from "@/lib/utils";
@@ -59,7 +61,9 @@ export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [cityMenuOpen, setCityMenuOpen] = useState(false);
   const [neighborhoodStep, setNeighborhoodStep] = useState(false);
+  const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
   const unreadCount = useUnreadCount(token, user);
+  const { totalItems } = useCart();
   const { data: countries } = useListCountries();
   const countryId = countries?.find((c) => c.code === country.code)?.id ?? null;
   const { data: cities } = useListCitiesByCountry(countryId ?? 0, { query: { queryKey: ['cities-by-country', countryId], enabled: countryId !== null } });
@@ -98,6 +102,7 @@ export function Header() {
     href === "/" ? location === "/" : location.startsWith(href);
 
   return (
+    <>
     <header className="sticky top-0 z-50 w-full glass-panel border-b border-border/50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
 
@@ -269,6 +274,20 @@ export function Header() {
               )}
             </Link>
           )}
+
+          {/* Cart icon */}
+          <button
+            onClick={() => setCartDrawerOpen(true)}
+            className="relative p-2.5 rounded-full hover:bg-accent text-foreground transition-colors"
+            aria-label={t('Cart', 'السلة')}
+          >
+            <ShoppingBag className="w-5 h-5" />
+            {totalItems > 0 && (
+              <span className="absolute top-1 end-1 min-w-[18px] h-[18px] bg-primary text-primary-foreground text-[10px] font-black rounded-full flex items-center justify-center px-0.5 border-2 border-background leading-none">
+                {totalItems > 99 ? '99+' : totalItems}
+              </span>
+            )}
+          </button>
 
           <button
             onClick={toggleLanguage}
@@ -659,5 +678,8 @@ export function Header() {
         </>
       )}
     </header>
+
+    <CartDrawer open={cartDrawerOpen} onClose={() => setCartDrawerOpen(false)} />
+    </>
   );
 }
