@@ -8,8 +8,9 @@ import {
   offersTable,
   vouchersTable,
   platformModulesTable,
+  transactionsTable,
 } from "@workspace/db/schema";
-import { count, avg, sql, eq, desc, and, like } from "drizzle-orm";
+import { count, avg, sql, eq, desc, and, like, sum } from "drizzle-orm";
 
 const router = Router();
 
@@ -36,13 +37,19 @@ async function ensureModulesSeeded() {
 
 router.get("/admin/stats", async (req, res) => {
   try {
-    const [[restaurantCount], [userCount], [bookingCount], [reviewStats], [offerCount], [voucherCount]] = await Promise.all([
+    const [[restaurantCount], [userCount], [bookingCount], [reviewStats], [offerCount], [voucherCount], [revenueStats]] = await Promise.all([
       db.select({ count: count() }).from(restaurantsTable),
       db.select({ count: count() }).from(usersTable),
       db.select({ count: count() }).from(bookingsTable),
       db.select({ count: count(), avgRating: avg(reviewsTable.ratingOverall) }).from(reviewsTable),
       db.select({ count: count() }).from(offersTable).where(eq(offersTable.isActive, true)),
       db.select({ count: count() }).from(vouchersTable),
+      db.select({
+        totalCommission: sum(transactionsTable.commissionAmount),
+        totalGross: sum(transactionsTable.grossAmount),
+        totalNet: sum(transactionsTable.netAmount),
+        txCount: count(),
+      }).from(transactionsTable).where(eq(transactionsTable.status, "completed")),
     ]);
 
     const recentRestaurants = await db
@@ -66,6 +73,9 @@ router.get("/admin/stats", async (req, res) => {
         avgPlatformRating: Number(reviewStats?.avgRating ?? 0).toFixed(2),
         activeOffers: Number(offerCount?.count ?? 0),
         totalVouchers: Number(voucherCount?.count ?? 0),
+        platformRevenue: Number(revenueStats?.totalCommission ?? 0).toFixed(2),
+        grossVolume: Number(revenueStats?.totalGross ?? 0).toFixed(2),
+        completedTransactions: Number(revenueStats?.txCount ?? 0),
       },
       recentRestaurants,
       recentUsers,

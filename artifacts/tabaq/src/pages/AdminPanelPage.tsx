@@ -508,6 +508,8 @@ export function AdminPanelPage() {
                   { label: 'Total Reviews', val: displayStats.totalReviews.toLocaleString(), change: 'Live data', up: true, icon: Star, color: 'bg-amber-50 text-amber-600' },
                   { label: 'Active Offers', val: displayStats.activeOffers.toLocaleString(), change: 'Live data', up: true, icon: Tag, color: 'bg-green-50 text-green-600' },
                   { label: 'Avg. Platform Rating', val: Number(displayStats.avgPlatformRating) > 0 ? Number(displayStats.avgPlatformRating).toFixed(2) : 'N/A', change: 'Live data', up: true, icon: TrendingUp, color: 'bg-emerald-50 text-emerald-600' },
+                  { label: 'Platform Revenue', val: displayStats.platformRevenue ? `SAR ${Number(displayStats.platformRevenue).toLocaleString('en-SA', {maximumFractionDigits:0})}` : '—', change: 'Live data', up: true, icon: DollarSign, color: 'bg-violet-50 text-violet-600' },
+                  { label: 'Gross Volume', val: displayStats.grossVolume ? `SAR ${Number(displayStats.grossVolume).toLocaleString('en-SA', {maximumFractionDigits:0})}` : '—', change: 'Live data', up: true, icon: BarChart3, color: 'bg-green-50 text-green-600' },
                 ] : OVERVIEW_STATS).map(stat => {
                   const Icon = stat.icon;
                   return (
@@ -1452,13 +1454,31 @@ export function AdminPanelPage() {
           {/* ── FINANCE (Transactions + Invoices) ── */}
           {activeTab === 'finance' && (
             <div className="space-y-6">
+              {/* Finance summary banner */}
+              <div className="bg-gradient-to-br from-violet-950 to-purple-900 rounded-2xl p-5 text-white">
+                <p className="text-xs font-semibold text-violet-300 uppercase tracking-wider mb-1">Platform Revenue Overview</p>
+                <div className="flex flex-wrap gap-6 items-end">
+                  <div>
+                    <p className="text-3xl font-black">SAR {transactionsData?.totals?.commissionAmount ? Number(transactionsData.totals.commissionAmount).toLocaleString('en-SA', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : '—'}</p>
+                    <p className="text-violet-300 text-xs mt-0.5">Total Commission Earned</p>
+                  </div>
+                  <div className="text-end ms-auto">
+                    <p className="text-xl font-bold">SAR {transactionsData?.totals?.grossAmount ? Number(transactionsData.totals.grossAmount).toLocaleString('en-SA', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : '—'}</p>
+                    <p className="text-violet-300 text-xs">Gross Volume Processed</p>
+                  </div>
+                  <div className="text-end">
+                    <p className="text-xl font-bold">SAR {transactionsData?.totals?.netAmount ? Number(transactionsData.totals.netAmount).toLocaleString('en-SA', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : '—'}</p>
+                    <p className="text-violet-300 text-xs">Net Paid to Partners</p>
+                  </div>
+                </div>
+              </div>
               {/* Finance stats */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
-                  { label: 'Total Transactions', val: transactionsData?.total ?? '—', icon: Receipt, color: 'bg-blue-50 text-blue-600' },
-                  { label: 'Total Invoices', val: invoicesData?.total ?? '—', icon: FileText, color: 'bg-purple-50 text-purple-600' },
+                  { label: 'Total Transactions', val: transactionsData?.totals?.count ?? '—', icon: Receipt, color: 'bg-blue-50 text-blue-600' },
+                  { label: 'Total Invoices', val: invoicesData?.invoices?.length ?? '—', icon: FileText, color: 'bg-purple-50 text-purple-600' },
                   { label: 'Pending Settlement', val: (transactionsData?.transactions as any[])?.filter((t: any) => t.status === 'pending')?.length ?? '—', icon: Clock, color: 'bg-amber-50 text-amber-600' },
-                  { label: 'Overdue Invoices', val: (invoicesData?.invoices as any[])?.filter((i: any) => i.status === 'overdue')?.length ?? '—', icon: AlertCircle, color: 'bg-red-50 text-red-600' },
+                  { label: 'Overdue Invoices', val: (invoicesData?.invoices as any[])?.filter((i: any) => i.status === 'overdue')?.length ?? 0, icon: AlertCircle, color: 'bg-red-50 text-red-600' },
                 ].map(s => {
                   const Icon = s.icon;
                   return (

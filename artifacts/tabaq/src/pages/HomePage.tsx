@@ -4,7 +4,8 @@ import { Link, useLocation } from 'wouter';
 import {
   Search, ChevronRight, Star, TrendingUp, Trophy, MapPin,
   Flame, Layers, ArrowRight, CalendarDays, MessageSquare,
-  Utensils, Sparkles, BookOpen, Tag, Award, Clock, Zap
+  Utensils, Sparkles, BookOpen, Tag, Award, Clock, Zap,
+  Heart, Navigation, Percent, BadgeCheck
 } from 'lucide-react';
 import { RestaurantCard } from '@/components/RestaurantCard';
 import { getRestaurantAwards, COLLECTIONS } from '@/lib/awards';
@@ -134,6 +135,7 @@ export function HomePage() {
   const categories  = useApi<any[]>('/api/categories');
   const topRated    = useApi<{ restaurants: any[] }>('/api/restaurants?minRating=4.5&limit=6');
   const newest      = useApi<{ restaurants: any[] }>('/api/restaurants?limit=4&sortBy=newest');
+  const offersApi   = useApi<any>('/api/offers?limit=4');
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -609,6 +611,148 @@ export function HomePage() {
           </div>
         </section>
       )}
+
+      {/* ══ EXCLUSIVE DEALS ══════════════════════════════════════ */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-14">
+        <div className="bg-gradient-to-br from-violet-950 via-violet-900 to-purple-900 rounded-3xl p-6 md:p-10 overflow-hidden relative">
+          {/* Background shimmer */}
+          <div className="absolute inset-0 pointer-events-none opacity-20">
+            <div className="absolute top-0 end-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
+            <div className="absolute bottom-0 start-0 w-48 h-48 bg-white/10 rounded-full translate-y-1/2 -translate-x-1/2" />
+          </div>
+          {/* Header */}
+          <div className="flex items-end justify-between mb-6 relative">
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <Percent className="w-3.5 h-3.5 text-violet-300" />
+                <span className="text-violet-300 font-semibold text-xs tracking-[0.05em] uppercase">{t('Limited Time Only', 'لوقت محدود فقط')}</span>
+              </div>
+              <h2 className="text-xl md:text-2xl font-bold text-white">{t('Exclusive Dining Deals', 'عروض تناول الطعام الحصرية')}</h2>
+              <p className="text-violet-300 text-sm mt-1">{t('Save up to 50% at top restaurants. Apply code TABAQ10 for extra 10% off.', 'وفّر حتى 50٪ في أفضل المطاعم. استخدم كود TABAQ10 لخصم إضافي 10٪.')}</p>
+            </div>
+            <Link href="/offers" className="flex items-center gap-1.5 text-sm font-semibold text-white/70 hover:text-white transition-colors shrink-0 border border-white/20 px-3 py-1.5 rounded-full hover:bg-white/10">
+              {t('View all deals', 'كل العروض')} <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
+          {/* Deal cards grid */}
+          {(() => {
+            const rawOffers = offersApi.data?.offers ?? offersApi.data ?? [];
+            const HOME_FALLBACK = [
+              {
+                id: 9001, titleEn: 'Voucher Worth SAR 100–500 to Spend on Anything Off Menu', titleAr: 'قسيمة بقيمة 100–500 ريال لإنفاقها على أي شيء من القائمة',
+                restaurantNameEn: 'Najd Village', restaurantNameAr: 'قرية نجد', locationsCount: 3,
+                imageUrl: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&h=450&fit=crop',
+                originalPrice: 100, discountedPrice: 60, discountPercent: 40, promoPrice: 54, currency: 'SAR',
+                rating: 4.8, reviews: 342, address: 'Al Hamra District', distanceKm: 3.9,
+              },
+              {
+                id: 9002, titleEn: 'Premium Omakase Dinner — 12 Chef-Curated Courses', titleAr: 'عشاء أوماكاسي فاخر — 12 طبقاً من اختيار الشيف',
+                restaurantNameEn: 'Sushi Sama', restaurantNameAr: 'سوشي ساما', locationsCount: 2,
+                imageUrl: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=600&h=450&fit=crop',
+                originalPrice: 650, discountedPrice: 390, discountPercent: 40, promoPrice: 351, currency: 'SAR',
+                rating: 4.9, reviews: 187, address: 'Olaya Street', distanceKm: 5.2,
+              },
+              {
+                id: 9003, titleEn: 'Luxury Afternoon Tea for Two — 3-Tier Pastry Stand', titleAr: 'شاي ما بعد الظهر الفاخر لشخصين — 3 طبقات معجنات',
+                restaurantNameEn: 'The Terrace', restaurantNameAr: 'التيراس', locationsCount: 1,
+                imageUrl: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=600&h=450&fit=crop',
+                originalPrice: 280, discountedPrice: 182, discountPercent: 35, promoPrice: 164, currency: 'SAR',
+                rating: 4.6, reviews: 94, address: 'Kingdom Tower', distanceKm: 2.1,
+              },
+              {
+                id: 9004, titleEn: 'Friday BBQ Brunch Buffet — Unlimited Grills', titleAr: 'بوفيه شواء الجمعة — مشويات لا محدودة',
+                restaurantNameEn: 'Reem Al Bawadi', restaurantNameAr: 'ريم البوادي', locationsCount: 4,
+                imageUrl: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600&h=450&fit=crop',
+                originalPrice: 240, discountedPrice: 168, discountPercent: 30, promoPrice: 151, currency: 'SAR',
+                rating: 4.5, reviews: 218, address: 'Al Aqiq District', distanceKm: 7.3,
+              },
+            ];
+            const deals = rawOffers.length > 0
+              ? rawOffers.slice(0, 4).map((o: any) => ({
+                  id: o.id,
+                  titleEn: o.titleEn, titleAr: o.titleAr,
+                  restaurantNameEn: o.restaurantNameEn ?? 'Restaurant', restaurantNameAr: o.restaurantNameAr ?? 'مطعم',
+                  locationsCount: 1,
+                  imageUrl: o.imageUrl ?? o.restaurantCoverImageUrl ?? 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&h=450&fit=crop',
+                  originalPrice: Number(o.originalPrice), discountedPrice: Number(o.discountedPrice),
+                  discountPercent: Number(o.discountPercent), promoPrice: Math.round(Number(o.discountedPrice) * 0.9),
+                  currency: o.currency ?? 'SAR', rating: 4.7, reviews: 50, address: '', distanceKm: undefined,
+                }))
+              : HOME_FALLBACK;
+
+            return (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 relative">
+                {deals.map((deal: any) => {
+                  const title = lang === 'ar' ? deal.titleAr : deal.titleEn;
+                  const restName = lang === 'ar' ? deal.restaurantNameAr : deal.restaurantNameEn;
+                  return (
+                    <Link key={deal.id} href="/offers" className="group block">
+                      <div className="bg-card rounded-xl overflow-hidden border border-border shadow-sm group-hover:shadow-lg group-hover:-translate-y-0.5 transition-all duration-200">
+                        {/* Image */}
+                        <div className="relative overflow-hidden bg-muted" style={{ aspectRatio: '4/3' }}>
+                          <img src={deal.imageUrl} alt={title} className="w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-500" />
+                          <button className="absolute top-2.5 end-2.5 w-7 h-7 bg-white/90 rounded-full flex items-center justify-center hover:bg-white shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Heart className="w-3.5 h-3.5 text-gray-500" />
+                          </button>
+                        </div>
+                        {/* Info */}
+                        <div className="p-3">
+                          <div className="flex items-center gap-1 mb-1">
+                            <span className="text-xs font-medium text-foreground truncate">{restName}</span>
+                            {deal.locationsCount > 1 && <span className="text-[11px] text-muted-foreground shrink-0">({deal.locationsCount} {t('Loc', 'فروع')})</span>}
+                          </div>
+                          <h3 className="font-bold text-foreground text-xs leading-snug line-clamp-2 mb-1.5">{title}</h3>
+                          {deal.address && (
+                            <div className="flex items-center gap-1 text-[11px] text-muted-foreground mb-1.5 truncate">
+                              <MapPin className="w-2.5 h-2.5 shrink-0" />
+                              <span className="truncate">{deal.address}</span>
+                              {deal.distanceKm && <><span className="shrink-0 mx-0.5">·</span><span className="shrink-0">{deal.distanceKm}km</span></>}
+                            </div>
+                          )}
+                          <div className="flex items-center gap-1 mb-1.5">
+                            {[1,2,3,4,5].map(s => <Star key={s} className={`w-3 h-3 ${s <= Math.floor(deal.rating) ? 'fill-amber-400 text-amber-400' : 'fill-muted text-muted-foreground/20'}`} />)}
+                            <span className="text-[11px] font-bold ms-0.5">{deal.rating}</span>
+                            <span className="text-[11px] text-muted-foreground">({deal.reviews})</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 mb-0.5">
+                            <span className="text-[11px] text-muted-foreground line-through">{deal.currency}{deal.originalPrice}</span>
+                            <span className="text-xs font-bold text-foreground">{deal.currency}{deal.discountedPrice}</span>
+                            <span className="text-[11px] font-bold text-white bg-[#2e7d32] px-1.5 py-0.5 rounded">-{deal.discountPercent}%</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-sm font-black text-foreground">{deal.currency}{deal.promoPrice}</span>
+                            <span className="text-[11px] text-muted-foreground">{t('with', 'بكود')}</span>
+                            <code className="text-[11px] font-bold text-primary">TABAQ10</code>
+                          </div>
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            );
+          })()}
+
+          {/* Promo code CTA */}
+          <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white/10 rounded-2xl px-5 py-4 border border-white/15 relative">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white/15 rounded-xl flex items-center justify-center shrink-0">
+                <Tag className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <p className="text-white font-bold text-sm">{t('Use code TABAQ10 for an extra 10% off any deal', 'استخدم كود TABAQ10 للحصول على خصم إضافي 10٪ على أي عرض')}</p>
+                <p className="text-violet-300 text-xs mt-0.5">{t('Applied at checkout on the deal page', 'يُطبق عند الدفع في صفحة العرض')}</p>
+              </div>
+            </div>
+            <Link href="/offers" className="shrink-0">
+              <button className="bg-white text-violet-900 font-bold px-6 py-2.5 rounded-xl hover:bg-violet-50 transition-colors text-sm shadow whitespace-nowrap">
+                {t('Browse All Deals', 'تصفح كل العروض')}
+              </button>
+            </Link>
+          </div>
+        </div>
+      </section>
 
       {/* ══ BOTTOM CTA ═══════════════════════════════════════════ */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-6">
