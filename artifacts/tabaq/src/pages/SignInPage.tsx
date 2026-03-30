@@ -95,6 +95,17 @@ export function SignInPage() {
         return;
       }
       login(data.token, data.user);
+      const pendingRef = localStorage.getItem('tabaq_referral_code');
+      if (pendingRef && data.user?.id) {
+        try {
+          await fetch('/api/referrals/use', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${data.token}` },
+            body: JSON.stringify({ referralCode: pendingRef, newUserId: data.user.id }),
+          });
+        } catch { /* silent — non-critical */ }
+        localStorage.removeItem('tabaq_referral_code');
+      }
       setLocation('/');
     } catch {
       setError(t('Network error. Please try again.', 'خطأ في الشبكة. حاول مرة أخرى.'));

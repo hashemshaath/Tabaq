@@ -36,6 +36,7 @@ import { TermsPage, PrivacyPage } from "@/pages/StaticPage";
 import { ExperiencesPage } from "@/pages/ExperiencesPage";
 import { ExperienceDetailPage } from "@/pages/ExperienceDetailPage";
 import { GiftRedeemPage } from "@/pages/GiftRedeemPage";
+import { JoinPage } from "@/pages/JoinPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -50,6 +51,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/signin" component={SignInPage} />
+      <Route path="/join" component={JoinPage} />
       <Route>
         <div className="flex flex-col min-h-screen">
           <Header />
