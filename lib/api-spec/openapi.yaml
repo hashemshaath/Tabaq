@@ -35,6 +35,8 @@ tags:
     description: Search and discovery operations
   - name: events
     description: Dining events operations
+  - name: experiences
+    description: Food experiences operations
 
 paths:
   /auth/request-otp:
@@ -1649,6 +1651,728 @@ paths:
               schema:
                 $ref: "#/components/schemas/Event"
 
+  # ─── Experiences ──────────────────────────────────────────────────────────
+  /experiences:
+    get:
+      operationId: listExperiences
+      tags: [experiences]
+      summary: List and filter food experiences
+      parameters:
+        - name: cityId
+          in: query
+          schema:
+            type: integer
+        - name: category
+          in: query
+          schema:
+            type: string
+            enum: [heritage, street_food, fine_dining, live_show, cultural]
+        - name: hostUserId
+          in: query
+          schema:
+            type: integer
+        - name: priceMin
+          in: query
+          schema:
+            type: number
+        - name: priceMax
+          in: query
+          schema:
+            type: number
+        - name: minRating
+          in: query
+          schema:
+            type: number
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            enum: [popular, rated, trending, newest]
+            default: newest
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: List of experiences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExperienceListResponse"
+    post:
+      operationId: createExperience
+      tags: [experiences]
+      summary: Create a new experience (provider only)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateExperienceRequest"
+      responses:
+        "201":
+          description: Experience created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Experience"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /experiences/{experienceId}:
+    get:
+      operationId: getExperience
+      tags: [experiences]
+      summary: Get experience details
+      parameters:
+        - name: experienceId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Experience details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExperienceDetail"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      operationId: updateExperience
+      tags: [experiences]
+      summary: Update experience (host only)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: experienceId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateExperienceRequest"
+      responses:
+        "200":
+          description: Updated experience
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Experience"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteExperience
+      tags: [experiences]
+      summary: Delete experience (host or admin)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: experienceId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Experience deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /experiences/{experienceId}/status:
+    patch:
+      operationId: patchExperienceStatus
+      tags: [experiences]
+      summary: Update experience status (host or admin)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: experienceId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [draft, pending_approval, active, suspended]
+              required:
+                - status
+      responses:
+        "200":
+          description: Status updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Experience"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /experiences/{experienceId}/slots:
+    get:
+      operationId: listExperienceSlots
+      tags: [experiences]
+      summary: List available slots for an experience
+      parameters:
+        - name: experienceId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: List of slots
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ExperienceSlot"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /experiences/{experienceId}/reviews:
+    get:
+      operationId: listExperienceReviews
+      tags: [experiences]
+      summary: List reviews for an experience
+      parameters:
+        - name: experienceId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: List of reviews with rating breakdown
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExperienceReviewListResponse"
+
+  # ─── Experience Bookings ───────────────────────────────────────────────────
+  /experience-bookings:
+    post:
+      operationId: createExperienceBooking
+      tags: [experiences]
+      summary: Create an experience booking
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateExperienceBookingRequest"
+      responses:
+        "201":
+          description: Booking created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExperienceBooking"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /experience-bookings/{bookingId}:
+    get:
+      operationId: getExperienceBooking
+      tags: [experiences]
+      summary: Get experience booking details
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Booking details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExperienceBooking"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /experience-bookings/{bookingId}/cancel:
+    patch:
+      operationId: cancelExperienceBooking
+      tags: [experiences]
+      summary: Cancel an experience booking
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Booking cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExperienceBooking"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /experience-bookings/{bookingId}/pay:
+    post:
+      operationId: payExperienceBooking
+      tags: [experiences]
+      summary: Record payment for an experience booking (deposit or full)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExperiencePaymentRequest"
+      responses:
+        "200":
+          description: Payment recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExperienceBookingPayment"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ─── Experience Reviews ────────────────────────────────────────────────────
+  /experience-reviews:
+    post:
+      operationId: createExperienceReview
+      tags: [experiences]
+      summary: Submit a review for an experience (must have completed booking)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateExperienceReviewRequest"
+      responses:
+        "201":
+          description: Review submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExperienceReview"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ─── Experience Gifts ──────────────────────────────────────────────────────
+  /experience-gifts:
+    post:
+      operationId: createExperienceGift
+      tags: [experiences]
+      summary: Send an experience as a gift
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateExperienceGiftRequest"
+      responses:
+        "201":
+          description: Gift created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExperienceGift"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /experience-gifts/{code}:
+    get:
+      operationId: getExperienceGift
+      tags: [experiences]
+      summary: Look up a gift by redeem code
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Gift details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExperienceGift"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /experience-gifts/{code}/redeem:
+    post:
+      operationId: redeemExperienceGift
+      tags: [experiences]
+      summary: Redeem a gift code
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Gift redeemed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExperienceGift"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ─── Provider Applications ─────────────────────────────────────────────────
+  /provider-applications:
+    post:
+      operationId: createProviderApplication
+      tags: [experiences]
+      summary: Submit a provider application
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProviderApplicationRequest"
+      responses:
+        "201":
+          description: Application submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProviderApplication"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    get:
+      operationId: listProviderApplications
+      tags: [experiences]
+      summary: List provider applications (admin only)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, approved, rejected]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: List of applications
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  applications:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ProviderApplication"
+                  total:
+                    type: integer
+                required:
+                  - applications
+                  - total
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /provider-applications/{applicationId}:
+    patch:
+      operationId: reviewProviderApplication
+      tags: [experiences]
+      summary: Approve or reject a provider application (admin only)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: applicationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewProviderApplicationRequest"
+      responses:
+        "200":
+          description: Application reviewed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProviderApplication"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ─── Provider Dashboard ────────────────────────────────────────────────────
+  /providers/me/analytics:
+    get:
+      operationId: getProviderAnalytics
+      tags: [experiences]
+      summary: Get analytics for the authenticated provider
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Provider analytics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProviderAnalytics"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  # ─── Admin Experiences ─────────────────────────────────────────────────────
+  /admin/experiences:
+    get:
+      operationId: adminListExperiences
+      tags: [experiences]
+      summary: Admin list all experiences with status filter
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [draft, pending_approval, active, suspended]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: All experiences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExperienceListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /admin/experiences/{experienceId}/status:
+    patch:
+      operationId: adminPatchExperienceStatus
+      tags: [experiences]
+      summary: Admin update experience status
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: experienceId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [draft, pending_approval, active, suspended]
+              required:
+                - status
+      responses:
+        "200":
+          description: Status updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Experience"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /admin/experience-settings:
+    get:
+      operationId: getExperienceSettings
+      tags: [experiences]
+      summary: Get all experience module settings (admin only)
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Settings key-value map
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    put:
+      operationId: updateExperienceSettings
+      tags: [experiences]
+      summary: Update experience module settings (admin only)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties:
+                type: string
+      responses:
+        "200":
+          description: Settings updated
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
 components:
   schemas:
     HealthStatus:
@@ -3167,6 +3891,667 @@ components:
         - titleEn
         - titleAr
         - eventDate
+
+    # ─── Experiences ──────────────────────────────────────────────────────────
+    Experience:
+      type: object
+      properties:
+        id:
+          type: integer
+        refCode:
+          type: string
+        slug:
+          type: string
+        titleEn:
+          type: string
+        titleAr:
+          type: string
+        descriptionEn:
+          type: string
+        descriptionAr:
+          type: string
+        category:
+          type: string
+          enum: [heritage, street_food, fine_dining, live_show, cultural]
+        hostUserId:
+          type: integer
+        latitude:
+          type: number
+        longitude:
+          type: number
+        address:
+          type: string
+        cityId:
+          type: integer
+        durationMinutes:
+          type: integer
+        pricePerPerson:
+          type: number
+        depositAmount:
+          type: number
+        currency:
+          type: string
+        capacity:
+          type: integer
+        avgRating:
+          type: number
+        reviewCount:
+          type: integer
+        status:
+          type: string
+          enum: [draft, pending_approval, active, suspended]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - slug
+        - titleEn
+        - titleAr
+        - category
+        - hostUserId
+        - cityId
+        - durationMinutes
+        - pricePerPerson
+        - currency
+        - capacity
+        - avgRating
+        - reviewCount
+        - status
+        - createdAt
+        - updatedAt
+
+    ExperienceDetail:
+      allOf:
+        - $ref: "#/components/schemas/Experience"
+        - type: object
+          properties:
+            images:
+              type: array
+              items:
+                $ref: "#/components/schemas/ExperienceImage"
+            hostNameEn:
+              type: string
+            hostNameAr:
+              type: string
+            hostAvatarUrl:
+              type: string
+            cityNameEn:
+              type: string
+            cityNameAr:
+              type: string
+
+    ExperienceImage:
+      type: object
+      properties:
+        id:
+          type: integer
+        experienceId:
+          type: integer
+        url:
+          type: string
+        isPrimary:
+          type: boolean
+        sortOrder:
+          type: integer
+      required:
+        - id
+        - experienceId
+        - url
+        - isPrimary
+        - sortOrder
+
+    ExperienceListResponse:
+      type: object
+      properties:
+        experiences:
+          type: array
+          items:
+            $ref: "#/components/schemas/Experience"
+        total:
+          type: integer
+        offset:
+          type: integer
+        limit:
+          type: integer
+      required:
+        - experiences
+        - total
+        - offset
+        - limit
+
+    CreateExperienceRequest:
+      type: object
+      properties:
+        slug:
+          type: string
+        titleEn:
+          type: string
+        titleAr:
+          type: string
+        descriptionEn:
+          type: string
+        descriptionAr:
+          type: string
+        category:
+          type: string
+          enum: [heritage, street_food, fine_dining, live_show, cultural]
+        latitude:
+          type: number
+        longitude:
+          type: number
+        address:
+          type: string
+        cityId:
+          type: integer
+        durationMinutes:
+          type: integer
+        pricePerPerson:
+          type: number
+        depositAmount:
+          type: number
+        currency:
+          type: string
+          default: SAR
+        capacity:
+          type: integer
+      required:
+        - slug
+        - titleEn
+        - titleAr
+        - category
+        - cityId
+        - durationMinutes
+        - pricePerPerson
+        - capacity
+
+    UpdateExperienceRequest:
+      type: object
+      properties:
+        slug:
+          type: string
+        titleEn:
+          type: string
+        titleAr:
+          type: string
+        descriptionEn:
+          type: string
+        descriptionAr:
+          type: string
+        category:
+          type: string
+          enum: [heritage, street_food, fine_dining, live_show, cultural]
+        latitude:
+          type: number
+        longitude:
+          type: number
+        address:
+          type: string
+        cityId:
+          type: integer
+        durationMinutes:
+          type: integer
+        pricePerPerson:
+          type: number
+        depositAmount:
+          type: number
+        currency:
+          type: string
+        capacity:
+          type: integer
+
+    ExperienceSlot:
+      type: object
+      properties:
+        id:
+          type: integer
+        experienceId:
+          type: integer
+        date:
+          type: string
+          format: date
+        startTime:
+          type: string
+        endTime:
+          type: string
+        capacity:
+          type: integer
+        remainingCapacity:
+          type: integer
+        isActive:
+          type: boolean
+      required:
+        - id
+        - experienceId
+        - date
+        - startTime
+        - endTime
+        - capacity
+        - remainingCapacity
+        - isActive
+
+    ExperienceBooking:
+      type: object
+      properties:
+        id:
+          type: integer
+        referenceCode:
+          type: string
+        userId:
+          type: integer
+        experienceId:
+          type: integer
+        slotId:
+          type: integer
+        guestCount:
+          type: integer
+        status:
+          type: string
+          enum: [pending, confirmed, cancelled, completed, no_show]
+        totalAmount:
+          type: number
+        depositAmount:
+          type: number
+        depositPaid:
+          type: boolean
+        fullPaid:
+          type: boolean
+        specialRequests:
+          type: string
+        experienceTitleEn:
+          type: string
+        experienceTitleAr:
+          type: string
+        slotDate:
+          type: string
+          format: date
+        slotStartTime:
+          type: string
+        slotEndTime:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - referenceCode
+        - userId
+        - experienceId
+        - slotId
+        - guestCount
+        - status
+        - totalAmount
+        - depositPaid
+        - fullPaid
+        - createdAt
+
+    CreateExperienceBookingRequest:
+      type: object
+      properties:
+        experienceId:
+          type: integer
+        slotId:
+          type: integer
+        guestCount:
+          type: integer
+        specialRequests:
+          type: string
+      required:
+        - experienceId
+        - slotId
+        - guestCount
+
+    ExperienceBookingPayment:
+      type: object
+      properties:
+        id:
+          type: integer
+        bookingId:
+          type: integer
+        amount:
+          type: number
+        type:
+          type: string
+          enum: [deposit, full]
+        status:
+          type: string
+          enum: [pending, completed, failed, refunded]
+        paymentRef:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - bookingId
+        - amount
+        - type
+        - status
+        - createdAt
+
+    ExperiencePaymentRequest:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [deposit, full]
+        paymentRef:
+          type: string
+      required:
+        - type
+
+    ExperienceReview:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        experienceId:
+          type: integer
+        bookingId:
+          type: integer
+        ratingFood:
+          type: number
+          minimum: 1
+          maximum: 5
+        ratingHospitality:
+          type: number
+          minimum: 1
+          maximum: 5
+        ratingAmbiance:
+          type: number
+          minimum: 1
+          maximum: 5
+        ratingValue:
+          type: number
+          minimum: 1
+          maximum: 5
+        ratingOverall:
+          type: number
+          minimum: 1
+          maximum: 5
+        textEn:
+          type: string
+        textAr:
+          type: string
+        isVerified:
+          type: boolean
+        photoUrls:
+          type: array
+          items:
+            type: string
+        userNameEn:
+          type: string
+        userNameAr:
+          type: string
+        userAvatarUrl:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - userId
+        - experienceId
+        - bookingId
+        - ratingOverall
+        - isVerified
+        - createdAt
+
+    CreateExperienceReviewRequest:
+      type: object
+      properties:
+        experienceId:
+          type: integer
+        bookingId:
+          type: integer
+        ratingFood:
+          type: number
+          minimum: 1
+          maximum: 5
+        ratingHospitality:
+          type: number
+          minimum: 1
+          maximum: 5
+        ratingAmbiance:
+          type: number
+          minimum: 1
+          maximum: 5
+        ratingValue:
+          type: number
+          minimum: 1
+          maximum: 5
+        ratingOverall:
+          type: number
+          minimum: 1
+          maximum: 5
+        textEn:
+          type: string
+        textAr:
+          type: string
+        photoUrls:
+          type: array
+          items:
+            type: string
+      required:
+        - experienceId
+        - bookingId
+        - ratingOverall
+
+    ExperienceReviewListResponse:
+      type: object
+      properties:
+        reviews:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExperienceReview"
+        total:
+          type: integer
+        offset:
+          type: integer
+        limit:
+          type: integer
+        ratingBreakdown:
+          type: object
+          properties:
+            avgFood:
+              type: number
+            avgHospitality:
+              type: number
+            avgAmbiance:
+              type: number
+            avgValue:
+              type: number
+            avgOverall:
+              type: number
+      required:
+        - reviews
+        - total
+        - offset
+        - limit
+        - ratingBreakdown
+
+    ExperienceGift:
+      type: object
+      properties:
+        id:
+          type: integer
+        senderUserId:
+          type: integer
+        recipientEmail:
+          type: string
+        recipientName:
+          type: string
+        experienceId:
+          type: integer
+        personalMessage:
+          type: string
+        giftCardDesign:
+          type: string
+          enum: [classic, birthday, anniversary, celebration, ramadan]
+        redeemCode:
+          type: string
+        qrCodeUrl:
+          type: string
+        status:
+          type: string
+          enum: [sent, redeemed, expired]
+        expiresAt:
+          type: string
+          format: date-time
+        redeemedAt:
+          type: string
+          format: date-time
+        redeemedByUserId:
+          type: integer
+        experienceTitleEn:
+          type: string
+        experienceTitleAr:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - senderUserId
+        - recipientEmail
+        - recipientName
+        - experienceId
+        - giftCardDesign
+        - redeemCode
+        - status
+        - expiresAt
+        - createdAt
+
+    CreateExperienceGiftRequest:
+      type: object
+      properties:
+        experienceId:
+          type: integer
+        recipientEmail:
+          type: string
+          format: email
+        recipientName:
+          type: string
+        personalMessage:
+          type: string
+        giftCardDesign:
+          type: string
+          enum: [classic, birthday, anniversary, celebration, ramadan]
+          default: classic
+        expiresAt:
+          type: string
+          format: date-time
+      required:
+        - experienceId
+        - recipientEmail
+        - recipientName
+
+    ProviderApplication:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        businessNameEn:
+          type: string
+        businessNameAr:
+          type: string
+        businessType:
+          type: string
+        contactEmail:
+          type: string
+        contactPhone:
+          type: string
+        status:
+          type: string
+          enum: [pending, approved, rejected]
+        adminNotes:
+          type: string
+        submittedAt:
+          type: string
+          format: date-time
+        reviewedAt:
+          type: string
+          format: date-time
+        reviewedByAdminId:
+          type: integer
+      required:
+        - id
+        - userId
+        - businessNameEn
+        - businessNameAr
+        - businessType
+        - contactEmail
+        - contactPhone
+        - status
+        - submittedAt
+
+    CreateProviderApplicationRequest:
+      type: object
+      properties:
+        businessNameEn:
+          type: string
+        businessNameAr:
+          type: string
+        businessType:
+          type: string
+        contactEmail:
+          type: string
+          format: email
+        contactPhone:
+          type: string
+      required:
+        - businessNameEn
+        - businessNameAr
+        - businessType
+        - contactEmail
+        - contactPhone
+
+    ReviewProviderApplicationRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [approved, rejected]
+        adminNotes:
+          type: string
+      required:
+        - status
+
+    ProviderAnalytics:
+      type: object
+      properties:
+        totalBookings:
+          type: integer
+        confirmedBookings:
+          type: integer
+        cancelledBookings:
+          type: integer
+        totalRevenue:
+          type: number
+        avgRating:
+          type: number
+        totalReviews:
+          type: integer
+        totalExperiences:
+          type: integer
+        activeExperiences:
+          type: integer
+      required:
+        - totalBookings
+        - confirmedBookings
+        - cancelledBookings
+        - totalRevenue
+        - avgRating
+        - totalReviews
+        - totalExperiences
+        - activeExperiences
 
   responses:
     BadRequest:

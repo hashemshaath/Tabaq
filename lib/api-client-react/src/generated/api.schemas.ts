@@ -806,6 +806,430 @@ export interface CreateEventRequest {
   totalCapacity?: number;
 }
 
+export type ExperienceCategory =
+  (typeof ExperienceCategory)[keyof typeof ExperienceCategory];
+
+export const ExperienceCategory = {
+  heritage: "heritage",
+  street_food: "street_food",
+  fine_dining: "fine_dining",
+  live_show: "live_show",
+  cultural: "cultural",
+} as const;
+
+export type ExperienceStatus =
+  (typeof ExperienceStatus)[keyof typeof ExperienceStatus];
+
+export const ExperienceStatus = {
+  draft: "draft",
+  pending_approval: "pending_approval",
+  active: "active",
+  suspended: "suspended",
+} as const;
+
+export interface Experience {
+  id: number;
+  refCode?: string;
+  slug: string;
+  titleEn: string;
+  titleAr: string;
+  descriptionEn?: string;
+  descriptionAr?: string;
+  category: ExperienceCategory;
+  hostUserId: number;
+  latitude?: number;
+  longitude?: number;
+  address?: string;
+  cityId: number;
+  durationMinutes: number;
+  pricePerPerson: number;
+  depositAmount?: number;
+  currency: string;
+  capacity: number;
+  avgRating: number;
+  reviewCount: number;
+  status: ExperienceStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ExperienceImage {
+  id: number;
+  experienceId: number;
+  url: string;
+  isPrimary: boolean;
+  sortOrder: number;
+}
+
+export type ExperienceDetail = Experience & {
+  images?: ExperienceImage[];
+  hostNameEn?: string;
+  hostNameAr?: string;
+  hostAvatarUrl?: string;
+  cityNameEn?: string;
+  cityNameAr?: string;
+};
+
+export interface ExperienceListResponse {
+  experiences: Experience[];
+  total: number;
+  offset: number;
+  limit: number;
+}
+
+export type CreateExperienceRequestCategory =
+  (typeof CreateExperienceRequestCategory)[keyof typeof CreateExperienceRequestCategory];
+
+export const CreateExperienceRequestCategory = {
+  heritage: "heritage",
+  street_food: "street_food",
+  fine_dining: "fine_dining",
+  live_show: "live_show",
+  cultural: "cultural",
+} as const;
+
+export interface CreateExperienceRequest {
+  slug: string;
+  titleEn: string;
+  titleAr: string;
+  descriptionEn?: string;
+  descriptionAr?: string;
+  category: CreateExperienceRequestCategory;
+  latitude?: number;
+  longitude?: number;
+  address?: string;
+  cityId: number;
+  durationMinutes: number;
+  pricePerPerson: number;
+  depositAmount?: number;
+  currency?: string;
+  capacity: number;
+}
+
+export type UpdateExperienceRequestCategory =
+  (typeof UpdateExperienceRequestCategory)[keyof typeof UpdateExperienceRequestCategory];
+
+export const UpdateExperienceRequestCategory = {
+  heritage: "heritage",
+  street_food: "street_food",
+  fine_dining: "fine_dining",
+  live_show: "live_show",
+  cultural: "cultural",
+} as const;
+
+export interface UpdateExperienceRequest {
+  slug?: string;
+  titleEn?: string;
+  titleAr?: string;
+  descriptionEn?: string;
+  descriptionAr?: string;
+  category?: UpdateExperienceRequestCategory;
+  latitude?: number;
+  longitude?: number;
+  address?: string;
+  cityId?: number;
+  durationMinutes?: number;
+  pricePerPerson?: number;
+  depositAmount?: number;
+  currency?: string;
+  capacity?: number;
+}
+
+export interface ExperienceSlot {
+  id: number;
+  experienceId: number;
+  date: string;
+  startTime: string;
+  endTime: string;
+  capacity: number;
+  remainingCapacity: number;
+  isActive: boolean;
+}
+
+export type ExperienceBookingStatus =
+  (typeof ExperienceBookingStatus)[keyof typeof ExperienceBookingStatus];
+
+export const ExperienceBookingStatus = {
+  pending: "pending",
+  confirmed: "confirmed",
+  cancelled: "cancelled",
+  completed: "completed",
+  no_show: "no_show",
+} as const;
+
+export interface ExperienceBooking {
+  id: number;
+  referenceCode: string;
+  userId: number;
+  experienceId: number;
+  slotId: number;
+  guestCount: number;
+  status: ExperienceBookingStatus;
+  totalAmount: number;
+  depositAmount?: number;
+  depositPaid: boolean;
+  fullPaid: boolean;
+  specialRequests?: string;
+  experienceTitleEn?: string;
+  experienceTitleAr?: string;
+  slotDate?: string;
+  slotStartTime?: string;
+  slotEndTime?: string;
+  createdAt: string;
+}
+
+export interface CreateExperienceBookingRequest {
+  experienceId: number;
+  slotId: number;
+  guestCount: number;
+  specialRequests?: string;
+}
+
+export type ExperienceBookingPaymentType =
+  (typeof ExperienceBookingPaymentType)[keyof typeof ExperienceBookingPaymentType];
+
+export const ExperienceBookingPaymentType = {
+  deposit: "deposit",
+  full: "full",
+} as const;
+
+export type ExperienceBookingPaymentStatus =
+  (typeof ExperienceBookingPaymentStatus)[keyof typeof ExperienceBookingPaymentStatus];
+
+export const ExperienceBookingPaymentStatus = {
+  pending: "pending",
+  completed: "completed",
+  failed: "failed",
+  refunded: "refunded",
+} as const;
+
+export interface ExperienceBookingPayment {
+  id: number;
+  bookingId: number;
+  amount: number;
+  type: ExperienceBookingPaymentType;
+  status: ExperienceBookingPaymentStatus;
+  paymentRef?: string;
+  createdAt: string;
+}
+
+export type ExperiencePaymentRequestType =
+  (typeof ExperiencePaymentRequestType)[keyof typeof ExperiencePaymentRequestType];
+
+export const ExperiencePaymentRequestType = {
+  deposit: "deposit",
+  full: "full",
+} as const;
+
+export interface ExperiencePaymentRequest {
+  type: ExperiencePaymentRequestType;
+  paymentRef?: string;
+}
+
+export interface ExperienceReview {
+  id: number;
+  userId: number;
+  experienceId: number;
+  bookingId: number;
+  /**
+   * @minimum 1
+   * @maximum 5
+   */
+  ratingFood?: number;
+  /**
+   * @minimum 1
+   * @maximum 5
+   */
+  ratingHospitality?: number;
+  /**
+   * @minimum 1
+   * @maximum 5
+   */
+  ratingAmbiance?: number;
+  /**
+   * @minimum 1
+   * @maximum 5
+   */
+  ratingValue?: number;
+  /**
+   * @minimum 1
+   * @maximum 5
+   */
+  ratingOverall: number;
+  textEn?: string;
+  textAr?: string;
+  isVerified: boolean;
+  photoUrls?: string[];
+  userNameEn?: string;
+  userNameAr?: string;
+  userAvatarUrl?: string;
+  createdAt: string;
+}
+
+export interface CreateExperienceReviewRequest {
+  experienceId: number;
+  bookingId: number;
+  /**
+   * @minimum 1
+   * @maximum 5
+   */
+  ratingFood?: number;
+  /**
+   * @minimum 1
+   * @maximum 5
+   */
+  ratingHospitality?: number;
+  /**
+   * @minimum 1
+   * @maximum 5
+   */
+  ratingAmbiance?: number;
+  /**
+   * @minimum 1
+   * @maximum 5
+   */
+  ratingValue?: number;
+  /**
+   * @minimum 1
+   * @maximum 5
+   */
+  ratingOverall: number;
+  textEn?: string;
+  textAr?: string;
+  photoUrls?: string[];
+}
+
+export type ExperienceReviewListResponseRatingBreakdown = {
+  avgFood?: number;
+  avgHospitality?: number;
+  avgAmbiance?: number;
+  avgValue?: number;
+  avgOverall?: number;
+};
+
+export interface ExperienceReviewListResponse {
+  reviews: ExperienceReview[];
+  total: number;
+  offset: number;
+  limit: number;
+  ratingBreakdown: ExperienceReviewListResponseRatingBreakdown;
+}
+
+export type ExperienceGiftGiftCardDesign =
+  (typeof ExperienceGiftGiftCardDesign)[keyof typeof ExperienceGiftGiftCardDesign];
+
+export const ExperienceGiftGiftCardDesign = {
+  classic: "classic",
+  birthday: "birthday",
+  anniversary: "anniversary",
+  celebration: "celebration",
+  ramadan: "ramadan",
+} as const;
+
+export type ExperienceGiftStatus =
+  (typeof ExperienceGiftStatus)[keyof typeof ExperienceGiftStatus];
+
+export const ExperienceGiftStatus = {
+  sent: "sent",
+  redeemed: "redeemed",
+  expired: "expired",
+} as const;
+
+export interface ExperienceGift {
+  id: number;
+  senderUserId: number;
+  recipientEmail: string;
+  recipientName: string;
+  experienceId: number;
+  personalMessage?: string;
+  giftCardDesign: ExperienceGiftGiftCardDesign;
+  redeemCode: string;
+  qrCodeUrl?: string;
+  status: ExperienceGiftStatus;
+  expiresAt: string;
+  redeemedAt?: string;
+  redeemedByUserId?: number;
+  experienceTitleEn?: string;
+  experienceTitleAr?: string;
+  createdAt: string;
+}
+
+export type CreateExperienceGiftRequestGiftCardDesign =
+  (typeof CreateExperienceGiftRequestGiftCardDesign)[keyof typeof CreateExperienceGiftRequestGiftCardDesign];
+
+export const CreateExperienceGiftRequestGiftCardDesign = {
+  classic: "classic",
+  birthday: "birthday",
+  anniversary: "anniversary",
+  celebration: "celebration",
+  ramadan: "ramadan",
+} as const;
+
+export interface CreateExperienceGiftRequest {
+  experienceId: number;
+  recipientEmail: string;
+  recipientName: string;
+  personalMessage?: string;
+  giftCardDesign?: CreateExperienceGiftRequestGiftCardDesign;
+  expiresAt?: string;
+}
+
+export type ProviderApplicationStatus =
+  (typeof ProviderApplicationStatus)[keyof typeof ProviderApplicationStatus];
+
+export const ProviderApplicationStatus = {
+  pending: "pending",
+  approved: "approved",
+  rejected: "rejected",
+} as const;
+
+export interface ProviderApplication {
+  id: number;
+  userId: number;
+  businessNameEn: string;
+  businessNameAr: string;
+  businessType: string;
+  contactEmail: string;
+  contactPhone: string;
+  status: ProviderApplicationStatus;
+  adminNotes?: string;
+  submittedAt: string;
+  reviewedAt?: string;
+  reviewedByAdminId?: number;
+}
+
+export interface CreateProviderApplicationRequest {
+  businessNameEn: string;
+  businessNameAr: string;
+  businessType: string;
+  contactEmail: string;
+  contactPhone: string;
+}
+
+export type ReviewProviderApplicationRequestStatus =
+  (typeof ReviewProviderApplicationRequestStatus)[keyof typeof ReviewProviderApplicationRequestStatus];
+
+export const ReviewProviderApplicationRequestStatus = {
+  approved: "approved",
+  rejected: "rejected",
+} as const;
+
+export interface ReviewProviderApplicationRequest {
+  status: ReviewProviderApplicationRequestStatus;
+  adminNotes?: string;
+}
+
+export interface ProviderAnalytics {
+  totalBookings: number;
+  confirmedBookings: number;
+  cancelledBookings: number;
+  totalRevenue: number;
+  avgRating: number;
+  totalReviews: number;
+  totalExperiences: number;
+  activeExperiences: number;
+}
+
 /**
  * Bad request
  */
@@ -1095,3 +1519,120 @@ export type ListEventsParams = {
   from?: string;
   limit?: number;
 };
+
+export type ListExperiencesParams = {
+  cityId?: number;
+  category?: ListExperiencesCategory;
+  hostUserId?: number;
+  priceMin?: number;
+  priceMax?: number;
+  minRating?: number;
+  sortBy?: ListExperiencesSortBy;
+  limit?: number;
+  offset?: number;
+};
+
+export type ListExperiencesCategory =
+  (typeof ListExperiencesCategory)[keyof typeof ListExperiencesCategory];
+
+export const ListExperiencesCategory = {
+  heritage: "heritage",
+  street_food: "street_food",
+  fine_dining: "fine_dining",
+  live_show: "live_show",
+  cultural: "cultural",
+} as const;
+
+export type ListExperiencesSortBy =
+  (typeof ListExperiencesSortBy)[keyof typeof ListExperiencesSortBy];
+
+export const ListExperiencesSortBy = {
+  popular: "popular",
+  rated: "rated",
+  trending: "trending",
+  newest: "newest",
+} as const;
+
+export type DeleteExperience200 = {
+  message?: string;
+};
+
+export type PatchExperienceStatusBodyStatus =
+  (typeof PatchExperienceStatusBodyStatus)[keyof typeof PatchExperienceStatusBodyStatus];
+
+export const PatchExperienceStatusBodyStatus = {
+  draft: "draft",
+  pending_approval: "pending_approval",
+  active: "active",
+  suspended: "suspended",
+} as const;
+
+export type PatchExperienceStatusBody = {
+  status: PatchExperienceStatusBodyStatus;
+};
+
+export type ListExperienceSlotsParams = {
+  dateFrom?: string;
+  dateTo?: string;
+};
+
+export type ListExperienceReviewsParams = {
+  limit?: number;
+  offset?: number;
+};
+
+export type ListProviderApplicationsParams = {
+  status?: ListProviderApplicationsStatus;
+  limit?: number;
+  offset?: number;
+};
+
+export type ListProviderApplicationsStatus =
+  (typeof ListProviderApplicationsStatus)[keyof typeof ListProviderApplicationsStatus];
+
+export const ListProviderApplicationsStatus = {
+  pending: "pending",
+  approved: "approved",
+  rejected: "rejected",
+} as const;
+
+export type ListProviderApplications200 = {
+  applications: ProviderApplication[];
+  total: number;
+};
+
+export type AdminListExperiencesParams = {
+  status?: AdminListExperiencesStatus;
+  limit?: number;
+  offset?: number;
+};
+
+export type AdminListExperiencesStatus =
+  (typeof AdminListExperiencesStatus)[keyof typeof AdminListExperiencesStatus];
+
+export const AdminListExperiencesStatus = {
+  draft: "draft",
+  pending_approval: "pending_approval",
+  active: "active",
+  suspended: "suspended",
+} as const;
+
+export type AdminPatchExperienceStatusBodyStatus =
+  (typeof AdminPatchExperienceStatusBodyStatus)[keyof typeof AdminPatchExperienceStatusBodyStatus];
+
+export const AdminPatchExperienceStatusBodyStatus = {
+  draft: "draft",
+  pending_approval: "pending_approval",
+  active: "active",
+  suspended: "suspended",
+} as const;
+
+export type AdminPatchExperienceStatusBody = {
+  status: AdminPatchExperienceStatusBodyStatus;
+};
+
+export type GetExperienceSettings200 = { [key: string]: string };
+
+export type UpdateExperienceSettingsBody = { [key: string]: string };
+
+export type UpdateExperienceSettings200 = { [key: string]: string };

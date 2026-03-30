@@ -25,6 +25,7 @@ import addressesRouter from "./addresses.js";
 import storiesRouter from "./stories.js";
 import partnersRouter from "./partners.js";
 import notificationsRouter from "./notifications.js";
+import experiencesRouter from "./experiences.js";
 
 const router: IRouter = Router();
 
@@ -54,5 +55,6 @@ router.use(addressesRouter);
 router.use(storiesRouter);
 router.use(partnersRouter);
 router.use(notificationsRouter);
+router.use(experiencesRouter);
 
 export default router;

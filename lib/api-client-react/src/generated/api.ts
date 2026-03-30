@@ -17,6 +17,8 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  AdminListExperiencesParams,
+  AdminPatchExperienceStatusBody,
   AutocompleteParams,
   AutocompleteResponse,
   AvailabilityResponse,
@@ -31,21 +33,38 @@ import type {
   CreateBookingRequest,
   CreateDishRequest,
   CreateEventRequest,
+  CreateExperienceBookingRequest,
+  CreateExperienceGiftRequest,
+  CreateExperienceRequest,
+  CreateExperienceReviewRequest,
   CreateMenuRequest,
   CreateOfferRequest,
+  CreateProviderApplicationRequest,
   CreateRestaurantRequest,
   CreateReviewCommentRequest,
   CreateReviewRequest,
   CreateUserRequest,
+  DeleteExperience200,
   Dish,
   DishCard,
   DishDetail,
   DishListResponse,
   ErrorResponse,
   Event,
+  Experience,
+  ExperienceBooking,
+  ExperienceBookingPayment,
+  ExperienceDetail,
+  ExperienceGift,
+  ExperienceListResponse,
+  ExperiencePaymentRequest,
+  ExperienceReview,
+  ExperienceReviewListResponse,
+  ExperienceSlot,
   FeedResponse,
   FollowStatusResponse,
   ForbiddenResponse,
+  GetExperienceSettings200,
   GetFeaturedRestaurantsParams,
   GetFeedParams,
   GetLeaderboardParams,
@@ -64,7 +83,12 @@ import type {
   ListBookingsParams,
   ListDishesParams,
   ListEventsParams,
+  ListExperienceReviewsParams,
+  ListExperienceSlotsParams,
+  ListExperiencesParams,
   ListOffersParams,
+  ListProviderApplications200,
+  ListProviderApplicationsParams,
   ListRestaurantsParams,
   ListReviewsParams,
   ListVouchersParams,
@@ -74,6 +98,9 @@ import type {
   Occasion,
   Offer,
   OfferListResponse,
+  PatchExperienceStatusBody,
+  ProviderAnalytics,
+  ProviderApplication,
   PurchaseVoucherRequest,
   ReportRequest,
   ReportReview200,
@@ -88,11 +115,15 @@ import type {
   ReviewComment,
   ReviewCommentListResponse,
   ReviewListResponse,
+  ReviewProviderApplicationRequest,
   SearchParams,
   SearchResponse,
   TooManyRequestsResponse,
   UnauthorizedResponse,
   UpdateBookingStatusRequest,
+  UpdateExperienceRequest,
+  UpdateExperienceSettings200,
+  UpdateExperienceSettingsBody,
   UpdateRestaurantRequest,
   UpdateReviewRequest,
   UpdateUserRequest,
@@ -5964,3 +5995,2281 @@ export function useGetEvent<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary List and filter food experiences
+ */
+export const getListExperiencesUrl = (params?: ListExperiencesParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/experiences?${stringifiedParams}`
+    : `/api/experiences`;
+};
+
+export const listExperiences = async (
+  params?: ListExperiencesParams,
+  options?: RequestInit,
+): Promise<ExperienceListResponse> => {
+  return customFetch<ExperienceListResponse>(getListExperiencesUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListExperiencesQueryKey = (params?: ListExperiencesParams) => {
+  return [`/api/experiences`, ...(params ? [params] : [])] as const;
+};
+
+export const getListExperiencesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listExperiences>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListExperiencesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listExperiences>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListExperiencesQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listExperiences>>> = ({
+    signal,
+  }) => listExperiences(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listExperiences>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListExperiencesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listExperiences>>
+>;
+export type ListExperiencesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List and filter food experiences
+ */
+
+export function useListExperiences<
+  TData = Awaited<ReturnType<typeof listExperiences>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListExperiencesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listExperiences>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListExperiencesQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a new experience (provider only)
+ */
+export const getCreateExperienceUrl = () => {
+  return `/api/experiences`;
+};
+
+export const createExperience = async (
+  createExperienceRequest: CreateExperienceRequest,
+  options?: RequestInit,
+): Promise<Experience> => {
+  return customFetch<Experience>(getCreateExperienceUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createExperienceRequest),
+  });
+};
+
+export const getCreateExperienceMutationOptions = <
+  TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createExperience>>,
+    TError,
+    { data: BodyType<CreateExperienceRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createExperience>>,
+  TError,
+  { data: BodyType<CreateExperienceRequest> },
+  TContext
+> => {
+  const mutationKey = ["createExperience"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createExperience>>,
+    { data: BodyType<CreateExperienceRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createExperience(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateExperienceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createExperience>>
+>;
+export type CreateExperienceMutationBody = BodyType<CreateExperienceRequest>;
+export type CreateExperienceMutationError = ErrorType<
+  BadRequestResponse | UnauthorizedResponse
+>;
+
+/**
+ * @summary Create a new experience (provider only)
+ */
+export const useCreateExperience = <
+  TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createExperience>>,
+    TError,
+    { data: BodyType<CreateExperienceRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createExperience>>,
+  TError,
+  { data: BodyType<CreateExperienceRequest> },
+  TContext
+> => {
+  return useMutation(getCreateExperienceMutationOptions(options));
+};
+
+/**
+ * @summary Get experience details
+ */
+export const getGetExperienceUrl = (experienceId: number) => {
+  return `/api/experiences/${experienceId}`;
+};
+
+export const getExperience = async (
+  experienceId: number,
+  options?: RequestInit,
+): Promise<ExperienceDetail> => {
+  return customFetch<ExperienceDetail>(getGetExperienceUrl(experienceId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetExperienceQueryKey = (experienceId: number) => {
+  return [`/api/experiences/${experienceId}`] as const;
+};
+
+export const getGetExperienceQueryOptions = <
+  TData = Awaited<ReturnType<typeof getExperience>>,
+  TError = ErrorType<NotFoundResponse>,
+>(
+  experienceId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getExperience>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetExperienceQueryKey(experienceId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getExperience>>> = ({
+    signal,
+  }) => getExperience(experienceId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!experienceId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getExperience>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetExperienceQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getExperience>>
+>;
+export type GetExperienceQueryError = ErrorType<NotFoundResponse>;
+
+/**
+ * @summary Get experience details
+ */
+
+export function useGetExperience<
+  TData = Awaited<ReturnType<typeof getExperience>>,
+  TError = ErrorType<NotFoundResponse>,
+>(
+  experienceId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getExperience>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetExperienceQueryOptions(experienceId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update experience (host only)
+ */
+export const getUpdateExperienceUrl = (experienceId: number) => {
+  return `/api/experiences/${experienceId}`;
+};
+
+export const updateExperience = async (
+  experienceId: number,
+  updateExperienceRequest: UpdateExperienceRequest,
+  options?: RequestInit,
+): Promise<Experience> => {
+  return customFetch<Experience>(getUpdateExperienceUrl(experienceId), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateExperienceRequest),
+  });
+};
+
+export const getUpdateExperienceMutationOptions = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateExperience>>,
+    TError,
+    { experienceId: number; data: BodyType<UpdateExperienceRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateExperience>>,
+  TError,
+  { experienceId: number; data: BodyType<UpdateExperienceRequest> },
+  TContext
+> => {
+  const mutationKey = ["updateExperience"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateExperience>>,
+    { experienceId: number; data: BodyType<UpdateExperienceRequest> }
+  > = (props) => {
+    const { experienceId, data } = props ?? {};
+
+    return updateExperience(experienceId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateExperienceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateExperience>>
+>;
+export type UpdateExperienceMutationBody = BodyType<UpdateExperienceRequest>;
+export type UpdateExperienceMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Update experience (host only)
+ */
+export const useUpdateExperience = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateExperience>>,
+    TError,
+    { experienceId: number; data: BodyType<UpdateExperienceRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateExperience>>,
+  TError,
+  { experienceId: number; data: BodyType<UpdateExperienceRequest> },
+  TContext
+> => {
+  return useMutation(getUpdateExperienceMutationOptions(options));
+};
+
+/**
+ * @summary Delete experience (host or admin)
+ */
+export const getDeleteExperienceUrl = (experienceId: number) => {
+  return `/api/experiences/${experienceId}`;
+};
+
+export const deleteExperience = async (
+  experienceId: number,
+  options?: RequestInit,
+): Promise<DeleteExperience200> => {
+  return customFetch<DeleteExperience200>(
+    getDeleteExperienceUrl(experienceId),
+    {
+      ...options,
+      method: "DELETE",
+    },
+  );
+};
+
+export const getDeleteExperienceMutationOptions = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteExperience>>,
+    TError,
+    { experienceId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteExperience>>,
+  TError,
+  { experienceId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteExperience"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteExperience>>,
+    { experienceId: number }
+  > = (props) => {
+    const { experienceId } = props ?? {};
+
+    return deleteExperience(experienceId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteExperienceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteExperience>>
+>;
+
+export type DeleteExperienceMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Delete experience (host or admin)
+ */
+export const useDeleteExperience = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteExperience>>,
+    TError,
+    { experienceId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteExperience>>,
+  TError,
+  { experienceId: number },
+  TContext
+> => {
+  return useMutation(getDeleteExperienceMutationOptions(options));
+};
+
+/**
+ * @summary Update experience status (host or admin)
+ */
+export const getPatchExperienceStatusUrl = (experienceId: number) => {
+  return `/api/experiences/${experienceId}/status`;
+};
+
+export const patchExperienceStatus = async (
+  experienceId: number,
+  patchExperienceStatusBody: PatchExperienceStatusBody,
+  options?: RequestInit,
+): Promise<Experience> => {
+  return customFetch<Experience>(getPatchExperienceStatusUrl(experienceId), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(patchExperienceStatusBody),
+  });
+};
+
+export const getPatchExperienceStatusMutationOptions = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof patchExperienceStatus>>,
+    TError,
+    { experienceId: number; data: BodyType<PatchExperienceStatusBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof patchExperienceStatus>>,
+  TError,
+  { experienceId: number; data: BodyType<PatchExperienceStatusBody> },
+  TContext
+> => {
+  const mutationKey = ["patchExperienceStatus"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof patchExperienceStatus>>,
+    { experienceId: number; data: BodyType<PatchExperienceStatusBody> }
+  > = (props) => {
+    const { experienceId, data } = props ?? {};
+
+    return patchExperienceStatus(experienceId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PatchExperienceStatusMutationResult = NonNullable<
+  Awaited<ReturnType<typeof patchExperienceStatus>>
+>;
+export type PatchExperienceStatusMutationBody =
+  BodyType<PatchExperienceStatusBody>;
+export type PatchExperienceStatusMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Update experience status (host or admin)
+ */
+export const usePatchExperienceStatus = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof patchExperienceStatus>>,
+    TError,
+    { experienceId: number; data: BodyType<PatchExperienceStatusBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof patchExperienceStatus>>,
+  TError,
+  { experienceId: number; data: BodyType<PatchExperienceStatusBody> },
+  TContext
+> => {
+  return useMutation(getPatchExperienceStatusMutationOptions(options));
+};
+
+/**
+ * @summary List available slots for an experience
+ */
+export const getListExperienceSlotsUrl = (
+  experienceId: number,
+  params?: ListExperienceSlotsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/experiences/${experienceId}/slots?${stringifiedParams}`
+    : `/api/experiences/${experienceId}/slots`;
+};
+
+export const listExperienceSlots = async (
+  experienceId: number,
+  params?: ListExperienceSlotsParams,
+  options?: RequestInit,
+): Promise<ExperienceSlot[]> => {
+  return customFetch<ExperienceSlot[]>(
+    getListExperienceSlotsUrl(experienceId, params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListExperienceSlotsQueryKey = (
+  experienceId: number,
+  params?: ListExperienceSlotsParams,
+) => {
+  return [
+    `/api/experiences/${experienceId}/slots`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getListExperienceSlotsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listExperienceSlots>>,
+  TError = ErrorType<NotFoundResponse>,
+>(
+  experienceId: number,
+  params?: ListExperienceSlotsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listExperienceSlots>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ??
+    getListExperienceSlotsQueryKey(experienceId, params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listExperienceSlots>>
+  > = ({ signal }) =>
+    listExperienceSlots(experienceId, params, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!experienceId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listExperienceSlots>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListExperienceSlotsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listExperienceSlots>>
+>;
+export type ListExperienceSlotsQueryError = ErrorType<NotFoundResponse>;
+
+/**
+ * @summary List available slots for an experience
+ */
+
+export function useListExperienceSlots<
+  TData = Awaited<ReturnType<typeof listExperienceSlots>>,
+  TError = ErrorType<NotFoundResponse>,
+>(
+  experienceId: number,
+  params?: ListExperienceSlotsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listExperienceSlots>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListExperienceSlotsQueryOptions(
+    experienceId,
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List reviews for an experience
+ */
+export const getListExperienceReviewsUrl = (
+  experienceId: number,
+  params?: ListExperienceReviewsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/experiences/${experienceId}/reviews?${stringifiedParams}`
+    : `/api/experiences/${experienceId}/reviews`;
+};
+
+export const listExperienceReviews = async (
+  experienceId: number,
+  params?: ListExperienceReviewsParams,
+  options?: RequestInit,
+): Promise<ExperienceReviewListResponse> => {
+  return customFetch<ExperienceReviewListResponse>(
+    getListExperienceReviewsUrl(experienceId, params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListExperienceReviewsQueryKey = (
+  experienceId: number,
+  params?: ListExperienceReviewsParams,
+) => {
+  return [
+    `/api/experiences/${experienceId}/reviews`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getListExperienceReviewsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listExperienceReviews>>,
+  TError = ErrorType<unknown>,
+>(
+  experienceId: number,
+  params?: ListExperienceReviewsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listExperienceReviews>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ??
+    getListExperienceReviewsQueryKey(experienceId, params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listExperienceReviews>>
+  > = ({ signal }) =>
+    listExperienceReviews(experienceId, params, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!experienceId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listExperienceReviews>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListExperienceReviewsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listExperienceReviews>>
+>;
+export type ListExperienceReviewsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List reviews for an experience
+ */
+
+export function useListExperienceReviews<
+  TData = Awaited<ReturnType<typeof listExperienceReviews>>,
+  TError = ErrorType<unknown>,
+>(
+  experienceId: number,
+  params?: ListExperienceReviewsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listExperienceReviews>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListExperienceReviewsQueryOptions(
+    experienceId,
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create an experience booking
+ */
+export const getCreateExperienceBookingUrl = () => {
+  return `/api/experience-bookings`;
+};
+
+export const createExperienceBooking = async (
+  createExperienceBookingRequest: CreateExperienceBookingRequest,
+  options?: RequestInit,
+): Promise<ExperienceBooking> => {
+  return customFetch<ExperienceBooking>(getCreateExperienceBookingUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createExperienceBookingRequest),
+  });
+};
+
+export const getCreateExperienceBookingMutationOptions = <
+  TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createExperienceBooking>>,
+    TError,
+    { data: BodyType<CreateExperienceBookingRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createExperienceBooking>>,
+  TError,
+  { data: BodyType<CreateExperienceBookingRequest> },
+  TContext
+> => {
+  const mutationKey = ["createExperienceBooking"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createExperienceBooking>>,
+    { data: BodyType<CreateExperienceBookingRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createExperienceBooking(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateExperienceBookingMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createExperienceBooking>>
+>;
+export type CreateExperienceBookingMutationBody =
+  BodyType<CreateExperienceBookingRequest>;
+export type CreateExperienceBookingMutationError = ErrorType<
+  BadRequestResponse | UnauthorizedResponse
+>;
+
+/**
+ * @summary Create an experience booking
+ */
+export const useCreateExperienceBooking = <
+  TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createExperienceBooking>>,
+    TError,
+    { data: BodyType<CreateExperienceBookingRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createExperienceBooking>>,
+  TError,
+  { data: BodyType<CreateExperienceBookingRequest> },
+  TContext
+> => {
+  return useMutation(getCreateExperienceBookingMutationOptions(options));
+};
+
+/**
+ * @summary Get experience booking details
+ */
+export const getGetExperienceBookingUrl = (bookingId: number) => {
+  return `/api/experience-bookings/${bookingId}`;
+};
+
+export const getExperienceBooking = async (
+  bookingId: number,
+  options?: RequestInit,
+): Promise<ExperienceBooking> => {
+  return customFetch<ExperienceBooking>(getGetExperienceBookingUrl(bookingId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetExperienceBookingQueryKey = (bookingId: number) => {
+  return [`/api/experience-bookings/${bookingId}`] as const;
+};
+
+export const getGetExperienceBookingQueryOptions = <
+  TData = Awaited<ReturnType<typeof getExperienceBooking>>,
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+>(
+  bookingId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getExperienceBooking>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetExperienceBookingQueryKey(bookingId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getExperienceBooking>>
+  > = ({ signal }) =>
+    getExperienceBooking(bookingId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!bookingId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getExperienceBooking>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetExperienceBookingQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getExperienceBooking>>
+>;
+export type GetExperienceBookingQueryError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Get experience booking details
+ */
+
+export function useGetExperienceBooking<
+  TData = Awaited<ReturnType<typeof getExperienceBooking>>,
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+>(
+  bookingId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getExperienceBooking>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetExperienceBookingQueryOptions(bookingId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Cancel an experience booking
+ */
+export const getCancelExperienceBookingUrl = (bookingId: number) => {
+  return `/api/experience-bookings/${bookingId}/cancel`;
+};
+
+export const cancelExperienceBooking = async (
+  bookingId: number,
+  options?: RequestInit,
+): Promise<ExperienceBooking> => {
+  return customFetch<ExperienceBooking>(
+    getCancelExperienceBookingUrl(bookingId),
+    {
+      ...options,
+      method: "PATCH",
+    },
+  );
+};
+
+export const getCancelExperienceBookingMutationOptions = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cancelExperienceBooking>>,
+    TError,
+    { bookingId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof cancelExperienceBooking>>,
+  TError,
+  { bookingId: number },
+  TContext
+> => {
+  const mutationKey = ["cancelExperienceBooking"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof cancelExperienceBooking>>,
+    { bookingId: number }
+  > = (props) => {
+    const { bookingId } = props ?? {};
+
+    return cancelExperienceBooking(bookingId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CancelExperienceBookingMutationResult = NonNullable<
+  Awaited<ReturnType<typeof cancelExperienceBooking>>
+>;
+
+export type CancelExperienceBookingMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Cancel an experience booking
+ */
+export const useCancelExperienceBooking = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cancelExperienceBooking>>,
+    TError,
+    { bookingId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof cancelExperienceBooking>>,
+  TError,
+  { bookingId: number },
+  TContext
+> => {
+  return useMutation(getCancelExperienceBookingMutationOptions(options));
+};
+
+/**
+ * @summary Record payment for an experience booking (deposit or full)
+ */
+export const getPayExperienceBookingUrl = (bookingId: number) => {
+  return `/api/experience-bookings/${bookingId}/pay`;
+};
+
+export const payExperienceBooking = async (
+  bookingId: number,
+  experiencePaymentRequest: ExperiencePaymentRequest,
+  options?: RequestInit,
+): Promise<ExperienceBookingPayment> => {
+  return customFetch<ExperienceBookingPayment>(
+    getPayExperienceBookingUrl(bookingId),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(experiencePaymentRequest),
+    },
+  );
+};
+
+export const getPayExperienceBookingMutationOptions = <
+  TError = ErrorType<
+    | BadRequestResponse
+    | UnauthorizedResponse
+    | ForbiddenResponse
+    | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof payExperienceBooking>>,
+    TError,
+    { bookingId: number; data: BodyType<ExperiencePaymentRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof payExperienceBooking>>,
+  TError,
+  { bookingId: number; data: BodyType<ExperiencePaymentRequest> },
+  TContext
+> => {
+  const mutationKey = ["payExperienceBooking"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof payExperienceBooking>>,
+    { bookingId: number; data: BodyType<ExperiencePaymentRequest> }
+  > = (props) => {
+    const { bookingId, data } = props ?? {};
+
+    return payExperienceBooking(bookingId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PayExperienceBookingMutationResult = NonNullable<
+  Awaited<ReturnType<typeof payExperienceBooking>>
+>;
+export type PayExperienceBookingMutationBody =
+  BodyType<ExperiencePaymentRequest>;
+export type PayExperienceBookingMutationError = ErrorType<
+  | BadRequestResponse
+  | UnauthorizedResponse
+  | ForbiddenResponse
+  | NotFoundResponse
+>;
+
+/**
+ * @summary Record payment for an experience booking (deposit or full)
+ */
+export const usePayExperienceBooking = <
+  TError = ErrorType<
+    | BadRequestResponse
+    | UnauthorizedResponse
+    | ForbiddenResponse
+    | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof payExperienceBooking>>,
+    TError,
+    { bookingId: number; data: BodyType<ExperiencePaymentRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof payExperienceBooking>>,
+  TError,
+  { bookingId: number; data: BodyType<ExperiencePaymentRequest> },
+  TContext
+> => {
+  return useMutation(getPayExperienceBookingMutationOptions(options));
+};
+
+/**
+ * @summary Submit a review for an experience (must have completed booking)
+ */
+export const getCreateExperienceReviewUrl = () => {
+  return `/api/experience-reviews`;
+};
+
+export const createExperienceReview = async (
+  createExperienceReviewRequest: CreateExperienceReviewRequest,
+  options?: RequestInit,
+): Promise<ExperienceReview> => {
+  return customFetch<ExperienceReview>(getCreateExperienceReviewUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createExperienceReviewRequest),
+  });
+};
+
+export const getCreateExperienceReviewMutationOptions = <
+  TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createExperienceReview>>,
+    TError,
+    { data: BodyType<CreateExperienceReviewRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createExperienceReview>>,
+  TError,
+  { data: BodyType<CreateExperienceReviewRequest> },
+  TContext
+> => {
+  const mutationKey = ["createExperienceReview"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createExperienceReview>>,
+    { data: BodyType<CreateExperienceReviewRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createExperienceReview(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateExperienceReviewMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createExperienceReview>>
+>;
+export type CreateExperienceReviewMutationBody =
+  BodyType<CreateExperienceReviewRequest>;
+export type CreateExperienceReviewMutationError = ErrorType<
+  BadRequestResponse | UnauthorizedResponse
+>;
+
+/**
+ * @summary Submit a review for an experience (must have completed booking)
+ */
+export const useCreateExperienceReview = <
+  TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createExperienceReview>>,
+    TError,
+    { data: BodyType<CreateExperienceReviewRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createExperienceReview>>,
+  TError,
+  { data: BodyType<CreateExperienceReviewRequest> },
+  TContext
+> => {
+  return useMutation(getCreateExperienceReviewMutationOptions(options));
+};
+
+/**
+ * @summary Send an experience as a gift
+ */
+export const getCreateExperienceGiftUrl = () => {
+  return `/api/experience-gifts`;
+};
+
+export const createExperienceGift = async (
+  createExperienceGiftRequest: CreateExperienceGiftRequest,
+  options?: RequestInit,
+): Promise<ExperienceGift> => {
+  return customFetch<ExperienceGift>(getCreateExperienceGiftUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createExperienceGiftRequest),
+  });
+};
+
+export const getCreateExperienceGiftMutationOptions = <
+  TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createExperienceGift>>,
+    TError,
+    { data: BodyType<CreateExperienceGiftRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createExperienceGift>>,
+  TError,
+  { data: BodyType<CreateExperienceGiftRequest> },
+  TContext
+> => {
+  const mutationKey = ["createExperienceGift"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createExperienceGift>>,
+    { data: BodyType<CreateExperienceGiftRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createExperienceGift(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateExperienceGiftMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createExperienceGift>>
+>;
+export type CreateExperienceGiftMutationBody =
+  BodyType<CreateExperienceGiftRequest>;
+export type CreateExperienceGiftMutationError = ErrorType<
+  BadRequestResponse | UnauthorizedResponse
+>;
+
+/**
+ * @summary Send an experience as a gift
+ */
+export const useCreateExperienceGift = <
+  TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createExperienceGift>>,
+    TError,
+    { data: BodyType<CreateExperienceGiftRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createExperienceGift>>,
+  TError,
+  { data: BodyType<CreateExperienceGiftRequest> },
+  TContext
+> => {
+  return useMutation(getCreateExperienceGiftMutationOptions(options));
+};
+
+/**
+ * @summary Look up a gift by redeem code
+ */
+export const getGetExperienceGiftUrl = (code: string) => {
+  return `/api/experience-gifts/${code}`;
+};
+
+export const getExperienceGift = async (
+  code: string,
+  options?: RequestInit,
+): Promise<ExperienceGift> => {
+  return customFetch<ExperienceGift>(getGetExperienceGiftUrl(code), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetExperienceGiftQueryKey = (code: string) => {
+  return [`/api/experience-gifts/${code}`] as const;
+};
+
+export const getGetExperienceGiftQueryOptions = <
+  TData = Awaited<ReturnType<typeof getExperienceGift>>,
+  TError = ErrorType<NotFoundResponse>,
+>(
+  code: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getExperienceGift>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetExperienceGiftQueryKey(code);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getExperienceGift>>
+  > = ({ signal }) => getExperienceGift(code, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!code,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getExperienceGift>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetExperienceGiftQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getExperienceGift>>
+>;
+export type GetExperienceGiftQueryError = ErrorType<NotFoundResponse>;
+
+/**
+ * @summary Look up a gift by redeem code
+ */
+
+export function useGetExperienceGift<
+  TData = Awaited<ReturnType<typeof getExperienceGift>>,
+  TError = ErrorType<NotFoundResponse>,
+>(
+  code: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getExperienceGift>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetExperienceGiftQueryOptions(code, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Redeem a gift code
+ */
+export const getRedeemExperienceGiftUrl = (code: string) => {
+  return `/api/experience-gifts/${code}/redeem`;
+};
+
+export const redeemExperienceGift = async (
+  code: string,
+  options?: RequestInit,
+): Promise<ExperienceGift> => {
+  return customFetch<ExperienceGift>(getRedeemExperienceGiftUrl(code), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getRedeemExperienceGiftMutationOptions = <
+  TError = ErrorType<
+    BadRequestResponse | UnauthorizedResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof redeemExperienceGift>>,
+    TError,
+    { code: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof redeemExperienceGift>>,
+  TError,
+  { code: string },
+  TContext
+> => {
+  const mutationKey = ["redeemExperienceGift"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof redeemExperienceGift>>,
+    { code: string }
+  > = (props) => {
+    const { code } = props ?? {};
+
+    return redeemExperienceGift(code, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RedeemExperienceGiftMutationResult = NonNullable<
+  Awaited<ReturnType<typeof redeemExperienceGift>>
+>;
+
+export type RedeemExperienceGiftMutationError = ErrorType<
+  BadRequestResponse | UnauthorizedResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Redeem a gift code
+ */
+export const useRedeemExperienceGift = <
+  TError = ErrorType<
+    BadRequestResponse | UnauthorizedResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof redeemExperienceGift>>,
+    TError,
+    { code: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof redeemExperienceGift>>,
+  TError,
+  { code: string },
+  TContext
+> => {
+  return useMutation(getRedeemExperienceGiftMutationOptions(options));
+};
+
+/**
+ * @summary Submit a provider application
+ */
+export const getCreateProviderApplicationUrl = () => {
+  return `/api/provider-applications`;
+};
+
+export const createProviderApplication = async (
+  createProviderApplicationRequest: CreateProviderApplicationRequest,
+  options?: RequestInit,
+): Promise<ProviderApplication> => {
+  return customFetch<ProviderApplication>(getCreateProviderApplicationUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createProviderApplicationRequest),
+  });
+};
+
+export const getCreateProviderApplicationMutationOptions = <
+  TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createProviderApplication>>,
+    TError,
+    { data: BodyType<CreateProviderApplicationRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createProviderApplication>>,
+  TError,
+  { data: BodyType<CreateProviderApplicationRequest> },
+  TContext
+> => {
+  const mutationKey = ["createProviderApplication"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createProviderApplication>>,
+    { data: BodyType<CreateProviderApplicationRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createProviderApplication(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateProviderApplicationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createProviderApplication>>
+>;
+export type CreateProviderApplicationMutationBody =
+  BodyType<CreateProviderApplicationRequest>;
+export type CreateProviderApplicationMutationError = ErrorType<
+  BadRequestResponse | UnauthorizedResponse
+>;
+
+/**
+ * @summary Submit a provider application
+ */
+export const useCreateProviderApplication = <
+  TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createProviderApplication>>,
+    TError,
+    { data: BodyType<CreateProviderApplicationRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createProviderApplication>>,
+  TError,
+  { data: BodyType<CreateProviderApplicationRequest> },
+  TContext
+> => {
+  return useMutation(getCreateProviderApplicationMutationOptions(options));
+};
+
+/**
+ * @summary List provider applications (admin only)
+ */
+export const getListProviderApplicationsUrl = (
+  params?: ListProviderApplicationsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/provider-applications?${stringifiedParams}`
+    : `/api/provider-applications`;
+};
+
+export const listProviderApplications = async (
+  params?: ListProviderApplicationsParams,
+  options?: RequestInit,
+): Promise<ListProviderApplications200> => {
+  return customFetch<ListProviderApplications200>(
+    getListProviderApplicationsUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListProviderApplicationsQueryKey = (
+  params?: ListProviderApplicationsParams,
+) => {
+  return [`/api/provider-applications`, ...(params ? [params] : [])] as const;
+};
+
+export const getListProviderApplicationsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listProviderApplications>>,
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+>(
+  params?: ListProviderApplicationsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listProviderApplications>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListProviderApplicationsQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listProviderApplications>>
+  > = ({ signal }) =>
+    listProviderApplications(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listProviderApplications>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListProviderApplicationsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listProviderApplications>>
+>;
+export type ListProviderApplicationsQueryError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse
+>;
+
+/**
+ * @summary List provider applications (admin only)
+ */
+
+export function useListProviderApplications<
+  TData = Awaited<ReturnType<typeof listProviderApplications>>,
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+>(
+  params?: ListProviderApplicationsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listProviderApplications>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListProviderApplicationsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Approve or reject a provider application (admin only)
+ */
+export const getReviewProviderApplicationUrl = (applicationId: number) => {
+  return `/api/provider-applications/${applicationId}`;
+};
+
+export const reviewProviderApplication = async (
+  applicationId: number,
+  reviewProviderApplicationRequest: ReviewProviderApplicationRequest,
+  options?: RequestInit,
+): Promise<ProviderApplication> => {
+  return customFetch<ProviderApplication>(
+    getReviewProviderApplicationUrl(applicationId),
+    {
+      ...options,
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(reviewProviderApplicationRequest),
+    },
+  );
+};
+
+export const getReviewProviderApplicationMutationOptions = <
+  TError = ErrorType<
+    | BadRequestResponse
+    | UnauthorizedResponse
+    | ForbiddenResponse
+    | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof reviewProviderApplication>>,
+    TError,
+    { applicationId: number; data: BodyType<ReviewProviderApplicationRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof reviewProviderApplication>>,
+  TError,
+  { applicationId: number; data: BodyType<ReviewProviderApplicationRequest> },
+  TContext
+> => {
+  const mutationKey = ["reviewProviderApplication"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof reviewProviderApplication>>,
+    { applicationId: number; data: BodyType<ReviewProviderApplicationRequest> }
+  > = (props) => {
+    const { applicationId, data } = props ?? {};
+
+    return reviewProviderApplication(applicationId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ReviewProviderApplicationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof reviewProviderApplication>>
+>;
+export type ReviewProviderApplicationMutationBody =
+  BodyType<ReviewProviderApplicationRequest>;
+export type ReviewProviderApplicationMutationError = ErrorType<
+  | BadRequestResponse
+  | UnauthorizedResponse
+  | ForbiddenResponse
+  | NotFoundResponse
+>;
+
+/**
+ * @summary Approve or reject a provider application (admin only)
+ */
+export const useReviewProviderApplication = <
+  TError = ErrorType<
+    | BadRequestResponse
+    | UnauthorizedResponse
+    | ForbiddenResponse
+    | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof reviewProviderApplication>>,
+    TError,
+    { applicationId: number; data: BodyType<ReviewProviderApplicationRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof reviewProviderApplication>>,
+  TError,
+  { applicationId: number; data: BodyType<ReviewProviderApplicationRequest> },
+  TContext
+> => {
+  return useMutation(getReviewProviderApplicationMutationOptions(options));
+};
+
+/**
+ * @summary Get analytics for the authenticated provider
+ */
+export const getGetProviderAnalyticsUrl = () => {
+  return `/api/providers/me/analytics`;
+};
+
+export const getProviderAnalytics = async (
+  options?: RequestInit,
+): Promise<ProviderAnalytics> => {
+  return customFetch<ProviderAnalytics>(getGetProviderAnalyticsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetProviderAnalyticsQueryKey = () => {
+  return [`/api/providers/me/analytics`] as const;
+};
+
+export const getGetProviderAnalyticsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getProviderAnalytics>>,
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getProviderAnalytics>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetProviderAnalyticsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getProviderAnalytics>>
+  > = ({ signal }) => getProviderAnalytics({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getProviderAnalytics>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetProviderAnalyticsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getProviderAnalytics>>
+>;
+export type GetProviderAnalyticsQueryError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse
+>;
+
+/**
+ * @summary Get analytics for the authenticated provider
+ */
+
+export function useGetProviderAnalytics<
+  TData = Awaited<ReturnType<typeof getProviderAnalytics>>,
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getProviderAnalytics>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetProviderAnalyticsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Admin list all experiences with status filter
+ */
+export const getAdminListExperiencesUrl = (
+  params?: AdminListExperiencesParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/admin/experiences?${stringifiedParams}`
+    : `/api/admin/experiences`;
+};
+
+export const adminListExperiences = async (
+  params?: AdminListExperiencesParams,
+  options?: RequestInit,
+): Promise<ExperienceListResponse> => {
+  return customFetch<ExperienceListResponse>(
+    getAdminListExperiencesUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getAdminListExperiencesQueryKey = (
+  params?: AdminListExperiencesParams,
+) => {
+  return [`/api/admin/experiences`, ...(params ? [params] : [])] as const;
+};
+
+export const getAdminListExperiencesQueryOptions = <
+  TData = Awaited<ReturnType<typeof adminListExperiences>>,
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+>(
+  params?: AdminListExperiencesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof adminListExperiences>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getAdminListExperiencesQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof adminListExperiences>>
+  > = ({ signal }) =>
+    adminListExperiences(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof adminListExperiences>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type AdminListExperiencesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof adminListExperiences>>
+>;
+export type AdminListExperiencesQueryError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse
+>;
+
+/**
+ * @summary Admin list all experiences with status filter
+ */
+
+export function useAdminListExperiences<
+  TData = Awaited<ReturnType<typeof adminListExperiences>>,
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+>(
+  params?: AdminListExperiencesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof adminListExperiences>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getAdminListExperiencesQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Admin update experience status
+ */
+export const getAdminPatchExperienceStatusUrl = (experienceId: number) => {
+  return `/api/admin/experiences/${experienceId}/status`;
+};
+
+export const adminPatchExperienceStatus = async (
+  experienceId: number,
+  adminPatchExperienceStatusBody: AdminPatchExperienceStatusBody,
+  options?: RequestInit,
+): Promise<Experience> => {
+  return customFetch<Experience>(
+    getAdminPatchExperienceStatusUrl(experienceId),
+    {
+      ...options,
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(adminPatchExperienceStatusBody),
+    },
+  );
+};
+
+export const getAdminPatchExperienceStatusMutationOptions = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminPatchExperienceStatus>>,
+    TError,
+    { experienceId: number; data: BodyType<AdminPatchExperienceStatusBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof adminPatchExperienceStatus>>,
+  TError,
+  { experienceId: number; data: BodyType<AdminPatchExperienceStatusBody> },
+  TContext
+> => {
+  const mutationKey = ["adminPatchExperienceStatus"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof adminPatchExperienceStatus>>,
+    { experienceId: number; data: BodyType<AdminPatchExperienceStatusBody> }
+  > = (props) => {
+    const { experienceId, data } = props ?? {};
+
+    return adminPatchExperienceStatus(experienceId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AdminPatchExperienceStatusMutationResult = NonNullable<
+  Awaited<ReturnType<typeof adminPatchExperienceStatus>>
+>;
+export type AdminPatchExperienceStatusMutationBody =
+  BodyType<AdminPatchExperienceStatusBody>;
+export type AdminPatchExperienceStatusMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Admin update experience status
+ */
+export const useAdminPatchExperienceStatus = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminPatchExperienceStatus>>,
+    TError,
+    { experienceId: number; data: BodyType<AdminPatchExperienceStatusBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof adminPatchExperienceStatus>>,
+  TError,
+  { experienceId: number; data: BodyType<AdminPatchExperienceStatusBody> },
+  TContext
+> => {
+  return useMutation(getAdminPatchExperienceStatusMutationOptions(options));
+};
+
+/**
+ * @summary Get all experience module settings (admin only)
+ */
+export const getGetExperienceSettingsUrl = () => {
+  return `/api/admin/experience-settings`;
+};
+
+export const getExperienceSettings = async (
+  options?: RequestInit,
+): Promise<GetExperienceSettings200> => {
+  return customFetch<GetExperienceSettings200>(getGetExperienceSettingsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetExperienceSettingsQueryKey = () => {
+  return [`/api/admin/experience-settings`] as const;
+};
+
+export const getGetExperienceSettingsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getExperienceSettings>>,
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getExperienceSettings>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetExperienceSettingsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getExperienceSettings>>
+  > = ({ signal }) => getExperienceSettings({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getExperienceSettings>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetExperienceSettingsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getExperienceSettings>>
+>;
+export type GetExperienceSettingsQueryError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse
+>;
+
+/**
+ * @summary Get all experience module settings (admin only)
+ */
+
+export function useGetExperienceSettings<
+  TData = Awaited<ReturnType<typeof getExperienceSettings>>,
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getExperienceSettings>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetExperienceSettingsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update experience module settings (admin only)
+ */
+export const getUpdateExperienceSettingsUrl = () => {
+  return `/api/admin/experience-settings`;
+};
+
+export const updateExperienceSettings = async (
+  updateExperienceSettingsBody: UpdateExperienceSettingsBody,
+  options?: RequestInit,
+): Promise<UpdateExperienceSettings200> => {
+  return customFetch<UpdateExperienceSettings200>(
+    getUpdateExperienceSettingsUrl(),
+    {
+      ...options,
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(updateExperienceSettingsBody),
+    },
+  );
+};
+
+export const getUpdateExperienceSettingsMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateExperienceSettings>>,
+    TError,
+    { data: BodyType<UpdateExperienceSettingsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateExperienceSettings>>,
+  TError,
+  { data: BodyType<UpdateExperienceSettingsBody> },
+  TContext
+> => {
+  const mutationKey = ["updateExperienceSettings"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateExperienceSettings>>,
+    { data: BodyType<UpdateExperienceSettingsBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return updateExperienceSettings(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateExperienceSettingsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateExperienceSettings>>
+>;
+export type UpdateExperienceSettingsMutationBody =
+  BodyType<UpdateExperienceSettingsBody>;
+export type UpdateExperienceSettingsMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse
+>;
+
+/**
+ * @summary Update experience module settings (admin only)
+ */
+export const useUpdateExperienceSettings = <
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateExperienceSettings>>,
+    TError,
+    { data: BodyType<UpdateExperienceSettingsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateExperienceSettings>>,
+  TError,
+  { data: BodyType<UpdateExperienceSettingsBody> },
+  TContext
+> => {
+  return useMutation(getUpdateExperienceSettingsMutationOptions(options));
+};

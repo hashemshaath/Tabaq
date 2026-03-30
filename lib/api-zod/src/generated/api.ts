@@ -2108,3 +2108,799 @@ export const GetEventResponse = zod.object({
   isActive: zod.boolean(),
   createdAt: zod.coerce.date(),
 });
+
+/**
+ * @summary List and filter food experiences
+ */
+export const listExperiencesQuerySortByDefault = `newest`;
+export const listExperiencesQueryLimitDefault = 20;
+export const listExperiencesQueryOffsetDefault = 0;
+
+export const ListExperiencesQueryParams = zod.object({
+  cityId: zod.coerce.number().optional(),
+  category: zod
+    .enum(["heritage", "street_food", "fine_dining", "live_show", "cultural"])
+    .optional(),
+  hostUserId: zod.coerce.number().optional(),
+  priceMin: zod.coerce.number().optional(),
+  priceMax: zod.coerce.number().optional(),
+  minRating: zod.coerce.number().optional(),
+  sortBy: zod
+    .enum(["popular", "rated", "trending", "newest"])
+    .default(listExperiencesQuerySortByDefault),
+  limit: zod.coerce.number().default(listExperiencesQueryLimitDefault),
+  offset: zod.coerce.number().default(listExperiencesQueryOffsetDefault),
+});
+
+export const ListExperiencesResponse = zod.object({
+  experiences: zod.array(
+    zod.object({
+      id: zod.number(),
+      refCode: zod.string().optional(),
+      slug: zod.string(),
+      titleEn: zod.string(),
+      titleAr: zod.string(),
+      descriptionEn: zod.string().optional(),
+      descriptionAr: zod.string().optional(),
+      category: zod.enum([
+        "heritage",
+        "street_food",
+        "fine_dining",
+        "live_show",
+        "cultural",
+      ]),
+      hostUserId: zod.number(),
+      latitude: zod.number().optional(),
+      longitude: zod.number().optional(),
+      address: zod.string().optional(),
+      cityId: zod.number(),
+      durationMinutes: zod.number(),
+      pricePerPerson: zod.number(),
+      depositAmount: zod.number().optional(),
+      currency: zod.string(),
+      capacity: zod.number(),
+      avgRating: zod.number(),
+      reviewCount: zod.number(),
+      status: zod.enum(["draft", "pending_approval", "active", "suspended"]),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    }),
+  ),
+  total: zod.number(),
+  offset: zod.number(),
+  limit: zod.number(),
+});
+
+/**
+ * @summary Create a new experience (provider only)
+ */
+export const createExperienceBodyCurrencyDefault = `SAR`;
+
+export const CreateExperienceBody = zod.object({
+  slug: zod.string(),
+  titleEn: zod.string(),
+  titleAr: zod.string(),
+  descriptionEn: zod.string().optional(),
+  descriptionAr: zod.string().optional(),
+  category: zod.enum([
+    "heritage",
+    "street_food",
+    "fine_dining",
+    "live_show",
+    "cultural",
+  ]),
+  latitude: zod.number().optional(),
+  longitude: zod.number().optional(),
+  address: zod.string().optional(),
+  cityId: zod.number(),
+  durationMinutes: zod.number(),
+  pricePerPerson: zod.number(),
+  depositAmount: zod.number().optional(),
+  currency: zod.string().default(createExperienceBodyCurrencyDefault),
+  capacity: zod.number(),
+});
+
+/**
+ * @summary Get experience details
+ */
+export const GetExperienceParams = zod.object({
+  experienceId: zod.coerce.number(),
+});
+
+export const GetExperienceResponse = zod
+  .object({
+    id: zod.number(),
+    refCode: zod.string().optional(),
+    slug: zod.string(),
+    titleEn: zod.string(),
+    titleAr: zod.string(),
+    descriptionEn: zod.string().optional(),
+    descriptionAr: zod.string().optional(),
+    category: zod.enum([
+      "heritage",
+      "street_food",
+      "fine_dining",
+      "live_show",
+      "cultural",
+    ]),
+    hostUserId: zod.number(),
+    latitude: zod.number().optional(),
+    longitude: zod.number().optional(),
+    address: zod.string().optional(),
+    cityId: zod.number(),
+    durationMinutes: zod.number(),
+    pricePerPerson: zod.number(),
+    depositAmount: zod.number().optional(),
+    currency: zod.string(),
+    capacity: zod.number(),
+    avgRating: zod.number(),
+    reviewCount: zod.number(),
+    status: zod.enum(["draft", "pending_approval", "active", "suspended"]),
+    createdAt: zod.coerce.date(),
+    updatedAt: zod.coerce.date(),
+  })
+  .and(
+    zod.object({
+      images: zod
+        .array(
+          zod.object({
+            id: zod.number(),
+            experienceId: zod.number(),
+            url: zod.string(),
+            isPrimary: zod.boolean(),
+            sortOrder: zod.number(),
+          }),
+        )
+        .optional(),
+      hostNameEn: zod.string().optional(),
+      hostNameAr: zod.string().optional(),
+      hostAvatarUrl: zod.string().optional(),
+      cityNameEn: zod.string().optional(),
+      cityNameAr: zod.string().optional(),
+    }),
+  );
+
+/**
+ * @summary Update experience (host only)
+ */
+export const UpdateExperienceParams = zod.object({
+  experienceId: zod.coerce.number(),
+});
+
+export const UpdateExperienceBody = zod.object({
+  slug: zod.string().optional(),
+  titleEn: zod.string().optional(),
+  titleAr: zod.string().optional(),
+  descriptionEn: zod.string().optional(),
+  descriptionAr: zod.string().optional(),
+  category: zod
+    .enum(["heritage", "street_food", "fine_dining", "live_show", "cultural"])
+    .optional(),
+  latitude: zod.number().optional(),
+  longitude: zod.number().optional(),
+  address: zod.string().optional(),
+  cityId: zod.number().optional(),
+  durationMinutes: zod.number().optional(),
+  pricePerPerson: zod.number().optional(),
+  depositAmount: zod.number().optional(),
+  currency: zod.string().optional(),
+  capacity: zod.number().optional(),
+});
+
+export const UpdateExperienceResponse = zod.object({
+  id: zod.number(),
+  refCode: zod.string().optional(),
+  slug: zod.string(),
+  titleEn: zod.string(),
+  titleAr: zod.string(),
+  descriptionEn: zod.string().optional(),
+  descriptionAr: zod.string().optional(),
+  category: zod.enum([
+    "heritage",
+    "street_food",
+    "fine_dining",
+    "live_show",
+    "cultural",
+  ]),
+  hostUserId: zod.number(),
+  latitude: zod.number().optional(),
+  longitude: zod.number().optional(),
+  address: zod.string().optional(),
+  cityId: zod.number(),
+  durationMinutes: zod.number(),
+  pricePerPerson: zod.number(),
+  depositAmount: zod.number().optional(),
+  currency: zod.string(),
+  capacity: zod.number(),
+  avgRating: zod.number(),
+  reviewCount: zod.number(),
+  status: zod.enum(["draft", "pending_approval", "active", "suspended"]),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete experience (host or admin)
+ */
+export const DeleteExperienceParams = zod.object({
+  experienceId: zod.coerce.number(),
+});
+
+export const DeleteExperienceResponse = zod.object({
+  message: zod.string().optional(),
+});
+
+/**
+ * @summary Update experience status (host or admin)
+ */
+export const PatchExperienceStatusParams = zod.object({
+  experienceId: zod.coerce.number(),
+});
+
+export const PatchExperienceStatusBody = zod.object({
+  status: zod.enum(["draft", "pending_approval", "active", "suspended"]),
+});
+
+export const PatchExperienceStatusResponse = zod.object({
+  id: zod.number(),
+  refCode: zod.string().optional(),
+  slug: zod.string(),
+  titleEn: zod.string(),
+  titleAr: zod.string(),
+  descriptionEn: zod.string().optional(),
+  descriptionAr: zod.string().optional(),
+  category: zod.enum([
+    "heritage",
+    "street_food",
+    "fine_dining",
+    "live_show",
+    "cultural",
+  ]),
+  hostUserId: zod.number(),
+  latitude: zod.number().optional(),
+  longitude: zod.number().optional(),
+  address: zod.string().optional(),
+  cityId: zod.number(),
+  durationMinutes: zod.number(),
+  pricePerPerson: zod.number(),
+  depositAmount: zod.number().optional(),
+  currency: zod.string(),
+  capacity: zod.number(),
+  avgRating: zod.number(),
+  reviewCount: zod.number(),
+  status: zod.enum(["draft", "pending_approval", "active", "suspended"]),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary List available slots for an experience
+ */
+export const ListExperienceSlotsParams = zod.object({
+  experienceId: zod.coerce.number(),
+});
+
+export const ListExperienceSlotsQueryParams = zod.object({
+  dateFrom: zod.date().optional(),
+  dateTo: zod.date().optional(),
+});
+
+export const ListExperienceSlotsResponseItem = zod.object({
+  id: zod.number(),
+  experienceId: zod.number(),
+  date: zod.coerce.date(),
+  startTime: zod.string(),
+  endTime: zod.string(),
+  capacity: zod.number(),
+  remainingCapacity: zod.number(),
+  isActive: zod.boolean(),
+});
+export const ListExperienceSlotsResponse = zod.array(
+  ListExperienceSlotsResponseItem,
+);
+
+/**
+ * @summary List reviews for an experience
+ */
+export const ListExperienceReviewsParams = zod.object({
+  experienceId: zod.coerce.number(),
+});
+
+export const listExperienceReviewsQueryLimitDefault = 20;
+export const listExperienceReviewsQueryOffsetDefault = 0;
+
+export const ListExperienceReviewsQueryParams = zod.object({
+  limit: zod.coerce.number().default(listExperienceReviewsQueryLimitDefault),
+  offset: zod.coerce.number().default(listExperienceReviewsQueryOffsetDefault),
+});
+
+export const listExperienceReviewsResponseReviewsItemRatingFoodMax = 5;
+
+export const listExperienceReviewsResponseReviewsItemRatingHospitalityMax = 5;
+
+export const listExperienceReviewsResponseReviewsItemRatingAmbianceMax = 5;
+
+export const listExperienceReviewsResponseReviewsItemRatingValueMax = 5;
+
+export const listExperienceReviewsResponseReviewsItemRatingOverallMax = 5;
+
+export const ListExperienceReviewsResponse = zod.object({
+  reviews: zod.array(
+    zod.object({
+      id: zod.number(),
+      userId: zod.number(),
+      experienceId: zod.number(),
+      bookingId: zod.number(),
+      ratingFood: zod
+        .number()
+        .min(1)
+        .max(listExperienceReviewsResponseReviewsItemRatingFoodMax)
+        .optional(),
+      ratingHospitality: zod
+        .number()
+        .min(1)
+        .max(listExperienceReviewsResponseReviewsItemRatingHospitalityMax)
+        .optional(),
+      ratingAmbiance: zod
+        .number()
+        .min(1)
+        .max(listExperienceReviewsResponseReviewsItemRatingAmbianceMax)
+        .optional(),
+      ratingValue: zod
+        .number()
+        .min(1)
+        .max(listExperienceReviewsResponseReviewsItemRatingValueMax)
+        .optional(),
+      ratingOverall: zod
+        .number()
+        .min(1)
+        .max(listExperienceReviewsResponseReviewsItemRatingOverallMax),
+      textEn: zod.string().optional(),
+      textAr: zod.string().optional(),
+      isVerified: zod.boolean(),
+      photoUrls: zod.array(zod.string()).optional(),
+      userNameEn: zod.string().optional(),
+      userNameAr: zod.string().optional(),
+      userAvatarUrl: zod.string().optional(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+  total: zod.number(),
+  offset: zod.number(),
+  limit: zod.number(),
+  ratingBreakdown: zod.object({
+    avgFood: zod.number().optional(),
+    avgHospitality: zod.number().optional(),
+    avgAmbiance: zod.number().optional(),
+    avgValue: zod.number().optional(),
+    avgOverall: zod.number().optional(),
+  }),
+});
+
+/**
+ * @summary Create an experience booking
+ */
+export const CreateExperienceBookingBody = zod.object({
+  experienceId: zod.number(),
+  slotId: zod.number(),
+  guestCount: zod.number(),
+  specialRequests: zod.string().optional(),
+});
+
+/**
+ * @summary Get experience booking details
+ */
+export const GetExperienceBookingParams = zod.object({
+  bookingId: zod.coerce.number(),
+});
+
+export const GetExperienceBookingResponse = zod.object({
+  id: zod.number(),
+  referenceCode: zod.string(),
+  userId: zod.number(),
+  experienceId: zod.number(),
+  slotId: zod.number(),
+  guestCount: zod.number(),
+  status: zod.enum([
+    "pending",
+    "confirmed",
+    "cancelled",
+    "completed",
+    "no_show",
+  ]),
+  totalAmount: zod.number(),
+  depositAmount: zod.number().optional(),
+  depositPaid: zod.boolean(),
+  fullPaid: zod.boolean(),
+  specialRequests: zod.string().optional(),
+  experienceTitleEn: zod.string().optional(),
+  experienceTitleAr: zod.string().optional(),
+  slotDate: zod.coerce.date().optional(),
+  slotStartTime: zod.string().optional(),
+  slotEndTime: zod.string().optional(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Cancel an experience booking
+ */
+export const CancelExperienceBookingParams = zod.object({
+  bookingId: zod.coerce.number(),
+});
+
+export const CancelExperienceBookingResponse = zod.object({
+  id: zod.number(),
+  referenceCode: zod.string(),
+  userId: zod.number(),
+  experienceId: zod.number(),
+  slotId: zod.number(),
+  guestCount: zod.number(),
+  status: zod.enum([
+    "pending",
+    "confirmed",
+    "cancelled",
+    "completed",
+    "no_show",
+  ]),
+  totalAmount: zod.number(),
+  depositAmount: zod.number().optional(),
+  depositPaid: zod.boolean(),
+  fullPaid: zod.boolean(),
+  specialRequests: zod.string().optional(),
+  experienceTitleEn: zod.string().optional(),
+  experienceTitleAr: zod.string().optional(),
+  slotDate: zod.coerce.date().optional(),
+  slotStartTime: zod.string().optional(),
+  slotEndTime: zod.string().optional(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Record payment for an experience booking (deposit or full)
+ */
+export const PayExperienceBookingParams = zod.object({
+  bookingId: zod.coerce.number(),
+});
+
+export const PayExperienceBookingBody = zod.object({
+  type: zod.enum(["deposit", "full"]),
+  paymentRef: zod.string().optional(),
+});
+
+export const PayExperienceBookingResponse = zod.object({
+  id: zod.number(),
+  bookingId: zod.number(),
+  amount: zod.number(),
+  type: zod.enum(["deposit", "full"]),
+  status: zod.enum(["pending", "completed", "failed", "refunded"]),
+  paymentRef: zod.string().optional(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Submit a review for an experience (must have completed booking)
+ */
+export const createExperienceReviewBodyRatingFoodMax = 5;
+
+export const createExperienceReviewBodyRatingHospitalityMax = 5;
+
+export const createExperienceReviewBodyRatingAmbianceMax = 5;
+
+export const createExperienceReviewBodyRatingValueMax = 5;
+
+export const createExperienceReviewBodyRatingOverallMax = 5;
+
+export const CreateExperienceReviewBody = zod.object({
+  experienceId: zod.number(),
+  bookingId: zod.number(),
+  ratingFood: zod
+    .number()
+    .min(1)
+    .max(createExperienceReviewBodyRatingFoodMax)
+    .optional(),
+  ratingHospitality: zod
+    .number()
+    .min(1)
+    .max(createExperienceReviewBodyRatingHospitalityMax)
+    .optional(),
+  ratingAmbiance: zod
+    .number()
+    .min(1)
+    .max(createExperienceReviewBodyRatingAmbianceMax)
+    .optional(),
+  ratingValue: zod
+    .number()
+    .min(1)
+    .max(createExperienceReviewBodyRatingValueMax)
+    .optional(),
+  ratingOverall: zod
+    .number()
+    .min(1)
+    .max(createExperienceReviewBodyRatingOverallMax),
+  textEn: zod.string().optional(),
+  textAr: zod.string().optional(),
+  photoUrls: zod.array(zod.string()).optional(),
+});
+
+/**
+ * @summary Send an experience as a gift
+ */
+export const createExperienceGiftBodyGiftCardDesignDefault = `classic`;
+
+export const CreateExperienceGiftBody = zod.object({
+  experienceId: zod.number(),
+  recipientEmail: zod.string().email(),
+  recipientName: zod.string(),
+  personalMessage: zod.string().optional(),
+  giftCardDesign: zod
+    .enum(["classic", "birthday", "anniversary", "celebration", "ramadan"])
+    .default(createExperienceGiftBodyGiftCardDesignDefault),
+  expiresAt: zod.coerce.date().optional(),
+});
+
+/**
+ * @summary Look up a gift by redeem code
+ */
+export const GetExperienceGiftParams = zod.object({
+  code: zod.coerce.string(),
+});
+
+export const GetExperienceGiftResponse = zod.object({
+  id: zod.number(),
+  senderUserId: zod.number(),
+  recipientEmail: zod.string(),
+  recipientName: zod.string(),
+  experienceId: zod.number(),
+  personalMessage: zod.string().optional(),
+  giftCardDesign: zod.enum([
+    "classic",
+    "birthday",
+    "anniversary",
+    "celebration",
+    "ramadan",
+  ]),
+  redeemCode: zod.string(),
+  qrCodeUrl: zod.string().optional(),
+  status: zod.enum(["sent", "redeemed", "expired"]),
+  expiresAt: zod.coerce.date(),
+  redeemedAt: zod.coerce.date().optional(),
+  redeemedByUserId: zod.number().optional(),
+  experienceTitleEn: zod.string().optional(),
+  experienceTitleAr: zod.string().optional(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Redeem a gift code
+ */
+export const RedeemExperienceGiftParams = zod.object({
+  code: zod.coerce.string(),
+});
+
+export const RedeemExperienceGiftResponse = zod.object({
+  id: zod.number(),
+  senderUserId: zod.number(),
+  recipientEmail: zod.string(),
+  recipientName: zod.string(),
+  experienceId: zod.number(),
+  personalMessage: zod.string().optional(),
+  giftCardDesign: zod.enum([
+    "classic",
+    "birthday",
+    "anniversary",
+    "celebration",
+    "ramadan",
+  ]),
+  redeemCode: zod.string(),
+  qrCodeUrl: zod.string().optional(),
+  status: zod.enum(["sent", "redeemed", "expired"]),
+  expiresAt: zod.coerce.date(),
+  redeemedAt: zod.coerce.date().optional(),
+  redeemedByUserId: zod.number().optional(),
+  experienceTitleEn: zod.string().optional(),
+  experienceTitleAr: zod.string().optional(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Submit a provider application
+ */
+export const CreateProviderApplicationBody = zod.object({
+  businessNameEn: zod.string(),
+  businessNameAr: zod.string(),
+  businessType: zod.string(),
+  contactEmail: zod.string().email(),
+  contactPhone: zod.string(),
+});
+
+/**
+ * @summary List provider applications (admin only)
+ */
+export const listProviderApplicationsQueryLimitDefault = 20;
+export const listProviderApplicationsQueryOffsetDefault = 0;
+
+export const ListProviderApplicationsQueryParams = zod.object({
+  status: zod.enum(["pending", "approved", "rejected"]).optional(),
+  limit: zod.coerce.number().default(listProviderApplicationsQueryLimitDefault),
+  offset: zod.coerce
+    .number()
+    .default(listProviderApplicationsQueryOffsetDefault),
+});
+
+export const ListProviderApplicationsResponse = zod.object({
+  applications: zod.array(
+    zod.object({
+      id: zod.number(),
+      userId: zod.number(),
+      businessNameEn: zod.string(),
+      businessNameAr: zod.string(),
+      businessType: zod.string(),
+      contactEmail: zod.string(),
+      contactPhone: zod.string(),
+      status: zod.enum(["pending", "approved", "rejected"]),
+      adminNotes: zod.string().optional(),
+      submittedAt: zod.coerce.date(),
+      reviewedAt: zod.coerce.date().optional(),
+      reviewedByAdminId: zod.number().optional(),
+    }),
+  ),
+  total: zod.number(),
+});
+
+/**
+ * @summary Approve or reject a provider application (admin only)
+ */
+export const ReviewProviderApplicationParams = zod.object({
+  applicationId: zod.coerce.number(),
+});
+
+export const ReviewProviderApplicationBody = zod.object({
+  status: zod.enum(["approved", "rejected"]),
+  adminNotes: zod.string().optional(),
+});
+
+export const ReviewProviderApplicationResponse = zod.object({
+  id: zod.number(),
+  userId: zod.number(),
+  businessNameEn: zod.string(),
+  businessNameAr: zod.string(),
+  businessType: zod.string(),
+  contactEmail: zod.string(),
+  contactPhone: zod.string(),
+  status: zod.enum(["pending", "approved", "rejected"]),
+  adminNotes: zod.string().optional(),
+  submittedAt: zod.coerce.date(),
+  reviewedAt: zod.coerce.date().optional(),
+  reviewedByAdminId: zod.number().optional(),
+});
+
+/**
+ * @summary Get analytics for the authenticated provider
+ */
+export const GetProviderAnalyticsResponse = zod.object({
+  totalBookings: zod.number(),
+  confirmedBookings: zod.number(),
+  cancelledBookings: zod.number(),
+  totalRevenue: zod.number(),
+  avgRating: zod.number(),
+  totalReviews: zod.number(),
+  totalExperiences: zod.number(),
+  activeExperiences: zod.number(),
+});
+
+/**
+ * @summary Admin list all experiences with status filter
+ */
+export const adminListExperiencesQueryLimitDefault = 20;
+export const adminListExperiencesQueryOffsetDefault = 0;
+
+export const AdminListExperiencesQueryParams = zod.object({
+  status: zod
+    .enum(["draft", "pending_approval", "active", "suspended"])
+    .optional(),
+  limit: zod.coerce.number().default(adminListExperiencesQueryLimitDefault),
+  offset: zod.coerce.number().default(adminListExperiencesQueryOffsetDefault),
+});
+
+export const AdminListExperiencesResponse = zod.object({
+  experiences: zod.array(
+    zod.object({
+      id: zod.number(),
+      refCode: zod.string().optional(),
+      slug: zod.string(),
+      titleEn: zod.string(),
+      titleAr: zod.string(),
+      descriptionEn: zod.string().optional(),
+      descriptionAr: zod.string().optional(),
+      category: zod.enum([
+        "heritage",
+        "street_food",
+        "fine_dining",
+        "live_show",
+        "cultural",
+      ]),
+      hostUserId: zod.number(),
+      latitude: zod.number().optional(),
+      longitude: zod.number().optional(),
+      address: zod.string().optional(),
+      cityId: zod.number(),
+      durationMinutes: zod.number(),
+      pricePerPerson: zod.number(),
+      depositAmount: zod.number().optional(),
+      currency: zod.string(),
+      capacity: zod.number(),
+      avgRating: zod.number(),
+      reviewCount: zod.number(),
+      status: zod.enum(["draft", "pending_approval", "active", "suspended"]),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    }),
+  ),
+  total: zod.number(),
+  offset: zod.number(),
+  limit: zod.number(),
+});
+
+/**
+ * @summary Admin update experience status
+ */
+export const AdminPatchExperienceStatusParams = zod.object({
+  experienceId: zod.coerce.number(),
+});
+
+export const AdminPatchExperienceStatusBody = zod.object({
+  status: zod.enum(["draft", "pending_approval", "active", "suspended"]),
+});
+
+export const AdminPatchExperienceStatusResponse = zod.object({
+  id: zod.number(),
+  refCode: zod.string().optional(),
+  slug: zod.string(),
+  titleEn: zod.string(),
+  titleAr: zod.string(),
+  descriptionEn: zod.string().optional(),
+  descriptionAr: zod.string().optional(),
+  category: zod.enum([
+    "heritage",
+    "street_food",
+    "fine_dining",
+    "live_show",
+    "cultural",
+  ]),
+  hostUserId: zod.number(),
+  latitude: zod.number().optional(),
+  longitude: zod.number().optional(),
+  address: zod.string().optional(),
+  cityId: zod.number(),
+  durationMinutes: zod.number(),
+  pricePerPerson: zod.number(),
+  depositAmount: zod.number().optional(),
+  currency: zod.string(),
+  capacity: zod.number(),
+  avgRating: zod.number(),
+  reviewCount: zod.number(),
+  status: zod.enum(["draft", "pending_approval", "active", "suspended"]),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Get all experience module settings (admin only)
+ */
+export const GetExperienceSettingsResponse = zod.record(
+  zod.string(),
+  zod.string(),
+);
+
+/**
+ * @summary Update experience module settings (admin only)
+ */
+export const UpdateExperienceSettingsBody = zod.record(
+  zod.string(),
+  zod.string(),
+);
+
+export const UpdateExperienceSettingsResponse = zod.record(
+  zod.string(),
+  zod.string(),
+);
