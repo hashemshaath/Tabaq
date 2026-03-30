@@ -140,7 +140,7 @@ const VOUCHER_STATUS_MAP: Record<string, { labelEn: string; labelAr: string; cla
   refunded: { labelEn: 'Refunded', labelAr: 'مسترجع', className: 'text-red-600 bg-red-50' },
 };
 
-type ConsoleTab = 'overview' | 'bookings' | 'campaigns' | 'vouchers' | 'reviews' | 'menu' | 'settings';
+type ConsoleTab = 'overview' | 'bookings' | 'campaigns' | 'offers' | 'vouchers' | 'reviews' | 'menu' | 'settings';
 
 export function BusinessConsolePage() {
   const { t, lang } = useLanguage();
@@ -1939,10 +1939,10 @@ export function BusinessConsolePage() {
             {/* Summary cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
-                { label: t('Active', 'نشط'), val: (displayOffers as any[]).filter((o: any) => o.isActive).length, color: 'bg-green-50 text-green-700 border-green-200' },
-                { label: t('Pending Review', 'في انتظار المراجعة'), val: (displayOffers as any[]).filter((o: any) => o.approvalStatus === 'pending').length, color: 'bg-amber-50 text-amber-700 border-amber-200' },
-                { label: t('Total Redemptions', 'إجمالي الاستخدامات'), val: (displayOffers as any[]).reduce((a: number, o: any) => a + (o.redemptions ?? 0), 0), color: 'bg-primary/5 text-primary border-primary/20' },
-                { label: t('Total Offers', 'إجمالي العروض'), val: (displayOffers as any[]).length, color: 'bg-purple-50 text-purple-700 border-purple-200' },
+                { label: t('Active', 'نشط'), val: (displayCampaigns as any[]).filter((o: any) => o.isActive).length, color: 'bg-green-50 text-green-700 border-green-200' },
+                { label: t('Pending Review', 'في انتظار المراجعة'), val: (displayCampaigns as any[]).filter((o: any) => o.approvalStatus === 'pending').length, color: 'bg-amber-50 text-amber-700 border-amber-200' },
+                { label: t('Total Redemptions', 'إجمالي الاستخدامات'), val: (displayCampaigns as any[]).reduce((a: number, o: any) => a + (o.redemptions ?? 0), 0), color: 'bg-primary/5 text-primary border-primary/20' },
+                { label: t('Total Offers', 'إجمالي العروض'), val: (displayCampaigns as any[]).length, color: 'bg-purple-50 text-purple-700 border-purple-200' },
               ].map(s => (
                 <div key={s.label} className={`border rounded-2xl p-4 ${s.color}`}>
                   <p className="text-2xl font-extrabold">{s.val}</p>
@@ -1951,7 +1951,7 @@ export function BusinessConsolePage() {
               ))}
             </div>
 
-            {!(displayOffers as any[]).length && (
+            {!(displayCampaigns as any[]).length && (
               <div className="bg-card border border-dashed border-border rounded-2xl p-12 text-center">
                 <Tag className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
                 <p className="font-semibold text-foreground">{t('No offers yet', 'لا توجد عروض بعد')}</p>
@@ -1963,7 +1963,7 @@ export function BusinessConsolePage() {
             )}
 
             <div className="space-y-3">
-              {(displayOffers as any[]).map((offer: any) => (
+              {(displayCampaigns as any[]).map((offer: any) => (
                 <div key={offer.id} className={`bg-card border rounded-2xl p-5 flex gap-4 items-start ${offer.approvalStatus === 'revision_requested' ? 'border-amber-300' : offer.approvalStatus === 'rejected' ? 'border-red-300' : 'border-border'}`}>
                   <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center shrink-0">
                     <Tag className="w-6 h-6 text-primary" />
@@ -2027,7 +2027,7 @@ export function BusinessConsolePage() {
                               <p className="text-xs text-muted-foreground">{t('Redeemed', 'استُخدم')}</p>
                             </div>
                             <button
-                              onClick={() => setConsoleOffers(prev => prev.map(o => o.id === offer.id ? { ...o, isActive: !o.isActive } : o))}
+                              onClick={() => { fetch(`/api/campaigns/${offer.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ isActive: !offer.isActive }), credentials: 'include' }).then(() => refetchCampaigns()); }}
                               className={`relative w-11 h-6 rounded-full transition-all duration-300 shrink-0 ${offer.isActive ? 'bg-primary' : 'bg-muted'}`}
                             >
                               <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-all duration-300 ${offer.isActive ? 'start-[22px]' : 'start-0.5'}`} />

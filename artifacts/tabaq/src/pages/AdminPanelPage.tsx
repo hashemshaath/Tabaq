@@ -24,20 +24,6 @@ const OVERVIEW_STATS = [
   { label: 'Avg. Platform Rating', val: '4.65', change: '+0.1', up: true, icon: Star, color: 'bg-amber-50 text-amber-600' },
 ];
 
-const PENDING_RESTAURANTS = [
-  { id: 101, name: 'Al Romansiah Riyadh', nameAr: 'الرومنسية', category: 'Saudi Cuisine', city: 'Riyadh', appliedAt: '2 hours ago', owner: 'Fahad Al-Otaibi', phone: '+966 55 123 4567' },
-  { id: 102, name: 'Fuego Steakhouse', nameAr: 'فيوجو ستيك', category: 'Steakhouse', city: 'Jeddah', appliedAt: '5 hours ago', owner: 'Abdulaziz Mahjoub', phone: '+966 56 789 0123' },
-  { id: 103, name: 'Tokyo Garden', nameAr: 'حديقة طوكيو', category: 'Japanese', city: 'Riyadh', appliedAt: '1 day ago', owner: 'Omar Al-Zahrani', phone: '+966 54 321 6789' },
-  { id: 104, name: 'The Greenhouse', nameAr: 'البيت الزجاجي', category: 'Vegetarian', city: 'NEOM', appliedAt: '2 days ago', owner: 'Nour Al-Faisal', phone: '+966 50 987 6543' },
-];
-
-
-const RECENT_REVIEWS = [
-  { id: 1, user: 'Ahmed K.', restaurant: 'Najd Village', rating: 5, text: 'Amazing food and ambiance.', status: 'approved', date: '1 hour ago' },
-  { id: 2, user: 'Noura F.', restaurant: 'Sushi Sama', rating: 2, text: 'Service was terrible. Never going back.', status: 'flagged', date: '3 hours ago' },
-  { id: 3, user: 'James T.', restaurant: 'Reem Al Bawadi', rating: 5, text: 'Best restaurant in Riyadh!', status: 'approved', date: '5 hours ago' },
-  { id: 4, user: 'Sara M.', restaurant: 'Hakkasan', rating: 1, text: 'Spam review content.', status: 'removed', date: '1 day ago' },
-];
 
 const BLOG_POSTS = [
   { id: 1, title: 'Top 10 Fine Dining Restaurants in Riyadh 2026', status: 'published', views: 12450, date: '2026-03-25' },
@@ -342,7 +328,7 @@ export function AdminPanelPage() {
     staleTime: 30000,
   });
 
-  const pendingApplications: any[] = registrationsData?.applications?.filter((a: any) => a.status === 'pending') ?? PENDING_RESTAURANTS;
+  const pendingApplications: any[] = registrationsData?.applications?.filter((a: any) => a.status === 'pending') ?? [];
 
   const [contractForm, setContractForm] = useState({ restaurantId: '', paymentModel: 'full_collection', commissionPercent: '15', settlementDays: '7', partialCollectionPercent: '', validFrom: '', validUntil: '', notes: '', internalNotes: '' });
   const [showContractForm, setShowContractForm] = useState(false);
@@ -362,7 +348,7 @@ export function AdminPanelPage() {
 
   const updateContractStatus = useMutation({
     mutationFn: async ({ id, status }: { id: number; status: string }) => {
-      const res = await fetch(`/api/admin/contracts/${id}`, {
+      const res = await fetch(`/api/admin/contracts/${id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
@@ -388,6 +374,57 @@ export function AdminPanelPage() {
     },
     onSuccess: () => { refetchMessages(); setShowMsgForm(false); setMsgForm({ restaurantId: '', subject: '', body: '', type: 'general' }); },
   });
+
+  const { data: campaignsData, refetch: refetchCampaigns } = useQuery({
+    queryKey: ['admin-campaigns'],
+    queryFn: async () => {
+      const res = await fetch('/api/campaigns?status=submitted&limit=50', { credentials: 'include' });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    retry: false,
+    staleTime: 30000,
+    enabled: activeTab === 'review-queue',
+  });
+
+  const { data: promoCodesData, refetch: refetchPromoCodes } = useQuery({
+    queryKey: ['admin-promo-codes'],
+    queryFn: async () => {
+      const res = await fetch('/api/promo-codes', { credentials: 'include' });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    retry: false,
+    staleTime: 30000,
+    enabled: activeTab === 'promo-codes',
+  });
+
+  const { data: recentReviewsData } = useQuery({
+    queryKey: ['admin-recent-reviews-overview'],
+    queryFn: async () => {
+      const res = await fetch('/api/reviews?limit=20', { credentials: 'include' });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    retry: false,
+    staleTime: 60000,
+  });
+
+  const { data: settlementSummary } = useQuery({
+    queryKey: ['admin-settlement-summary'],
+    queryFn: async () => {
+      const res = await fetch('/api/admin/transactions?status=pending&limit=200', { credentials: 'include' });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    retry: false,
+    staleTime: 30000,
+    enabled: activeTab === 'settlement',
+  });
+
+  const liveCampaigns: any[] = Array.isArray(campaignsData) ? campaignsData : (campaignsData?.campaigns ?? []);
+  const livePromoCodes: any[] = Array.isArray(promoCodesData) ? promoCodesData : (promoCodesData?.codes ?? []);
+  const liveFlaggedReviews: any[] = (recentReviewsData?.reviews ?? []).filter((r: any) => parseFloat(r.ratingOverall ?? '5') <= 2).slice(0, 5);
 
   const pendingOffersCount = (adminOffersData?.offers as any[])?.filter((o: any) => o.approvalStatus === 'pending')?.length ?? 0;
 
@@ -578,24 +615,28 @@ export function AdminPanelPage() {
 
                 <div className="bg-card border border-border rounded-2xl overflow-hidden">
                   <div className="flex items-center justify-between p-5 border-b border-border">
-                    <h2 className="font-bold text-foreground">Flagged Reviews</h2>
-                    <span className="bg-red-100 text-red-700 text-xs font-bold px-2.5 py-1 rounded-full">1</span>
+                    <h2 className="font-bold text-foreground">Low-rated Reviews</h2>
+                    {liveFlaggedReviews.length > 0 && (
+                      <span className="bg-red-100 text-red-700 text-xs font-bold px-2.5 py-1 rounded-full">{liveFlaggedReviews.length}</span>
+                    )}
                   </div>
                   <div className="divide-y divide-border">
-                    {RECENT_REVIEWS.filter(r => r.status === 'flagged').map(review => (
+                    {liveFlaggedReviews.length === 0 ? (
+                      <p className="px-5 py-8 text-center text-sm text-muted-foreground">No flagged reviews at this time</p>
+                    ) : liveFlaggedReviews.map((review: any) => (
                       <div key={review.id} className="p-4">
                         <div className="flex items-start justify-between gap-3 mb-2">
                           <div>
-                            <span className="font-semibold text-sm text-foreground">{review.user}</span>
-                            <span className="text-xs text-muted-foreground ms-2">on {review.restaurant}</span>
+                            <span className="font-semibold text-sm text-foreground">{review.userNameEn ?? 'User'}</span>
+                            <span className="text-xs text-muted-foreground ms-2">on {review.restaurantNameEn ?? '—'}</span>
                           </div>
                           <div className="flex items-center gap-1">
                             {[1,2,3,4,5].map(s => (
-                              <Star key={s} className={`w-3 h-3 ${s <= review.rating ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground/20'}`} />
+                              <Star key={s} className={`w-3 h-3 ${s <= (review.ratingOverall ?? 0) ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground/20'}`} />
                             ))}
                           </div>
                         </div>
-                        <p className="text-sm text-muted-foreground mb-3 line-clamp-2">"{review.text}"</p>
+                        <p className="text-sm text-muted-foreground mb-3 line-clamp-2">"{review.textEn ?? review.textAr ?? ''}"</p>
                         <div className="flex gap-2">
                           <button className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-lg font-semibold hover:bg-green-200 transition-colors">Approve</button>
                           <button className="text-xs bg-red-100 text-red-700 px-3 py-1 rounded-lg font-semibold hover:bg-red-200 transition-colors">Remove</button>
@@ -623,7 +664,7 @@ export function AdminPanelPage() {
                 </div>
               </div>
               <div className="space-y-4">
-                {(registrationsData?.applications ?? PENDING_RESTAURANTS).map((r: any) => {
+                {(registrationsData?.applications ?? []).map((r: any) => {
                   const statusColors: Record<string, string> = {
                     pending: 'bg-amber-100 text-amber-700',
                     approved: 'bg-green-100 text-green-700',
@@ -1907,6 +1948,10 @@ export function AdminPanelPage() {
           {/* ── REVIEW QUEUE ── */}
           {activeTab === 'review-queue' && (
             <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold">Review Queue</h2>
+                <span className="text-sm text-muted-foreground">{liveCampaigns.length} item{liveCampaigns.length !== 1 ? 's' : ''} pending</span>
+              </div>
               <div className="bg-card border border-border rounded-2xl overflow-hidden">
                 <table className="w-full text-sm text-start">
                   <thead className="bg-secondary/30 border-b border-border">
@@ -1919,12 +1964,34 @@ export function AdminPanelPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {/* Placeholder for campaigns */}
-                    <tr>
-                      <td colSpan={5} className="px-5 py-10 text-center text-muted-foreground">
-                        No campaigns pending review
-                      </td>
-                    </tr>
+                    {liveCampaigns.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-5 py-10 text-center text-muted-foreground">
+                          No campaigns pending review
+                        </td>
+                      </tr>
+                    ) : liveCampaigns.map((campaign: any) => (
+                      <tr key={campaign.id} className="hover:bg-secondary/30 transition-colors">
+                        <td className="px-5 py-4 font-medium text-foreground">{campaign.titleEn ?? campaign.title ?? `Campaign #${campaign.id}`}</td>
+                        <td className="px-5 py-4 text-muted-foreground">{campaign.restaurantNameEn ?? campaign.merchantName ?? '—'}</td>
+                        <td className="px-5 py-4">
+                          <span className="bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-0.5 rounded-full">{campaign.type ?? 'offer'}</span>
+                        </td>
+                        <td className="px-5 py-4 text-muted-foreground text-xs">{campaign.createdAt ? new Date(campaign.createdAt).toLocaleDateString() : '—'}</td>
+                        <td className="px-5 py-4 text-end">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => fetch(`/api/campaigns/${campaign.id}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'live' }), credentials: 'include' }).then(() => refetchCampaigns())}
+                              className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-lg font-semibold hover:bg-green-200 transition-colors"
+                            >Approve</button>
+                            <button
+                              onClick={() => fetch(`/api/campaigns/${campaign.id}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'rejected' }), credentials: 'include' }).then(() => refetchCampaigns())}
+                              className="text-xs bg-red-100 text-red-700 px-3 py-1 rounded-lg font-semibold hover:bg-red-200 transition-colors"
+                            >Reject</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -1936,7 +2003,18 @@ export function AdminPanelPage() {
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-bold">Promo Codes</h2>
-                <Button><Plus className="w-4 h-4 me-2" /> Create Promo Code</Button>
+                <Button onClick={() => {
+                  const code = prompt('Enter promo code (e.g. SAVE20):');
+                  if (!code) return;
+                  const discountType = prompt('Discount type (percentage / fixed_amount):') ?? 'percentage';
+                  const discountValue = prompt('Discount value (e.g. 20 for 20%):') ?? '20';
+                  fetch('/api/promo-codes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code: code.toUpperCase(), discountType, discountValue: parseFloat(discountValue), isActive: true, usageLimit: 100, timesUsed: 0 }),
+                    credentials: 'include',
+                  }).then(() => refetchPromoCodes());
+                }}><Plus className="w-4 h-4 me-2" /> Create Promo Code</Button>
               </div>
               <div className="bg-card border border-border rounded-2xl overflow-hidden">
                 <table className="w-full text-sm text-start">
@@ -1951,11 +2029,38 @@ export function AdminPanelPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    <tr>
-                      <td colSpan={6} className="px-5 py-10 text-center text-muted-foreground">
-                        No promo codes found
-                      </td>
-                    </tr>
+                    {livePromoCodes.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-5 py-10 text-center text-muted-foreground">
+                          No promo codes found — create one above
+                        </td>
+                      </tr>
+                    ) : livePromoCodes.map((promo: any) => (
+                      <tr key={promo.id} className="hover:bg-secondary/30 transition-colors">
+                        <td className="px-5 py-4 font-mono font-bold text-foreground">{promo.code}</td>
+                        <td className="px-5 py-4 text-muted-foreground capitalize">{promo.discountType?.replace('_', ' ')}</td>
+                        <td className="px-5 py-4 font-semibold text-foreground">
+                          {promo.discountType === 'percentage' ? `${promo.discountValue}%` : `SAR ${promo.discountValue}`}
+                        </td>
+                        <td className="px-5 py-4 text-muted-foreground">{promo.timesUsed ?? 0} / {promo.usageLimit ?? '∞'}</td>
+                        <td className="px-5 py-4">
+                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${promo.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                            {promo.isActive ? 'Active' : 'Inactive'}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4 text-end">
+                          <button
+                            onClick={() => fetch(`/api/promo-codes/${promo.id}`, {
+                              method: 'PATCH',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ isActive: !promo.isActive }),
+                              credentials: 'include',
+                            }).then(() => refetchPromoCodes())}
+                            className="text-xs bg-secondary text-foreground px-3 py-1 rounded-lg font-semibold hover:bg-secondary/80 transition-colors"
+                          >{promo.isActive ? 'Deactivate' : 'Activate'}</button>
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -1965,37 +2070,58 @@ export function AdminPanelPage() {
           {/* ── SETTLEMENT ── */}
           {activeTab === 'settlement' && (
             <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <h2 className="text-xl font-bold">Settlement</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-card border border-border rounded-2xl p-5">
-                  <p className="text-sm text-muted-foreground mb-1">Pending Redemptions</p>
-                  <p className="text-3xl font-bold">0</p>
+                  <p className="text-sm text-muted-foreground mb-1">Pending Transactions</p>
+                  <p className="text-3xl font-bold">{settlementSummary?.totals?.count ?? 0}</p>
                 </div>
                 <div className="bg-card border border-border rounded-2xl p-5">
-                  <p className="text-sm text-muted-foreground mb-1">Pending Payout Amount</p>
-                  <p className="text-3xl font-bold">SAR 0.00</p>
+                  <p className="text-sm text-muted-foreground mb-1">Pending Gross Amount</p>
+                  <p className="text-3xl font-bold">SAR {parseFloat(settlementSummary?.totals?.grossAmount ?? '0').toLocaleString('en-SA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                </div>
+                <div className="bg-card border border-border rounded-2xl p-5">
+                  <p className="text-sm text-muted-foreground mb-1">Net Payout (to merchants)</p>
+                  <p className="text-3xl font-bold">SAR {parseFloat(settlementSummary?.totals?.netAmount ?? '0').toLocaleString('en-SA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                 </div>
               </div>
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold">Settlement Batches</h2>
-                <Button>Create Settlement Batch</Button>
+                <h3 className="text-lg font-bold">Pending Transactions</h3>
+                <Button onClick={() => { alert('Settlement batch creation requires backend batch processing support.'); }}>Create Settlement Batch</Button>
               </div>
               <div className="bg-card border border-border rounded-2xl overflow-hidden">
                 <table className="w-full text-sm text-start">
                   <thead className="bg-secondary/30 border-b border-border">
                     <tr>
-                      <th className="px-5 py-4 text-start font-bold">Period</th>
-                      <th className="px-5 py-4 text-start font-bold">Merchants</th>
-                      <th className="px-5 py-4 text-start font-bold">Total Net</th>
+                      <th className="px-5 py-4 text-start font-bold">Ref</th>
+                      <th className="px-5 py-4 text-start font-bold">Restaurant</th>
+                      <th className="px-5 py-4 text-start font-bold">Gross</th>
+                      <th className="px-5 py-4 text-start font-bold">Commission</th>
+                      <th className="px-5 py-4 text-start font-bold">Net</th>
+                      <th className="px-5 py-4 text-start font-bold">Due</th>
                       <th className="px-5 py-4 text-start font-bold">Status</th>
-                      <th className="px-5 py-4 text-end font-bold">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    <tr>
-                      <td colSpan={5} className="px-5 py-10 text-center text-muted-foreground">
-                        No settlement batches found
-                      </td>
-                    </tr>
+                    {(settlementSummary?.transactions ?? []).length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="px-5 py-10 text-center text-muted-foreground">
+                          No pending transactions to settle
+                        </td>
+                      </tr>
+                    ) : (settlementSummary?.transactions ?? []).map((tx: any) => (
+                      <tr key={tx.id} className="hover:bg-secondary/30 transition-colors">
+                        <td className="px-5 py-4 font-mono text-xs text-muted-foreground">{tx.refCode ?? `#${tx.id}`}</td>
+                        <td className="px-5 py-4 text-foreground">{tx.restaurantNameEn ?? '—'}</td>
+                        <td className="px-5 py-4 font-semibold">SAR {parseFloat(tx.grossAmount ?? '0').toFixed(2)}</td>
+                        <td className="px-5 py-4 text-red-600">-SAR {parseFloat(tx.commissionAmount ?? '0').toFixed(2)}</td>
+                        <td className="px-5 py-4 text-green-600 font-semibold">SAR {parseFloat(tx.netAmount ?? '0').toFixed(2)}</td>
+                        <td className="px-5 py-4 text-muted-foreground text-xs">{tx.settlementDueDate ? new Date(tx.settlementDueDate).toLocaleDateString() : '—'}</td>
+                        <td className="px-5 py-4">
+                          <span className="bg-amber-100 text-amber-700 text-xs font-semibold px-2 py-0.5 rounded-full">{tx.status}</span>
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>

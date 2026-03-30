@@ -12,7 +12,7 @@ Features include:
   - **VouchersPage (Wallet)**: 4 tabs (Active/Used/Expired/Refunded), QR code display for active vouchers, validity progress bar, refund request modal with reason + details
   - **Campaign system**: DB tables for campaigns, options, promo codes, redemptions; full API routes
   - **Campaign Wizard** in BusinessConsolePage: 7-step modal (Basics → Options → Photos → Highlights → Fine Print → Redemption → Review & Submit)
-  - **Admin Review Queue, Promo Codes & Settlement** tabs in AdminPanelPage
+  - **Admin Review Queue, Promo Codes & Settlement** tabs in AdminPanelPage — all three now wire to real APIs (`/api/campaigns?status=submitted`, `/api/promo-codes`, `/api/admin/transactions?status=pending`)
 - Gifting system
 - Social reviews and leaderboard/levels
 - Referral & Points System (`/referral`) — unique codes, WhatsApp/Twitter sharing, points history
