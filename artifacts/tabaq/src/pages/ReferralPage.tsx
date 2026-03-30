@@ -92,7 +92,7 @@ function timeAgo(dateStr: string): string {
 // ─── Main page ─────────────────────────────────────────────────────
 export function ReferralPage() {
   const { t, lang } = useLanguage();
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const queryClient = useQueryClient();
   const [copied, setCopied] = useState<'code' | 'link' | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'history' | 'friends'>('overview');
@@ -100,26 +100,29 @@ export function ReferralPage() {
   const [promoStatus, setPromoStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [promoError, setPromoError] = useState('');
 
+  const apiBase = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
+  const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
+
   const { data: referralData, isLoading: referralLoading } = useQuery({
-    queryKey: ['me-referral'],
+    queryKey: ['me-referral', token],
     queryFn: async () => {
-      const res = await fetch('/api/me/referral', { credentials: 'include' });
+      const res = await fetch(`${apiBase}/api/me/referral`, { headers: authHeaders });
       if (!res.ok) return null;
       return res.json();
     },
-    enabled: !!user,
+    enabled: !!user && !!token,
     staleTime: 60000,
     retry: false,
   });
 
   const { data: pointsData, isLoading: pointsLoading } = useQuery({
-    queryKey: ['me-points-history'],
+    queryKey: ['me-points-history', token],
     queryFn: async () => {
-      const res = await fetch('/api/me/points/history?limit=30', { credentials: 'include' });
+      const res = await fetch(`${apiBase}/api/me/points/history?limit=30`, { headers: authHeaders });
       if (!res.ok) return null;
       return res.json();
     },
-    enabled: !!user && activeTab === 'history',
+    enabled: !!user && !!token && activeTab === 'history',
     staleTime: 60000,
     retry: false,
   });
@@ -127,10 +130,9 @@ export function ReferralPage() {
   const applyReferralCode = useMutation({
     mutationFn: async (code: string) => {
       if (!user) throw new Error('not_auth');
-      const res = await fetch('/api/referrals/use', {
+      const res = await fetch(`${apiBase}/api/referrals/use`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify({ referralCode: code, newUserId: user.id }),
       });
       const body = await res.json();
@@ -152,8 +154,16 @@ export function ReferralPage() {
     },
   });
 
-  const data = referralData ?? MOCK_REFERRAL;
-  const history = pointsData?.transactions ?? MOCK_HISTORY;
+  const rawData = user ? (referralData ?? null) : MOCK_REFERRAL;
+  const data = rawData ?? {
+    referralCode: (user as any)?.referralCode ?? '',
+    referralLink: `${window.location.origin}/join?ref=${(user as any)?.referralCode ?? ''}`,
+    stats: { invitesSent: 0, converted: 0, totalPointsEarned: 0, pendingPoints: 0 } as ReferralStats,
+    conversions: [] as Conversion[],
+    pointsPerReferral: 100,
+    pointsForReferred: 50,
+  };
+  const history: PointsTransaction[] = user ? (pointsData?.transactions ?? []) : MOCK_HISTORY;
 
   const copy = (type: 'code' | 'link') => {
     const text = type === 'code' ? data.referralCode : data.referralLink;
@@ -186,6 +196,20 @@ export function ReferralPage() {
   const nextLevelPoints = LEVEL_NEXT[level] ?? 5000;
   const prevLevelPoints = LEVEL_NEXT[level - 1] ?? 0;
   const progress = Math.min(((points - prevLevelPoints) / (nextLevelPoints - prevLevelPoints)) * 100, 100);
+
+  if (user && referralLoading && !data) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-pulse space-y-4 w-full max-w-md px-8">
+          <div className="h-8 bg-muted rounded w-2/3 mx-auto" />
+          <div className="h-4 bg-muted rounded w-full" />
+          <div className="h-4 bg-muted rounded w-3/4 mx-auto" />
+          <div className="h-24 bg-muted rounded-2xl mt-8" />
+          <div className="h-12 bg-muted rounded-xl" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">

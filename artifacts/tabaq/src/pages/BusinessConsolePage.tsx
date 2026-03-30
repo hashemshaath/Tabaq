@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { getAuthHeaders } from '@/lib/api';
 import { useLanguage } from '@/hooks/use-language';
 import { Link } from 'wouter';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -129,7 +130,7 @@ export function BusinessConsolePage() {
   const { data: campaignsData, refetch: refetchCampaigns } = useQuery({
     queryKey: ['console-campaigns', RESTAURANT_ID],
     queryFn: async () => {
-      const res = await fetch(`/api/campaigns?restaurantId=${RESTAURANT_ID}`);
+      const res = await fetch(`/api/campaigns?restaurantId=${RESTAURANT_ID}`, { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -140,7 +141,7 @@ export function BusinessConsolePage() {
   const { data: vouchersData } = useQuery({
     queryKey: ['console-vouchers', RESTAURANT_ID],
     queryFn: async () => {
-      const res = await fetch(`/api/redemptions?restaurantId=${RESTAURANT_ID}`);
+      const res = await fetch(`/api/redemptions?restaurantId=${RESTAURANT_ID}`, { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -151,7 +152,7 @@ export function BusinessConsolePage() {
   const { data: statsData } = useQuery({
     queryKey: ['console-stats', RESTAURANT_ID],
     queryFn: async () => {
-      const res = await fetch(`/api/admin/stats`); // In production this would be restaurant specific
+      const res = await fetch(`/api/admin/stats`, { headers: getAuthHeaders() }); // In production this would be restaurant specific
       if (!res.ok) return null;
       return res.json();
     },
@@ -162,7 +163,7 @@ export function BusinessConsolePage() {
   const { data: bookingsData } = useQuery({
     queryKey: ['console-bookings', RESTAURANT_ID],
     queryFn: async () => {
-      const res = await fetch(`/api/restaurants/${RESTAURANT_ID}/bookings?limit=50`);
+      const res = await fetch(`/api/restaurants/${RESTAURANT_ID}/bookings?limit=50`, { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -173,7 +174,7 @@ export function BusinessConsolePage() {
   const { data: reviewsData } = useQuery({
     queryKey: ['console-reviews', RESTAURANT_ID],
     queryFn: async () => {
-      const res = await fetch(`/api/reviews?restaurantId=${RESTAURANT_ID}&limit=20`);
+      const res = await fetch(`/api/reviews?restaurantId=${RESTAURANT_ID}&limit=20`, { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -184,7 +185,7 @@ export function BusinessConsolePage() {
   const { data: contractData } = useQuery({
     queryKey: ['console-contract', RESTAURANT_ID],
     queryFn: async () => {
-      const res = await fetch(`/api/restaurants/${RESTAURANT_ID}/contract`);
+      const res = await fetch(`/api/restaurants/${RESTAURANT_ID}/contract`, { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -232,9 +233,8 @@ export function BusinessConsolePage() {
     mutationFn: async (body: Record<string, any>) => {
       const res = await fetch('/api/admin/offers', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-        credentials: 'include',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(body)
       });
       if (!res.ok) {
         const err = await res.json();
@@ -1974,7 +1974,7 @@ export function BusinessConsolePage() {
                               <p className="text-xs text-muted-foreground">{t('Redeemed', 'استُخدم')}</p>
                             </div>
                             <button
-                              onClick={() => { fetch(`/api/campaigns/${offer.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ isActive: !offer.isActive }), credentials: 'include' }).then(() => refetchCampaigns()); }}
+                              onClick={() => { fetch(`/api/campaigns/${offer.id}`, { method: 'PATCH', headers: getAuthHeaders(), body: JSON.stringify({ isActive: !offer.isActive }) }).then(() => refetchCampaigns()); }}
                               className={`relative w-11 h-6 rounded-full transition-all duration-300 shrink-0 ${offer.isActive ? 'bg-primary' : 'bg-muted'}`}
                             >
                               <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-all duration-300 ${offer.isActive ? 'start-[22px]' : 'start-0.5'}`} />

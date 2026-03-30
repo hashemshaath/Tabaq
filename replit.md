@@ -65,7 +65,7 @@ Features include:
 - Booking reference format: `TBQ-XXXXXXXX`
 - Voucher code format: `VCH-XXXXXXXXXX`
 - ID generation: `nanoid` (in api-server)
-- Auth: OTP-based auth via phone/email — users get JWT token stored in AuthContext
+- Auth: OTP-based auth via phone/email — users get JWT token stored in `localStorage` under key `tabaq_token`; all authenticated API calls use `getAuthHeaders()` from `@/lib/api` which reads the token and returns `{ 'Content-Type': 'application/json', Authorization: 'Bearer <token>' }`; api-client-react hooks use `setAuthTokenGetter` configured in `AuthContext.tsx`
 - No pop-up modals anywhere — all interactions (booking, reviews, vouchers, sign-in) are inline on the page
 - Sign-in: dedicated `/signin` full-page route (no modal), accessed via Header button or Link
 - Booking: inline "Book" tab in RestaurantDetailPage (BookingSection component)

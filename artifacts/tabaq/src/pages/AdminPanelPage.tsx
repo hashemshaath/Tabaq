@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StarRating } from '@/components/StarRating';
+import { getAuthHeaders } from '@/lib/api';
 
 const BLOG_POSTS = [
   { id: 1, title: 'Top 10 Fine Dining Restaurants in Riyadh 2026', status: 'published', views: 12450, date: '2026-03-25' },
@@ -72,7 +73,7 @@ export function AdminPanelPage() {
   const { data: realStats } = useQuery({
     queryKey: ['admin-stats'],
     queryFn: async () => {
-      const res = await fetch(`${apiBase.replace('/','')}/api/admin/stats`.replace(/^\//, '/'), { credentials: 'include' });
+      const res = await fetch(`${apiBase.replace('/','')}/api/admin/stats`.replace(/^\//, '/'), { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -83,7 +84,7 @@ export function AdminPanelPage() {
   const { data: realModules } = useQuery({
     queryKey: ['admin-modules'],
     queryFn: async () => {
-      const res = await fetch(`${apiBase.replace('/','')}/api/admin/modules`.replace(/^\//, '/'), { credentials: 'include' });
+      const res = await fetch(`${apiBase.replace('/','')}/api/admin/modules`.replace(/^\//, '/'), { headers: getAuthHeaders() });
       if (!res.ok) return null;
       const data = await res.json();
       return data?.modules ?? null;
@@ -98,9 +99,8 @@ export function AdminPanelPage() {
     mutationFn: async ({ moduleId, isEnabled }: { moduleId: string; isEnabled: boolean }) => {
       const res = await fetch(`${apiBase.replace('/','')}/api/admin/modules/${moduleId}`.replace(/^\//, '/'), {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isEnabled }),
-        credentials: 'include',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ isEnabled })
       });
       return res.json();
     },
@@ -121,7 +121,7 @@ export function AdminPanelPage() {
   const { data: adminRestaurantsData } = useQuery({
     queryKey: ['admin-restaurants'],
     queryFn: async () => {
-      const res = await fetch('/api/restaurants?limit=100', { credentials: 'include' });
+      const res = await fetch('/api/restaurants?limit=100', { headers: getAuthHeaders() });
       if (!res.ok) return null;
       const data = await res.json();
       return data?.restaurants ?? data ?? null;
@@ -133,7 +133,7 @@ export function AdminPanelPage() {
   const { data: adminUsersData } = useQuery({
     queryKey: ['admin-users'],
     queryFn: async () => {
-      const res = await fetch('/api/admin/users?limit=100', { credentials: 'include' });
+      const res = await fetch('/api/admin/users?limit=100', { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -145,7 +145,7 @@ export function AdminPanelPage() {
   const { data: adminBookingsData } = useQuery({
     queryKey: ['admin-bookings'],
     queryFn: async () => {
-      const res = await fetch('/api/admin/bookings?limit=100', { credentials: 'include' });
+      const res = await fetch('/api/admin/bookings?limit=100', { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -157,7 +157,7 @@ export function AdminPanelPage() {
   const { data: adminReviewsData } = useQuery({
     queryKey: ['admin-reviews'],
     queryFn: async () => {
-      const res = await fetch('/api/reviews?limit=50', { credentials: 'include' });
+      const res = await fetch('/api/reviews?limit=50', { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -174,7 +174,7 @@ export function AdminPanelPage() {
   const { data: adminOffersData, refetch: refetchOffers } = useQuery({
     queryKey: ['admin-offers'],
     queryFn: async () => {
-      const res = await fetch('/api/admin/offers', { credentials: 'include' });
+      const res = await fetch('/api/admin/offers', { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -185,7 +185,7 @@ export function AdminPanelPage() {
   const { data: referralData } = useQuery({
     queryKey: ['admin-referrals'],
     queryFn: async () => {
-      const res = await fetch('/api/admin/referrals', { credentials: 'include' });
+      const res = await fetch('/api/admin/referrals', { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -209,9 +209,8 @@ export function AdminPanelPage() {
     mutationFn: async ({ id, isActive }: { id: number; isActive: boolean }) => {
       const res = await fetch(`/api/admin/offers/${id}/toggle`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isActive }),
-        credentials: 'include',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ isActive })
       });
       return res.json();
     },
@@ -224,9 +223,8 @@ export function AdminPanelPage() {
     mutationFn: async ({ id, commissionOverridePercent, paymentModel, adminNotes }: any) => {
       const res = await fetch(`/api/admin/offers/${id}/approve`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ commissionOverridePercent, paymentModel, adminNotes }),
-        credentials: 'include',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ commissionOverridePercent, paymentModel, adminNotes })
       });
       return res.json();
     },
@@ -237,9 +235,8 @@ export function AdminPanelPage() {
     mutationFn: async ({ id, adminNotes }: any) => {
       const res = await fetch(`/api/admin/offers/${id}/reject`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ adminNotes }),
-        credentials: 'include',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ adminNotes })
       });
       return res.json();
     },
@@ -250,9 +247,8 @@ export function AdminPanelPage() {
     mutationFn: async ({ id, adminNotes }: any) => {
       const res = await fetch(`/api/admin/offers/${id}/request-revision`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ adminNotes }),
-        credentials: 'include',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ adminNotes })
       });
       return res.json();
     },
@@ -262,7 +258,7 @@ export function AdminPanelPage() {
   const { data: contractsData, refetch: refetchContracts } = useQuery({
     queryKey: ['admin-contracts'],
     queryFn: async () => {
-      const res = await fetch('/api/admin/contracts', { credentials: 'include' });
+      const res = await fetch('/api/admin/contracts', { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -274,7 +270,7 @@ export function AdminPanelPage() {
   const { data: transactionsData } = useQuery({
     queryKey: ['admin-transactions'],
     queryFn: async () => {
-      const res = await fetch('/api/admin/transactions', { credentials: 'include' });
+      const res = await fetch('/api/admin/transactions', { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -286,7 +282,7 @@ export function AdminPanelPage() {
   const { data: invoicesData } = useQuery({
     queryKey: ['admin-invoices'],
     queryFn: async () => {
-      const res = await fetch('/api/admin/invoices', { credentials: 'include' });
+      const res = await fetch('/api/admin/invoices', { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -298,7 +294,7 @@ export function AdminPanelPage() {
   const { data: messagesData, refetch: refetchMessages } = useQuery({
     queryKey: ['admin-messages'],
     queryFn: async () => {
-      const res = await fetch('/api/admin/messages', { credentials: 'include' });
+      const res = await fetch('/api/admin/messages', { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -310,7 +306,7 @@ export function AdminPanelPage() {
   const { data: registrationsData, refetch: refetchRegistrations } = useQuery({
     queryKey: ['admin-registrations'],
     queryFn: async () => {
-      const res = await fetch('/api/admin/registrations?status=all', { credentials: 'include' });
+      const res = await fetch('/api/admin/registrations?status=all', { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -327,9 +323,8 @@ export function AdminPanelPage() {
     mutationFn: async (body: any) => {
       const res = await fetch('/api/admin/contracts', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-        credentials: 'include',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(body)
       });
       return res.json();
     },
@@ -340,9 +335,8 @@ export function AdminPanelPage() {
     mutationFn: async ({ id, status }: { id: number; status: string }) => {
       const res = await fetch(`/api/admin/contracts/${id}/status`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
-        credentials: 'include',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ status })
       });
       return res.json();
     },
@@ -356,9 +350,8 @@ export function AdminPanelPage() {
     mutationFn: async (body: any) => {
       const res = await fetch('/api/admin/messages', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-        credentials: 'include',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(body)
       });
       return res.json();
     },
@@ -368,7 +361,7 @@ export function AdminPanelPage() {
   const { data: campaignsData, refetch: refetchCampaigns } = useQuery({
     queryKey: ['admin-campaigns'],
     queryFn: async () => {
-      const res = await fetch('/api/campaigns?status=submitted&limit=50', { credentials: 'include' });
+      const res = await fetch('/api/campaigns?status=submitted&limit=50', { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -380,7 +373,7 @@ export function AdminPanelPage() {
   const { data: promoCodesData, refetch: refetchPromoCodes } = useQuery({
     queryKey: ['admin-promo-codes'],
     queryFn: async () => {
-      const res = await fetch('/api/promo-codes', { credentials: 'include' });
+      const res = await fetch('/api/promo-codes', { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -392,7 +385,7 @@ export function AdminPanelPage() {
   const { data: recentReviewsData } = useQuery({
     queryKey: ['admin-recent-reviews-overview'],
     queryFn: async () => {
-      const res = await fetch('/api/reviews?limit=20', { credentials: 'include' });
+      const res = await fetch('/api/reviews?limit=20', { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -403,7 +396,7 @@ export function AdminPanelPage() {
   const { data: settlementSummary } = useQuery({
     queryKey: ['admin-settlement-summary'],
     queryFn: async () => {
-      const res = await fetch('/api/admin/transactions?status=pending&limit=200', { credentials: 'include' });
+      const res = await fetch('/api/admin/transactions?status=pending&limit=200', { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -661,7 +654,7 @@ export function AdminPanelPage() {
                   const handleAppAction = async (status: string) => {
                     await fetch(`/api/admin/registrations/${r.id}`, {
                       method: 'PATCH',
-                      headers: { 'Content-Type': 'application/json' },
+                      headers: getAuthHeaders(),
                       body: JSON.stringify({ status }),
                     });
                     refetchRegistrations();
@@ -1967,11 +1960,11 @@ export function AdminPanelPage() {
                         <td className="px-5 py-4 text-end">
                           <div className="flex items-center justify-end gap-2">
                             <button
-                              onClick={() => fetch(`/api/campaigns/${campaign.id}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'live' }), credentials: 'include' }).then(() => refetchCampaigns())}
+                              onClick={() => fetch(`/api/campaigns/${campaign.id}/status`, { method: 'PATCH', headers: getAuthHeaders(), body: JSON.stringify({ status: 'live' }) }).then(() => refetchCampaigns())}
                               className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-lg font-semibold hover:bg-green-200 transition-colors"
                             >Approve</button>
                             <button
-                              onClick={() => fetch(`/api/campaigns/${campaign.id}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'rejected' }), credentials: 'include' }).then(() => refetchCampaigns())}
+                              onClick={() => fetch(`/api/campaigns/${campaign.id}/status`, { method: 'PATCH', headers: getAuthHeaders(), body: JSON.stringify({ status: 'rejected' }) }).then(() => refetchCampaigns())}
                               className="text-xs bg-red-100 text-red-700 px-3 py-1 rounded-lg font-semibold hover:bg-red-200 transition-colors"
                             >Reject</button>
                           </div>
@@ -1996,9 +1989,8 @@ export function AdminPanelPage() {
                   const discountValue = prompt('Discount value (e.g. 20 for 20%):') ?? '20';
                   fetch('/api/promo-codes', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ code: code.toUpperCase(), discountType, discountValue: parseFloat(discountValue), isActive: true, usageLimit: 100, timesUsed: 0 }),
-                    credentials: 'include',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ code: code.toUpperCase(), discountType, discountValue: parseFloat(discountValue), isActive: true, usageLimit: 100, timesUsed: 0 })
                   }).then(() => refetchPromoCodes());
                 }}><Plus className="w-4 h-4 me-2" /> Create Promo Code</Button>
               </div>
@@ -2038,9 +2030,8 @@ export function AdminPanelPage() {
                           <button
                             onClick={() => fetch(`/api/promo-codes/${promo.id}`, {
                               method: 'PATCH',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ isActive: !promo.isActive }),
-                              credentials: 'include',
+                              headers: getAuthHeaders(),
+                              body: JSON.stringify({ isActive: !promo.isActive })
                             }).then(() => refetchPromoCodes())}
                             className="text-xs bg-secondary text-foreground px-3 py-1 rounded-lg font-semibold hover:bg-secondary/80 transition-colors"
                           >{promo.isActive ? 'Deactivate' : 'Activate'}</button>

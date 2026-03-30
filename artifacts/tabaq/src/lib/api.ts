@@ -1,16 +1,30 @@
+const TOKEN_KEY = "tabaq_token";
+
+export function getToken(): string | null {
+  try { return localStorage.getItem(TOKEN_KEY); } catch { return null; }
+}
+
+export function getAuthHeaders(extraHeaders?: Record<string, string>): HeadersInit {
+  const token = getToken();
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(extraHeaders ?? {}),
+  };
+}
+
 /**
  * Centralized API fetch utility.
- * Automatically includes credentials and throws on non-OK responses.
+ * Automatically includes JWT Bearer token and throws on non-OK responses.
  */
 export async function apiFetch<T = unknown>(
   path: string,
   options?: RequestInit,
 ): Promise<T> {
   const res = await fetch(path, {
-    credentials: 'include',
     ...options,
     headers: {
-      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
       ...(options?.headers ?? {}),
     },
   });

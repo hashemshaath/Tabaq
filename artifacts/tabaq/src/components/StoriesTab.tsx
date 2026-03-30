@@ -5,6 +5,7 @@ import { useLanguage } from '@/hooks/use-language';
 import { useAuth } from '@/context/AuthContext';
 import { Link } from 'wouter';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getAuthHeaders } from '@/lib/api';
 
 const API_BASE = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
 
@@ -99,8 +100,7 @@ function SubmitStoryForm({ restaurantId, onSuccess, onCancel }: {
     mutationFn: async () => {
       const res = await fetch(`${API_BASE}/api/restaurants/${restaurantId}/stories`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${(user as any)?.token || ''}` },
-        credentials: 'include',
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           mediaUrl,
           mediaType,
@@ -199,7 +199,6 @@ export function StoriesTab({ restaurantId }: { restaurantId: number }) {
     queryKey: ['restaurant-stories', restaurantId],
     queryFn: async () => {
       const res = await fetch(`${API_BASE}/api/restaurants/${restaurantId}/stories`, {
-        credentials: 'include',
       });
       if (!res.ok) return [];
       const data = await res.json();

@@ -41,7 +41,6 @@ export function SignInPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
-        credentials: 'include',
       });
       const data = await res.json();
       if (!res.ok) { setError(data.message || t('Something went wrong', 'حدث خطأ ما')); return; }
@@ -84,7 +83,6 @@ export function SignInPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
-        credentials: 'include',
       });
       const data = await res.json();
       if (!res.ok) {

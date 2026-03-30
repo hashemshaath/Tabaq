@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getAuthHeaders } from '@/lib/api';
 import { useLanguage } from '@/hooks/use-language';
 import { Link } from 'wouter';
 import { useAuth } from '@/context/AuthContext';
@@ -59,8 +60,7 @@ function UsernameSection() {
     try {
       const res = await fetch('/api/me/username', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers: getAuthHeaders(),
         body: JSON.stringify({ username: trimmed }),
       });
       const data = await res.json();
@@ -256,7 +256,7 @@ export function UserDashboardPage() {
   });
   const { data: vouchersData } = useQuery({
     queryKey: ['vouchers'],
-    queryFn: () => fetch('/api/vouchers', { credentials: 'include' }).then(r => r.ok ? r.json() : null),
+    queryFn: () => fetch('/api/vouchers', { headers: getAuthHeaders() }).then(r => r.ok ? r.json() : null),
     retry: false,
   });
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { getAuthHeaders } from '@/lib/api';
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -117,9 +118,8 @@ export function ProfilePage() {
     try {
       const res = await fetch("/api/me/username", {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ username: usernameInput.trim().toLowerCase() }),
-        credentials: "include",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ username: usernameInput.trim().toLowerCase() })
       });
       if (res.ok) {
         setUsernameSaved(true);

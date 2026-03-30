@@ -132,30 +132,36 @@ function groupByDate(notifs: Notification[], lang: string) {
 export default function NotificationsPage() {
   const { lang } = useLanguage();
   const t = (en: string, ar: string) => lang === 'ar' ? ar : en;
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const [filterTab, setFilterTab] = useState('all');
-  const [notifications, setNotifications] = useState<Notification[]>(MOCK_NOTIFICATIONS);
+  const [overrides, setOverrides] = useState<Record<number, Partial<Notification>>>({});
+  const [dismissed, setDismissed] = useState<Set<number>>(new Set());
 
-  const { data: liveData } = useQuery({
-    queryKey: ['notifications'],
+  const apiBase = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
+
+  const { data: liveData, isLoading: notifLoading } = useQuery({
+    queryKey: ['notifications', token],
     queryFn: async () => {
-      const res = await fetch('/api/notifications', { credentials: 'include' });
+      const res = await fetch(`${apiBase}/api/notifications`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       if (!res.ok) return null;
       return res.json();
     },
-    enabled: !!user,
+    enabled: !!user && !!token,
     staleTime: 30000,
   });
 
-  useEffect(() => {
-    if (liveData?.notifications?.length) {
-      setNotifications(liveData.notifications as Notification[]);
-    }
-  }, [liveData]);
+  const rawNotifications: Notification[] = liveData?.notifications?.length
+    ? (liveData.notifications as Notification[])
+    : user ? [] : MOCK_NOTIFICATIONS;
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const notifications = rawNotifications.map(n => ({ ...n, ...(overrides[n.id] ?? {}) }));
+
+  const unreadCount = notifications.filter(n => !n.read && !dismissed.has(n.id)).length;
 
   const filtered = notifications.filter(n => {
+    if (dismissed.has(n.id)) return false;
     if (filterTab === 'all') return true;
     if (filterTab === 'social') return ['new_follower', 'review_response', 'achievement'].includes(n.type);
     return n.type === filterTab;
@@ -163,9 +169,13 @@ export default function NotificationsPage() {
 
   const grouped = groupByDate(filtered, lang);
 
-  const markAllRead = () => setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-  const markRead = (id: number) => setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-  const dismiss = (id: number) => setNotifications(prev => prev.filter(n => n.id !== id));
+  const markAllRead = () => setOverrides(prev => {
+    const next = { ...prev };
+    notifications.forEach(n => { next[n.id] = { ...next[n.id], read: true }; });
+    return next;
+  });
+  const markRead = (id: number) => setOverrides(prev => ({ ...prev, [id]: { ...prev[id], read: true } }));
+  const dismiss = (id: number) => setDismissed(prev => new Set([...prev, id]));
 
   if (!user) {
     return (
@@ -236,7 +246,20 @@ export default function NotificationsPage() {
         </div>
 
         {/* Grouped notifications */}
-        {Object.keys(grouped).length === 0 ? (
+        {notifLoading ? (
+          <div className="space-y-3">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-start gap-4 p-4 rounded-2xl border border-border bg-card animate-pulse">
+                <div className="w-12 h-12 rounded-2xl bg-muted shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 bg-muted rounded w-3/4" />
+                  <div className="h-3 bg-muted rounded w-full" />
+                  <div className="h-3 bg-muted rounded w-1/3" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : Object.keys(grouped).length === 0 ? (
           <div className="text-center py-20">
             <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
               <Bell className="w-8 h-8 text-muted-foreground/30" />
@@ -321,10 +344,10 @@ export default function NotificationsPage() {
               </div>
             ))}
 
-            {notifications.length > 0 && (
+            {filtered.length > 0 && (
               <div className="text-center pt-4 pb-8">
                 <button
-                  onClick={() => setNotifications([])}
+                  onClick={() => setDismissed(new Set(notifications.map(n => n.id)))}
                   className="text-xs text-muted-foreground hover:text-destructive transition-colors flex items-center gap-1.5 mx-auto"
                 >
                   <Trash2 className="w-3.5 h-3.5" />

@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useLanguage } from '@/hooks/use-language';
 import { useAuth } from '@/context/AuthContext';
 import { Link } from 'wouter';
+import { getAuthHeaders } from '@/lib/api';
 
 const API_BASE = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
 
@@ -133,8 +134,7 @@ export function InlineReviewComposer({
     try {
       const res = await fetch(`${API_BASE}/api/reviews`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers: getAuthHeaders(),
         body: JSON.stringify(body),
       });
       if (!res.ok) {
