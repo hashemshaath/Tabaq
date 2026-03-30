@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLanguage } from '@/hooks/use-language';
 import { Link, useLocation } from 'wouter';
 import {
   Search, ChevronRight, Star, TrendingUp, Trophy, MapPin,
   Flame, Layers, ArrowRight, CalendarDays, MessageSquare,
   Utensils, Sparkles, BookOpen, Tag, Award, Clock, Zap,
-  Heart, Navigation, Percent, BadgeCheck
+  Heart, Navigation, Percent, BadgeCheck, ScanQrCode, CalendarCheck, BadgeDollarSign
 } from 'lucide-react';
 import { RestaurantCard } from '@/components/RestaurantCard';
 import { getRestaurantAwards, COLLECTIONS } from '@/lib/awards';
@@ -13,6 +13,10 @@ import { getRestaurantAwards, COLLECTIONS } from '@/lib/awards';
 // ── Images ─────────────────────────────────────────────────────────
 const HERO_IMGS = [
   'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=1920&h=1080&fit=crop',
+  'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1920&h=1080&fit=crop',
+  'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1920&h=1080&fit=crop',
+  'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1920&h=1080&fit=crop',
+  'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=1920&h=1080&fit=crop',
 ];
 
 const OCCASION_META: Record<string, { img: string; gradient: string }> = {
@@ -127,6 +131,19 @@ export function HomePage() {
   const { t, lang } = useLanguage();
   const [, setLocation] = useLocation();
   const [query, setQuery] = useState('');
+  const [heroSlide, setHeroSlide] = useState(0);
+  const [heroPrev, setHeroPrev] = useState<number | null>(null);
+  const [heroFading, setHeroFading] = useState(false);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setHeroPrev(heroSlide);
+      setHeroFading(true);
+      setHeroSlide(s => (s + 1) % HERO_IMGS.length);
+      setTimeout(() => { setHeroPrev(null); setHeroFading(false); }, 1200);
+    }, 6000);
+    return () => clearInterval(interval);
+  }, [heroSlide]);
 
   const featured    = useApi<any[]>('/api/restaurants/featured?limit=8');
   const trending    = useApi<any[]>('/api/dishes/trending?limit=6');
@@ -152,13 +169,36 @@ export function HomePage() {
 
       {/* ══ HERO ══════════════════════════════════════════════════ */}
       <section className="relative h-[88vh] min-h-[580px] max-h-[800px] flex flex-col overflow-hidden">
-        {/* Background image */}
+        {/* Rotating background images */}
         <div className="absolute inset-0">
-          <img src={HERO_IMGS[0]} alt="Fine dining" className="w-full h-full object-cover" />
+          {/* Current slide */}
+          <img
+            key={heroSlide}
+            src={HERO_IMGS[heroSlide]}
+            alt="Fine dining"
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{ animation: 'heroZoom 8s ease-out forwards' }}
+          />
+          {/* Previous slide fading out */}
+          {heroPrev !== null && (
+            <img
+              key={`prev-${heroPrev}`}
+              src={HERO_IMGS[heroPrev]}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover"
+              style={{ opacity: heroFading ? 0 : 1, transition: 'opacity 1.2s ease-in-out', zIndex: 1 }}
+            />
+          )}
           {/* Left-to-right radial overlay + bottom fade */}
-          <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-black/20" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-black/20" style={{ zIndex: 2 }} />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" style={{ zIndex: 2 }} />
         </div>
+        <style>{`
+          @keyframes heroZoom {
+            from { transform: scale(1.05); }
+            to   { transform: scale(1); }
+          }
+        `}</style>
 
         {/* Hero content — left-aligned, vertically centered */}
         <div className="relative z-10 flex-1 flex items-center">
@@ -172,7 +212,7 @@ export function HomePage() {
 
               {/* Heading */}
               <h1 className="text-5xl md:text-[4.25rem] font-extrabold text-white leading-[1.08] mb-5 whitespace-pre-line">
-                {t('Discover\nExceptional\nDining', 'اكتشف\nتجارب طعام\naستثنائية')}
+                {t('Discover\nExceptional\nDining', 'اكتشف\nتجارب طعام\nاستثنائية')}
               </h1>
               <p className="text-base text-white/70 mb-7 max-w-md leading-relaxed">
                 {t('Find, book, and review the finest restaurants across Saudi Arabia — all in one place.', 'ابحث واحجز وقيّم أفضل المطاعم في المملكة العربية السعودية — كل شيء في مكان واحد.')}
@@ -208,6 +248,18 @@ export function HomePage() {
                   >
                     {term}
                   </button>
+                ))}
+              </div>
+
+              {/* Slide dots */}
+              <div className="flex items-center gap-2 mt-6">
+                {HERO_IMGS.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => { setHeroPrev(heroSlide); setHeroFading(true); setHeroSlide(i); setTimeout(() => { setHeroPrev(null); setHeroFading(false); }, 1200); }}
+                    className={`rounded-full transition-all duration-500 ${i === heroSlide ? 'w-6 h-2 bg-white' : 'w-2 h-2 bg-white/35 hover:bg-white/60'}`}
+                    aria-label={`Slide ${i + 1}`}
+                  />
                 ))}
               </div>
             </div>
@@ -290,6 +342,62 @@ export function HomePage() {
           </div>
         </section>
       )}
+
+      {/* ══ HOW IT WORKS ═════════════════════════════════════════ */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-14">
+        <div className="bg-gradient-to-br from-slate-50 to-slate-100/60 dark:from-slate-900/50 dark:to-slate-800/30 rounded-3xl p-8 md:p-12 border border-border/40">
+          <div className="text-center mb-10">
+            <div className="flex items-center justify-center gap-1.5 mb-2">
+              <Sparkles className="w-3.5 h-3.5 text-primary" />
+              <span className="text-primary font-medium text-xs tracking-[0.05em] uppercase">{t('Simple & Fast', 'بسيط وسريع')}</span>
+            </div>
+            <h2 className="text-xl md:text-2xl font-bold text-foreground">{t('How Tabaq Works', 'كيف يعمل طبق')}</h2>
+            <p className="text-muted-foreground text-sm mt-2">{t('From discovery to your table in three easy steps', 'من الاكتشاف إلى طاولتك في ثلاث خطوات سهلة')}</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-10 relative">
+            {/* Connector lines (desktop only) */}
+            <div className="hidden md:block absolute top-8 start-1/3 end-1/3 h-px bg-gradient-to-r from-border via-primary/30 to-border" />
+            {[
+              {
+                step: '01',
+                icon: Search,
+                color: 'from-blue-500 to-cyan-500',
+                titleEn: 'Discover',
+                titleAr: 'اكتشف',
+                descEn: 'Browse restaurants, read reviews, and explore exclusive deals tailored to your taste.',
+                descAr: 'تصفح المطاعم، اقرأ التقييمات، واستكشف العروض الحصرية المناسبة لذوقك.',
+              },
+              {
+                step: '02',
+                icon: CalendarCheck,
+                color: 'from-violet-500 to-purple-600',
+                titleEn: 'Book or Buy',
+                titleAr: 'احجز أو اشتر',
+                descEn: 'Reserve a table instantly or purchase a deal voucher at a discounted price.',
+                descAr: 'احجز طاولة فوراً أو اشتر قسيمة عرض بسعر مخفض.',
+              },
+              {
+                step: '03',
+                icon: ScanQrCode,
+                color: 'from-emerald-500 to-teal-600',
+                titleEn: 'Dine & Enjoy',
+                titleAr: 'تناول واستمتع',
+                descEn: 'Show your QR voucher at the restaurant, enjoy your meal, and earn reward points.',
+                descAr: 'أظهر قسيمة QR في المطعم، استمتع بوجبتك، واكسب نقاط مكافآت.',
+              },
+            ].map(({ step, icon: Icon, color, titleEn, titleAr, descEn, descAr }) => (
+              <div key={step} className="flex flex-col items-center text-center relative">
+                <div className={`relative w-16 h-16 rounded-2xl bg-gradient-to-br ${color} flex items-center justify-center shadow-lg mb-4`}>
+                  <Icon className="w-7 h-7 text-white" />
+                  <span className="absolute -top-2 -end-2 w-6 h-6 bg-background border-2 border-border rounded-full text-[10px] font-black text-foreground flex items-center justify-center">{step}</span>
+                </div>
+                <h3 className="font-bold text-foreground text-base mb-2">{t(titleEn, titleAr)}</h3>
+                <p className="text-muted-foreground text-sm leading-relaxed max-w-xs">{t(descEn, descAr)}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* ══ CUISINE TYPES ════════════════════════════════════════ */}
       {!categories.loading && (categories.data || []).length > 0 && (
@@ -688,42 +796,52 @@ export function HomePage() {
                   const restName = lang === 'ar' ? deal.restaurantNameAr : deal.restaurantNameEn;
                   return (
                     <Link key={deal.id} href="/offers" className="group block">
-                      <div className="bg-card rounded-xl overflow-hidden border border-border shadow-sm group-hover:shadow-lg group-hover:-translate-y-0.5 transition-all duration-200">
+                      <div className="bg-white dark:bg-card rounded-2xl overflow-hidden shadow-[0_2px_12px_rgb(0,0,0,0.08)] group-hover:shadow-[0_8px_28px_rgb(0,0,0,0.18)] group-hover:-translate-y-1 transition-all duration-300 border border-white/60 dark:border-border">
                         {/* Image */}
                         <div className="relative overflow-hidden bg-muted" style={{ aspectRatio: '4/3' }}>
-                          <img src={deal.imageUrl} alt={title} className="w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-500" />
-                          <button className="absolute top-2.5 end-2.5 w-7 h-7 bg-white/90 rounded-full flex items-center justify-center hover:bg-white shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Heart className="w-3.5 h-3.5 text-gray-500" />
+                          <img src={deal.imageUrl} alt={title} className="w-full h-full object-cover group-hover:scale-[1.06] transition-transform duration-500" />
+                          {/* Discount badge over image */}
+                          <div className="absolute top-2.5 start-2.5 bg-emerald-600 text-white text-xs font-black px-2 py-1 rounded-lg shadow-md">
+                            -{deal.discountPercent}%
+                          </div>
+                          {/* Heart button — always visible on mobile, fade in on hover desktop */}
+                          <button className="absolute top-2.5 end-2.5 w-8 h-8 bg-white/95 dark:bg-white/90 rounded-full flex items-center justify-center shadow-md hover:scale-110 transition-all">
+                            <Heart className="w-4 h-4 text-rose-400" />
                           </button>
+                          {/* Bottom gradient for restaurant name overlay */}
+                          <div className="absolute bottom-0 inset-x-0 h-12 bg-gradient-to-t from-black/70 to-transparent" />
+                          <div className="absolute bottom-2 start-2.5 flex items-center gap-1.5">
+                            <span className="text-white text-xs font-semibold truncate max-w-[160px] drop-shadow">{restName}</span>
+                            {deal.locationsCount > 1 && (
+                              <span className="text-white/70 text-[10px] shrink-0">· {deal.locationsCount} {t('branches', 'فروع')}</span>
+                            )}
+                          </div>
                         </div>
                         {/* Info */}
-                        <div className="p-3">
-                          <div className="flex items-center gap-1 mb-1">
-                            <span className="text-xs font-medium text-foreground truncate">{restName}</span>
-                            {deal.locationsCount > 1 && <span className="text-[11px] text-muted-foreground shrink-0">({deal.locationsCount} {t('Loc', 'فروع')})</span>}
-                          </div>
-                          <h3 className="font-bold text-foreground text-xs leading-snug line-clamp-2 mb-1.5">{title}</h3>
+                        <div className="p-3.5">
+                          <h3 className="font-bold text-foreground text-xs leading-snug line-clamp-2 mb-2">{title}</h3>
                           {deal.address && (
-                            <div className="flex items-center gap-1 text-[11px] text-muted-foreground mb-1.5 truncate">
+                            <div className="flex items-center gap-1 text-[11px] text-muted-foreground mb-2 truncate">
                               <MapPin className="w-2.5 h-2.5 shrink-0" />
                               <span className="truncate">{deal.address}</span>
-                              {deal.distanceKm && <><span className="shrink-0 mx-0.5">·</span><span className="shrink-0">{deal.distanceKm}km</span></>}
+                              {deal.distanceKm && <><span className="shrink-0 mx-0.5">·</span><span className="shrink-0">{deal.distanceKm} km</span></>}
                             </div>
                           )}
-                          <div className="flex items-center gap-1 mb-1.5">
+                          <div className="flex items-center gap-1 mb-3">
                             {[1,2,3,4,5].map(s => <Star key={s} className={`w-3 h-3 ${s <= Math.floor(deal.rating) ? 'fill-amber-400 text-amber-400' : 'fill-muted text-muted-foreground/20'}`} />)}
                             <span className="text-[11px] font-bold ms-0.5">{deal.rating}</span>
                             <span className="text-[11px] text-muted-foreground">({deal.reviews})</span>
                           </div>
-                          <div className="flex items-center gap-1.5 mb-0.5">
-                            <span className="text-[11px] text-muted-foreground line-through">{deal.currency}{deal.originalPrice}</span>
-                            <span className="text-xs font-bold text-foreground">{deal.currency}{deal.discountedPrice}</span>
-                            <span className="text-[11px] font-bold text-white bg-[#2e7d32] px-1.5 py-0.5 rounded">-{deal.discountPercent}%</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <span className="text-sm font-black text-foreground">{deal.currency}{deal.promoPrice}</span>
-                            <span className="text-[11px] text-muted-foreground">{t('with', 'بكود')}</span>
-                            <code className="text-[11px] font-bold text-primary">TABAQ10</code>
+                          {/* Price row */}
+                          <div className="flex items-end justify-between pt-2.5 border-t border-border/50">
+                            <div>
+                              <span className="text-[11px] text-muted-foreground line-through block leading-none mb-0.5">{deal.currency} {deal.originalPrice}</span>
+                              <span className="text-base font-black text-foreground">{deal.currency} {deal.discountedPrice}</span>
+                            </div>
+                            <div className="text-end">
+                              <span className="text-[10px] text-muted-foreground block leading-none mb-0.5">{t('with TABAQ10', 'بكود TABAQ10')}</span>
+                              <span className="text-sm font-black text-emerald-600">{deal.currency} {deal.promoPrice}</span>
+                            </div>
                           </div>
                         </div>
                       </div>
