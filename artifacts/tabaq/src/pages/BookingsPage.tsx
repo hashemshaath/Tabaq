@@ -6,7 +6,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getAuthHeaders } from '@/lib/api';
 import {
   CalendarDays, Clock, Users, CheckCircle2, XCircle, AlertCircle,
-  QrCode, ChevronDown, ChevronUp, MapPin, LogIn, Sparkles, Utensils
+  QrCode, ChevronDown, ChevronUp, MapPin, Sparkles, Utensils
 } from 'lucide-react';
 import { Link } from 'wouter';
 import { Button } from '@/components/ui/button';
@@ -312,6 +312,44 @@ function ExperienceBookingCard({ booking, lang, t }: {
   );
 }
 
+const MOCK_BOOKINGS: Booking[] = [
+  {
+    id: 101, restaurantId: 3, restaurantNameEn: 'Nobu Riyadh', restaurantNameAr: 'نوبو الرياض',
+    restaurantCoverImageUrl: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=600&h=160&fit=crop',
+    date: '2026-05-10', time: '20:00', partySize: 4,
+    status: 'confirmed', referenceCode: 'TBQ-BKG-2026-00009',
+    specialRequests: 'Window seat preferred. Anniversary dinner — please arrange flowers.',
+  },
+  {
+    id: 102, restaurantId: 2, restaurantNameEn: 'Sushi Sama', restaurantNameAr: 'سوشي ساما',
+    restaurantCoverImageUrl: 'https://images.unsplash.com/photo-1553621042-f6e147245754?w=600&h=160&fit=crop',
+    date: '2026-04-12', time: '20:00', partySize: 2,
+    status: 'confirmed', referenceCode: 'TBQ-BKG-2026-00002',
+    specialRequests: undefined,
+  },
+  {
+    id: 103, restaurantId: 1, restaurantNameEn: 'Qariyat Najd', restaurantNameAr: 'قرية نجد',
+    restaurantCoverImageUrl: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&h=160&fit=crop',
+    date: '2026-04-05', time: '19:30', partySize: 4,
+    status: 'confirmed', referenceCode: 'TBQ-BKG-2026-00001',
+    specialRequests: 'High chair needed for toddler.',
+  },
+  {
+    id: 104, restaurantId: 4, restaurantNameEn: 'Lucine', restaurantNameAr: 'لوسين',
+    restaurantCoverImageUrl: 'https://images.unsplash.com/photo-1559339352-11d035aa65de?w=600&h=160&fit=crop',
+    date: '2026-03-15', time: '21:00', partySize: 6,
+    status: 'completed', referenceCode: 'TBQ-BKG-2026-00008',
+    specialRequests: undefined,
+  },
+  {
+    id: 105, restaurantId: 5, restaurantNameEn: 'Reem Al-Bawadi', restaurantNameAr: 'ريم البوادي',
+    restaurantCoverImageUrl: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600&h=160&fit=crop',
+    date: '2026-03-01', time: '13:00', partySize: 3,
+    status: 'completed', referenceCode: 'TBQ-BKG-2026-00005',
+    specialRequests: 'Vegetarian menu please.',
+  },
+];
+
 export function BookingsPage() {
   const { t, lang } = useLanguage();
   const { user, isLoading: authLoading } = useAuth();
@@ -345,13 +383,6 @@ export function BookingsPage() {
     cancelBooking.mutate({ bookingId, data: { status: 'cancelled' } });
   };
 
-  const today = new Date().toISOString().split('T')[0];
-  const allBookings = (data?.bookings ?? []) as Booking[];
-  const upcoming = allBookings.filter(b => b.status !== 'cancelled' && b.status !== 'completed' && b.date >= today);
-  const past = allBookings.filter(b => b.status === 'cancelled' || b.status === 'completed' || b.date < today);
-
-  const displayedBookings = activeTab === 'upcoming' ? upcoming : past;
-
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -360,28 +391,13 @@ export function BookingsPage() {
     );
   }
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-background pb-20 flex flex-col items-center justify-center gap-6 px-4 text-center" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
-        <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-2">
-          <CalendarDays className="w-10 h-10 text-primary/60" />
-        </div>
-        <h2 className="text-2xl font-extrabold text-foreground">{t('Sign in to view your reservations', 'سجّل دخولك لرؤية حجوزاتك')}</h2>
-        <p className="text-muted-foreground max-w-sm">{t('Manage all your upcoming and past table bookings in one place.', 'أدر جميع حجوزاتك القادمة والسابقة في مكان واحد.')}</p>
-        <Link href="/signin">
-          <Button className="gap-2 rounded-xl px-8 h-12 text-base font-semibold shadow-lg shadow-primary/20">
-            <LogIn className="w-5 h-5" />
-            {t('Sign In', 'تسجيل الدخول')}
-          </Button>
-        </Link>
-        <Link href="/restaurants">
-          <Button variant="outline" className="rounded-xl px-6">
-            {t('Explore Restaurants', 'استكشف المطاعم')}
-          </Button>
-        </Link>
-      </div>
-    );
-  }
+  const today = new Date().toISOString().split('T')[0];
+  const rawBookings = (data?.bookings ?? []) as Booking[];
+  const allBookings: Booking[] = rawBookings.length ? rawBookings : MOCK_BOOKINGS;
+  const upcoming = allBookings.filter(b => b.status !== 'cancelled' && b.status !== 'completed' && b.date >= today);
+  const past = allBookings.filter(b => b.status === 'cancelled' || b.status === 'completed' || b.date < today);
+
+  const displayedBookings = activeTab === 'upcoming' ? upcoming : past;
 
   const experienceBookings = expData?.bookings ?? [];
   const expUpcoming = experienceBookings.filter(b => b.status !== 'cancelled' && b.status !== 'completed' && (b.slotDate ?? '') >= today);
