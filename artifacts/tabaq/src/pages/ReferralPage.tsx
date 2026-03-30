@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useLanguage } from '@/hooks/use-language';
 import { useAuth } from '@/context/AuthContext';
+import { getAuthHeaders } from '@/lib/api';
 import { Link } from 'wouter';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -101,12 +102,11 @@ export function ReferralPage() {
   const [promoError, setPromoError] = useState('');
 
   const apiBase = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
-  const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
 
   const { data: referralData, isLoading: referralLoading } = useQuery({
     queryKey: ['me-referral', token],
     queryFn: async () => {
-      const res = await fetch(`${apiBase}/api/me/referral`, { headers: authHeaders });
+      const res = await fetch(`${apiBase}/api/me/referral`, { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -118,7 +118,7 @@ export function ReferralPage() {
   const { data: pointsData, isLoading: pointsLoading } = useQuery({
     queryKey: ['me-points-history', token],
     queryFn: async () => {
-      const res = await fetch(`${apiBase}/api/me/points/history?limit=30`, { headers: authHeaders });
+      const res = await fetch(`${apiBase}/api/me/points/history?limit=30`, { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -132,7 +132,7 @@ export function ReferralPage() {
       if (!user) throw new Error('not_auth');
       const res = await fetch(`${apiBase}/api/referrals/use`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders },
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ referralCode: code, newUserId: user.id }),
       });
       const body = await res.json();
@@ -461,7 +461,7 @@ export function ReferralPage() {
               </p>
             </div>
             <div className="divide-y divide-border/50">
-              {data.conversions.map((conv, i) => {
+              {data.conversions.map((conv: Conversion, i: number) => {
                 const status = getStatusMeta(conv.status);
                 return (
                   <div key={conv.id} className="flex items-center gap-3 px-5 py-3.5">

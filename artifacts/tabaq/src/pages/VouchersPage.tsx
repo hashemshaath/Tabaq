@@ -233,7 +233,7 @@ function VoucherCard({ voucher, lang, t }: {
   const style = STATUS_STYLE[voucher.status] ?? STATUS_STYLE.expired;
   const StatusIcon = style.icon;
   const isActive = ['active', 'issued', 'sold'].includes(voucher.status);
-  const isPartial = voucher.status === 'partially_redeemed';
+  const isPartial = (voucher.status as string) === 'partially_redeemed';
   const canRefund = ['active', 'issued', 'sold'].includes(voucher.status);
 
   const copyCode = () => {
@@ -243,8 +243,9 @@ function VoucherCard({ voucher, lang, t }: {
     });
   };
 
-  const statusLabel = {
+  const statusLabel = ({
     active: t('Active', 'نشطة'),
+    used: t('Used', 'مستخدمة'),
     issued: t('Active', 'نشطة'),
     sold: t('Active', 'نشطة'),
     redeemed: t('Used', 'مستخدمة'),
@@ -252,7 +253,7 @@ function VoucherCard({ voucher, lang, t }: {
     expired: t('Expired', 'منتهية'),
     refunded: t('Refunded', 'مستردة'),
     voided: t('Voided', 'ملغاة'),
-  }[voucher.status] ?? voucher.status;
+  } as Record<string, string>)[voucher.status] ?? voucher.status;
 
   return (
     <>

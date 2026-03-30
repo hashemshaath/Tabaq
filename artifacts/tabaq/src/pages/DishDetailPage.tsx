@@ -24,6 +24,9 @@ type ExtendedDish = Dish & {
   allergens?: string[];
   spiceLevel?: number;
   prepTimeMinutes?: number;
+  protein?: number;
+  carbs?: number;
+  fat?: number;
 };
 
 const ALLERGEN_MAP: Record<string, { en: string; ar: string; color: string }> = {

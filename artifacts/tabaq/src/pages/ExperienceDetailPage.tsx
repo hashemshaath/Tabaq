@@ -203,7 +203,7 @@ export function ExperienceDetailPage() {
   const expId = Number(id);
 
   const { data: experience, isLoading, isError } = useGetExperience(expId, {
-    query: { enabled: !!expId },
+    query: { enabled: !!expId } as any,
   });
 
   const [activeTab, setActiveTab] = useState<Tab>('overview');
@@ -245,19 +245,19 @@ export function ExperienceDetailPage() {
   const slotDateFrom = useMemo(() => {
     const d = new Date(selectedDate);
     d.setHours(0, 0, 0, 0);
-    return d;
+    return d.toISOString();
   }, [selectedDate]);
 
   const slotDateTo = useMemo(() => {
     const d = new Date(selectedDate);
     d.setHours(23, 59, 59, 999);
-    return d;
+    return d.toISOString();
   }, [selectedDate]);
 
   const { data: slotsData, isLoading: slotsLoading } = useListExperienceSlots(
     expId,
     { dateFrom: slotDateFrom, dateTo: slotDateTo },
-    { query: { enabled: !!expId && step === 'select' } }
+    { query: { enabled: !!expId && step === 'select' } as any }
   );
 
   const availableSlots = useMemo(
@@ -268,7 +268,7 @@ export function ExperienceDetailPage() {
   const { data: reviewsData, isLoading: reviewsLoading, refetch: refetchReviews } = useListExperienceReviews(
     expId,
     { limit: 20 },
-    { query: { enabled: !!expId && activeTab === 'reviews' } }
+    { query: { enabled: !!expId && activeTab === 'reviews' } as any }
   );
 
   const createBooking = useCreateExperienceBooking();
@@ -350,7 +350,7 @@ export function ExperienceDetailPage() {
         bookingId: booking.id,
         data: { type: paymentMode },
       });
-      setConfirmedBooking(paid);
+      setConfirmedBooking(booking);
       setStep('success');
     } catch (err: any) {
       setBookingError(

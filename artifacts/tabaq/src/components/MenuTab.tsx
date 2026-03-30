@@ -165,7 +165,7 @@ function DishCard({
               <h5 className="font-semibold text-foreground text-sm line-clamp-1 group-hover:text-primary transition-colors">{name}</h5>
               {dish.price && (
                 <span className="text-primary font-bold text-sm shrink-0 ms-1">
-                  {formatPrice(dish.price, dish.currency, lang)}
+                  {formatPrice(dish.price, dish.currency, lang as 'en' | 'ar')}
                 </span>
               )}
             </div>
@@ -202,7 +202,7 @@ function DishCard({
           />
           {dish.price && (
             <div className="absolute bottom-2 end-2 bg-black/70 backdrop-blur-sm text-white text-sm font-bold px-2.5 py-1 rounded-xl">
-              {formatPrice(dish.price, dish.currency, lang)}
+              {formatPrice(dish.price, dish.currency, lang as 'en' | 'ar')}
             </div>
           )}
           {dish.isTabaqStar && (

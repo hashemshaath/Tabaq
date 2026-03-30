@@ -505,13 +505,12 @@ function DealDetailPage({ offer, onBack }: { offer: ExtendedOffer; onBack: () =>
     purchaseVoucher.mutate({
       data: {
         offerId: offer.id,
-        quantity: qty,
         currency: offer.currency,
         giftMode,
         giftRecipientPhone: recipientPhone || undefined,
         giftRecipientEmail: recipientEmail || undefined,
         giftMessage: giftMessage || undefined,
-      },
+      } as any,
     });
   };
 

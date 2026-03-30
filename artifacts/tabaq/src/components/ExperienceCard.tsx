@@ -57,9 +57,10 @@ export function ExperienceCard({ experience, layout = 'grid' }: ExperienceCardPr
   const title = lang === 'ar' ? experience.titleAr : experience.titleEn;
   const catLabel = CATEGORY_LABELS[experience.category] ?? { en: experience.category, ar: experience.category };
   const category = lang === 'ar' ? catLabel.ar : catLabel.en;
+  const expAny = experience as any;
   const city = lang === 'ar'
-    ? (experience.cityNameAr ?? experience.city ?? '')
-    : (experience.cityNameEn ?? experience.city ?? '');
+    ? (experience.cityNameAr ?? expAny.city ?? '')
+    : (experience.cityNameEn ?? expAny.city ?? '');
   const img = getImageForExp(experience.id, experience.images);
   const duration = experience.durationMinutes ? formatDuration(experience.durationMinutes) : null;
 

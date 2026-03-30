@@ -110,7 +110,7 @@ function FoodExperiencesSection() {
   const { t } = useLanguage();
   const { data: listData, isLoading } = useListExperiences(
     { sortBy: ListExperiencesSortBy.popular, limit: 6 },
-    { query: { staleTime: 5 * 60 * 1000 } }
+    { query: { staleTime: 5 * 60 * 1000 } as any }
   );
   const experiences = listData?.experiences ?? [];
 

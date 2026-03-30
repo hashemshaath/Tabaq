@@ -191,7 +191,7 @@ function TrendingCriticsCard({ t, lang }: { t: (en: string, ar: string) => strin
         </div>
       ) : (
         <div className="space-y-3">
-          {displayCritics.map((critic, i) => (
+          {displayCritics.map((critic: (typeof displayCritics)[0], i: number) => (
             <Link key={critic.id} href="/leaderboard">
               <div className="flex items-center gap-3 hover:bg-secondary/40 rounded-xl p-1 transition-colors cursor-pointer">
                 <span className="text-xs font-black text-muted-foreground w-4 shrink-0">#{i + 1}</span>

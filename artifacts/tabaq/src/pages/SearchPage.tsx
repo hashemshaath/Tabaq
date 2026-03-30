@@ -107,7 +107,7 @@ export function SearchPage() {
   );
 
   const { data: featuredData } = useListRestaurants(
-    { sort: 'rating', limit: 6 },
+    { limit: 6 },
     { query: { queryKey: ['restaurants', 'top', 6] } }
   );
 

@@ -729,7 +729,7 @@ export function RestaurantDetailPage() {
 
             {/* Tab: Menu */}
             {activeTab === 'menu' && (
-              <MenuTab menuData={menuData} />
+              <MenuTab menuData={menuData as any} />
             )}
 
             {/* Tab: Book */}
@@ -748,7 +748,7 @@ export function RestaurantDetailPage() {
                   restaurantId={Number(id)}
                   restaurantNameEn={restaurant.nameEn}
                   restaurantNameAr={restaurant.nameAr}
-                  invalidateKey={getGetRestaurantQueryKey(Number(id))}
+                  invalidateKey={[...getGetRestaurantQueryKey(Number(id))]}
                 />
 
                 {recentReviews.length > 0 ? (

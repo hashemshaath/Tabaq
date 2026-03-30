@@ -29,7 +29,7 @@ export function GiftRedeemPage() {
     isLoading,
     isError,
   } = useGetExperienceGift(code ?? '', {
-    query: { enabled: !!code },
+    query: { enabled: !!code } as any,
   });
 
   const redeemGift = useRedeemExperienceGift();
