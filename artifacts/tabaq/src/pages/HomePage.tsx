@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '@/hooks/use-language';
 import { usePageMeta } from '@/hooks/use-page-meta';
+import { useCity } from '@/context/CityContext';
 import { Link, useLocation } from 'wouter';
 import {
   Search, ChevronRight, Star, TrendingUp, Trophy, MapPin,
@@ -8,6 +9,7 @@ import {
   Utensils, Sparkles, BookOpen, Tag, Award, Clock, Zap,
   Heart, Navigation, Percent, BadgeCheck, ScanQrCode, CalendarCheck, BadgeDollarSign,
   ChefHat,
+  X
 } from 'lucide-react';
 import { ExperienceCard } from '@/components/ExperienceCard';
 import { useListExperiences, type Experience } from '@workspace/api-client-react';
@@ -173,6 +175,7 @@ export function HomePage() {
     descriptionEn: 'Discover and book top restaurants, exclusive food experiences, and special deals across Saudi Arabia.',
     descriptionAr: 'اكتشف وأحجز أفضل المطاعم والتجارب الغذائية الحصرية والعروض المميزة في المملكة العربية السعودية.',
   }, lang);
+  const { selectedCityId, selectedCityName, selectedCityNameAr, selectedNeighborhoodId, selectedNeighborhoodName, selectedNeighborhoodNameAr, clearCity } = useCity();
   const [, setLocation] = useLocation();
   const [query, setQuery] = useState('');
   const [heroSlide, setHeroSlide] = useState(0);
@@ -189,14 +192,16 @@ export function HomePage() {
     return () => clearInterval(interval);
   }, [heroSlide]);
 
-  const featured    = useApi<any[]>('/api/restaurants/featured?limit=8');
-  const trending    = useApi<any[]>('/api/dishes/trending?limit=6');
+  const cityQuery = selectedCityId ? `&cityId=${selectedCityId}` : '';
+
+  const featured    = useApi<any[]>(`/api/restaurants/featured?limit=8${cityQuery}`);
+  const trending    = useApi<any[]>(`/api/dishes/trending?limit=6${cityQuery}`);
   const tabaqStars  = useApi<any[]>('/api/dishes/tabaq-stars?limit=6');
   const occasions   = useApi<any[]>('/api/occasions');
   const categories  = useApi<any[]>('/api/categories');
-  const topRated    = useApi<{ restaurants: any[] }>('/api/restaurants?minRating=4.5&limit=6');
-  const newest      = useApi<{ restaurants: any[] }>('/api/restaurants?limit=4&sortBy=newest');
-  const offersApi   = useApi<any>('/api/offers?limit=4');
+  const topRated    = useApi<{ restaurants: any[] }>(`/api/restaurants?minRating=4.5&limit=6${cityQuery}`);
+  const newest      = useApi<{ restaurants: any[] }>(`/api/restaurants?limit=4&sortBy=newest${cityQuery}`);
+  const offersApi   = useApi<any>(`/api/offers?limit=4${cityQuery}`);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -590,6 +595,36 @@ export function HomePage() {
       {/* ══ FOOD EXPERIENCES ═════════════════════════════════════ */}
       <FoodExperiencesSection />
 
+      {/* ══ LOCATION INDICATOR ═══════════════════════════════════ */}
+      {selectedCityId && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-6">
+          <div className="flex items-center gap-2.5 py-2.5 px-4 bg-primary/8 border border-primary/20 rounded-xl text-sm">
+            <MapPin className="w-4 h-4 text-primary shrink-0" />
+            <span className="text-foreground font-medium">
+              {t('Showing results in', 'عرض نتائج في')}{' '}
+              <span className="text-primary font-semibold">
+                {lang === 'ar' ? selectedCityNameAr : selectedCityName}
+              </span>
+              {selectedNeighborhoodId && (
+                <>
+                  <span className="text-muted-foreground mx-1">·</span>
+                  <span className="text-primary font-semibold">
+                    {lang === 'ar' ? selectedNeighborhoodNameAr : selectedNeighborhoodName}
+                  </span>
+                </>
+              )}
+            </span>
+            <button
+              onClick={clearCity}
+              className="ms-auto flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <X className="w-3.5 h-3.5" />
+              {t('Clear', 'مسح')}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ══ FEATURED RESTAURANTS ═════════════════════════════════ */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-14">
         <SectionHeader
@@ -823,18 +858,27 @@ export function HomePage() {
                 rating: 4.5, reviews: 218, address: 'Al Aqiq District', distanceKm: 7.3,
               },
             ];
-            const deals = rawOffers.length > 0
-              ? rawOffers.slice(0, 4).map((o: any) => ({
-                  id: o.id,
-                  titleEn: o.titleEn, titleAr: o.titleAr,
-                  restaurantNameEn: o.restaurantNameEn ?? 'Restaurant', restaurantNameAr: o.restaurantNameAr ?? 'مطعم',
-                  locationsCount: 1,
-                  imageUrl: o.imageUrl ?? o.restaurantCoverImageUrl ?? 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&h=450&fit=crop',
-                  originalPrice: Number(o.originalPrice), discountedPrice: Number(o.discountedPrice),
-                  discountPercent: Number(o.discountPercent), promoPrice: Math.round(Number(o.discountedPrice) * 0.9),
-                  currency: o.currency ?? 'SAR', rating: 4.7, reviews: 50, address: '', distanceKm: undefined,
-                }))
-              : HOME_FALLBACK;
+            const mappedOffers = rawOffers.slice(0, 4).map((o: any) => ({
+              id: o.id,
+              titleEn: o.titleEn, titleAr: o.titleAr,
+              restaurantNameEn: o.restaurantNameEn ?? 'Restaurant', restaurantNameAr: o.restaurantNameAr ?? 'مطعم',
+              locationsCount: 1,
+              imageUrl: o.imageUrl ?? o.restaurantCoverImageUrl ?? 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&h=450&fit=crop',
+              originalPrice: Number(o.originalPrice), discountedPrice: Number(o.discountedPrice),
+              discountPercent: Number(o.discountPercent), promoPrice: Math.round(Number(o.discountedPrice) * 0.9),
+              currency: o.currency ?? 'SAR', rating: 4.7, reviews: 50, address: '', distanceKm: undefined,
+            }));
+            const deals = mappedOffers.length > 0
+              ? mappedOffers
+              : (!selectedCityId ? HOME_FALLBACK : []);
+
+            if (deals.length === 0) {
+              return (
+                <div className="text-center py-8 text-violet-300/70 text-sm">
+                  {t('No deals available in this location yet.', 'لا توجد عروض في هذا الموقع بعد.')}
+                </div>
+              );
+            }
 
             return (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 relative">

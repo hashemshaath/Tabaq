@@ -3,10 +3,13 @@ import { Link, useLocation } from "wouter";
 import {
   Search, MapPin, Globe, User, LogOut, ChevronDown, Tag,
   CalendarDays, LayoutDashboard, Trophy, Shield, Utensils,
-  Bell, Menu, X, Home, Sparkles, BarChart3, ChefHat
+  Bell, Menu, X, Home, Sparkles, BarChart3, ChefHat, Check
 } from "lucide-react";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/context/AuthContext";
+import { useCity } from "@/context/CityContext";
+import { useListCitiesByCountry, useListCountries, type City } from "@workspace/api-client-react";
+import { useLocalization } from "@/context/LocalizationContext";
 import { cn } from "@/lib/utils";
 
 function useUnreadCount(token: string | null, user: unknown) {
@@ -41,69 +44,36 @@ function useUnreadCount(token: string | null, user: unknown) {
   return count;
 }
 
-type CityOption = { id: number; nameEn: string; nameAr: string };
-
-function useHeaderCities() {
-  const [cities, setCities] = useState<CityOption[]>([]);
-  useEffect(() => {
-    fetch('/api/countries/1/cities').then(r => r.ok ? r.json() : null).then(data => {
-      if (Array.isArray(data)) setCities(data);
-      else if (Array.isArray(data?.cities)) setCities(data.cities);
-    }).catch(() => {});
-  }, []);
-  return cities;
-}
-
 export function Header() {
   const { lang, toggleLanguage, t } = useLanguage();
-  const [location, setLocation] = useLocation();
+  const { country } = useLocalization();
+  const [location] = useLocation();
   const { user, token, logout } = useAuth();
+  const {
+    selectedCityId, selectedCityName, selectedCityNameAr,
+    selectedNeighborhoodId, selectedNeighborhoodName, selectedNeighborhoodNameAr,
+    setCity, setNeighborhood, clearCity, clearNeighborhood, getNeighborhoods,
+  } = useCity();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [cityPickerOpen, setCityPickerOpen] = useState(false);
-  const cityPickerRef = useRef<HTMLDivElement>(null);
+  const [cityMenuOpen, setCityMenuOpen] = useState(false);
+  const [neighborhoodStep, setNeighborhoodStep] = useState(false);
   const unreadCount = useUnreadCount(token, user);
-  const headerCities = useHeaderCities();
+  const { data: countries } = useListCountries();
+  const countryId = countries?.find((c) => c.code === country.code)?.id ?? null;
+  const { data: cities } = useListCitiesByCountry(countryId ?? 0, { query: { enabled: countryId !== null } });
 
-  // Read selected city from URL or localStorage
-  const urlCityId = (() => {
-    if (location.startsWith('/restaurants')) {
-      const p = new URLSearchParams(location.split('?')[1] || '');
-      const id = p.get('cityId');
-      return id ? Number(id) : null;
+  const neighborhoods = getNeighborhoods();
+
+  const cityLabel = (() => {
+    const cName = lang === 'ar' ? selectedCityNameAr : selectedCityName;
+    if (!selectedCityId) return t('All Cities', 'كل المدن');
+    if (selectedNeighborhoodId) {
+      const nName = lang === 'ar' ? selectedNeighborhoodNameAr : selectedNeighborhoodName;
+      return `${cName} · ${nName}`;
     }
-    return null;
+    return cName ?? t('Select City', 'اختر مدينة');
   })();
-  const [storedCityId, setStoredCityId] = useState<number | null>(() => {
-    try { const v = localStorage.getItem('tabaq_city_id'); return v ? Number(v) : null; } catch { return null; }
-  });
-  const activeCityId = urlCityId ?? storedCityId;
-  const activeCity = headerCities.find(c => c.id === activeCityId);
-  const cityLabel = activeCity ? (lang === 'ar' ? activeCity.nameAr : activeCity.nameEn) : t('Riyadh', 'الرياض');
-
-  const handleCitySelect = (city: CityOption | null) => {
-    setCityPickerOpen(false);
-    if (city) {
-      setStoredCityId(city.id);
-      try { localStorage.setItem('tabaq_city_id', String(city.id)); } catch {}
-      setLocation(`/restaurants?cityId=${city.id}`);
-    } else {
-      setStoredCityId(null);
-      try { localStorage.removeItem('tabaq_city_id'); } catch {}
-      if (location.startsWith('/restaurants')) setLocation('/restaurants');
-    }
-  };
-
-  // Close city picker when clicking outside
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (cityPickerRef.current && !cityPickerRef.current.contains(e.target as Node)) {
-        setCityPickerOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
 
   const isAdmin = (user as any)?.isAdmin === true;
   const isOwner = (user as any)?.isOwner === true;
@@ -172,36 +142,114 @@ export function Header() {
 
         {/* Actions */}
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* City Picker */}
-          <div ref={cityPickerRef} className="relative hidden sm:block">
+          {/* City Selector */}
+          <div className="relative hidden sm:block">
             <button
-              onClick={() => setCityPickerOpen(v => !v)}
-              className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2 px-3 rounded-lg hover:bg-accent"
+              onClick={() => setCityMenuOpen(v => !v)}
+              className={cn(
+                "flex items-center gap-2 text-sm font-medium transition-colors py-2 px-3 rounded-lg hover:bg-accent",
+                selectedCityId ? "text-primary" : "text-muted-foreground hover:text-foreground"
+              )}
             >
-              <MapPin className="w-4 h-4 text-primary" />
-              <span>{cityLabel}</span>
-              <ChevronDown className={`w-3 h-3 transition-transform ${cityPickerOpen ? 'rotate-180' : ''}`} />
+              <MapPin className="w-4 h-4 text-primary shrink-0" />
+              <span className="max-w-[120px] truncate">{cityLabel}</span>
+              <ChevronDown className={cn("w-3.5 h-3.5 text-muted-foreground transition-transform", cityMenuOpen && "rotate-180")} />
             </button>
-            {cityPickerOpen && (
-              <div className="absolute top-full mt-1 start-0 w-52 bg-popover border border-border rounded-2xl shadow-xl overflow-hidden z-50 py-1">
-                <button
-                  onClick={() => handleCitySelect(null)}
-                  className="w-full text-start px-4 py-2.5 text-sm hover:bg-accent transition-colors text-muted-foreground"
-                >
-                  {t('All Cities', 'كل المدن')}
-                </button>
-                {headerCities.length > 0 && <div className="border-t border-border my-1" />}
-                {headerCities.map(city => (
-                  <button
-                    key={city.id}
-                    onClick={() => handleCitySelect(city)}
-                    className={`w-full text-start px-4 py-2.5 text-sm hover:bg-accent transition-colors flex items-center gap-2 ${activeCityId === city.id ? 'text-primary font-semibold' : 'text-foreground'}`}
-                  >
-                    {activeCityId === city.id && <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />}
-                    {lang === 'ar' ? city.nameAr : city.nameEn}
-                  </button>
-                ))}
-              </div>
+
+            {cityMenuOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => { setCityMenuOpen(false); setNeighborhoodStep(false); }} />
+                <div className="absolute start-0 top-12 z-50 bg-popover border border-border rounded-2xl shadow-xl py-2 w-64 animate-in fade-in zoom-in-95 duration-150">
+                  {!neighborhoodStep ? (
+                    <>
+                      <div className="px-4 py-2 border-b border-border mb-1">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t('Select City', 'اختر مدينة')}</p>
+                      </div>
+
+                      <button
+                        onClick={() => { clearCity(); setCityMenuOpen(false); setNeighborhoodStep(false); }}
+                        className={cn(
+                          "flex items-center justify-between gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors w-full text-start",
+                          !selectedCityId && "text-primary font-semibold"
+                        )}
+                      >
+                        <span>{t('All Cities', 'كل المدن')}</span>
+                        {!selectedCityId && <Check className="w-3.5 h-3.5 text-primary shrink-0" />}
+                      </button>
+
+                      {cities && cities.length > 0 && (
+                        <div className="max-h-64 overflow-y-auto">
+                          {cities.map((city: City) => (
+                            <button
+                              key={city.id}
+                              onClick={() => {
+                                setCity(city.id, city.nameEn, city.nameAr);
+                                setNeighborhoodStep(true);
+                              }}
+                              className={cn(
+                                "flex items-center justify-between gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors w-full text-start",
+                                selectedCityId === city.id && "text-primary font-semibold"
+                              )}
+                            >
+                              <span>{lang === 'ar' ? city.nameAr : city.nameEn}</span>
+                              {selectedCityId === city.id && <Check className="w-3.5 h-3.5 text-primary shrink-0" />}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <div className="px-4 py-2 border-b border-border mb-1 flex items-center gap-2">
+                        <button
+                          onClick={() => setNeighborhoodStep(false)}
+                          className="text-muted-foreground hover:text-foreground transition-colors text-xs"
+                        >
+                          ← {t('Back', 'رجوع')}
+                        </button>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider ms-auto">{t('Neighborhood', 'الحي')}</p>
+                      </div>
+
+                      <div className="px-3 py-1.5 text-xs font-semibold text-primary border-b border-border/50 mb-1">
+                        {lang === 'ar' ? selectedCityNameAr : selectedCityName}
+                      </div>
+
+                      <button
+                        onClick={() => { clearNeighborhood(); setCityMenuOpen(false); setNeighborhoodStep(false); }}
+                        className={cn(
+                          "flex items-center justify-between gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors w-full text-start",
+                          !selectedNeighborhoodId && "text-primary font-semibold"
+                        )}
+                      >
+                        <span>{t('All Neighborhoods', 'كل الأحياء')}</span>
+                        {!selectedNeighborhoodId && <Check className="w-3.5 h-3.5 text-primary shrink-0" />}
+                      </button>
+
+                      {neighborhoods.length > 0 ? (
+                        <div className="max-h-56 overflow-y-auto">
+                          {neighborhoods.map((nb) => (
+                            <button
+                              key={nb.id}
+                              onClick={() => { setNeighborhood(nb.id, nb.nameEn, nb.nameAr); setCityMenuOpen(false); setNeighborhoodStep(false); }}
+                              className={cn(
+                                "flex items-center justify-between gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors w-full text-start",
+                                selectedNeighborhoodId === nb.id && "text-primary font-semibold"
+                              )}
+                            >
+                              <span>{lang === 'ar' ? nb.nameAr : nb.nameEn}</span>
+                              {selectedNeighborhoodId === nb.id && <Check className="w-3.5 h-3.5 text-primary shrink-0" />}
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="px-4 py-3 text-xs text-muted-foreground italic">
+                          {t('No neighborhoods available', 'لا توجد أحياء متاحة')}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </>
             )}
           </div>
 
@@ -430,6 +478,81 @@ export function Header() {
                 <Utensils className="w-4 h-4" />
                 {t("For Partners", "للشركاء")}
               </Link>
+
+              <div className="h-px bg-border my-2" />
+
+              {/* Mobile City Selector */}
+              {cities && cities.length > 0 && (
+                <div className="px-4 py-2">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                    <MapPin className="w-3 h-3 inline me-1" />
+                    {t('City', 'المدينة')}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => clearCity()}
+                      className={cn(
+                        "px-3 py-1.5 rounded-full text-xs font-semibold border transition-all",
+                        !selectedCityId
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "border-border text-muted-foreground hover:border-primary/40"
+                      )}
+                    >
+                      {t('All', 'الكل')}
+                    </button>
+                    {cities.slice(0, 8).map((city: City) => (
+                      <button
+                        key={city.id}
+                        onClick={() => setCity(city.id, city.nameEn, city.nameAr)}
+                        className={cn(
+                          "px-3 py-1.5 rounded-full text-xs font-semibold border transition-all",
+                          selectedCityId === city.id
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "border-border text-muted-foreground hover:border-primary/40"
+                        )}
+                      >
+                        {lang === 'ar' ? city.nameAr : city.nameEn}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Mobile Neighborhood Selector — shown only after a city is selected */}
+              {selectedCityId && neighborhoods.length > 0 && (
+                <div className="px-4 py-2">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                    {t('Neighborhood', 'الحي')}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => clearNeighborhood()}
+                      className={cn(
+                        "px-3 py-1.5 rounded-full text-xs font-semibold border transition-all",
+                        !selectedNeighborhoodId
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "border-border text-muted-foreground hover:border-primary/40"
+                      )}
+                    >
+                      {t('All', 'الكل')}
+                    </button>
+                    {neighborhoods.map((nb) => (
+                      <button
+                        key={nb.id}
+                        onClick={() => setNeighborhood(nb.id, nb.nameEn, nb.nameAr)}
+                        className={cn(
+                          "px-3 py-1.5 rounded-full text-xs font-semibold border transition-all",
+                          selectedNeighborhoodId === nb.id
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "border-border text-muted-foreground hover:border-primary/40"
+                        )}
+                      >
+                        {lang === 'ar' ? nb.nameAr : nb.nameEn}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="h-px bg-border my-2" />
 
