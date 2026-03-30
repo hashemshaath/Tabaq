@@ -462,6 +462,25 @@ router.get("/me/points/history", requireAuth, async (req, res) => {
   }
 });
 
+// ─── GET /me/restaurant — get the restaurant owned by the logged-in user ─────
+router.get("/me/restaurant", requireAuth, async (req, res) => {
+  try {
+    const userId = req.auth!.userId;
+    const [restaurant] = await db
+      .select()
+      .from(restaurantsTable)
+      .where(eq(restaurantsTable.ownerId, userId));
+    if (!restaurant) {
+      res.status(404).json({ error: "not_found", message: "No restaurant found for this owner" });
+      return;
+    }
+    res.json({ restaurant });
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch owner restaurant");
+    res.status(500).json({ error: "internal_error", message: "Failed to fetch restaurant" });
+  }
+});
+
 // ─── PATCH /me/profile — update own profile fields ───────────────────────────
 router.patch("/me/profile", requireAuth, async (req, res) => {
   try {

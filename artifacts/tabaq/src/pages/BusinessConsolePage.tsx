@@ -123,8 +123,18 @@ export function BusinessConsolePage() {
 
   const queryClient = useQueryClient();
 
-  // The demo restaurant ID — in production this comes from auth context
-  const RESTAURANT_ID = 2;
+  // Fetch the restaurant owned by the logged-in user
+  const { data: myRestaurantData, isLoading: restaurantLoading } = useQuery({
+    queryKey: ['me-restaurant'],
+    queryFn: async () => {
+      const res = await fetch('/api/me/restaurant', { headers: getAuthHeaders() });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    staleTime: 300000,
+  });
+  const myRestaurant = myRestaurantData?.restaurant ?? null;
+  const RESTAURANT_ID = myRestaurant?.id ?? 2;
 
   // Real campaigns
   const { data: campaignsData, refetch: refetchCampaigns } = useQuery({
@@ -272,14 +282,22 @@ export function BusinessConsolePage() {
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h1 className="text-xl font-bold text-background">Reem Al Bawadi</h1>
-                  <CheckCircle2 className="w-4 h-4 text-primary" />
+                  <h1 className="text-xl font-bold text-background">
+                    {restaurantLoading ? (
+                      <span className="inline-block w-40 h-5 bg-background/20 animate-pulse rounded" />
+                    ) : (
+                      lang === 'ar' ? (myRestaurant?.nameAr ?? 'لوحة تحكم المطعم') : (myRestaurant?.nameEn ?? 'Restaurant Console')
+                    )}
+                  </h1>
+                  {myRestaurant?.isVerified && <CheckCircle2 className="w-4 h-4 text-primary" />}
                 </div>
                 <div className="flex items-center gap-3 mt-0.5">
-                  <p className="text-background/60 text-sm">{t('Business Console', 'لوحة تحكم الأعمال')} · Riyadh, Saudi Arabia</p>
-                  <span className="font-mono text-xs bg-background/10 text-background/70 px-2 py-0.5 rounded-full flex items-center gap-1">
-                    <Hash className="w-3 h-3" /> TBQ-RST-2026-000002
-                  </span>
+                  <p className="text-background/60 text-sm">{t('Business Console', 'لوحة تحكم الأعمال')}</p>
+                  {myRestaurant?.refCode && (
+                    <span className="font-mono text-xs bg-background/10 text-background/70 px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <Hash className="w-3 h-3" /> {myRestaurant.refCode}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -288,7 +306,7 @@ export function BusinessConsolePage() {
                 <Bell className="w-5 h-5" />
                 <span className="absolute top-1.5 end-1.5 w-2 h-2 bg-primary rounded-full" />
               </button>
-              <Link href="/restaurants/2">
+              <Link href={`/restaurants/${RESTAURANT_ID}`}>
                 <Button size="sm" variant="outline" className="border-background/30 text-background hover:bg-background/10 gap-2">
                   <Eye className="w-4 h-4" />
                   {t('View Listing', 'عرض القائمة')}
@@ -2036,19 +2054,47 @@ export function BusinessConsolePage() {
           <div className="space-y-6 max-w-2xl">
             <h2 className="text-xl font-bold text-foreground">{t('Restaurant Settings', 'إعدادات المطعم')}</h2>
             {[
-              { labelEn: 'Restaurant Name', labelAr: 'اسم المطعم', value: 'Reem Al Bawadi' },
-              { labelEn: 'Phone Number', labelAr: 'رقم الهاتف', value: '+966 11 234 5678' },
-              { labelEn: 'Address', labelAr: 'العنوان', value: 'King Fahd Road, Riyadh' },
-              { labelEn: 'Opening Hours', labelAr: 'أوقات العمل', value: '12:00 PM – 11:00 PM' },
+              {
+                labelEn: 'Restaurant Name (English)',
+                labelAr: 'اسم المطعم (إنجليزي)',
+                value: myRestaurant?.nameEn ?? t('Not set', 'غير محدد'),
+              },
+              {
+                labelEn: 'Restaurant Name (Arabic)',
+                labelAr: 'اسم المطعم (عربي)',
+                value: myRestaurant?.nameAr ?? t('Not set', 'غير محدد'),
+              },
+              {
+                labelEn: 'Phone Number',
+                labelAr: 'رقم الهاتف',
+                value: myRestaurant?.phone ?? t('Not set', 'غير محدد'),
+              },
+              {
+                labelEn: 'Address',
+                labelAr: 'العنوان',
+                value: myRestaurant?.address ?? t('Not set', 'غير محدد'),
+              },
+              {
+                labelEn: 'Website',
+                labelAr: 'الموقع الإلكتروني',
+                value: myRestaurant?.website ?? t('Not set', 'غير محدد'),
+              },
             ].map(field => (
               <div key={field.labelEn} className="bg-card border border-border rounded-2xl p-4 flex items-center justify-between gap-4">
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="text-xs text-muted-foreground font-medium mb-0.5">{lang === 'ar' ? field.labelAr : field.labelEn}</p>
-                  <p className="font-semibold text-foreground">{field.value}</p>
+                  <p className="font-semibold text-foreground truncate">{field.value}</p>
                 </div>
-                <Button size="sm" variant="outline">{t('Edit', 'تعديل')}</Button>
+                <Button size="sm" variant="outline" className="shrink-0">{t('Edit', 'تعديل')}</Button>
               </div>
             ))}
+            {myRestaurant?.refCode && (
+              <div className="bg-card border border-border rounded-2xl p-4">
+                <p className="text-xs text-muted-foreground font-medium mb-0.5">{t('Restaurant Reference Code', 'الرمز المرجعي للمطعم')}</p>
+                <p className="font-mono font-bold text-foreground">{myRestaurant.refCode}</p>
+                <p className="text-xs text-muted-foreground mt-1">{t('Use this code for support inquiries', 'استخدم هذا الرمز في استفسارات الدعم')}</p>
+              </div>
+            )}
           </div>
         )}
       </div>

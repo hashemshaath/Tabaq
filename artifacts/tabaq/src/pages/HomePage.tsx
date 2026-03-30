@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useLanguage } from '@/hooks/use-language';
 import { usePageMeta } from '@/hooks/use-page-meta';
 import { useCity } from '@/context/CityContext';
@@ -144,10 +145,16 @@ function FoodExperiencesSection() {
 function AiRecommendationsSection({ cityId, cityName, cityNameAr }: { cityId?: number; cityName?: string; cityNameAr?: string }) {
   const { t, lang } = useLanguage();
   const qs = cityId ? `?cityId=${cityId}` : '';
-  const recs = useApi<{ recommendations: any[] }>(`/api/recommendations${qs}`);
-  const items = recs.data?.recommendations ?? [];
+  const { data: recsData, isLoading: recsLoading } = useQuery({
+    queryKey: ['ai-recommendations', cityId ?? null],
+    queryFn: () => fetch(`/api/recommendations${qs}`).then(r => r.json()),
+    staleTime: 10 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    retry: 1,
+  });
+  const items = recsData?.recommendations ?? [];
 
-  if (recs.loading) {
+  if (recsLoading) {
     return (
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-14">
         <div className="h-7 bg-muted animate-pulse rounded w-64 mb-6" />
