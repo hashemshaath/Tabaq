@@ -154,7 +154,7 @@ export default function NotificationsPage() {
 
   const rawNotifications: Notification[] = liveData?.notifications?.length
     ? (liveData.notifications as Notification[])
-    : user ? [] : MOCK_NOTIFICATIONS;
+    : MOCK_NOTIFICATIONS;
 
   const notifications = rawNotifications.map(n => ({ ...n, ...(overrides[n.id] ?? {}) }));
 
@@ -176,21 +176,6 @@ export default function NotificationsPage() {
   });
   const markRead = (id: number) => setOverrides(prev => ({ ...prev, [id]: { ...prev[id], read: true } }));
   const dismiss = (id: number) => setDismissed(prev => new Set([...prev, id]));
-
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-background" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
-        <div className="max-w-lg mx-auto px-4 pt-24 text-center">
-          <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mx-auto mb-6">
-            <Bell className="w-10 h-10 text-muted-foreground/40" />
-          </div>
-          <h2 className="text-2xl font-bold text-foreground mb-3">{t('Sign in to see notifications', 'سجّل دخولك لرؤية الإشعارات')}</h2>
-          <p className="text-muted-foreground mb-8">{t('Stay up to date with your bookings, reviews, and offers.', 'ابقَ على اطلاع بحجوزاتك وتقييماتك وعروضك.')}</p>
-          <Link href="/signin"><Button className="rounded-2xl px-8">{t('Sign In', 'تسجيل الدخول')}</Button></Link>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background pb-20" dir={lang === 'ar' ? 'rtl' : 'ltr'}>

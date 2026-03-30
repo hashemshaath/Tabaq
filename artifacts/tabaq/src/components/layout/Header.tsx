@@ -4,7 +4,7 @@ import {
   Search, MapPin, Globe, User, LogOut, ChevronDown, Tag,
   CalendarDays, LayoutDashboard, Trophy, Shield, Utensils,
   Bell, Menu, X, Home, Sparkles, BarChart3, ChefHat, Check,
-  Settings, Award, ShoppingBag
+  Settings, Award, ShoppingBag, Crown
 } from "lucide-react";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/context/AuthContext";
@@ -362,6 +362,16 @@ export function Header() {
                       </div>
                     </Link>
 
+                    <Link href="/gold" className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-amber-50 transition-colors" onClick={() => setUserMenuOpen(false)}>
+                      <div className="w-7 h-7 bg-gradient-to-br from-amber-400 to-yellow-500 rounded-lg flex items-center justify-center shadow-sm">
+                        <Crown className="w-3.5 h-3.5 text-white" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-amber-700 leading-none">{t("Tabaq Gold", "طبق الذهبي")}</p>
+                        <p className="text-xs text-amber-600/70">{t("Membership & perks", "العضوية والمزايا")}</p>
+                      </div>
+                    </Link>
+
                     <Link href="/bookings" className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors" onClick={() => setUserMenuOpen(false)}>
                       <div className="w-7 h-7 bg-blue-50 rounded-lg flex items-center justify-center">
                         <CalendarDays className="w-3.5 h-3.5 text-blue-600" />
@@ -623,6 +633,11 @@ export function Header() {
                   <Link href="/bookings" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-foreground hover:bg-accent transition-colors">
                     <CalendarDays className="w-4 h-4" />
                     {t("My Bookings", "حجوزاتي")}
+                  </Link>
+                  <Link href="/gold" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-amber-700 hover:bg-amber-50 transition-colors">
+                    <Crown className="w-4 h-4 text-amber-500" />
+                    {t("Tabaq Gold", "طبق الذهبي")}
+                    <span className="ms-auto text-[10px] font-black bg-amber-500 text-white px-1.5 py-0.5 rounded-full">GOLD</span>
                   </Link>
                   <Link href="/notifications" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-foreground hover:bg-accent transition-colors">
                     <div className="relative">
