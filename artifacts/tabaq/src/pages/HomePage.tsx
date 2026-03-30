@@ -50,20 +50,6 @@ const OCCASION_FALLBACK_GRADIENTS = [
 ];
 
 // ── Helpers ────────────────────────────────────────────────────────
-function useApi<T>(url: string): { data: T | null; loading: boolean } {
-  const [data, setData] = React.useState<T | null>(null);
-  const [loading, setLoading] = React.useState(true);
-  React.useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    fetch(url)
-      .then(r => r.json())
-      .then(d => { if (!cancelled) { setData(d); setLoading(false); } })
-      .catch(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, [url]);
-  return { data, loading };
-}
 
 function SkeletonCard() {
   return (
@@ -280,15 +266,18 @@ export function HomePage() {
   }, [heroSlide]);
 
   const cityQuery = selectedCityId ? `&cityId=${selectedCityId}` : '';
+  const cityKey   = selectedCityId ?? null;
+  const STALE_5M  = 5 * 60 * 1000;
+  const STALE_10M = 10 * 60 * 1000;
 
-  const featured    = useApi<any[]>(`/api/restaurants/featured?limit=8${cityQuery}`);
-  const trending    = useApi<any[]>(`/api/dishes/trending?limit=6${cityQuery}`);
-  const tabaqStars  = useApi<any[]>('/api/dishes/tabaq-stars?limit=6');
-  const occasions   = useApi<any[]>('/api/occasions');
-  const categories  = useApi<any[]>('/api/categories');
-  const topRated    = useApi<{ restaurants: any[] }>(`/api/restaurants?minRating=4.5&limit=6${cityQuery}`);
-  const newest      = useApi<{ restaurants: any[] }>(`/api/restaurants?limit=4&sortBy=newest${cityQuery}`);
-  const offersApi   = useApi<any>(`/api/offers?limit=4${cityQuery}`);
+  const featured   = useQuery<any[]>({ queryKey: ['hp-featured', cityKey], queryFn: () => fetch(`/api/restaurants/featured?limit=8${cityQuery}`).then(r => r.json()), staleTime: STALE_5M });
+  const trending   = useQuery<any[]>({ queryKey: ['hp-trending', cityKey], queryFn: () => fetch(`/api/dishes/trending?limit=6${cityQuery}`).then(r => r.json()), staleTime: STALE_5M });
+  const tabaqStars = useQuery<any[]>({ queryKey: ['hp-tabaq-stars'], queryFn: () => fetch('/api/dishes/tabaq-stars?limit=6').then(r => r.json()), staleTime: STALE_10M });
+  const occasions  = useQuery<any[]>({ queryKey: ['hp-occasions'], queryFn: () => fetch('/api/occasions').then(r => r.json()), staleTime: STALE_10M });
+  const categories = useQuery<any[]>({ queryKey: ['hp-categories'], queryFn: () => fetch('/api/categories').then(r => r.json()), staleTime: STALE_10M });
+  const topRated   = useQuery<{ restaurants: any[] }>({ queryKey: ['hp-top-rated', cityKey], queryFn: () => fetch(`/api/restaurants?minRating=4.5&limit=6${cityQuery}`).then(r => r.json()), staleTime: STALE_5M });
+  const newest     = useQuery<{ restaurants: any[] }>({ queryKey: ['hp-newest', cityKey], queryFn: () => fetch(`/api/restaurants?limit=4&sortBy=newest${cityQuery}`).then(r => r.json()), staleTime: STALE_5M });
+  const offersApi  = useQuery<any>({ queryKey: ['hp-offers', cityKey], queryFn: () => fetch(`/api/offers?limit=4${cityQuery}`).then(r => r.json()), staleTime: STALE_5M });
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -437,7 +426,7 @@ export function HomePage() {
       </section>
 
       {/* ══ OCCASIONS ════════════════════════════════════════════ */}
-      {!occasions.loading && (occasions.data || []).length > 0 && (
+      {!occasions.isLoading && (occasions.data || []).length > 0 && (
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-14 mb-12">
           <SectionHeader
             badge={t('Browse by Occasion', 'تصفح حسب المناسبة')}
@@ -536,7 +525,7 @@ export function HomePage() {
       </section>
 
       {/* ══ CUISINE TYPES ════════════════════════════════════════ */}
-      {!categories.loading && (categories.data || []).length > 0 && (
+      {!categories.isLoading && (categories.data || []).length > 0 && (
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-14">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold text-foreground tracking-[-0.02em]">{t('Cuisine Types', 'أنواع المطابخ')}</h2>
@@ -560,7 +549,7 @@ export function HomePage() {
       )}
 
       {/* ══ TABAQ STARS ═══════════════════════════════════════════ */}
-      {!tabaqStars.loading && (tabaqStars.data || []).length > 0 && (
+      {!tabaqStars.isLoading && (tabaqStars.data || []).length > 0 && (
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-14">
           <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-500 via-orange-500 to-amber-600 p-6 md:p-10">
             {/* Decorative stars */}
@@ -729,7 +718,7 @@ export function HomePage() {
           viewAllHref="/restaurants?featured=true"
           viewAllLabel={t('View all', 'عرض الكل')}
         />
-        {featured.loading ? (
+        {featured.isLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {[1,2,3,4].map(i => <SkeletonCard key={i} />)}
           </div>
@@ -747,7 +736,7 @@ export function HomePage() {
       </section>
 
       {/* ══ TOP-RATED RANKINGS ═══════════════════════════════════ */}
-      {!topRated.loading && (topRated.data?.restaurants || []).length > 0 && (
+      {!topRated.isLoading && (topRated.data?.restaurants || []).length > 0 && (
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-14">
           <SectionHeader
             badge={t('Award of Excellence', 'جائزة التميز')}
@@ -838,7 +827,7 @@ export function HomePage() {
             viewAllHref="/restaurants"
             viewAllLabel={t('View all', 'عرض الكل')}
           />
-          {featured.loading ? (
+          {featured.isLoading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {[1,2,3,4].map(i => <SkeletonCard key={i} />)}
             </div>
@@ -863,7 +852,7 @@ export function HomePage() {
             viewAllHref="/dishes"
             viewAllLabel={t('View all', 'عرض الكل')}
           />
-          {trending.loading ? (
+          {trending.isLoading ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
               {[1,2,3,4].map(i => <div key={i} className="h-28 bg-card rounded-xl animate-pulse border border-border/40" />)}
             </div>
@@ -878,7 +867,7 @@ export function HomePage() {
       </section>
 
       {/* ══ NEW OPENINGS ═════════════════════════════════════════ */}
-      {!newest.loading && (newest.data?.restaurants || []).length > 0 && (
+      {!newest.isLoading && (newest.data?.restaurants || []).length > 0 && (
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-14">
           <SectionHeader
             badge={t('Just Opened', 'افتتح حديثاً')}

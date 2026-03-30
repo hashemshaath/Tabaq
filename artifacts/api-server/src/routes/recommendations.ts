@@ -10,12 +10,22 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 
 const router = Router();
 
+const CACHE_TTL_MS = 30 * 60 * 1000;
+const recommendationCache = new Map<string, { data: unknown; expiresAt: number }>();
+
 router.get("/recommendations", async (req, res) => {
   try {
     const cityId = req.query.cityId ? Number(req.query.cityId) : undefined;
     const lang = (req.query.lang as string) || "en";
     const prefRaw = req.query.preferences as string | undefined;
     const preferences: string[] = prefRaw ? prefRaw.split(",").map(s => s.trim()).filter(Boolean) : [];
+
+    const cacheKey = `${cityId ?? "all"}_${lang}_${preferences.join(",")}`;
+    const cached = recommendationCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      res.setHeader("X-Cache", "HIT");
+      return res.json(cached.data);
+    }
 
     const baseQuery = db
       .select({
@@ -134,7 +144,10 @@ Select 3 restaurants that best match the preferences, have high ratings, and off
       reasonAr: rec.reasonAr,
     }));
 
-    res.json({ recommendations: result });
+    const responseData = { recommendations: result };
+    recommendationCache.set(cacheKey, { data: responseData, expiresAt: Date.now() + CACHE_TTL_MS });
+    res.setHeader("X-Cache", "MISS");
+    res.json(responseData);
   } catch (err) {
     (req as any).log?.error?.({ err }, "Failed to generate recommendations");
     res.status(500).json({ error: "internal_error", message: "Failed to generate recommendations" });
