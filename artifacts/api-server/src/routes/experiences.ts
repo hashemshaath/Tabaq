@@ -604,6 +604,42 @@ router.patch("/experience-bookings/:bookingId/cancel", requireAuth, async (req, 
   }
 });
 
+// ─── List Current User's Experience Bookings ──────────────────────────────────
+router.get("/me/experience-bookings", requireAuth, async (req, res) => {
+  try {
+    const userId = req.auth!.userId;
+    const bookings = await db.select({
+      id: experienceBookingsTable.id,
+      referenceCode: experienceBookingsTable.referenceCode,
+      experienceId: experienceBookingsTable.experienceId,
+      slotId: experienceBookingsTable.slotId,
+      guestCount: experienceBookingsTable.guestCount,
+      totalAmount: experienceBookingsTable.totalAmount,
+      status: experienceBookingsTable.status,
+      depositPaid: experienceBookingsTable.depositPaid,
+      fullPaid: experienceBookingsTable.fullPaid,
+      specialRequests: experienceBookingsTable.specialRequests,
+      createdAt: experienceBookingsTable.createdAt,
+      cancelledAt: experienceBookingsTable.cancelledAt,
+      experienceTitleEn: experiencesTable.titleEn,
+      experienceTitleAr: experiencesTable.titleAr,
+      experienceCoverImage: experiencesTable.coverImage,
+      slotDate: experienceSlotsTable.date,
+      slotStartTime: experienceSlotsTable.startTime,
+      slotEndTime: experienceSlotsTable.endTime,
+    })
+      .from(experienceBookingsTable)
+      .leftJoin(experiencesTable, eq(experienceBookingsTable.experienceId, experiencesTable.id))
+      .leftJoin(experienceSlotsTable, eq(experienceBookingsTable.slotId, experienceSlotsTable.id))
+      .where(eq(experienceBookingsTable.userId, userId))
+      .orderBy(desc(experienceSlotsTable.date), desc(experienceBookingsTable.createdAt));
+    res.json({ bookings });
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch user experience bookings");
+    res.status(500).json({ error: "internal_error", message: "Failed to fetch experience bookings" });
+  }
+});
+
 // ─── Update Booking Status (Provider Dashboard) ───────────────────────────────
 router.patch("/experience-bookings/:bookingId/status", requireAuth, async (req, res) => {
   try {
