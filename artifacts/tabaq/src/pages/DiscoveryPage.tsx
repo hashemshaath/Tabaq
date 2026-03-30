@@ -118,8 +118,21 @@ export function DiscoveryPage() {
             {t('Explore Restaurants', 'استكشف المطاعم')}
           </h1>
 
-          {/* Sort Pills */}
+          {/* Sort Pills + Open Now */}
           <div className="flex gap-2 mb-4 overflow-x-auto pb-1 hide-scrollbar">
+            {/* Open Now — always first, prominent green */}
+            <button
+              onClick={() => { setFilters(f => ({ ...f, openNow: !f.openNow })); setPage(0); }}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold border shrink-0 transition-all ${
+                filters.openNow
+                  ? 'bg-emerald-500 text-white border-emerald-500 shadow-sm'
+                  : 'bg-background border-border hover:border-emerald-400/60 text-foreground'
+              }`}
+            >
+              <span className={`w-2 h-2 rounded-full ${filters.openNow ? 'bg-white animate-pulse' : 'bg-emerald-400'}`} />
+              {lang === 'ar' ? 'مفتوح الآن' : 'Open Now'}
+            </button>
+            <div className="w-px bg-border shrink-0 my-1" />
             {[
               { key: 'featured', icon: Sparkles, en: 'Featured', ar: 'مميز' },
               { key: 'top-rated', icon: Star, en: 'Top Rated', ar: 'الأعلى تقييماً' },
@@ -352,55 +365,74 @@ export function DiscoveryPage() {
           <div className="mb-10">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <Trophy className="w-5 h-5 text-amber-500" />
-                <h2 className="text-lg font-bold text-foreground">
-                  {selectedCity
-                    ? t(`Top-Rated in ${lang === 'ar' ? selectedCity.nameAr : selectedCity.nameEn}`, `الأعلى تقييماً في ${selectedCity.nameAr}`)
-                    : t('Top-Rated Venues', 'الأماكن الأعلى تقييماً')
-                  }
-                </h2>
+                <div className="w-8 h-8 bg-amber-100 rounded-xl flex items-center justify-center">
+                  <Trophy className="w-4 h-4 text-amber-600" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-foreground leading-tight">
+                    {selectedCity
+                      ? t(`Top-Rated in ${lang === 'ar' ? selectedCity.nameAr : selectedCity.nameEn}`, `الأعلى تقييماً في ${selectedCity.nameAr}`)
+                      : t('Top-Rated Venues', 'الأماكن الأعلى تقييماً')
+                    }
+                  </h2>
+                  <p className="text-[11px] text-muted-foreground">{t('Rated 4.0+ by our community', 'مُقيَّمة 4.0+ من مجتمعنا')}</p>
+                </div>
               </div>
               <Link href="/restaurants" className="text-xs text-primary font-semibold hover:underline">
-                {t('View all', 'عرض الكل')}
+                {t('See all →', 'عرض الكل ←')}
               </Link>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {topRatedData.restaurants.map((rest, idx) => (
-                <Link key={rest.id} href={`/restaurants/${rest.id}`}>
-                  <div className="relative rounded-2xl overflow-hidden border border-border/60 hover:border-primary/30 hover:shadow-md transition-all group cursor-pointer h-44">
-                    <img
-                      src={rest.coverImageUrl || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=600&h=400&fit=crop'}
-                      alt={lang === 'ar' ? rest.nameAr : rest.nameEn}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
-                    <div className="absolute top-3 start-3 flex items-center gap-1.5">
-                      <span className="bg-amber-500 text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center">
-                        {idx + 1}
-                      </span>
-                    </div>
-                    <div className="absolute bottom-0 start-0 end-0 p-3">
-                      <h3 className="text-white font-semibold text-sm line-clamp-1">
-                        {lang === 'ar' ? rest.nameAr : rest.nameEn}
-                      </h3>
-                      <div className="flex items-center gap-1 mt-0.5">
-                        <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                        <span className="text-white text-xs font-medium">{Number(rest.avgRating).toFixed(1)}</span>
-                        <span className="text-white/70 text-xs">({rest.reviewCount.toLocaleString()})</span>
-                        {(() => {
-                          const city = cities?.find(c => c.id === rest.cityId);
-                          return city ? (
-                            <span className="text-white/70 text-xs ms-auto flex items-center gap-0.5">
+              {topRatedData.restaurants.map((rest, idx) => {
+                const city = cities?.find(c => c.id === rest.cityId);
+                const cuisines = (rest.cuisineTypes ?? []).slice(0, 2);
+                const MEDAL = ['🥇', '🥈', '🥉'];
+                return (
+                  <Link key={rest.id} href={`/restaurants/${rest.id}`}>
+                    <div className="relative rounded-2xl overflow-hidden border border-border/60 hover:border-amber-300/60 hover:shadow-xl transition-all group cursor-pointer h-56">
+                      <img
+                        src={rest.coverImageUrl || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=600&h=400&fit=crop'}
+                        alt={lang === 'ar' ? rest.nameAr : rest.nameEn}
+                        className="w-full h-full object-cover group-hover:scale-[1.05] transition-transform duration-500"
+                        loading="lazy"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
+                      {/* Rank medal */}
+                      <div className="absolute top-3 start-3">
+                        <span className="text-xl drop-shadow-lg">{MEDAL[idx] || `#${idx + 1}`}</span>
+                      </div>
+                      {/* Cuisine tags */}
+                      {cuisines.length > 0 && (
+                        <div className="absolute top-3 end-3 flex gap-1 flex-wrap justify-end">
+                          {cuisines.map((c, i) => (
+                            <span key={i} className="bg-black/50 backdrop-blur-sm text-white/90 text-[10px] font-medium px-2 py-0.5 rounded-full border border-white/10">
+                              {c}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      <div className="absolute bottom-0 start-0 end-0 p-4">
+                        <h3 className="text-white font-bold text-base line-clamp-1 tracking-[-0.01em]">
+                          {lang === 'ar' ? rest.nameAr : rest.nameEn}
+                        </h3>
+                        <div className="flex items-center gap-2 mt-1.5">
+                          <div className="flex items-center gap-0.5">
+                            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                            <span className="text-white font-bold text-sm">{Number(rest.avgRating).toFixed(1)}</span>
+                          </div>
+                          <span className="text-white/60 text-xs">({rest.reviewCount.toLocaleString()} {t('reviews', 'تقييم')})</span>
+                          {city && (
+                            <span className="text-white/60 text-xs ms-auto flex items-center gap-0.5">
                               <MapPin className="w-2.5 h-2.5" />
                               {lang === 'ar' ? city.nameAr : city.nameEn}
                             </span>
-                          ) : null;
-                        })()}
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </Link>
-              ))}
+                  </Link>
+                );
+              })}
             </div>
           </div>
         )}
