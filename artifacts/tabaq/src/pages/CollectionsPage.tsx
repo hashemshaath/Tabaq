@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useParams, Link } from 'wouter';
 import { useLanguage } from '@/hooks/use-language';
+import { usePageMeta } from '@/hooks/use-page-meta';
 import { useListRestaurants } from '@workspace/api-client-react';
 import { RestaurantCard } from '@/components/RestaurantCard';
 import { ChevronRight, Layers, ArrowLeft } from 'lucide-react';
@@ -76,6 +77,12 @@ function CollectionGrid({ collectionId }: { collectionId: string }) {
 export function CollectionsPage() {
   const { id } = useParams<{ id?: string }>();
   const { t, lang } = useLanguage();
+  usePageMeta({
+    titleEn: 'Collections | Tabaq',
+    titleAr: 'المجموعات | طبق',
+    descriptionEn: 'Handpicked restaurant collections for every occasion, taste, and budget across Saudi Arabia.',
+    descriptionAr: 'مجموعات مطاعم مختارة بعناية لكل مناسبة وذوق وميزانية في أنحاء المملكة.',
+  }, lang);
 
   if (id) {
     return <CollectionGrid collectionId={id} />;

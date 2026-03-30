@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useLanguage } from '@/hooks/use-language';
+import { usePageMeta } from '@/hooks/use-page-meta';
 import {
   useListDishes,
   useListCategories,
@@ -24,6 +25,12 @@ const LIMIT = 16;
 
 export function DishesPage() {
   const { t, lang } = useLanguage();
+  usePageMeta({
+    titleEn: 'Dishes | Tabaq',
+    titleAr: 'الأطباق | طبق',
+    descriptionEn: 'Browse hundreds of dishes from top Saudi restaurants. Filter by cuisine, dietary tags, and more.',
+    descriptionAr: 'استعرض مئات الأطباق من أفضل مطاعم السعودية. صفّح حسب نوع المطبخ والتفضيلات الغذائية وأكثر.',
+  }, lang);
   const [location] = useLocation();
   const params = new URLSearchParams(location.split('?')[1] || '');
 

@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useParams, Link } from 'wouter';
 import { useLanguage } from '@/hooks/use-language';
+import { usePageMeta } from '@/hooks/use-page-meta';
 import { useAuth } from '@/context/AuthContext';
 import {
   Star, MapPin, Clock, Users, ChevronLeft, ChevronRight, X,
@@ -199,12 +200,16 @@ export function ExperienceDetailPage() {
   const { id } = useParams();
   const { t, lang } = useLanguage();
   const { user } = useAuth();
-
   const expId = Number(id);
-
   const { data: experience, isLoading, isError } = useGetExperience(expId, {
     query: { enabled: !!expId } as any,
   });
+  usePageMeta({
+    titleEn: (experience as any)?.titleEn ? `${(experience as any).titleEn} | Tabaq` : 'Experience | Tabaq',
+    titleAr: (experience as any)?.titleAr ? `${(experience as any).titleAr} | طبق` : 'تجربة | طبق',
+    descriptionEn: (experience as any)?.descriptionEn ?? 'Book unique dining experiences across Saudi Arabia on Tabaq.',
+    descriptionAr: (experience as any)?.descriptionAr ?? 'احجز تجارب طعام فريدة في أنحاء المملكة العربية السعودية على طبق.',
+  }, lang);
 
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [step, setStep] = useState<'select' | 'details' | 'payment' | 'success' | 'failed'>('select');

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'wouter';
 import { useLanguage } from '@/hooks/use-language';
+import { usePageMeta } from '@/hooks/use-page-meta';
 import {
   CheckCircle2, TrendingUp, Users, Calendar, Star, ChevronRight,
   BarChart3, Shield, Zap, Globe, MessageSquare, Percent, Award,
@@ -206,6 +207,12 @@ const FEATURES_GRID = [
 
 export function PartnerLandingPage() {
   const { t, lang } = useLanguage();
+  usePageMeta({
+    titleEn: 'Partner with Tabaq | طبق',
+    titleAr: 'كن شريكاً مع طبق',
+    descriptionEn: 'Grow your restaurant with Tabaq. Reach new customers, manage bookings, and increase revenue across Saudi Arabia.',
+    descriptionAr: 'طوّر مطعمك مع طبق. تواصل مع عملاء جدد وأدر حجوزاتك وزد إيراداتك في أنحاء المملكة.',
+  }, lang);
   const [restaurantName, setRestaurantName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');

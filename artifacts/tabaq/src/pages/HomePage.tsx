@@ -141,6 +141,86 @@ function FoodExperiencesSection() {
   );
 }
 
+function AiRecommendationsSection({ cityId, cityName, cityNameAr }: { cityId?: number; cityName?: string; cityNameAr?: string }) {
+  const { t, lang } = useLanguage();
+  const qs = cityId ? `?cityId=${cityId}` : '';
+  const recs = useApi<{ recommendations: any[] }>(`/api/recommendations${qs}`);
+  const items = recs.data?.recommendations ?? [];
+
+  if (recs.loading) {
+    return (
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-14">
+        <div className="h-7 bg-muted animate-pulse rounded w-64 mb-6" />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+          {[1,2,3].map(i => <div key={i} className="h-56 bg-muted animate-pulse rounded-2xl" />)}
+        </div>
+      </section>
+    );
+  }
+
+  if (!items.length) return null;
+
+  return (
+    <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-14">
+      <div className="flex items-end justify-between mb-6">
+        <div>
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-primary" />
+            <span className="text-primary font-medium text-xs tracking-[0.05em] uppercase">
+              {t('AI Picks', 'اختيارات الذكاء الاصطناعي')}
+            </span>
+          </div>
+          <h2 className="text-xl font-bold text-foreground tracking-[-0.02em]">
+            {cityId
+              ? t(`Recommended in ${cityName}`, `موصى به في ${cityNameAr}`)
+              : t('Recommended for You', 'موصى به لك')}
+          </h2>
+          <p className="text-muted-foreground text-sm mt-0.5">
+            {t('Handpicked by our AI based on ratings and popularity', 'اختارها الذكاء الاصطناعي بناءً على التقييمات والشهرة')}
+          </p>
+        </div>
+        <Link href="/restaurants" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 shrink-0">
+          {t('Browse all', 'تصفح الكل')} <ChevronRight className="w-3.5 h-3.5" />
+        </Link>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+        {items.map((r: any) => (
+          <Link key={r.id} href={`/restaurants/${r.id}`} className="group block">
+            <div className="relative rounded-2xl overflow-hidden border border-border/60 hover:border-primary/30 hover:shadow-xl transition-all duration-300 bg-card">
+              <div className="relative h-44 overflow-hidden">
+                <img
+                  src={r.coverImageUrl || 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&h=400&fit=crop'}
+                  alt={lang === 'ar' ? r.nameAr : r.nameEn}
+                  className="w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-500"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                <div className="absolute top-2.5 start-2.5 flex items-center gap-1.5 bg-black/50 backdrop-blur-sm text-white text-xs font-semibold px-2.5 py-1 rounded-full">
+                  <Sparkles className="w-3 h-3 text-primary" />
+                  {t('AI Pick', 'اختيار الذكاء')}
+                </div>
+                {r.avgRating > 0 && (
+                  <div className="absolute bottom-2.5 end-2.5 flex items-center gap-1 bg-black/50 backdrop-blur-sm text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                    <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                    {Number(r.avgRating).toFixed(1)}
+                  </div>
+                )}
+              </div>
+              <div className="p-4">
+                <h3 className="font-bold text-foreground text-sm line-clamp-1 mb-1">
+                  {lang === 'ar' ? r.nameAr : r.nameEn}
+                </h3>
+                <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 italic">
+                  "{lang === 'ar' ? r.reasonAr : r.reasonEn}"
+                </p>
+              </div>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function SectionHeader({ badge, badgeIcon: Icon, title, subtitle, viewAllHref, viewAllLabel }: {
   badge?: string; badgeIcon?: React.ElementType; title: string; subtitle?: string;
   viewAllHref?: string; viewAllLabel?: string;
@@ -551,6 +631,13 @@ export function HomePage() {
           </div>
         </section>
       )}
+
+      {/* ══ AI RECOMMENDATIONS ═══════════════════════════════════ */}
+      <AiRecommendationsSection
+        cityId={selectedCityId ?? undefined}
+        cityName={selectedCityName ?? undefined}
+        cityNameAr={selectedCityNameAr ?? undefined}
+      />
 
       {/* ══ COLLECTIONS SHOWCASE ═════════════════════════════════ */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-14">

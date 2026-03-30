@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useLanguage } from '@/hooks/use-language';
+import { usePageMeta } from '@/hooks/use-page-meta';
 import { useQuery } from '@tanstack/react-query';
 import {
   Trophy, Medal, Star, Crown, TrendingUp, Zap, Award, Target,
@@ -79,6 +80,12 @@ const LEADERBOARD_BADGES = ['👑', '🥈', '🥉', '⭐', '🍽️', '🌱', '�
 
 export function LeaderboardPage() {
   const { t, lang } = useLanguage();
+  usePageMeta({
+    titleEn: 'Leaderboard | Tabaq',
+    titleAr: 'المتصدرون | طبق',
+    descriptionEn: 'See the top food reviewers and critics on Tabaq. Earn points, climb the ranks, and win exclusive rewards.',
+    descriptionAr: 'تعرّف على أفضل المراجعين في طبق. اكسب نقاطاً وتسلّق السلّم لتفوز بمكافآت حصرية.',
+  }, lang);
   const [period, setPeriod] = useState<Period>('alltime');
 
   const { data: liveData, isLoading } = useQuery({

@@ -2,6 +2,7 @@ import React from 'react';
 import { useParams, Link } from 'wouter';
 import { StarRating } from '@/components/StarRating';
 import { useLanguage } from '@/hooks/use-language';
+import { usePageMeta } from '@/hooks/use-page-meta';
 import { useGetDish } from '@workspace/api-client-react';
 import { InlineReviewComposer } from '@/components/InlineReviewComposer';
 import { ReviewCard } from '@/components/ReviewCard';
@@ -72,6 +73,13 @@ export function DishDetailPage() {
   const { data, isLoading } = useGetDish(numericId, {
     query: { enabled: idIsValid, queryKey: ['dish', id] },
   });
+
+  usePageMeta({
+    titleEn: data?.dish?.nameEn ? `${data.dish.nameEn} | Tabaq` : 'Dish | Tabaq',
+    titleAr: data?.dish?.nameAr ? `${data.dish.nameAr} | طبق` : 'طبق | طبق',
+    descriptionEn: data?.dish?.descriptionEn ?? 'Discover this dish and more on Tabaq — Saudi Arabia\'s dining platform.',
+    descriptionAr: data?.dish?.descriptionAr ?? 'اكتشف هذا الطبق والمزيد على طبق — منصة الطعام في المملكة.',
+  }, lang);
 
   if (!idIsValid) {
     return <div className="p-20 text-center text-xl">{t('Dish not found', 'الطبق غير موجود')}</div>;

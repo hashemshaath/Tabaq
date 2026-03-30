@@ -27,6 +27,7 @@ import partnersRouter from "./partners.js";
 import notificationsRouter from "./notifications.js";
 import experiencesRouter from "./experiences.js";
 import adminExperiencesRouter from "./admin-experiences.js";
+import { recommendationsRouter } from "./recommendations.js";
 
 const router: IRouter = Router();
 
@@ -58,5 +59,6 @@ router.use(partnersRouter);
 router.use(notificationsRouter);
 router.use(experiencesRouter);
 router.use(adminExperiencesRouter);
+router.use(recommendationsRouter);
 
 export default router;
