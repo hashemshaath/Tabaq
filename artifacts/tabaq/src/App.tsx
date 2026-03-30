@@ -26,6 +26,8 @@ import { AdminPanelPage } from "@/pages/AdminPanelPage";
 import { UserDashboardPage } from "@/pages/UserDashboardPage";
 import { ReferralPage } from "@/pages/ReferralPage";
 import { ProviderRegistrationPage } from "@/pages/ProviderRegistrationPage";
+import { ProviderRegisterPage } from "@/pages/ProviderRegisterPage";
+import { ExperiencesConsolePage } from "@/pages/ExperiencesConsolePage";
 import FeedPage from "@/pages/FeedPage";
 import NotificationsPage from "@/pages/NotificationsPage";
 import NotFound from "@/pages/not-found";
@@ -67,6 +69,8 @@ function Router() {
               <Route path="/dashboard" component={UserDashboardPage} />
               <Route path="/partners" component={PartnerLandingPage} />
               <Route path="/partners/register" component={ProviderRegistrationPage} />
+              <Route path="/providers/register" component={ProviderRegisterPage} />
+              <Route path="/console/experiences" component={ExperiencesConsolePage} />
               <Route path="/referral" component={ReferralPage} />
               <Route path="/notifications" component={NotificationsPage} />
               <Route path="/admin" component={AdminPanelPage} />

@@ -1,6 +1,6 @@
 import {
   pgTable, serial, text, integer, boolean, timestamp,
-  doublePrecision, pgEnum, uniqueIndex, numeric
+  doublePrecision, pgEnum, numeric, jsonb
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -45,30 +45,66 @@ export const commissionStatusEnum = pgEnum("commission_status", [
   "pending", "settled", "waived"
 ]);
 
+// ─── Experience Providers (from Task #3 — provider dashboard table) ───────────
+
+export const experienceProvidersTable = pgTable("experience_providers", {
+  id: serial("id").primaryKey(),
+  refCode: text("ref_code").unique(),
+  userId: integer("user_id").references(() => usersTable.id),
+  businessNameEn: text("business_name_en").notNull(),
+  businessNameAr: text("business_name_ar"),
+  businessType: text("business_type"),
+  contactEmail: text("contact_email").notNull(),
+  contactPhone: text("contact_phone"),
+  logoUrl: text("logo_url"),
+  coverUrl: text("cover_url"),
+  descriptionEn: text("description_en"),
+  descriptionAr: text("description_ar"),
+  city: text("city"),
+  status: text("status").default("pending").notNull(),
+  reviewedBy: integer("reviewed_by"),
+  reviewNotes: text("review_notes"),
+  extraData: jsonb("extra_data"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // ─── Core Experiences ─────────────────────────────────────────────────────────
 
 export const experiencesTable = pgTable("experiences", {
   id: serial("id").primaryKey(),
   refCode: text("ref_code").unique(),
-  slug: text("slug").notNull().unique(),
+  slug: text("slug"),
   titleEn: text("title_en").notNull(),
-  titleAr: text("title_ar").notNull(),
+  titleAr: text("title_ar"),
   descriptionEn: text("description_en"),
   descriptionAr: text("description_ar"),
-  category: experienceCategoryEnum("category").notNull(),
-  hostUserId: integer("host_user_id").notNull().references(() => usersTable.id),
+  category: text("category"),
+  hostUserId: integer("host_user_id").references(() => usersTable.id),
+  providerId: integer("provider_id").references(() => experienceProvidersTable.id),
+  highlights: text("highlights").array(),
+  tags: text("tags").array(),
   latitude: doublePrecision("latitude"),
   longitude: doublePrecision("longitude"),
   address: text("address"),
-  cityId: integer("city_id").notNull().references(() => citiesTable.id),
-  durationMinutes: integer("duration_minutes").notNull(),
-  pricePerPerson: numeric("price_per_person", { precision: 10, scale: 2 }).notNull(),
+  city: text("city"),
+  cityId: integer("city_id").references(() => citiesTable.id),
+  durationMinutes: integer("duration_minutes"),
+  pricePerPerson: numeric("price_per_person", { precision: 10, scale: 2 }),
   depositAmount: numeric("deposit_amount", { precision: 10, scale: 2 }),
   currency: text("currency").default("SAR").notNull(),
-  capacity: integer("capacity").notNull(),
+  capacity: integer("capacity"),
+  menuDetailsEn: text("menu_details_en"),
+  menuDetailsAr: text("menu_details_ar"),
+  rulesEn: text("rules_en"),
+  rulesAr: text("rules_ar"),
+  primaryImageUrl: text("primary_image_url"),
+  galleryUrls: text("gallery_urls").array(),
   avgRating: doublePrecision("avg_rating").default(0).notNull(),
   reviewCount: integer("review_count").default(0).notNull(),
-  status: experienceStatusEnum("status").default("draft").notNull(),
+  totalBookings: integer("total_bookings").default(0).notNull(),
+  totalReviews: integer("total_reviews").default(0).notNull(),
+  status: text("status").default("draft").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -88,29 +124,43 @@ export const experienceImagesTable = pgTable("experience_images", {
 export const experienceSlotsTable = pgTable("experience_slots", {
   id: serial("id").primaryKey(),
   experienceId: integer("experience_id").notNull().references(() => experiencesTable.id),
-  date: text("date").notNull(), // "2026-04-01"
-  startTime: text("start_time").notNull(), // "10:00"
-  endTime: text("end_time").notNull(), // "12:00"
-  capacity: integer("capacity").notNull(),
-  remainingCapacity: integer("remaining_capacity").notNull(),
+  date: text("date").notNull(),
+  startTime: text("start_time").notNull(),
+  endTime: text("end_time").notNull(),
+  capacity: integer("capacity"),
+  remainingCapacity: integer("remaining_capacity"),
+  capacityOverride: integer("capacity_override"),
   isActive: boolean("is_active").default(true).notNull(),
+  isRecurring: boolean("is_recurring").default(false).notNull(),
+  recurringDay: integer("recurring_day"),
+  isCancelled: boolean("is_cancelled").default(false).notNull(),
+  bookedCount: integer("booked_count").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 // ─── Experience Bookings ──────────────────────────────────────────────────────
 
 export const experienceBookingsTable = pgTable("experience_bookings", {
   id: serial("id").primaryKey(),
-  referenceCode: text("reference_code").notNull().unique(),
+  referenceCode: text("reference_code").unique(),
+  refCode: text("ref_code").unique(),
   userId: integer("user_id").notNull().references(() => usersTable.id),
   experienceId: integer("experience_id").notNull().references(() => experiencesTable.id),
-  slotId: integer("slot_id").notNull().references(() => experienceSlotsTable.id),
-  guestCount: integer("guest_count").notNull(),
-  status: experienceBookingStatusEnum("status").default("pending").notNull(),
-  totalAmount: numeric("total_amount", { precision: 10, scale: 2 }).notNull(),
+  slotId: integer("slot_id").references(() => experienceSlotsTable.id),
+  guestCount: integer("guest_count").default(1).notNull(),
+  status: text("status").default("pending").notNull(),
+  totalAmount: numeric("total_amount", { precision: 10, scale: 2 }),
   depositAmount: numeric("deposit_amount", { precision: 10, scale: 2 }),
-  depositPaid: boolean("deposit_paid").default(false).notNull(),
-  fullPaid: boolean("full_paid").default(false).notNull(),
+  depositPaid: numeric("deposit_paid", { precision: 10, scale: 2 }),
+  isDepositPaid: boolean("is_deposit_paid").default(false).notNull(),
+  isFullPaid: boolean("is_full_paid").default(false).notNull(),
   specialRequests: text("special_requests"),
+  guestName: text("guest_name"),
+  guestPhone: text("guest_phone"),
+  guestEmail: text("guest_email"),
+  confirmedAt: timestamp("confirmed_at"),
+  cancelledAt: timestamp("cancelled_at"),
+  cancelReason: text("cancel_reason"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -133,14 +183,18 @@ export const experienceReviewsTable = pgTable("experience_reviews", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => usersTable.id),
   experienceId: integer("experience_id").notNull().references(() => experiencesTable.id),
-  bookingId: integer("booking_id").notNull().references(() => experienceBookingsTable.id),
+  bookingId: integer("booking_id").references(() => experienceBookingsTable.id),
+  rating: numeric("rating", { precision: 3, scale: 2 }),
   ratingFood: numeric("rating_food", { precision: 3, scale: 2 }),
   ratingHospitality: numeric("rating_hospitality", { precision: 3, scale: 2 }),
   ratingAmbiance: numeric("rating_ambiance", { precision: 3, scale: 2 }),
   ratingValue: numeric("rating_value", { precision: 3, scale: 2 }),
-  ratingOverall: numeric("rating_overall", { precision: 3, scale: 2 }).notNull(),
+  ratingOverall: numeric("rating_overall", { precision: 3, scale: 2 }),
   textEn: text("text_en"),
   textAr: text("text_ar"),
+  providerResponseEn: text("provider_response_en"),
+  providerResponseAr: text("provider_response_ar"),
+  respondedAt: timestamp("responded_at"),
   isVerified: boolean("is_verified").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -225,11 +279,14 @@ export const experienceCommissionsTable = pgTable("experience_commissions", {
 
 // ─── Zod Insert Schemas ───────────────────────────────────────────────────────
 
+export const insertExperienceProviderSchema = createInsertSchema(experienceProvidersTable).omit({
+  id: true, createdAt: true, updatedAt: true,
+});
 export const insertExperienceSchema = createInsertSchema(experiencesTable).omit({
-  id: true, refCode: true, createdAt: true, updatedAt: true, avgRating: true, reviewCount: true,
+  id: true, refCode: true, createdAt: true, updatedAt: true, avgRating: true, reviewCount: true, totalBookings: true, totalReviews: true,
 });
 export const insertExperienceImageSchema = createInsertSchema(experienceImagesTable).omit({ id: true });
-export const insertExperienceSlotSchema = createInsertSchema(experienceSlotsTable).omit({ id: true });
+export const insertExperienceSlotSchema = createInsertSchema(experienceSlotsTable).omit({ id: true, createdAt: true, bookedCount: true });
 export const insertExperienceBookingSchema = createInsertSchema(experienceBookingsTable).omit({
   id: true, createdAt: true, updatedAt: true,
 });
@@ -237,7 +294,7 @@ export const insertExperienceBookingPaymentSchema = createInsertSchema(experienc
   id: true, createdAt: true,
 });
 export const insertExperienceReviewSchema = createInsertSchema(experienceReviewsTable).omit({
-  id: true, createdAt: true, isVerified: true,
+  id: true, createdAt: true, isVerified: true, rating: true,
 });
 export const insertExperienceReviewPhotoSchema = createInsertSchema(experienceReviewPhotosTable).omit({ id: true });
 export const insertExperienceGiftSchema = createInsertSchema(experienceGiftsTable).omit({
@@ -250,6 +307,8 @@ export const insertProviderSchema = createInsertSchema(providersTable).omit({ id
 
 // ─── TypeScript Types ─────────────────────────────────────────────────────────
 
+export type ExperienceProvider = typeof experienceProvidersTable.$inferSelect;
+export type InsertExperienceProvider = z.infer<typeof insertExperienceProviderSchema>;
 export type Experience = typeof experiencesTable.$inferSelect;
 export type InsertExperience = z.infer<typeof insertExperienceSchema>;
 export type ExperienceImage = typeof experienceImagesTable.$inferSelect;

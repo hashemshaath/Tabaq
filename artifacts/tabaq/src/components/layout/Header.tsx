@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import {
   Search, MapPin, Globe, User, LogOut, ChevronDown, Tag,
   CalendarDays, LayoutDashboard, Trophy, Shield, Utensils,
-  Bell, Menu, X, Home, Sparkles, BarChart3
+  Bell, Menu, X, Home, Sparkles, BarChart3, ChefHat
 } from "lucide-react";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/context/AuthContext";
@@ -228,37 +228,43 @@ export function Header() {
                       </div>
                     </Link>
 
-                    {/* Business/Admin section — only for owners or admins */}
-                    {(isOwner || isAdmin) && (
-                      <>
-                        <div className="px-4 py-2 border-t border-b border-border mt-1 mb-1">
-                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("Business", "الأعمال")}</p>
+                    {/* Business/Admin section */}
+                    <div className="px-4 py-2 border-t border-b border-border mt-1 mb-1">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("Business", "الأعمال")}</p>
+                    </div>
+
+                    {isOwner && (
+                      <Link href="/console" className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors" onClick={() => setUserMenuOpen(false)}>
+                        <div className="w-7 h-7 bg-green-50 rounded-lg flex items-center justify-center">
+                          <LayoutDashboard className="w-3.5 h-3.5 text-green-600" />
                         </div>
+                        <div>
+                          <p className="font-semibold text-foreground leading-none">{t("Business Console", "لوحة الأعمال")}</p>
+                          <p className="text-xs text-muted-foreground">{t("Manage your restaurant", "إدارة مطعمك")}</p>
+                        </div>
+                      </Link>
+                    )}
 
-                        {isOwner && (
-                          <Link href="/console" className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors" onClick={() => setUserMenuOpen(false)}>
-                            <div className="w-7 h-7 bg-green-50 rounded-lg flex items-center justify-center">
-                              <LayoutDashboard className="w-3.5 h-3.5 text-green-600" />
-                            </div>
-                            <div>
-                              <p className="font-semibold text-foreground leading-none">{t("Business Console", "لوحة الأعمال")}</p>
-                              <p className="text-xs text-muted-foreground">{t("Manage your restaurant", "إدارة مطعمك")}</p>
-                            </div>
-                          </Link>
-                        )}
+                    <Link href="/console/experiences" className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors" onClick={() => setUserMenuOpen(false)}>
+                      <div className="w-7 h-7 bg-orange-50 rounded-lg flex items-center justify-center">
+                        <ChefHat className="w-3.5 h-3.5 text-orange-600" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-foreground leading-none">{t("Experiences Console", "لوحة التجارب")}</p>
+                        <p className="text-xs text-muted-foreground">{t("Host food experiences", "استضف تجارب طعام")}</p>
+                      </div>
+                    </Link>
 
-                        {isAdmin && (
-                          <Link href="/admin" className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors" onClick={() => setUserMenuOpen(false)}>
-                            <div className="w-7 h-7 bg-red-50 rounded-lg flex items-center justify-center">
-                              <Shield className="w-3.5 h-3.5 text-red-600" />
-                            </div>
-                            <div>
-                              <p className="font-semibold text-foreground leading-none">{t("Admin Panel", "لوحة الإدارة")}</p>
-                              <p className="text-xs text-muted-foreground">{t("Platform management", "إدارة المنصة")}</p>
-                            </div>
-                          </Link>
-                        )}
-                      </>
+                    {isAdmin && (
+                      <Link href="/admin" className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors" onClick={() => setUserMenuOpen(false)}>
+                        <div className="w-7 h-7 bg-red-50 rounded-lg flex items-center justify-center">
+                          <Shield className="w-3.5 h-3.5 text-red-600" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-foreground leading-none">{t("Admin Panel", "لوحة الإدارة")}</p>
+                          <p className="text-xs text-muted-foreground">{t("Platform management", "إدارة المنصة")}</p>
+                        </div>
+                      </Link>
                     )}
 
                     <hr className="border-border my-1" />
@@ -378,22 +384,22 @@ export function Header() {
                     {unreadCount > 0 && <span className="ms-auto text-xs font-bold text-primary">{unreadCount}</span>}
                   </Link>
 
-                  {(isOwner || isAdmin) && (
-                    <>
-                      <div className="h-px bg-border my-1" />
-                      {isOwner && (
-                        <Link href="/console" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-foreground hover:bg-accent transition-colors">
-                          <BarChart3 className="w-4 h-4 text-green-600" />
-                          {t("Business Console", "لوحة الأعمال")}
-                        </Link>
-                      )}
-                      {isAdmin && (
-                        <Link href="/admin" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-foreground hover:bg-accent transition-colors">
-                          <Shield className="w-4 h-4 text-red-500" />
-                          {t("Admin Panel", "لوحة الإدارة")}
-                        </Link>
-                      )}
-                    </>
+                  <div className="h-px bg-border my-1" />
+                  {isOwner && (
+                    <Link href="/console" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-foreground hover:bg-accent transition-colors">
+                      <BarChart3 className="w-4 h-4 text-green-600" />
+                      {t("Business Console", "لوحة الأعمال")}
+                    </Link>
+                  )}
+                  <Link href="/console/experiences" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-foreground hover:bg-accent transition-colors">
+                    <ChefHat className="w-4 h-4 text-orange-500" />
+                    {t("Experiences Console", "لوحة التجارب")}
+                  </Link>
+                  {isAdmin && (
+                    <Link href="/admin" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-foreground hover:bg-accent transition-colors">
+                      <Shield className="w-4 h-4 text-red-500" />
+                      {t("Admin Panel", "لوحة الإدارة")}
+                    </Link>
                   )}
 
                   <div className="h-px bg-border my-1" />

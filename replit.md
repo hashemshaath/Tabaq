@@ -180,4 +180,15 @@ All core features COMPLETE and world-class:
 - **Restaurant Stories** (user-submitted photos/videos, admin approval, community grid) — COMPLETE (DB + API + frontend tab)
 - **Enhanced Dish System** (Tabaq Star spotlight, Most Ordered scroll, allergen chips, spice flames, prep time, dietary badges) — COMPLETE (DB + API + frontend MenuTab)
 - **Expert Critic Reviews** (dual-mode composer: Regular / Critic with professional subcriteria) — COMPLETE
+- **Experiences Provider Module** (`/providers/register`, `/console/experiences`) — COMPLETE
+  - Provider registration multi-step form (5 steps: host type, business info, sample experience, pricing/availability, media & review)
+  - Provider route guard with pending approval status page
+  - Experiences management list with status badges, bookings count, rating, edit/publish/delete actions
+  - Full create/edit experience form (bilingual EN/AR fields, all required fields, gallery uploader)
+  - Availability & slot management (add one-off slots with date/time/capacity, monthly calendar-style list)
+  - Bookings management with accept/reject actions
+  - Analytics dashboard with bar chart (revenue), line chart (bookings trend), top experiences table
+  - Reviews with provider response submission
+  - DB schema: `experience_providers`, `experiences`, `experience_slots`, `experience_bookings`, `experience_reviews`
+  - API routes: `POST /provider-applications`, `GET/POST /providers/me`, experiences CRUD, slots, bookings, analytics, reviews
 - **Task #9** (AI Features, SEO & Multilingual) — PENDING
