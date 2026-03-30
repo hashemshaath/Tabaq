@@ -41,13 +41,69 @@ function useUnreadCount(token: string | null, user: unknown) {
   return count;
 }
 
+type CityOption = { id: number; nameEn: string; nameAr: string };
+
+function useHeaderCities() {
+  const [cities, setCities] = useState<CityOption[]>([]);
+  useEffect(() => {
+    fetch('/api/countries/1/cities').then(r => r.ok ? r.json() : null).then(data => {
+      if (Array.isArray(data)) setCities(data);
+      else if (Array.isArray(data?.cities)) setCities(data.cities);
+    }).catch(() => {});
+  }, []);
+  return cities;
+}
+
 export function Header() {
   const { lang, toggleLanguage, t } = useLanguage();
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const { user, token, logout } = useAuth();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [cityPickerOpen, setCityPickerOpen] = useState(false);
+  const cityPickerRef = useRef<HTMLDivElement>(null);
   const unreadCount = useUnreadCount(token, user);
+  const headerCities = useHeaderCities();
+
+  // Read selected city from URL or localStorage
+  const urlCityId = (() => {
+    if (location.startsWith('/restaurants')) {
+      const p = new URLSearchParams(location.split('?')[1] || '');
+      const id = p.get('cityId');
+      return id ? Number(id) : null;
+    }
+    return null;
+  })();
+  const [storedCityId, setStoredCityId] = useState<number | null>(() => {
+    try { const v = localStorage.getItem('tabaq_city_id'); return v ? Number(v) : null; } catch { return null; }
+  });
+  const activeCityId = urlCityId ?? storedCityId;
+  const activeCity = headerCities.find(c => c.id === activeCityId);
+  const cityLabel = activeCity ? (lang === 'ar' ? activeCity.nameAr : activeCity.nameEn) : t('Riyadh', 'الرياض');
+
+  const handleCitySelect = (city: CityOption | null) => {
+    setCityPickerOpen(false);
+    if (city) {
+      setStoredCityId(city.id);
+      try { localStorage.setItem('tabaq_city_id', String(city.id)); } catch {}
+      setLocation(`/restaurants?cityId=${city.id}`);
+    } else {
+      setStoredCityId(null);
+      try { localStorage.removeItem('tabaq_city_id'); } catch {}
+      if (location.startsWith('/restaurants')) setLocation('/restaurants');
+    }
+  };
+
+  // Close city picker when clicking outside
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (cityPickerRef.current && !cityPickerRef.current.contains(e.target as Node)) {
+        setCityPickerOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   const isAdmin = (user as any)?.isAdmin === true;
   const isOwner = (user as any)?.isOwner === true;
@@ -116,10 +172,38 @@ export function Header() {
 
         {/* Actions */}
         <div className="flex items-center gap-2 sm:gap-3">
-          <button className="hidden sm:flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2 px-3 rounded-lg hover:bg-accent">
-            <MapPin className="w-4 h-4 text-primary" />
-            <span>{t("Riyadh", "الرياض")}</span>
-          </button>
+          {/* City Picker */}
+          <div ref={cityPickerRef} className="relative hidden sm:block">
+            <button
+              onClick={() => setCityPickerOpen(v => !v)}
+              className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2 px-3 rounded-lg hover:bg-accent"
+            >
+              <MapPin className="w-4 h-4 text-primary" />
+              <span>{cityLabel}</span>
+              <ChevronDown className={`w-3 h-3 transition-transform ${cityPickerOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {cityPickerOpen && (
+              <div className="absolute top-full mt-1 start-0 w-52 bg-popover border border-border rounded-2xl shadow-xl overflow-hidden z-50 py-1">
+                <button
+                  onClick={() => handleCitySelect(null)}
+                  className="w-full text-start px-4 py-2.5 text-sm hover:bg-accent transition-colors text-muted-foreground"
+                >
+                  {t('All Cities', 'كل المدن')}
+                </button>
+                {headerCities.length > 0 && <div className="border-t border-border my-1" />}
+                {headerCities.map(city => (
+                  <button
+                    key={city.id}
+                    onClick={() => handleCitySelect(city)}
+                    className={`w-full text-start px-4 py-2.5 text-sm hover:bg-accent transition-colors flex items-center gap-2 ${activeCityId === city.id ? 'text-primary font-semibold' : 'text-foreground'}`}
+                  >
+                    {activeCityId === city.id && <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />}
+                    {lang === 'ar' ? city.nameAr : city.nameEn}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
           <Link href="/search" className="p-2.5 rounded-full hover:bg-accent text-foreground transition-colors">
             <Search className="w-5 h-5" />

@@ -10,7 +10,7 @@ import {
   FileText, ArrowUpRight, ChevronRight, MoreHorizontal, Plus,
   MapPin, Clock, LogOut, Database, Activity, FileSignature,
   DollarSign, Receipt, Send, Percent, BadgeCheck, Ban, RefreshCw,
-  CheckSquare, X, Hash
+  CheckSquare, X, Hash, ChefHat, Sparkles
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StarRating } from '@/components/StarRating';
@@ -58,7 +58,7 @@ const INITIAL_MODULES: Module[] = [
 ];
 
 // ─── Types ──────────────────────────────────────────────────────
-type AdminTab = 'overview' | 'offers' | 'contracts' | 'finance' | 'messages' | 'referrals' | 'restaurants' | 'registrations' | 'users' | 'bookings' | 'reviews' | 'blog' | 'seo' | 'modules' | 'settings' | 'review-queue' | 'promo-codes' | 'settlement';
+type AdminTab = 'overview' | 'offers' | 'contracts' | 'finance' | 'messages' | 'referrals' | 'restaurants' | 'registrations' | 'users' | 'bookings' | 'reviews' | 'blog' | 'seo' | 'modules' | 'settings' | 'review-queue' | 'promo-codes' | 'settlement' | 'experiences';
 
 // ─── Component ──────────────────────────────────────────────────
 export function AdminPanelPage() {
@@ -67,6 +67,8 @@ export function AdminPanelPage() {
   const [modules, setModules] = useState<Module[]>(INITIAL_MODULES);
   const [searchQuery, setSearchQuery] = useState('');
   const [restaurantStatusFilter, setRestaurantStatusFilter] = useState('all');
+  const [expStatusFilter, setExpStatusFilter] = useState('all');
+  const [expSubTab, setExpSubTab] = useState<'applications' | 'experiences'>('applications');
 
   const apiBase = import.meta.env.BASE_URL?.replace(/\/$/, '') || '';
 
@@ -405,6 +407,34 @@ export function AdminPanelPage() {
     enabled: activeTab === 'settlement',
   });
 
+  const { data: adminExperiencesData, refetch: refetchAdminExperiences } = useQuery({
+    queryKey: ['admin-experiences'],
+    queryFn: async () => {
+      const res = await fetch('/api/admin/experiences?limit=50', { headers: getAuthHeaders() });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    retry: false,
+    staleTime: 30000,
+    enabled: activeTab === 'experiences',
+  });
+
+  const { data: providerApplicationsData, refetch: refetchProviderApplications } = useQuery({
+    queryKey: ['admin-provider-applications'],
+    queryFn: async () => {
+      const res = await fetch('/api/provider-applications?limit=50', { headers: getAuthHeaders() });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    retry: false,
+    staleTime: 30000,
+    enabled: activeTab === 'experiences',
+  });
+
+  const liveAdminExperiences: any[] = adminExperiencesData?.experiences ?? [];
+  const liveProviderApplications: any[] = providerApplicationsData?.applications ?? [];
+  const pendingProviderAppsCount = liveProviderApplications.filter((a: any) => a.status === 'pending').length;
+
   const liveCampaigns: any[] = Array.isArray(campaignsData) ? campaignsData : (campaignsData?.campaigns ?? []);
   const livePromoCodes: any[] = Array.isArray(promoCodesData) ? promoCodesData : (promoCodesData?.codes ?? []);
   const liveFlaggedReviews: any[] = (recentReviewsData?.reviews ?? []).filter((r: any) => parseFloat(r.ratingOverall ?? '5') <= 2).slice(0, 5);
@@ -417,6 +447,7 @@ export function AdminPanelPage() {
     { id: 'promo-codes', label: 'Promo Codes', icon: Tag },
     { id: 'settlement', label: 'Settlement', icon: Receipt },
     { id: 'registrations', label: 'Registrations', icon: Plus, badge: pendingApplications.length },
+    { id: 'experiences', label: 'Experiences', icon: ChefHat, badge: pendingProviderAppsCount || undefined },
     { id: 'restaurants', label: 'Restaurants', icon: Utensils },
     { id: 'users', label: 'Users', icon: Users },
     { id: 'bookings', label: 'Bookings', icon: CalendarDays },
@@ -2102,6 +2133,216 @@ export function AdminPanelPage() {
                   </tbody>
                 </table>
               </div>
+            </div>
+          )}
+
+          {/* ── EXPERIENCES ── */}
+          {activeTab === 'experiences' && (
+            <div className="space-y-5">
+              {/* Sub-tab switcher */}
+              <div className="flex items-center gap-2">
+                {(['applications', 'experiences'] as const).map(sub => (
+                  <button
+                    key={sub}
+                    onClick={() => setExpSubTab(sub)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+                      expSubTab === sub
+                        ? 'bg-primary text-primary-foreground shadow-sm'
+                        : 'bg-secondary text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {sub === 'applications' ? <><Sparkles className="w-4 h-4" /> Provider Applications {pendingProviderAppsCount > 0 && <span className="bg-white/20 px-1.5 py-0.5 rounded-full text-xs">{pendingProviderAppsCount}</span>}</> : <><ChefHat className="w-4 h-4" /> All Experiences</>}
+                  </button>
+                ))}
+              </div>
+
+              {/* ── Provider Applications ── */}
+              {expSubTab === 'applications' && (
+                <div className="space-y-4">
+                  <p className="text-muted-foreground text-sm">{liveProviderApplications.length} applications total · {pendingProviderAppsCount} pending review</p>
+                  {liveProviderApplications.length === 0 && (
+                    <div className="bg-card border border-border rounded-2xl p-10 text-center">
+                      <ChefHat className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
+                      <p className="text-muted-foreground font-medium">No provider applications yet</p>
+                      <p className="text-sm text-muted-foreground/70 mt-1">Applications will appear here when hosts register</p>
+                    </div>
+                  )}
+                  {liveProviderApplications.map((app: any) => {
+                    const statusColor: Record<string, string> = {
+                      pending: 'bg-amber-100 text-amber-700',
+                      approved: 'bg-green-100 text-green-700',
+                      rejected: 'bg-red-100 text-red-700',
+                    };
+                    const handleAppAction = async (status: 'approved' | 'rejected') => {
+                      await fetch(`/api/provider-applications/${app.id}`, {
+                        method: 'PATCH',
+                        headers: getAuthHeaders(),
+                        body: JSON.stringify({ status }),
+                      });
+                      refetchProviderApplications();
+                    };
+                    return (
+                      <div key={app.id} className="bg-card border border-border rounded-2xl p-5">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex items-start gap-4">
+                            <div className="w-12 h-12 bg-violet-100 rounded-2xl flex items-center justify-center shrink-0">
+                              <ChefHat className="w-6 h-6 text-violet-600" />
+                            </div>
+                            <div>
+                              <h3 className="font-bold text-foreground">{app.businessNameEn}</h3>
+                              <p className="text-sm text-muted-foreground">{app.businessNameAr} · <span className="capitalize">{(app.businessType ?? '').replace(/_/g, ' ')}</span></p>
+                              <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-muted-foreground">
+                                <span className="flex items-center gap-1"><MessageSquare className="w-3 h-3" />{app.contactEmail}</span>
+                                {app.contactPhone && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{app.contactPhone}</span>}
+                                <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{app.submittedAt ? new Date(app.submittedAt).toLocaleDateString() : '—'}</span>
+                              </div>
+                              {app.adminNotes && (
+                                <p className="mt-2 text-xs bg-secondary px-3 py-1.5 rounded-lg text-muted-foreground">Note: {app.adminNotes}</p>
+                              )}
+                            </div>
+                          </div>
+                          <span className={`shrink-0 inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-semibold ${statusColor[app.status] ?? 'bg-amber-100 text-amber-700'}`}>
+                            {app.status === 'approved' && <CheckCircle2 className="w-3 h-3" />}
+                            {app.status === 'rejected' && <XCircle className="w-3 h-3" />}
+                            {app.status === 'pending' && <AlertCircle className="w-3 h-3" />}
+                            {(app.status ?? 'pending').charAt(0).toUpperCase() + (app.status ?? 'pending').slice(1)}
+                          </span>
+                        </div>
+                        {app.status === 'pending' && (
+                          <div className="flex gap-2 mt-4 pt-4 border-t border-border">
+                            <button
+                              onClick={() => handleAppAction('approved')}
+                              className="flex items-center gap-1.5 bg-green-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-green-700 transition-colors"
+                            >
+                              <CheckCircle2 className="w-4 h-4" /> Approve
+                            </button>
+                            <button
+                              onClick={() => handleAppAction('rejected')}
+                              className="flex items-center gap-1.5 bg-red-100 text-red-700 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-red-200 transition-colors"
+                            >
+                              <XCircle className="w-4 h-4" /> Reject
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* ── All Experiences ── */}
+              {expSubTab === 'experiences' && (
+                <div className="space-y-4">
+                  {/* Status filter */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {['all', 'pending', 'active', 'suspended', 'draft'].map(f => (
+                      <button
+                        key={f}
+                        onClick={() => setExpStatusFilter(f)}
+                        className={`px-4 py-1.5 rounded-xl text-sm font-semibold transition-all capitalize ${
+                          expStatusFilter === f
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-secondary text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        {f === 'all' ? 'All Experiences' : f.charAt(0).toUpperCase() + f.slice(1)}
+                      </button>
+                    ))}
+                    <span className="ms-auto text-xs text-muted-foreground">{liveAdminExperiences.filter((e: any) => expStatusFilter === 'all' || e.status === expStatusFilter).length} experiences</span>
+                  </div>
+
+                  {liveAdminExperiences.length === 0 && (
+                    <div className="bg-card border border-border rounded-2xl p-10 text-center">
+                      <ChefHat className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
+                      <p className="text-muted-foreground font-medium">No experiences found</p>
+                      <p className="text-sm text-muted-foreground/70 mt-1">Experiences created by providers will appear here</p>
+                    </div>
+                  )}
+
+                  <div className="space-y-3">
+                    {liveAdminExperiences
+                      .filter((e: any) => expStatusFilter === 'all' || e.status === expStatusFilter)
+                      .map((exp: any) => {
+                        const statusColor: Record<string, string> = {
+                          pending: 'bg-amber-100 text-amber-700',
+                          active: 'bg-green-100 text-green-700',
+                          suspended: 'bg-red-100 text-red-700',
+                          draft: 'bg-secondary text-muted-foreground',
+                        };
+                        const handleExpStatus = async (status: string) => {
+                          await fetch(`/api/admin/experiences/${exp.id}/status`, {
+                            method: 'PATCH',
+                            headers: getAuthHeaders(),
+                            body: JSON.stringify({ status }),
+                          });
+                          refetchAdminExperiences();
+                        };
+                        return (
+                          <div key={exp.id} className="bg-card border border-border rounded-2xl p-5">
+                            <div className="flex items-start gap-4">
+                              {exp.coverImage && (
+                                <img src={exp.coverImage} alt={exp.titleEn} className="w-20 h-16 rounded-xl object-cover shrink-0" />
+                              )}
+                              {!exp.coverImage && (
+                                <div className="w-20 h-16 rounded-xl bg-violet-100 flex items-center justify-center shrink-0">
+                                  <ChefHat className="w-8 h-8 text-violet-400" />
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div>
+                                    <h3 className="font-bold text-foreground truncate">{exp.titleEn}</h3>
+                                    <p className="text-sm text-muted-foreground">{exp.titleAr}</p>
+                                  </div>
+                                  <span className={`shrink-0 inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-semibold capitalize ${statusColor[exp.status] ?? 'bg-secondary text-muted-foreground'}`}>
+                                    {exp.status}
+                                  </span>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-muted-foreground">
+                                  <span className="capitalize bg-secondary px-2 py-0.5 rounded-lg">{(exp.category ?? '').replace(/_/g, ' ')}</span>
+                                  <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{exp.city}</span>
+                                  {exp.durationMinutes && <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{exp.durationMinutes}min</span>}
+                                  {exp.pricePerPerson && <span className="font-semibold text-foreground">{Number(exp.pricePerPerson).toLocaleString()} SAR/person</span>}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex gap-2 mt-4 pt-4 border-t border-border">
+                              {exp.status !== 'active' && (
+                                <button
+                                  onClick={() => handleExpStatus('active')}
+                                  className="flex items-center gap-1.5 bg-green-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-green-700 transition-colors"
+                                >
+                                  <CheckCircle2 className="w-4 h-4" /> Activate
+                                </button>
+                              )}
+                              {exp.status !== 'suspended' && (
+                                <button
+                                  onClick={() => handleExpStatus('suspended')}
+                                  className="flex items-center gap-1.5 bg-red-100 text-red-700 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-red-200 transition-colors"
+                                >
+                                  <Ban className="w-4 h-4" /> Suspend
+                                </button>
+                              )}
+                              {exp.status !== 'pending' && (
+                                <button
+                                  onClick={() => handleExpStatus('pending')}
+                                  className="flex items-center gap-1.5 bg-amber-100 text-amber-700 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-amber-200 transition-colors"
+                                >
+                                  <AlertCircle className="w-4 h-4" /> Set Pending
+                                </button>
+                              )}
+                              <Link href={`/experiences/${exp.id}`}>
+                                <button className="flex items-center gap-1.5 bg-secondary text-muted-foreground px-4 py-2 rounded-xl text-sm font-semibold hover:text-foreground transition-colors ms-auto">
+                                  <Eye className="w-4 h-4" /> View
+                                </button>
+                              </Link>
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

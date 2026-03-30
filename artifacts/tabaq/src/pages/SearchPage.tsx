@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useLocation, Link } from 'wouter';
 import { useLanguage } from '@/hooks/use-language';
+import { usePageMeta } from '@/hooks/use-page-meta';
 import {
   useSearch,
   useAutocomplete,
@@ -66,6 +67,12 @@ function clearRecent() {
 export function SearchPage() {
   const [location, setLocation] = useLocation();
   const { t, lang } = useLanguage();
+  usePageMeta({
+    titleEn: 'Search Restaurants & Dishes | Tabaq',
+    titleAr: 'بحث في المطاعم والأطباق | طبق',
+    descriptionEn: 'Search for restaurants, dishes, and food experiences across Saudi Arabia.',
+    descriptionAr: 'ابحث عن المطاعم والأطباق وتجارب الطعام في المملكة العربية السعودية.',
+  }, lang);
   const params = new URLSearchParams(window.location.search);
   const initialQuery = params.get('q') || '';
 

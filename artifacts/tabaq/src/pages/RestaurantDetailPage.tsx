@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { StarRating } from '@/components/StarRating';
 import { useLanguage } from '@/hooks/use-language';
+import { usePageMeta } from '@/hooks/use-page-meta';
 import {
   useGetRestaurant,
   useGetRestaurantMenus,
@@ -471,6 +472,17 @@ export function RestaurantDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['saved-restaurants'] });
     }
   };
+
+  const restaurantNameEn = (data?.restaurant as any)?.nameEn ?? 'Restaurant';
+  const restaurantNameAr = (data?.restaurant as any)?.nameAr ?? 'مطعم';
+  const restaurantDescEn = (data?.restaurant as any)?.descriptionEn ?? '';
+  const restaurantDescAr = (data?.restaurant as any)?.descriptionAr ?? '';
+  usePageMeta({
+    titleEn: data?.restaurant ? `${restaurantNameEn} | Tabaq` : 'Restaurant | Tabaq',
+    titleAr: data?.restaurant ? `${restaurantNameAr} | طبق` : 'مطعم | طبق',
+    descriptionEn: restaurantDescEn || `Discover ${restaurantNameEn} on Tabaq — book a table, view the menu, and read reviews.`,
+    descriptionAr: restaurantDescAr || `اكتشف ${restaurantNameAr} على طبق — احجز طاولة، اطّلع على القائمة، واقرأ التقييمات.`,
+  }, lang);
 
   if (!idIsValid) {
     return <div className="p-20 text-center text-xl">{t('Restaurant not found', 'المطعم غير موجود')}</div>;

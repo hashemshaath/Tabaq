@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useLanguage } from '@/hooks/use-language';
+import { usePageMeta } from '@/hooks/use-page-meta';
 import {
   useListExperiences,
   useListCitiesByCountry,
@@ -50,6 +51,12 @@ interface Filters {
 
 export function ExperiencesPage() {
   const { t, lang } = useLanguage();
+  usePageMeta({
+    titleEn: 'Food Experiences | Tabaq',
+    titleAr: 'تجارب طعام | طبق',
+    descriptionEn: 'Book unique culinary experiences — chef\'s table dinners, cooking classes, and more across Saudi Arabia.',
+    descriptionAr: 'احجز تجارب طهي فريدة — عشاء مع الشيف، ودروس الطبخ، والمزيد في المملكة العربية السعودية.',
+  }, lang);
   const [filters, setFilters] = useState<Filters>({
     cityId: undefined,
     category: '',

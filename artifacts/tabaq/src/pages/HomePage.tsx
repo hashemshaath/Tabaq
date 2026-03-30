@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '@/hooks/use-language';
+import { usePageMeta } from '@/hooks/use-page-meta';
 import { Link, useLocation } from 'wouter';
 import {
   Search, ChevronRight, Star, TrendingUp, Trophy, MapPin,
@@ -166,6 +167,12 @@ function SectionHeader({ badge, badgeIcon: Icon, title, subtitle, viewAllHref, v
 // ── Main Page ──────────────────────────────────────────────────────
 export function HomePage() {
   const { t, lang } = useLanguage();
+  usePageMeta({
+    titleEn: 'Tabaq | طبق — Discover Saudi Arabia\'s Best Restaurants',
+    titleAr: 'طبق | اكتشف أفضل مطاعم المملكة العربية السعودية',
+    descriptionEn: 'Discover and book top restaurants, exclusive food experiences, and special deals across Saudi Arabia.',
+    descriptionAr: 'اكتشف وأحجز أفضل المطاعم والتجارب الغذائية الحصرية والعروض المميزة في المملكة العربية السعودية.',
+  }, lang);
   const [, setLocation] = useLocation();
   const [query, setQuery] = useState('');
   const [heroSlide, setHeroSlide] = useState(0);

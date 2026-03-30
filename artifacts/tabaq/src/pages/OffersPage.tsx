@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useLanguage } from '@/hooks/use-language';
+import { usePageMeta } from '@/hooks/use-page-meta';
 import { useListOffers, usePurchaseVoucher, useGiftVoucher, type Offer } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -1007,6 +1008,12 @@ function DealDetailPage({ offer, onBack }: { offer: ExtendedOffer; onBack: () =>
 // ─── Main Page ────────────────────────────────────────────────────
 export function OffersPage() {
   const { t, lang } = useLanguage();
+  usePageMeta({
+    titleEn: 'Restaurant Offers & Deals | Tabaq',
+    titleAr: 'عروض وصفقات المطاعم | طبق',
+    descriptionEn: 'Save up to 50% at Saudi Arabia\'s best restaurants. Exclusive dining vouchers and special deals.',
+    descriptionAr: 'وفّر حتى 50٪ في أفضل مطاعم المملكة العربية السعودية. قسائم طعام حصرية وعروض خاصة.',
+  }, lang);
   const { data: rawApiOffers, isLoading: offersLoading } = useListOffers({});
   const apiOffers = Array.isArray(rawApiOffers) ? rawApiOffers : (rawApiOffers as any)?.offers ?? (rawApiOffers as any)?.data ?? [];
   const [selectedOffer, setSelectedOffer] = useState<ExtendedOffer | null>(null);

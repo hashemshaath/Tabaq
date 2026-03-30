@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useLanguage } from '@/hooks/use-language';
+import { usePageMeta } from '@/hooks/use-page-meta';
 import {
   useListRestaurants,
   useListCategories,
@@ -31,6 +32,12 @@ const SAUDI_COUNTRY_ID = 1;
 
 export function DiscoveryPage() {
   const { t, lang } = useLanguage();
+  usePageMeta({
+    titleEn: 'Explore Restaurants | Tabaq',
+    titleAr: 'استكشف المطاعم | طبق',
+    descriptionEn: 'Browse and filter hundreds of restaurants across Saudi Arabia by cuisine, price, rating, and more.',
+    descriptionAr: 'تصفح وفلتر مئات المطاعم عبر المملكة العربية السعودية حسب المطبخ والسعر والتقييم والمزيد.',
+  }, lang);
   const [location] = useLocation();
   const params = new URLSearchParams(location.split('?')[1] || '');
 
