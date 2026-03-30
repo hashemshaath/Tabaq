@@ -61,7 +61,7 @@ export function Header() {
   const unreadCount = useUnreadCount(token, user);
   const { data: countries } = useListCountries();
   const countryId = countries?.find((c) => c.code === country.code)?.id ?? null;
-  const { data: cities } = useListCitiesByCountry(countryId ?? 0, { query: { enabled: countryId !== null } });
+  const { data: cities } = useListCitiesByCountry(countryId ?? 0, { query: { queryKey: ['cities-by-country', countryId], enabled: countryId !== null } });
 
   const neighborhoods = getNeighborhoods();
 
