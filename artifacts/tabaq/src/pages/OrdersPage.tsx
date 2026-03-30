@@ -223,7 +223,9 @@ function OrderCard({ order, lang, t, onReorder }: {
         {isActive && order.status !== 'cancelled' && (
           <div className="mt-4">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-semibold text-primary">{t('Tracking your order', 'تتبع طلبك')}</p>
+              <Link href={`/orders/${order.id}`} className="text-xs font-semibold text-primary hover:underline underline-offset-2">
+                {t('Track your order →', 'تتبع طلبك ←')}
+              </Link>
               {order.estimatedTime && (
                 <div className="flex items-center gap-1 text-xs text-gray-500">
                   <Clock className="w-3 h-3" />
@@ -373,7 +375,9 @@ export function OrdersPage() {
     return true;
   });
 
-  const activeCount = MOCK_ORDERS.filter(o => ['placed', 'preparing', 'out_for_delivery'].includes(o.status)).length;
+  const activeOrders = MOCK_ORDERS.filter(o => ['placed', 'preparing', 'out_for_delivery'].includes(o.status));
+  const activeCount = activeOrders.length;
+  const firstActiveId = activeOrders[0]?.id ?? null;
 
   const TABS: { id: OrderTab; labelEn: string; labelAr: string; count?: number }[] = [
     { id: 'all', labelEn: 'All Orders', labelAr: 'كل الطلبات', count: MOCK_ORDERS.length },
@@ -434,9 +438,15 @@ export function OrdersPage() {
                 ? t('You have 1 active order in progress', 'لديك طلب نشط قيد التنفيذ')
                 : t(`You have ${activeCount} active orders`, `لديك ${activeCount} طلبات نشطة`)}
             </span>
-            <button onClick={() => setActiveTab('active')} className="ms-auto text-xs underline underline-offset-2 font-semibold">
-              {t('Track now', 'تتبع الآن')}
-            </button>
+            {firstActiveId ? (
+              <Link href={`/orders/${firstActiveId}`} className="ms-auto text-xs underline underline-offset-2 font-semibold">
+                {t('Track now', 'تتبع الآن')}
+              </Link>
+            ) : (
+              <button onClick={() => setActiveTab('active')} className="ms-auto text-xs underline underline-offset-2 font-semibold">
+                {t('Track now', 'تتبع الآن')}
+              </button>
+            )}
           </div>
         </div>
       )}
