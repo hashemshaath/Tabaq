@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { restaurantsTable, dishesTable, citiesTable, venuesTable, categoriesTable } from "@workspace/db/schema";
-import { eq, ilike, or, and, type SQL } from "drizzle-orm";
+import { restaurantsTable, dishesTable, citiesTable, venuesTable, categoriesTable, restaurantCategoriesTable } from "@workspace/db/schema";
+import { eq, ilike, or, and, inArray, type SQL } from "drizzle-orm";
 
 const router: IRouter = Router();
 
@@ -83,8 +83,28 @@ router.get("/search", async (req, res) => {
         : Promise.resolve([]),
     ]);
 
+    // Attach cuisine types to search results
+    const restaurantIds = restaurants.map(r => r.id);
+    let cuisineMapEn: Record<number, string[]> = {};
+    let cuisineMapAr: Record<number, string[]> = {};
+    if (restaurantIds.length > 0) {
+      const catJoins = await db.select({
+        restaurantId: restaurantCategoriesTable.restaurantId,
+        nameEn: categoriesTable.nameEn,
+        nameAr: categoriesTable.nameAr,
+      }).from(restaurantCategoriesTable)
+        .innerJoin(categoriesTable, eq(restaurantCategoriesTable.categoryId, categoriesTable.id))
+        .where(inArray(restaurantCategoriesTable.restaurantId, restaurantIds));
+      catJoins.forEach(c => {
+        if (!cuisineMapEn[c.restaurantId]) cuisineMapEn[c.restaurantId] = [];
+        if (!cuisineMapAr[c.restaurantId]) cuisineMapAr[c.restaurantId] = [];
+        cuisineMapEn[c.restaurantId].push(c.nameEn);
+        cuisineMapAr[c.restaurantId].push(c.nameAr);
+      });
+    }
+
     res.json({
-      restaurants: restaurants.map(r => ({ ...r, cuisineTypes: [] })),
+      restaurants: restaurants.map(r => ({ ...r, cuisineTypes: cuisineMapEn[r.id] || [], cuisineTypesAr: cuisineMapAr[r.id] || [] })),
       dishes,
       venues,
       totalRestaurants: restaurants.length,

@@ -735,7 +735,7 @@ export function UserDashboardPage() {
               <p className="text-muted-foreground text-sm">
                 {savedLoading ? t('Loading…', 'جارٍ التحميل…') : `${savedRestaurants.length} ${t('saved restaurants', 'مطاعم محفوظة')}`}
               </p>
-              <Link href="/discovery">
+              <Link href="/restaurants">
                 <Button size="sm" variant="outline">{t('Discover More', 'اكتشف أكثر')}</Button>
               </Link>
             </div>
@@ -757,7 +757,7 @@ export function UserDashboardPage() {
                 <Heart className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
                 <h3 className="font-bold text-foreground mb-2">{t('No saved restaurants yet', 'لا توجد مطاعم محفوظة بعد')}</h3>
                 <p className="text-muted-foreground text-sm mb-4">{t('Save your favourite restaurants to find them quickly later.', 'احفظ مطاعمك المفضلة للوصول إليها بسرعة لاحقاً.')}</p>
-                <Link href="/discovery"><Button>{t('Explore Restaurants', 'استكشف المطاعم')}</Button></Link>
+                <Link href="/restaurants"><Button>{t('Explore Restaurants', 'استكشف المطاعم')}</Button></Link>
               </div>
             )}
             {!savedLoading && savedRestaurants.length > 0 && (

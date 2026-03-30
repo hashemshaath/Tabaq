@@ -110,22 +110,26 @@ router.get("/restaurants", async (req, res) => {
 
     // Attach cuisine types
     const restaurantIds = restaurants.map(r => r.id);
-    let cuisineMap: Record<number, string[]> = {};
+    let cuisineMapEn: Record<number, string[]> = {};
+    let cuisineMapAr: Record<number, string[]> = {};
     if (restaurantIds.length > 0) {
       const catJoins = await db.select({
         restaurantId: restaurantCategoriesTable.restaurantId,
         nameEn: categoriesTable.nameEn,
+        nameAr: categoriesTable.nameAr,
       }).from(restaurantCategoriesTable)
         .innerJoin(categoriesTable, eq(restaurantCategoriesTable.categoryId, categoriesTable.id))
         .where(inArray(restaurantCategoriesTable.restaurantId, restaurantIds));
       catJoins.forEach(c => {
-        if (!cuisineMap[c.restaurantId]) cuisineMap[c.restaurantId] = [];
-        cuisineMap[c.restaurantId].push(c.nameEn);
+        if (!cuisineMapEn[c.restaurantId]) cuisineMapEn[c.restaurantId] = [];
+        if (!cuisineMapAr[c.restaurantId]) cuisineMapAr[c.restaurantId] = [];
+        cuisineMapEn[c.restaurantId].push(c.nameEn);
+        cuisineMapAr[c.restaurantId].push(c.nameAr);
       });
     }
 
     res.json({
-      restaurants: restaurants.map(r => ({ ...r, cuisineTypes: cuisineMap[r.id] || [] })),
+      restaurants: restaurants.map(r => ({ ...r, cuisineTypes: cuisineMapEn[r.id] || [], cuisineTypesAr: cuisineMapAr[r.id] || [] })),
       total: Number(total[0]?.count ?? 0),
       offset: parseInt(offset as string),
       limit: parseInt(limit as string),
@@ -148,23 +152,28 @@ router.get("/restaurants/featured", async (req, res) => {
       .limit(parseInt(limit as string));
 
     const restaurantIds = restaurants.map(r => r.id);
-    let cuisineMap: Record<number, string[]> = {};
+    let cuisineMapEn: Record<number, string[]> = {};
+    let cuisineMapAr: Record<number, string[]> = {};
     if (restaurantIds.length > 0) {
       const catJoins = await db.select({
         restaurantId: restaurantCategoriesTable.restaurantId,
         nameEn: categoriesTable.nameEn,
+        nameAr: categoriesTable.nameAr,
       }).from(restaurantCategoriesTable)
         .innerJoin(categoriesTable, eq(restaurantCategoriesTable.categoryId, categoriesTable.id))
         .where(inArray(restaurantCategoriesTable.restaurantId, restaurantIds));
       catJoins.forEach(c => {
-        if (!cuisineMap[c.restaurantId]) cuisineMap[c.restaurantId] = [];
-        cuisineMap[c.restaurantId].push(c.nameEn);
+        if (!cuisineMapEn[c.restaurantId]) cuisineMapEn[c.restaurantId] = [];
+        if (!cuisineMapAr[c.restaurantId]) cuisineMapAr[c.restaurantId] = [];
+        cuisineMapEn[c.restaurantId].push(c.nameEn);
+        cuisineMapAr[c.restaurantId].push(c.nameAr);
       });
     }
 
     res.json(restaurants.map(r => ({
       ...r,
-      cuisineTypes: cuisineMap[r.id] || [],
+      cuisineTypes: cuisineMapEn[r.id] || [],
+      cuisineTypesAr: cuisineMapAr[r.id] || [],
     })));
   } catch (err) {
     req.log.error({ err }, "Failed to fetch featured restaurants");

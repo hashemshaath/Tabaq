@@ -33,7 +33,8 @@ router.post("/me/addresses", requireAuth, async (req, res) => {
     };
 
     if (!body.addressLine1 || !body.city) {
-      return res.status(400).json({ error: "Address line 1 and city are required" });
+      res.status(400).json({ error: "Address line 1 and city are required" });
+      return;
     }
 
     if (body.isDefault) {
@@ -57,7 +58,7 @@ router.post("/me/addresses", requireAuth, async (req, res) => {
 router.put("/me/addresses/:id", requireAuth, async (req, res) => {
   try {
     const userId = req.auth!.userId;
-    const addressId = parseInt(req.params.id);
+    const addressId = parseInt(req.params['id'] as string);
     const body = req.body;
 
     const [existing] = await db
@@ -65,7 +66,10 @@ router.put("/me/addresses/:id", requireAuth, async (req, res) => {
       .from(userAddressesTable)
       .where(and(eq(userAddressesTable.id, addressId), eq(userAddressesTable.userId, userId)));
 
-    if (!existing) return res.status(404).json({ error: "Address not found" });
+    if (!existing) {
+      res.status(404).json({ error: "Address not found" });
+      return;
+    }
 
     if (body.isDefault) {
       await db
@@ -89,14 +93,17 @@ router.put("/me/addresses/:id", requireAuth, async (req, res) => {
 router.patch("/me/addresses/:id/default", requireAuth, async (req, res) => {
   try {
     const userId = req.auth!.userId;
-    const addressId = parseInt(req.params.id);
+    const addressId = parseInt(req.params['id'] as string);
 
     const [existing] = await db
       .select()
       .from(userAddressesTable)
       .where(and(eq(userAddressesTable.id, addressId), eq(userAddressesTable.userId, userId)));
 
-    if (!existing) return res.status(404).json({ error: "Address not found" });
+    if (!existing) {
+      res.status(404).json({ error: "Address not found" });
+      return;
+    }
 
     await db
       .update(userAddressesTable)
@@ -118,14 +125,17 @@ router.patch("/me/addresses/:id/default", requireAuth, async (req, res) => {
 router.delete("/me/addresses/:id", requireAuth, async (req, res) => {
   try {
     const userId = req.auth!.userId;
-    const addressId = parseInt(req.params.id);
+    const addressId = parseInt(req.params['id'] as string);
 
     const [existing] = await db
       .select()
       .from(userAddressesTable)
       .where(and(eq(userAddressesTable.id, addressId), eq(userAddressesTable.userId, userId)));
 
-    if (!existing) return res.status(404).json({ error: "Address not found" });
+    if (!existing) {
+      res.status(404).json({ error: "Address not found" });
+      return;
+    }
 
     await db
       .delete(userAddressesTable)

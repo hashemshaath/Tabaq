@@ -207,9 +207,28 @@ const MOCK_OFFERS = [
   },
 ];
 
-const CATEGORIES = ['All', 'Fine Dining', 'Japanese', 'Saudi Cuisine', 'Chinese', 'American', 'Café'];
-const CITIES = ['All Cities', 'Riyadh', 'Jeddah', 'Dammam'];
-const SORT_OPTIONS = ['Best Match', 'Discount %', 'Price: Low', 'Price: High', 'Ending Soon'];
+const CATEGORIES = [
+  { en: 'All', ar: 'الكل' },
+  { en: 'Fine Dining', ar: 'مطاعم راقية' },
+  { en: 'Japanese', ar: 'ياباني' },
+  { en: 'Saudi Cuisine', ar: 'مطبخ سعودي' },
+  { en: 'Chinese', ar: 'صيني' },
+  { en: 'American', ar: 'أمريكي' },
+  { en: 'Café', ar: 'مقهى' },
+];
+const CITIES = [
+  { en: 'All Cities', ar: 'كل المدن' },
+  { en: 'Riyadh', ar: 'الرياض' },
+  { en: 'Jeddah', ar: 'جدة' },
+  { en: 'Dammam', ar: 'الدمام' },
+];
+const SORT_OPTIONS = [
+  { en: 'Best Match', ar: 'الأنسب' },
+  { en: 'Discount %', ar: 'نسبة الخصم' },
+  { en: 'Price: Low', ar: 'السعر: تصاعدي' },
+  { en: 'Price: High', ar: 'السعر: تنازلي' },
+  { en: 'Ending Soon', ar: 'ينتهي قريباً' },
+];
 
 type MockOffer = typeof MOCK_OFFERS[0];
 type ExtendedOffer = MockOffer & Partial<Offer>;
@@ -1089,18 +1108,18 @@ export function OffersPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-2 py-3 overflow-x-auto scrollbar-hide">
             <select value={sortBy} onChange={e => setSortBy(e.target.value)} className="text-xs font-semibold px-3 py-1.5 rounded-full border border-border bg-card focus:outline-none shrink-0 cursor-pointer">
-              {SORT_OPTIONS.map(s => <option key={s}>{s}</option>)}
+              {SORT_OPTIONS.map(s => <option key={s.en} value={s.en}>{lang === 'ar' ? s.ar : s.en}</option>)}
             </select>
             <select value={city} onChange={e => setCity(e.target.value)} className="text-xs font-semibold px-3 py-1.5 rounded-full border border-border bg-card focus:outline-none shrink-0 cursor-pointer">
-              {CITIES.map(c => <option key={c}>{c}</option>)}
+              {CITIES.map(c => <option key={c.en} value={c.en}>{lang === 'ar' ? c.ar : c.en}</option>)}
             </select>
             <div className="w-px h-5 bg-border shrink-0 mx-1" />
             {CATEGORIES.map(cat => (
-              <button key={cat} onClick={() => setCategory(cat)}
+              <button key={cat.en} onClick={() => setCategory(cat.en)}
                 className={`text-xs font-semibold px-3.5 py-1.5 rounded-full whitespace-nowrap transition-all shrink-0 ${
-                  category === cat ? 'bg-foreground text-background shadow-sm' : 'bg-secondary/60 text-foreground hover:bg-secondary'
+                  category === cat.en ? 'bg-foreground text-background shadow-sm' : 'bg-secondary/60 text-foreground hover:bg-secondary'
                 }`}>
-                {cat === 'All' ? t('All Deals', 'كل العروض') : cat}
+                {cat.en === 'All' ? t('All Deals', 'كل العروض') : (lang === 'ar' ? cat.ar : cat.en)}
               </button>
             ))}
           </div>

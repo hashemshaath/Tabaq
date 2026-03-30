@@ -385,7 +385,7 @@ export function DiscoveryPage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {topRatedData.restaurants.map((rest, idx) => {
                 const city = cities?.find(c => c.id === rest.cityId);
-                const cuisines = (rest.cuisineTypes ?? []).slice(0, 2);
+                const cuisines = (lang === 'ar' && (rest as any).cuisineTypesAr?.length ? (rest as any).cuisineTypesAr : (rest.cuisineTypes ?? [])).slice(0, 2);
                 const MEDAL = ['🥇', '🥈', '🥉'];
                 return (
                   <Link key={rest.id} href={`/restaurants/${rest.id}`}>
@@ -404,7 +404,7 @@ export function DiscoveryPage() {
                       {/* Cuisine tags */}
                       {cuisines.length > 0 && (
                         <div className="absolute top-3 end-3 flex gap-1 flex-wrap justify-end">
-                          {cuisines.map((c, i) => (
+                          {cuisines.map((c: string, i: number) => (
                             <span key={i} className="bg-black/50 backdrop-blur-sm text-white/90 text-[10px] font-medium px-2 py-0.5 rounded-full border border-white/10">
                               {c}
                             </span>

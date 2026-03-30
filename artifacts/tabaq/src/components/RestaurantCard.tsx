@@ -8,6 +8,7 @@ import { getRestaurantAwards } from '@/lib/awards';
 export type RestaurantCardData = TRestaurantCard & {
   cityNameEn?: string | null;
   cityNameAr?: string | null;
+  cuisineTypesAr?: string[];
   isTrending?: boolean;
   isNew?: boolean;
   isHalal?: boolean;
@@ -46,7 +47,10 @@ export function RestaurantCard({ restaurant, rank }: { restaurant: RestaurantCar
   const reviews = Number(restaurant.reviewCount ?? 0);
   const isTrending = restaurant.isTrending || (reviews > 20 && rating >= 4.3);
   const isNew = restaurant.isNew || (reviews > 0 && reviews <= 5);
-  const cuisines = (restaurant.cuisineTypes ?? []).slice(0, 2);
+  const cuisines = (lang === 'ar' && restaurant.cuisineTypesAr?.length
+    ? restaurant.cuisineTypesAr
+    : restaurant.cuisineTypes ?? []
+  ).slice(0, 2);
   const { open, label: openLabel } = getOpenStatus(lang);
 
   return (

@@ -66,7 +66,7 @@ function clearRecent() {
 export function SearchPage() {
   const [location, setLocation] = useLocation();
   const { t, lang } = useLanguage();
-  const params = new URLSearchParams(location.split('?')[1] || '');
+  const params = new URLSearchParams(window.location.search);
   const initialQuery = params.get('q') || '';
 
   const [query, setQuery] = useState(initialQuery);

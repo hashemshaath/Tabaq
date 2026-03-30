@@ -211,3 +211,12 @@ All core features COMPLETE and world-class:
 - **Task #4** (Experiences admin controls) — IN PROGRESS
 - **Task #5** (City & neighborhood filter) — IN PROGRESS
 - **Task #9** (AI Features, SEO & Multilingual) — PENDING
+
+## Recent Audit Fixes (Production Polish Session)
+
+- **Broken `/discovery` links** — Fixed 2 broken links in UserDashboardPage (Saved tab "Discover More" + empty state CTA) that pointed to nonexistent `/discovery`; corrected to `/restaurants`
+- **Arabic cuisine tags** — API now returns `cuisineTypesAr: string[]` alongside `cuisineTypes: string[]` in `/api/restaurants`, `/api/restaurants/featured`, and `/api/search`. `RestaurantCard` and `DiscoveryPage` top-rated section now use `cuisineTypesAr` in Arabic mode (shows "ياباني", "مأكولات بحرية" instead of "Japanese", "Seafood")
+- **OffersPage filter bilingual** — `CATEGORIES`, `CITIES`, `SORT_OPTIONS` converted from `string[]` to `{en, ar}[]`; filter chips and dropdowns now show Arabic labels in Arabic mode while maintaining English values for internal filtering logic
+- **Search URL param fix** — `SearchPage` now reads `window.location.search` instead of wouter's `useLocation()` which doesn't include query strings; `/search?q=sushi` now pre-fills the search box and shows results immediately
+- **addresses.ts TypeScript** — Fixed "not all code paths return a value" and `string | string[]` type errors; use `res.status(); return;` pattern and `req.params['id'] as string` casting
+- **admin-finance.ts TypeScript** — Fixed all `return res.status()` early returns in async route handlers across contracts, transactions, invoices, and messages routes

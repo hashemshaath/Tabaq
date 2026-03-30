@@ -59,7 +59,7 @@ router.get("/admin/contracts/:id", async (req, res) => {
       .leftJoin(restaurantsTable, eq(contractsTable.restaurantId, restaurantsTable.id))
       .where(eq(contractsTable.id, id));
 
-    if (!contract) return res.status(404).json({ error: "not_found", message: "Contract not found" });
+    if (!contract) { res.status(404).json({ error: "not_found", message: "Contract not found" }); return; }
     res.json(contract);
   } catch (err) {
     res.status(500).json({ error: "internal_error", message: "Failed to fetch contract" });
@@ -75,7 +75,8 @@ router.post("/admin/contracts", async (req, res) => {
     } = req.body;
 
     if (!restaurantId || commissionPercent === undefined) {
-      return res.status(400).json({ error: "bad_request", message: "restaurantId and commissionPercent are required" });
+      res.status(400).json({ error: "bad_request", message: "restaurantId and commissionPercent are required" });
+      return;
     }
 
     const [contract] = await db.insert(contractsTable).values({
@@ -133,7 +134,7 @@ router.put("/admin/contracts/:id", async (req, res) => {
       .where(eq(contractsTable.id, id))
       .returning();
 
-    if (!updated) return res.status(404).json({ error: "not_found", message: "Contract not found" });
+    if (!updated) { res.status(404).json({ error: "not_found", message: "Contract not found" }); return; }
     res.json({ contract: updated });
   } catch (err) {
     res.status(500).json({ error: "internal_error", message: "Failed to update contract" });
@@ -150,7 +151,7 @@ router.patch("/admin/contracts/:id/approve", async (req, res) => {
       .where(eq(contractsTable.id, id))
       .returning();
 
-    if (!updated) return res.status(404).json({ error: "not_found", message: "Contract not found" });
+    if (!updated) { res.status(404).json({ error: "not_found", message: "Contract not found" }); return; }
     res.json({ contract: updated });
   } catch (err) {
     res.status(500).json({ error: "internal_error", message: "Failed to approve contract" });
@@ -162,7 +163,7 @@ router.patch("/admin/contracts/:id/status", async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const { status } = req.body as { status: "suspended" | "terminated" | "active" | "draft" };
-    if (!status) return res.status(400).json({ error: "bad_request", message: "status is required" });
+    if (!status) { res.status(400).json({ error: "bad_request", message: "status is required" }); return; }
 
     const [updated] = await db
       .update(contractsTable)
@@ -170,7 +171,7 @@ router.patch("/admin/contracts/:id/status", async (req, res) => {
       .where(eq(contractsTable.id, id))
       .returning();
 
-    if (!updated) return res.status(404).json({ error: "not_found", message: "Contract not found" });
+    if (!updated) { res.status(404).json({ error: "not_found", message: "Contract not found" }); return; }
     res.json({ contract: updated });
   } catch (err) {
     res.status(500).json({ error: "internal_error", message: "Failed to update contract status" });
@@ -188,7 +189,7 @@ router.get("/restaurants/:restaurantId/contract", async (req, res) => {
       .orderBy(desc(contractsTable.createdAt))
       .limit(1);
 
-    if (!contract) return res.status(404).json({ error: "not_found", message: "No active contract found" });
+    if (!contract) { res.status(404).json({ error: "not_found", message: "No active contract found" }); return; }
     res.json({ contract });
   } catch (err) {
     res.status(500).json({ error: "internal_error", message: "Failed to fetch contract" });
@@ -276,7 +277,8 @@ router.post("/admin/transactions", async (req, res) => {
     } = req.body;
 
     if (!type || !grossAmount) {
-      return res.status(400).json({ error: "bad_request", message: "type and grossAmount are required" });
+      res.status(400).json({ error: "bad_request", message: "type and grossAmount are required" });
+      return;
     }
 
     const gross = parseFloat(grossAmount);
@@ -330,7 +332,7 @@ router.patch("/admin/transactions/:id/settle", async (req, res) => {
       .where(eq(transactionsTable.id, id))
       .returning();
 
-    if (!updated) return res.status(404).json({ error: "not_found", message: "Transaction not found" });
+    if (!updated) { res.status(404).json({ error: "not_found", message: "Transaction not found" }); return; }
     res.json({ transaction: updated });
   } catch (err) {
     res.status(500).json({ error: "internal_error", message: "Failed to settle transaction" });
@@ -385,7 +387,8 @@ router.post("/admin/invoices/generate", async (req, res) => {
     const { restaurantId, periodStart, periodEnd, contractId, dueDate, notes } = req.body;
 
     if (!restaurantId || !periodStart || !periodEnd) {
-      return res.status(400).json({ error: "bad_request", message: "restaurantId, periodStart, and periodEnd are required" });
+      res.status(400).json({ error: "bad_request", message: "restaurantId, periodStart, and periodEnd are required" });
+      return;
     }
 
     // Aggregate completed transactions in the period
@@ -438,7 +441,7 @@ router.patch("/admin/invoices/:id/status", async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const { status, notes } = req.body;
-    if (!status) return res.status(400).json({ error: "bad_request", message: "status is required" });
+    if (!status) { res.status(400).json({ error: "bad_request", message: "status is required" }); return; }
 
     const [updated] = await db
       .update(invoicesTable)
@@ -451,7 +454,7 @@ router.patch("/admin/invoices/:id/status", async (req, res) => {
       .where(eq(invoicesTable.id, id))
       .returning();
 
-    if (!updated) return res.status(404).json({ error: "not_found", message: "Invoice not found" });
+    if (!updated) { res.status(404).json({ error: "not_found", message: "Invoice not found" }); return; }
     res.json({ invoice: updated });
   } catch (err) {
     res.status(500).json({ error: "internal_error", message: "Failed to update invoice status" });
@@ -501,7 +504,8 @@ router.post("/admin/messages", async (req, res) => {
     const { restaurantId, subject, body, type, relatedOfferId, relatedContractId, relatedInvoiceId } = req.body;
 
     if (!restaurantId || !subject || !body) {
-      return res.status(400).json({ error: "bad_request", message: "restaurantId, subject, and body are required" });
+      res.status(400).json({ error: "bad_request", message: "restaurantId, subject, and body are required" });
+      return;
     }
 
     const [msg] = await db.insert(adminMessagesTable).values({
@@ -538,7 +542,7 @@ router.patch("/admin/messages/:id/read", async (req, res) => {
       .where(eq(adminMessagesTable.id, id))
       .returning();
 
-    if (!updated) return res.status(404).json({ error: "not_found", message: "Message not found" });
+    if (!updated) { res.status(404).json({ error: "not_found", message: "Message not found" }); return; }
     res.json({ message: updated });
   } catch (err) {
     res.status(500).json({ error: "internal_error", message: "Failed to mark message as read" });
