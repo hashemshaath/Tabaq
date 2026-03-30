@@ -22,10 +22,12 @@ import {
   Utensils, Info, Camera, MessageSquare, CalendarDays, Users,
   ChevronLeft, ChevronRight, Tag, Bell, BellRing, BookImage,
   X, ParkingSquare, Trees, DoorOpen, BadgeCheck, Wifi, CreditCard,
+  Bookmark, BookmarkCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
+import { getAuthHeaders } from '@/lib/api';
 
 // ── Photo Lightbox ──────────────────────────────────────────────────
 function Lightbox({ photos, index, onClose }: { photos: { url: string; alt: string }[]; index: number; onClose: () => void }) {
@@ -424,6 +426,7 @@ export function RestaurantDetailPage() {
 
   const [activeTab, setActiveTab] = useState<Tab>('menu');
   const [isFollowing, setIsFollowing] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
   const [lightboxPhotos, setLightboxPhotos] = useState<{ url: string; alt: string }[] | null>(null);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const tabBarRef = useRef<HTMLDivElement>(null);
@@ -437,6 +440,14 @@ export function RestaurantDetailPage() {
     if (data) setIsFollowing(data.isFollowing ?? false);
   }, [data]);
 
+  React.useEffect(() => {
+    if (!user || !id) return;
+    fetch(`/api/me/saved-restaurants/${id}`, { headers: getAuthHeaders() })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setIsSaved(d.saved); })
+      .catch(() => {});
+  }, [user, id]);
+
   const toggleFollow = () => {
     if (!user) return;
     const restaurantId = Number(id);
@@ -444,6 +455,17 @@ export function RestaurantDetailPage() {
       unfollowRestaurant({ restaurantId }, { onSuccess: () => setIsFollowing(false) });
     } else {
       followRestaurant({ restaurantId }, { onSuccess: () => setIsFollowing(true) });
+    }
+  };
+
+  const toggleSave = async () => {
+    if (!user) return;
+    const restaurantId = Number(id);
+    const method = isSaved ? 'DELETE' : 'POST';
+    const res = await fetch(`/api/me/saved-restaurants/${restaurantId}`, { method, headers: getAuthHeaders() });
+    if (res.ok) {
+      setIsSaved(!isSaved);
+      queryClient.invalidateQueries({ queryKey: ['saved-restaurants'] });
     }
   };
 
@@ -608,6 +630,15 @@ export function RestaurantDetailPage() {
               >
                 {isFollowing ? <HeartOff className="w-5 h-5 text-destructive" /> : <Heart className="w-5 h-5 text-primary" />}
               </Button>
+              {user && (
+                <Button
+                  variant="secondary" size="icon" onClick={toggleSave}
+                  className={`w-12 h-12 shrink-0 rounded-2xl border ${isSaved ? 'border-primary bg-primary/10' : 'border-border'}`}
+                  title={isSaved ? t('Remove from saved', 'إزالة من المحفوظات') : t('Save restaurant', 'حفظ المطعم')}
+                >
+                  {isSaved ? <BookmarkCheck className="w-5 h-5 text-primary" /> : <Bookmark className="w-5 h-5 text-muted-foreground" />}
+                </Button>
+              )}
             </div>
           </div>
         </div>

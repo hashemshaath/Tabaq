@@ -3,7 +3,7 @@ import { db } from "@workspace/db";
 import {
   restaurantsTable, restaurantCategoriesTable, restaurantOccasionsTable,
   restaurantFollowsTable, openingHoursTable, categoriesTable, occasionsTable,
-  reviewsTable, offersTable, citiesTable, bookingsTable
+  reviewsTable, offersTable, citiesTable, bookingsTable, userSavedRestaurantsTable
 } from "@workspace/db/schema";
 import { eq, and, gte, sql, inArray, count, asc, desc, type SQL } from "drizzle-orm";
 import { nanoid } from "nanoid";
@@ -438,6 +438,82 @@ router.get("/restaurants/:restaurantId/stats", async (req, res) => {
     });
   } catch (err) {
     req.log.error({ err }, "Failed to fetch restaurant stats");
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// ─── Saved / Bookmarked Restaurants ──────────────────────────────────────────
+
+// GET /api/me/saved-restaurants
+router.get("/me/saved-restaurants", requireAuth, async (req, res) => {
+  try {
+    const userId = (req as any).userId as number;
+    const rows = await db
+      .select({
+        savedAt: userSavedRestaurantsTable.savedAt,
+        id: restaurantsTable.id,
+        nameEn: restaurantsTable.nameEn,
+        nameAr: restaurantsTable.nameAr,
+        slug: restaurantsTable.slug,
+        coverImageUrl: restaurantsTable.coverImageUrl,
+        avgRating: restaurantsTable.avgRating,
+        priceTier: restaurantsTable.priceTier,
+        cityId: restaurantsTable.cityId,
+      })
+      .from(userSavedRestaurantsTable)
+      .innerJoin(restaurantsTable, eq(userSavedRestaurantsTable.restaurantId, restaurantsTable.id))
+      .where(eq(userSavedRestaurantsTable.userId, userId))
+      .orderBy(desc(userSavedRestaurantsTable.savedAt));
+    res.json({ saved: rows });
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch saved restaurants");
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// POST /api/me/saved-restaurants/:restaurantId
+router.post("/me/saved-restaurants/:restaurantId", requireAuth, async (req, res) => {
+  try {
+    const userId = (req as any).userId as number;
+    const restaurantId = Number(req.params.restaurantId);
+    if (!restaurantId || isNaN(restaurantId)) return res.status(400).json({ error: "invalid_id" });
+    const [restaurant] = await db.select({ id: restaurantsTable.id }).from(restaurantsTable).where(eq(restaurantsTable.id, restaurantId));
+    if (!restaurant) return res.status(404).json({ error: "not_found" });
+    await db.insert(userSavedRestaurantsTable).values({ userId, restaurantId }).onConflictDoNothing();
+    res.json({ saved: true });
+  } catch (err) {
+    req.log.error({ err }, "Failed to save restaurant");
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// DELETE /api/me/saved-restaurants/:restaurantId
+router.delete("/me/saved-restaurants/:restaurantId", requireAuth, async (req, res) => {
+  try {
+    const userId = (req as any).userId as number;
+    const restaurantId = Number(req.params.restaurantId);
+    if (!restaurantId || isNaN(restaurantId)) return res.status(400).json({ error: "invalid_id" });
+    await db.delete(userSavedRestaurantsTable).where(
+      and(eq(userSavedRestaurantsTable.userId, userId), eq(userSavedRestaurantsTable.restaurantId, restaurantId))
+    );
+    res.json({ saved: false });
+  } catch (err) {
+    req.log.error({ err }, "Failed to unsave restaurant");
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// GET /api/me/saved-restaurants/:restaurantId — check if saved
+router.get("/me/saved-restaurants/:restaurantId", requireAuth, async (req, res) => {
+  try {
+    const userId = (req as any).userId as number;
+    const restaurantId = Number(req.params.restaurantId);
+    if (!restaurantId || isNaN(restaurantId)) return res.status(400).json({ error: "invalid_id" });
+    const [row] = await db.select({ id: userSavedRestaurantsTable.id }).from(userSavedRestaurantsTable)
+      .where(and(eq(userSavedRestaurantsTable.userId, userId), eq(userSavedRestaurantsTable.restaurantId, restaurantId)));
+    res.json({ saved: !!row });
+  } catch (err) {
+    req.log.error({ err }, "Failed to check saved status");
     res.status(500).json({ error: "internal_error" });
   }
 });

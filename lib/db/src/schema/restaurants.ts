@@ -74,6 +74,15 @@ export const openingHoursTable = pgTable("opening_hours", {
   isClosed: boolean("is_closed").default(false).notNull(),
 });
 
+export const userSavedRestaurantsTable = pgTable("user_saved_restaurants", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: 'cascade' }),
+  restaurantId: integer("restaurant_id").notNull().references(() => restaurantsTable.id, { onDelete: 'cascade' }),
+  savedAt: timestamp("saved_at").defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("user_saved_restaurants_unique").on(t.userId, t.restaurantId),
+]);
+
 export const insertRestaurantSchema = createInsertSchema(restaurantsTable).omit({ id: true, refCode: true, createdAt: true, updatedAt: true, avgRating: true, reviewCount: true, followerCount: true });
 export const insertOpeningHourSchema = createInsertSchema(openingHoursTable).omit({ id: true });
 
@@ -81,3 +90,4 @@ export type InsertRestaurant = z.infer<typeof insertRestaurantSchema>;
 export type Restaurant = typeof restaurantsTable.$inferSelect;
 export type InsertOpeningHour = z.infer<typeof insertOpeningHourSchema>;
 export type OpeningHour = typeof openingHoursTable.$inferSelect;
+export type UserSavedRestaurant = typeof userSavedRestaurantsTable.$inferSelect;

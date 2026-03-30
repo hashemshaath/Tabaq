@@ -40,6 +40,8 @@ Features include:
 
 **Experience Bookings API**: `GET /api/me/experience-bookings` — returns user's experience bookings joined with experience title (bilingual), slot date/time, and cover image.
 
+**Saved Restaurants** (full feature): `user_saved_restaurants` DB table; `GET /api/me/saved-restaurants`, `POST /api/me/saved-restaurants/:id`, `DELETE /api/me/saved-restaurants/:id`, `GET /api/me/saved-restaurants/:id` (check status). Dashboard Saved tab now fetches real data with skeleton loading, empty state, unsave button. RestaurantDetailPage has a Bookmark/BookmarkCheck save toggle button for logged-in users.
+
 **Award badge logic** (client-side, `src/lib/awards.ts`):
 - Excellence: 4.8+ rating, 30+ reviews
 - Top Rated: 4.5+ rating, 15+ reviews

@@ -194,11 +194,6 @@ const LEVEL_CONFIG = [
   { level: 5, name: 'Master Chef', nameAr: 'الشيف الرئيسي', min: 5000, max: 99999, color: 'from-rose-400 to-pink-500', icon: '👑' },
 ];
 
-const SAVED_RESTAURANTS = [
-  { id: 1, name: 'The Grill Room', nameAr: 'غرفة الشواء', city: 'Riyadh', rating: 4.7, img: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=200&h=150&fit=crop', tier: 'Fine Dining' },
-  { id: 2, name: 'Café Bateel', nameAr: 'كافيه بتيل', city: 'Jeddah', rating: 4.4, img: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=200&h=150&fit=crop', tier: 'Café' },
-  { id: 3, name: 'Fuego Steakhouse', nameAr: 'فيوجو ستيك', city: 'Riyadh', rating: 4.6, img: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&h=150&fit=crop', tier: 'Steakhouse' },
-];
 
 const FALLBACK_COVER = 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=200&h=200&fit=crop';
 
@@ -428,6 +423,13 @@ export function UserDashboardPage() {
     queryFn: () => fetch('/api/vouchers', { headers: getAuthHeaders() }).then(r => r.ok ? r.json() : null),
     retry: false,
   });
+  const { data: savedData, isLoading: savedLoading, refetch: refetchSaved } = useQuery({
+    queryKey: ['saved-restaurants'],
+    queryFn: () => fetch('/api/me/saved-restaurants', { headers: getAuthHeaders() }).then(r => r.ok ? r.json() : { saved: [] }),
+    retry: false,
+    enabled: !!user,
+  });
+  const savedRestaurants: any[] = savedData?.saved ?? [];
 
   const rawBookings = Array.isArray(bookingsData) ? bookingsData : [];
   const bookings = rawBookings.map(normalizeBooking);
@@ -483,13 +485,13 @@ export function UserDashboardPage() {
                 <CheckCircle2 className="w-5 h-5 text-white/70" />
               </div>
               <p className="text-white/70 text-sm mb-3">
-                {levelConfig.icon} {lang === 'ar' ? levelConfig.nameAr : levelConfig.name} · Level {userLevel}
+                {levelConfig.icon} {lang === 'ar' ? levelConfig.nameAr : levelConfig.name} · {t('Level', 'المستوى')} {userLevel}
               </p>
               {/* Progress bar */}
               <div className="max-w-xs">
                 <div className="flex justify-between text-xs text-white/60 mb-1">
-                  <span>{userPoints} pts</span>
-                  <span>{Math.max(0, toNextLevel)} to Level {Math.min(5, userLevel + 1)}</span>
+                  <span>{userPoints} {t('pts', 'نقطة')}</span>
+                  <span>{Math.max(0, toNextLevel)} {t('to Level', 'إلى المستوى')} {Math.min(5, userLevel + 1)}</span>
                 </div>
                 <div className="h-2 bg-white/20 rounded-full overflow-hidden">
                   <div className="h-full bg-white rounded-full transition-all" style={{ width: `${Math.min(progress, 100)}%` }} />
@@ -730,36 +732,76 @@ export function UserDashboardPage() {
         {activeTab === 'saved' && (
           <div className="space-y-4">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-muted-foreground text-sm">{SAVED_RESTAURANTS.length} {t('saved restaurants', 'مطاعم محفوظة')}</p>
-              <Link href="/restaurants">
+              <p className="text-muted-foreground text-sm">
+                {savedLoading ? t('Loading…', 'جارٍ التحميل…') : `${savedRestaurants.length} ${t('saved restaurants', 'مطاعم محفوظة')}`}
+              </p>
+              <Link href="/discovery">
                 <Button size="sm" variant="outline">{t('Discover More', 'اكتشف أكثر')}</Button>
               </Link>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {SAVED_RESTAURANTS.map(r => (
-                <Link key={r.id} href={`/restaurants/${r.id}`} className="block group">
-                  <div className="bg-card border border-border rounded-2xl overflow-hidden hover:shadow-lg hover:border-primary/20 transition-all">
-                    <div className="relative aspect-[3/2] overflow-hidden">
-                      <img src={r.img} alt={r.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                      <div className="absolute top-2 end-2 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm">
-                        <Heart className="w-4 h-4 fill-red-500 text-red-500" />
-                      </div>
-                    </div>
-                    <div className="p-4">
-                      <h3 className="font-bold text-foreground text-sm">{lang === 'ar' ? r.nameAr : r.name}</h3>
-                      <div className="flex items-center justify-between mt-1.5">
-                        <span className="text-xs text-muted-foreground flex items-center gap-1"><MapPin className="w-3 h-3" />{r.city}</span>
-                        <div className="flex items-center gap-1">
-                          <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                          <span className="text-xs font-bold">{r.rating}</span>
-                        </div>
-                      </div>
-                      <span className="text-xs bg-secondary text-secondary-foreground px-2 py-0.5 rounded-md mt-2 inline-block">{r.tier}</span>
+            {savedLoading && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="bg-card border border-border rounded-2xl overflow-hidden animate-pulse">
+                    <div className="aspect-[3/2] bg-muted" />
+                    <div className="p-4 space-y-2">
+                      <div className="h-3 bg-muted rounded w-3/4" />
+                      <div className="h-2.5 bg-muted rounded w-1/2" />
                     </div>
                   </div>
-                </Link>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
+            {!savedLoading && savedRestaurants.length === 0 && (
+              <div className="text-center py-20">
+                <Heart className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+                <h3 className="font-bold text-foreground mb-2">{t('No saved restaurants yet', 'لا توجد مطاعم محفوظة بعد')}</h3>
+                <p className="text-muted-foreground text-sm mb-4">{t('Save your favourite restaurants to find them quickly later.', 'احفظ مطاعمك المفضلة للوصول إليها بسرعة لاحقاً.')}</p>
+                <Link href="/discovery"><Button>{t('Explore Restaurants', 'استكشف المطاعم')}</Button></Link>
+              </div>
+            )}
+            {!savedLoading && savedRestaurants.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {savedRestaurants.map((r: any) => (
+                  <div key={r.id} className="relative group">
+                    <Link href={`/restaurants/${r.id}`} className="block">
+                      <div className="bg-card border border-border rounded-2xl overflow-hidden hover:shadow-lg hover:border-primary/20 transition-all">
+                        <div className="relative aspect-[3/2] overflow-hidden">
+                          <img
+                            src={r.coverImageUrl ?? 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400&h=270&fit=crop'}
+                            alt={lang === 'ar' ? r.nameAr : r.nameEn}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                          <div className="absolute top-2 end-2 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm">
+                            <Heart className="w-4 h-4 fill-red-500 text-red-500" />
+                          </div>
+                        </div>
+                        <div className="p-4">
+                          <h3 className="font-bold text-foreground text-sm">{lang === 'ar' ? r.nameAr : r.nameEn}</h3>
+                          <div className="flex items-center justify-between mt-1.5">
+                            <span className="text-xs bg-secondary text-secondary-foreground px-2 py-0.5 rounded-md capitalize">{r.priceTier?.replace('_', ' ')}</span>
+                            <div className="flex items-center gap-1">
+                              <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                              <span className="text-xs font-bold">{Number(r.avgRating).toFixed(1)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </Link>
+                    <button
+                      onClick={async () => {
+                        await fetch(`/api/me/saved-restaurants/${r.id}`, { method: 'DELETE', headers: getAuthHeaders() });
+                        refetchSaved();
+                      }}
+                      className="absolute top-2 start-2 w-7 h-7 bg-black/60 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"
+                      title={t('Remove', 'إزالة')}
+                    >
+                      <XCircle className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -791,13 +833,13 @@ export function UserDashboardPage() {
             {/* Current Level Card */}
             <div className={`bg-gradient-to-br ${levelConfig.color} rounded-3xl p-7 text-white relative overflow-hidden`}>
               <div className="absolute top-4 end-4 text-6xl opacity-20">{levelConfig.icon}</div>
-              <p className="text-white/70 text-sm font-semibold uppercase tracking-wider mb-1">Current Level</p>
-              <h2 className="text-4xl font-extrabold mb-1">{levelConfig.icon} Level {userLevel}</h2>
+              <p className="text-white/70 text-sm font-semibold uppercase tracking-wider mb-1">{t('Current Level', 'المستوى الحالي')}</p>
+              <h2 className="text-4xl font-extrabold mb-1">{levelConfig.icon} {t('Level', 'المستوى')} {userLevel}</h2>
               <p className="text-2xl font-bold text-white/80 mb-5">{lang === 'ar' ? levelConfig.nameAr : levelConfig.name}</p>
               <div className="max-w-xs">
                 <div className="flex justify-between text-sm text-white/70 mb-2">
-                  <span>{userPoints} pts earned</span>
-                  <span>{Math.max(0, toNextLevel)} to Level {Math.min(5, userLevel + 1)}</span>
+                  <span>{userPoints} {t('pts earned', 'نقطة مكتسبة')}</span>
+                  <span>{Math.max(0, toNextLevel)} {t('to Level', 'إلى المستوى')} {Math.min(5, userLevel + 1)}</span>
                 </div>
                 <div className="h-3 bg-white/20 rounded-full overflow-hidden">
                   <div className="h-full bg-white rounded-full" style={{ width: `${Math.min(progress, 100)}%` }} />
@@ -850,8 +892,8 @@ export function UserDashboardPage() {
                       {lev.icon}
                     </div>
                     <div className="flex-1">
-                      <p className="font-bold text-foreground text-sm">{lev.name}</p>
-                      <p className="text-xs text-muted-foreground">{lev.min.toLocaleString()} – {lev.max >= 99999 ? '∞' : lev.max.toLocaleString()} pts</p>
+                      <p className="font-bold text-foreground text-sm">{lang === 'ar' ? lev.nameAr : lev.name}</p>
+                      <p className="text-xs text-muted-foreground">{lev.min.toLocaleString()} – {lev.max >= 99999 ? '∞' : lev.max.toLocaleString()} {t('pts', 'نقطة')}</p>
                     </div>
                     {lev.level === userLevel && (
                       <span className="text-xs font-bold text-primary bg-primary/10 px-2.5 py-1 rounded-full">{t('Current', 'الحالي')}</span>
