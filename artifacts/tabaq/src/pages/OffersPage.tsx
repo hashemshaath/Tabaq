@@ -413,7 +413,6 @@ function DealDetailPage({ offer, onBack }: { offer: ExtendedOffer; onBack: () =>
   const [activeTab, setActiveTab] = useState<'about' | 'needtoknow' | 'where' | 'reviews'>('about');
   const [selectedTier, setSelectedTier] = useState(0);
   const [qty, setQty] = useState(1);
-  const [promoApplied, setPromoApplied] = useState(false);
   const [giftMode, setGiftMode] = useState(false);
   const [recipientPhone, setRecipientPhone] = useState('');
   const [recipientEmail, setRecipientEmail] = useState('');
@@ -423,6 +422,13 @@ function DealDetailPage({ offer, onBack }: { offer: ExtendedOffer; onBack: () =>
   const [saved, setSaved] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [viewTab, setViewTab] = useState<'qr' | 'barcode'>('qr');
+  const [promoInput, setPromoInput] = useState('');
+  const [appliedPromo, setAppliedPromo] = useState<string | null>(null);
+  const [promoDiscountAmt, setPromoDiscountAmt] = useState(0);
+  const [promoError, setPromoError] = useState<string | null>(null);
+  const [promoLoading, setPromoLoading] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'card' | 'apple_pay' | 'stc_pay'>('card');
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   const isMock = offer.id >= 9000;
   const mockCode = `TBQ-${offer.id.toString(36).toUpperCase()}-${String(offer.id * 7 % 9999).padStart(4, '0')}`;
@@ -440,9 +446,29 @@ function DealDetailPage({ offer, onBack }: { offer: ExtendedOffer; onBack: () =>
   }];
 
   const tier = tiers[selectedTier];
-  const promoDiscount = promoApplied ? Math.round(tier.discountedPrice * 0.1) : 0;
-  const unitPrice = tier.discountedPrice - promoDiscount;
-  const totalPrice = unitPrice * qty;
+  const subtotal = tier.discountedPrice * qty;
+  const promoSaving = appliedPromo ? promoDiscountAmt : 0;
+  const totalPrice = Math.max(0, subtotal - promoSaving);
+
+  const handleApplyPromo = () => {
+    if (!promoInput.trim()) return;
+    setPromoLoading(true);
+    setPromoError(null);
+    const VALID_CODES: Record<string, number> = { 'TABAQ10': 10, 'SAVE15': 15, 'NEWUSER20': 20 };
+    const code = promoInput.trim().toUpperCase();
+    setTimeout(() => {
+      const pct = VALID_CODES[code];
+      if (pct) {
+        setAppliedPromo(code);
+        setPromoDiscountAmt(Math.round(subtotal * pct / 100));
+        setPromoError(null);
+      } else {
+        setPromoError(t('Invalid promo code. Try TABAQ10.', 'رمز خاطئ. جرب TABAQ10.'));
+      }
+      setPromoLoading(false);
+    }, 600);
+  };
+  const clearPromo = () => { setAppliedPromo(null); setPromoDiscountAmt(0); setPromoInput(''); setPromoError(null); };
 
   const giftVoucher = useGiftVoucher();
   const purchaseVoucher = usePurchaseVoucher({
@@ -739,15 +765,14 @@ function DealDetailPage({ offer, onBack }: { offer: ExtendedOffer; onBack: () =>
               </div>
             ) : (
               <>
-                {/* Promo banner */}
-                <div className="bg-violet-50 border border-violet-200 rounded-xl px-4 py-3 text-center">
-                  <p className="text-sm font-bold text-violet-800">
-                    {t('Extra SAR 6 off with promo code', 'خصم إضافي 6 ريال بكود الخصم')}
-                  </p>
-                  <p className="text-xs text-violet-600 mt-1">
-                    {t('Promo', 'كود')} <code className="font-bold bg-violet-100 px-1 rounded">TABAQ10</code> {t('ends in:', 'ينتهي خلال:')} <Countdown until={offer.validUntil} />
-                  </p>
-                  <p className="text-[10px] text-violet-400 mt-1">{t('Tabaq reserves the right to end the promo at any time', 'يحق لطبق إنهاء العرض في أي وقت')}</p>
+                {/* Promo hint banner */}
+                <div className="bg-violet-50 border border-violet-200 rounded-xl px-4 py-2.5 flex items-center gap-3">
+                  <Percent className="w-4 h-4 text-violet-600 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-violet-800">{t('Have a promo code?', 'لديك كود خصم؟')}</p>
+                    <p className="text-[11px] text-violet-600">{t('Add it at checkout for extra savings', 'أضفه للحصول على خصم إضافي')}</p>
+                  </div>
+                  <Countdown until={offer.validUntil} />
                 </div>
 
                 {/* Option selector card */}
@@ -774,7 +799,7 @@ function DealDetailPage({ offer, onBack }: { offer: ExtendedOffer; onBack: () =>
                       return (
                         <div
                           key={tier2.id}
-                          onClick={() => { setSelectedTier(i); setPromoApplied(false); }}
+                          onClick={() => { setSelectedTier(i); clearPromo(); }}
                           className={`border rounded-xl p-4 cursor-pointer transition-all ${isSelected ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'}`}
                         >
                           <div className="flex items-start gap-3">
@@ -792,23 +817,6 @@ function DealDetailPage({ offer, onBack }: { offer: ExtendedOffer; onBack: () =>
                                 <span className="text-sm font-bold text-foreground">{offer.currency}{tier2.discountedPrice}</span>
                                 <span className="text-[11px] font-bold text-white bg-[#2e7d32] px-1.5 py-0.5 rounded">-{tier2.discountPercent}%</span>
                               </div>
-                              {/* Promo code row */}
-                              {isSelected && (
-                                <div className="flex items-center justify-between bg-violet-50 border border-violet-200 rounded-lg px-3 py-2 mb-2">
-                                  <div>
-                                    <span className="text-sm font-bold text-foreground">{offer.currency}{tier2.promoPrice}</span>
-                                    <span className="text-xs text-muted-foreground ms-1.5">
-                                      {t('with code', 'بكود')} <code className="font-bold text-foreground">{tier2.promoCode}</code>
-                                    </span>
-                                  </div>
-                                  <button
-                                    onClick={e => { e.stopPropagation(); setPromoApplied(a => !a); }}
-                                    className={`text-xs font-bold px-2 py-1 rounded transition-colors ${promoApplied ? 'text-emerald-600' : 'text-primary hover:text-primary/80'}`}
-                                  >
-                                    {promoApplied ? `✓ ${t('Applied', 'مُطبَّق')}` : t('Apply', 'تطبيق')}
-                                  </button>
-                                </div>
-                              )}
                               {/* Qty + social proof */}
                               {isSelected && (
                                 <div className="flex items-center justify-between mt-2">
@@ -849,19 +857,108 @@ function DealDetailPage({ offer, onBack }: { offer: ExtendedOffer; onBack: () =>
 
                   {/* Urgency */}
                   {isUrgent && (
-                    <div className="mx-4 mb-4 flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                    <div className="mx-4 mb-3 flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
                       <TrendingUp className="w-3.5 h-3.5 shrink-0" />
                       {t('This item is selling fast, so act now!', 'هذا العرض ينفد بسرعة، تصرف الآن!')}
                     </div>
                   )}
 
-                  {/* Buy Now */}
-                  <div className="px-4 pb-5 pt-3 border-t border-border/60 space-y-3">
-                    {promoApplied && qty > 1 && (
-                      <div className="text-sm text-center text-muted-foreground">
-                        <span className="font-bold text-foreground">{offer.currency} {tier.promoPrice}</span> × {qty} = <span className="font-bold text-emerald-600">{offer.currency} {tier.promoPrice * qty}</span>
+                  {/* Promo Code Input */}
+                  <div className="px-4 pb-3 border-t border-border/60 pt-4">
+                    <p className="text-xs font-semibold text-foreground mb-2">{t('Promo Code', 'كود الخصم')}</p>
+                    {appliedPromo ? (
+                      <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span className="text-sm font-bold text-emerald-700 flex-1">
+                          {appliedPromo} — {t('Saving', 'توفير')} {offer.currency} {promoSaving}
+                        </span>
+                        <button onClick={clearPromo} className="text-xs text-muted-foreground hover:text-foreground transition-colors p-1">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        <input
+                          value={promoInput}
+                          onChange={e => { setPromoInput(e.target.value.toUpperCase()); setPromoError(null); }}
+                          onKeyDown={e => e.key === 'Enter' && handleApplyPromo()}
+                          placeholder={t('Enter code (e.g. TABAQ10)', 'أدخل الكود')}
+                          className="flex-1 text-sm bg-secondary/50 border border-border rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-primary font-mono placeholder:font-sans"
+                        />
+                        <button
+                          onClick={handleApplyPromo}
+                          disabled={!promoInput.trim() || promoLoading}
+                          className="px-3 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-bold disabled:opacity-50 transition-all hover:bg-primary/90 shrink-0"
+                        >
+                          {promoLoading ? '...' : t('Apply', 'تطبيق')}
+                        </button>
                       </div>
                     )}
+                    {promoError && (
+                      <p className="text-xs text-destructive mt-1.5 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        {promoError}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Order Summary */}
+                  <div className="px-4 pb-3 space-y-2 border-t border-border/60 pt-3">
+                    <p className="text-xs font-semibold text-foreground mb-2">{t('Order Summary', 'ملخص الطلب')}</p>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">{t('Subtotal', 'المجموع الفرعي')} {qty > 1 ? `(×${qty})` : ''}</span>
+                      <span className="font-semibold text-foreground">{offer.currency} {subtotal}</span>
+                    </div>
+                    {promoSaving > 0 && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-emerald-600">{t('Promo Discount', 'خصم الكود')}</span>
+                        <span className="font-semibold text-emerald-600">− {offer.currency} {promoSaving}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between pt-2 border-t border-border/50">
+                      <span className="text-sm font-bold text-foreground">{t('Total', 'الإجمالي')}</span>
+                      <span className="text-lg font-black text-foreground">{offer.currency} {totalPrice}</span>
+                    </div>
+                  </div>
+
+                  {/* Payment Method */}
+                  <div className="px-4 pb-3 space-y-2 border-t border-border/60 pt-3">
+                    <p className="text-xs font-semibold text-foreground mb-2">{t('Payment Method', 'طريقة الدفع')}</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {([
+                        { id: 'card', labelEn: 'Credit Card', labelAr: 'بطاقة', icon: '💳' },
+                        { id: 'apple_pay', labelEn: 'Apple Pay', labelAr: 'Apple Pay', icon: '' },
+                        { id: 'stc_pay', labelEn: 'STC Pay', labelAr: 'STC Pay', icon: '📱' },
+                      ] as const).map(pm => (
+                        <button
+                          key={pm.id}
+                          onClick={() => setPaymentMethod(pm.id)}
+                          className={`flex flex-col items-center gap-1 px-2 py-2.5 rounded-xl border-2 text-center transition-all ${
+                            paymentMethod === pm.id ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/30'
+                          }`}
+                        >
+                          <span className="text-base">{pm.icon || '🍎'}</span>
+                          <span className="text-[10px] font-semibold text-foreground leading-tight">{lang === 'ar' ? pm.labelAr : pm.labelEn}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Terms + Buy Now */}
+                  <div className="px-4 pb-5 pt-3 border-t border-border/60 space-y-3">
+                    <label className="flex items-start gap-2.5 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={termsAccepted}
+                        onChange={e => setTermsAccepted(e.target.checked)}
+                        className="mt-0.5 w-4 h-4 rounded accent-primary shrink-0"
+                      />
+                      <span className="text-xs text-muted-foreground leading-relaxed group-hover:text-foreground transition-colors">
+                        {t('I agree to the ', 'أوافق على ')}
+                        <span className="text-primary font-semibold hover:underline cursor-pointer">{t('Terms & Conditions', 'الشروط والأحكام')}</span>
+                        {t(' and confirm this purchase is non-refundable once processed.', ' وأؤكد أن هذا الشراء غير قابل للاسترداد بعد المعالجة.')}
+                      </span>
+                    </label>
                     {!user ? (
                       <Link href="/login" className="block">
                         <button className="w-full bg-[#1b5e20] hover:bg-[#2e7d32] text-white font-bold py-3.5 rounded-xl transition-colors text-base shadow">
@@ -871,10 +968,12 @@ function DealDetailPage({ offer, onBack }: { offer: ExtendedOffer; onBack: () =>
                     ) : (
                       <button
                         onClick={handleBuy}
-                        disabled={purchaseVoucher.isPending}
-                        className="w-full bg-[#1b5e20] hover:bg-[#2e7d32] text-white font-bold py-3.5 rounded-xl transition-colors text-base shadow disabled:opacity-60 disabled:cursor-not-allowed"
+                        disabled={purchaseVoucher.isPending || !termsAccepted}
+                        className="w-full bg-[#1b5e20] hover:bg-[#2e7d32] text-white font-bold py-3.5 rounded-xl transition-colors text-base shadow disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {purchaseVoucher.isPending ? t('Processing...', 'جارٍ المعالجة...') : t('Buy Now', 'اشترِ الآن')}
+                        {purchaseVoucher.isPending
+                          ? t('Processing...', 'جارٍ المعالجة...')
+                          : `${t('Complete Purchase', 'إتمام الشراء')} · ${offer.currency} ${totalPrice}`}
                       </button>
                     )}
                     <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">

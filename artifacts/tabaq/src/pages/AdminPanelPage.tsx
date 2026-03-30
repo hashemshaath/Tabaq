@@ -81,7 +81,7 @@ const INITIAL_MODULES: Module[] = [
 ];
 
 // ─── Types ──────────────────────────────────────────────────────
-type AdminTab = 'overview' | 'offers' | 'contracts' | 'finance' | 'messages' | 'referrals' | 'restaurants' | 'registrations' | 'users' | 'bookings' | 'reviews' | 'blog' | 'seo' | 'modules' | 'settings';
+type AdminTab = 'overview' | 'offers' | 'contracts' | 'finance' | 'messages' | 'referrals' | 'restaurants' | 'registrations' | 'users' | 'bookings' | 'reviews' | 'blog' | 'seo' | 'modules' | 'settings' | 'review-queue' | 'promo-codes' | 'settlement';
 
 // ─── Component ──────────────────────────────────────────────────
 export function AdminPanelPage() {
@@ -393,6 +393,9 @@ export function AdminPanelPage() {
 
   const navItems: { id: AdminTab; label: string; icon: React.ElementType; badge?: number }[] = [
     { id: 'overview', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'review-queue', label: 'Review Queue', icon: CheckSquare, badge: undefined },
+    { id: 'promo-codes', label: 'Promo Codes', icon: Tag },
+    { id: 'settlement', label: 'Settlement', icon: Receipt },
     { id: 'registrations', label: 'Registrations', icon: Plus, badge: pendingApplications.length },
     { id: 'restaurants', label: 'Restaurants', icon: Utensils },
     { id: 'users', label: 'Users', icon: Users },
@@ -1897,6 +1900,104 @@ export function AdminPanelPage() {
                     </div>
                   );
                 })}
+              </div>
+            </div>
+          )}
+
+          {/* ── REVIEW QUEUE ── */}
+          {activeTab === 'review-queue' && (
+            <div className="space-y-6">
+              <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                <table className="w-full text-sm text-start">
+                  <thead className="bg-secondary/30 border-b border-border">
+                    <tr>
+                      <th className="px-5 py-4 text-start font-bold">Campaign</th>
+                      <th className="px-5 py-4 text-start font-bold">Merchant</th>
+                      <th className="px-5 py-4 text-start font-bold">Type</th>
+                      <th className="px-5 py-4 text-start font-bold">Submitted</th>
+                      <th className="px-5 py-4 text-end font-bold">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {/* Placeholder for campaigns */}
+                    <tr>
+                      <td colSpan={5} className="px-5 py-10 text-center text-muted-foreground">
+                        No campaigns pending review
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* ── PROMO CODES ── */}
+          {activeTab === 'promo-codes' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold">Promo Codes</h2>
+                <Button><Plus className="w-4 h-4 me-2" /> Create Promo Code</Button>
+              </div>
+              <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                <table className="w-full text-sm text-start">
+                  <thead className="bg-secondary/30 border-b border-border">
+                    <tr>
+                      <th className="px-5 py-4 text-start font-bold">Code</th>
+                      <th className="px-5 py-4 text-start font-bold">Type</th>
+                      <th className="px-5 py-4 text-start font-bold">Value</th>
+                      <th className="px-5 py-4 text-start font-bold">Usage</th>
+                      <th className="px-5 py-4 text-start font-bold">Status</th>
+                      <th className="px-5 py-4 text-end font-bold">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    <tr>
+                      <td colSpan={6} className="px-5 py-10 text-center text-muted-foreground">
+                        No promo codes found
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* ── SETTLEMENT ── */}
+          {activeTab === 'settlement' && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-card border border-border rounded-2xl p-5">
+                  <p className="text-sm text-muted-foreground mb-1">Pending Redemptions</p>
+                  <p className="text-3xl font-bold">0</p>
+                </div>
+                <div className="bg-card border border-border rounded-2xl p-5">
+                  <p className="text-sm text-muted-foreground mb-1">Pending Payout Amount</p>
+                  <p className="text-3xl font-bold">SAR 0.00</p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold">Settlement Batches</h2>
+                <Button>Create Settlement Batch</Button>
+              </div>
+              <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                <table className="w-full text-sm text-start">
+                  <thead className="bg-secondary/30 border-b border-border">
+                    <tr>
+                      <th className="px-5 py-4 text-start font-bold">Period</th>
+                      <th className="px-5 py-4 text-start font-bold">Merchants</th>
+                      <th className="px-5 py-4 text-start font-bold">Total Net</th>
+                      <th className="px-5 py-4 text-start font-bold">Status</th>
+                      <th className="px-5 py-4 text-end font-bold">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    <tr>
+                      <td colSpan={5} className="px-5 py-10 text-center text-muted-foreground">
+                        No settlement batches found
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
           )}

@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { offersTable, vouchersTable, restaurantsTable, usersTable } from "@workspace/db/schema";
+import { campaignsTable, campaignOptionsTable, offersTable, vouchersTable, restaurantsTable, usersTable } from "@workspace/db/schema";
 import { eq, and, sql, lte, gte, or, type SQL } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { requireAuth, optionalAuth } from "../middleware/requireAuth.js";
@@ -145,6 +145,108 @@ router.post("/offers", requireAuth, async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "Failed to create offer");
     res.status(500).json({ error: "internal_error", message: "Failed to create offer" });
+  }
+});
+
+// List vouchers — auth required
+// Returns vouchers the user owns OR is the recipient of (received as a gift).
+// Each voucher includes a `role` field: "owner" or "recipient".
+router.get("/wallet", requireAuth, async (req, res) => {
+  try {
+    const { status } = req.query;
+    const userId = req.auth!.userId;
+
+    // Visibility: user is the owner (userId) OR they are the resolved gift recipient
+    const visibilityCondition: SQL = or(
+      eq(vouchersTable.userId, userId),
+      eq(vouchersTable.recipientUserId, userId),
+    )!;
+
+    const statusCondition = status
+      ? eq(vouchersTable.status, status as any)
+      : undefined;
+
+    const whereClause = statusCondition
+      ? and(visibilityCondition, statusCondition)!
+      : visibilityCondition;
+
+    const vouchers = await db.select({
+      id: vouchersTable.id,
+      code: vouchersTable.code,
+      campaignId: vouchersTable.campaignId,
+      campaignOptionId: vouchersTable.campaignOptionId,
+      offerId: vouchersTable.offerId,
+      userId: vouchersTable.userId,
+      restaurantId: vouchersTable.restaurantId,
+      value: vouchersTable.value,
+      faceValue: vouchersTable.faceValue,
+      purchasePrice: vouchersTable.purchasePrice,
+      currency: vouchersTable.currency,
+      status: vouchersTable.status,
+      validUntil: vouchersTable.validUntil,
+      giftMessage: vouchersTable.giftMessage,
+      isGift: vouchersTable.isGift,
+      gifterUserId: vouchersTable.gifterUserId,
+      recipientUserId: vouchersTable.recipientUserId,
+      giftRecipientPhone: vouchersTable.giftRecipientPhone,
+      giftRecipientEmail: vouchersTable.giftRecipientEmail,
+      giftDeliveryStatus: vouchersTable.giftDeliveryStatus,
+      redeemedAt: vouchersTable.redeemedAt,
+      createdAt: vouchersTable.createdAt,
+      restaurantNameEn: restaurantsTable.nameEn,
+      restaurantNameAr: restaurantsTable.nameAr,
+      restaurantCoverImageUrl: restaurantsTable.coverImageUrl,
+      campaignTitleEn: campaignsTable.titleEn,
+      campaignTitleAr: campaignsTable.titleAr,
+      optionNameEn: campaignOptionsTable.nameEn,
+      optionNameAr: campaignOptionsTable.nameAr,
+    }).from(vouchersTable)
+      .innerJoin(restaurantsTable, eq(vouchersTable.restaurantId, restaurantsTable.id))
+      .leftJoin(campaignsTable, eq(vouchersTable.campaignId, campaignsTable.id))
+      .leftJoin(campaignOptionsTable, eq(vouchersTable.campaignOptionId, campaignOptionsTable.id))
+      .where(whereClause)
+      .orderBy(sql`${vouchersTable.createdAt} desc`);
+
+    // Annotate each voucher with the caller's role
+    const annotated = vouchers.map(v => ({
+      ...v,
+      role: v.userId === userId ? 'owner' : 'recipient',
+    }));
+
+    res.json(annotated);
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch wallet vouchers");
+    res.status(500).json({ error: "internal_error", message: "Failed to fetch vouchers" });
+  }
+});
+
+router.post("/vouchers/:id/refund-request", requireAuth, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id as string);
+    const userId = req.auth!.userId;
+    const { reason } = req.body;
+
+    const [voucher] = await db.select().from(vouchersTable).where(and(eq(vouchersTable.id, id), eq(vouchersTable.userId, userId)));
+    if (!voucher) {
+       res.status(404).json({ error: "not_found" });
+       return;
+    }
+
+    if (voucher.status !== "active") {
+       res.status(400).json({ error: "bad_request", message: "Only active vouchers can be refunded" });
+       return;
+    }
+
+    const [updated] = await db.update(vouchersTable).set({ 
+       refundRequestedAt: new Date(), 
+       refundReason: reason,
+       status: "voided" // Mark it as voided while under review? or keep active?
+    }).where(eq(vouchersTable.id, id)).returning();
+    
+    res.json(updated);
+  } catch (err) {
+    req.log.error({ err }, "Failed to request refund");
+    res.status(500).json({ error: "internal_error" });
   }
 });
 

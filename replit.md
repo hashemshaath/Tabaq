@@ -7,7 +7,12 @@
 Features include:
 - Restaurant & dish discovery with smart sort pills (Featured, Top Rated, Trending, New, Award Winners)
 - Table reservations with inline waitlist when no slots available
-- Exclusive offers and vouchers (world-class redesigned OffersPage with QR/barcode redemption, gallery, gift mode)
+- Exclusive Deals & Vouchers platform (Keeta-level quality):
+  - **OffersPage**: Groupon-style cards, filter bar, deal detail with image gallery + tier selector + gift mode + real promo code input with validation + order summary + payment method selector (card/Apple Pay/STC Pay) + terms checkbox + "Complete Purchase" CTA + post-purchase QR display
+  - **VouchersPage (Wallet)**: 4 tabs (Active/Used/Expired/Refunded), QR code display for active vouchers, validity progress bar, refund request modal with reason + details
+  - **Campaign system**: DB tables for campaigns, options, promo codes, redemptions; full API routes
+  - **Campaign Wizard** in BusinessConsolePage: 7-step modal (Basics → Options → Photos → Highlights → Fine Print → Redemption → Review & Submit)
+  - **Admin Review Queue, Promo Codes & Settlement** tabs in AdminPanelPage
 - Gifting system
 - Social reviews and leaderboard/levels
 - Referral & Points System (`/referral`) — unique codes, WhatsApp/Twitter sharing, points history

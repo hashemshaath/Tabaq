@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLanguage } from '@/hooks/use-language';
 import { Link } from 'wouter';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -8,9 +8,68 @@ import {
   Utensils, Settings, Bell, Eye, ArrowUpRight, Percent, Gift,
   Tag, Plus, ScanLine, QrCode, ExternalLink, MapPin,
   FileSignature, BadgeCheck, RefreshCw, Ban, Hash, Info, X,
-  Sparkles, Image, DollarSign, Calendar
+  Sparkles, Image, DollarSign, Calendar, ChevronLeft, Save,
+  Upload, Trash2, Check, LayoutDashboard, Ticket, LogOut,
+  ChevronDown, Search, Download, Camera, Smartphone, MousePointer2,
+  Globe, Phone, MessageCircle, MoreVertical, Copy
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogClose,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Progress } from '@/components/ui/progress';
+import { toast } from 'sonner';
+
+// ─── QR Code Display (Copied from OffersPage) ──────────────────────────────
+function QRCodeDisplay({ code }: { code: string }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const c = canvasRef.current;
+    if (!c) return;
+    const ctx = c.getContext('2d');
+    if (!ctx) return;
+    const size = 160; c.width = size; c.height = size;
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, size, size);
+    const seed = code.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
+    const cells = 21; const cellSize = size / cells;
+    for (let r = 0; r < cells; r++) {
+      for (let col = 0; col < cells; col++) {
+        const isCorner = (r < 7 && col < 7) || (r < 7 && col >= cells - 7) || (r >= cells - 7 && col < 7);
+        if (isCorner) {
+          const inInner2 = (r >= 2 && r <= 4 && col >= 2 && col <= 4) || (r >= 2 && r <= 4 && col >= cells - 5 && col <= cells - 3) || (r >= cells - 5 && r <= cells - 3 && col >= 2 && col <= 4);
+          const inInner = (r >= 1 && r <= 5 && col >= 1 && col <= 5) || (r >= 1 && r <= 5 && col >= cells - 6 && col <= cells - 2) || (r >= cells - 6 && r <= cells - 2 && col >= 1 && col <= 5);
+          ctx.fillStyle = inInner2 ? '#111' : inInner ? '#fff' : '#111';
+          ctx.fillRect(col * cellSize, r * cellSize, cellSize, cellSize);
+        } else {
+          ctx.fillStyle = '#111';
+          const hash = (seed * (r * cells + col + 1) * 2654435761) >>> 0;
+          if (hash % 2 === 0) ctx.fillRect(col * cellSize, r * cellSize, cellSize, cellSize);
+        }
+      }
+    }
+  }, [code]);
+  return <canvas ref={canvasRef} className="rounded-md mx-auto" style={{ width: 160, height: 160 }} />;
+}
 
 const MOCK_STATS = [
   { labelEn: 'Total Bookings', labelAr: 'إجمالي الحجوزات', value: '1,248', change: '+12%', up: true, icon: CalendarDays, color: 'text-blue-600 bg-blue-50' },
@@ -44,50 +103,98 @@ const MOCK_CONSOLE_OFFERS = [
     id: 1, titleEn: '50% Off Premium Dining Set Menu', titleAr: 'خصم 50% على قائمة الطعام المميزة',
     discountPercent: 50, originalPrice: 280, discountedPrice: 140, currency: 'SAR',
     isActive: true, validUntil: '2026-04-30', redemptions: 34, totalCapacity: 100,
-    approvalStatus: 'approved' as const, refCode: 'TBQ-OFR-2026-000001',
-    commissionOverridePercent: null, paymentModel: null,
+    status: 'live', approvalStatus: 'approved' as const, refCode: 'TBQ-OFR-2026-000001',
+    type: 'discount_deal', startAt: '2026-03-01', endAt: '2026-04-30',
   },
   {
     id: 2, titleEn: 'Weekend Brunch for Two', titleAr: 'برانش نهاية الأسبوع لاثنين',
     discountPercent: 30, originalPrice: 220, discountedPrice: 154, currency: 'SAR',
     isActive: false, validUntil: '2026-05-15', redemptions: 0, totalCapacity: 50,
-    approvalStatus: 'pending' as const, refCode: 'TBQ-OFR-2026-000002',
-    commissionOverridePercent: null, paymentModel: null,
-  },
-  {
-    id: 3, titleEn: 'Family Feast Package', titleAr: 'باقة وليمة العائلة',
-    discountPercent: 25, originalPrice: 400, discountedPrice: 300, currency: 'SAR',
-    isActive: false, validUntil: '2026-03-31', redemptions: 8, totalCapacity: 30,
-    approvalStatus: 'revision_requested' as const, refCode: 'TBQ-OFR-2026-000003',
-    commissionOverridePercent: null, paymentModel: null,
+    status: 'under_review', approvalStatus: 'pending' as const, refCode: 'TBQ-OFR-2026-000002',
+    type: 'discount_deal', startAt: '2026-04-01', endAt: '2026-05-15',
   },
 ];
 
-const MOCK_CONTRACT = {
-  refCode: 'TBQ-CTR-2026-000001',
-  status: 'active',
-  paymentModel: 'full_collection',
-  commissionPercent: '15.00',
-  settlementDays: 7,
-  validFrom: '2026-01-01',
+const MOCK_VOUCHERS = [
+  { id: 1, code: 'VCH-827K92P1', campaignNameEn: '50% Off Premium Dining', optionNameEn: 'Single Person Set', customerName: 'A***d A.', purchaseDate: '2026-03-15', faceValue: 280, purchasePrice: 140, status: 'active' },
+  { id: 2, code: 'VCH-192L55X8', campaignNameEn: 'Weekend Brunch', optionNameEn: 'Brunch for Two', customerName: 'S***h J.', purchaseDate: '2026-03-20', faceValue: 220, purchasePrice: 154, status: 'redeemed' },
+  { id: 3, code: 'VCH-Q91M22Z4', campaignNameEn: '50% Off Premium Dining', optionNameEn: 'Single Person Set', customerName: 'M***m K.', purchaseDate: '2026-03-22', faceValue: 280, purchasePrice: 140, status: 'expired' },
+];
+
+const CAMPAIGN_STATUS_MAP: Record<string, { labelEn: string; labelAr: string; className: string }> = {
+  draft: { labelEn: 'Draft', labelAr: 'مسودة', className: 'text-gray-600 bg-gray-100' },
+  submitted: { labelEn: 'Submitted', labelAr: 'تم التقديم', className: 'text-blue-600 bg-blue-50' },
+  under_review: { labelEn: 'Under Review', labelAr: 'قيد المراجعة', className: 'text-amber-600 bg-amber-50' },
+  approved: { labelEn: 'Approved', labelAr: 'تمت الموافقة', className: 'text-green-600 bg-green-50' },
+  live: { labelEn: 'Live', labelAr: 'مباشر', className: 'text-primary bg-primary/10' },
+  paused: { labelEn: 'Paused', labelAr: 'متوقف مؤقتاً', className: 'text-yellow-600 bg-yellow-50' },
+  ended: { labelEn: 'Ended', labelAr: 'منتهي', className: 'text-gray-400 bg-gray-50' },
+  rejected: { labelEn: 'Rejected', labelAr: 'مرفوض', className: 'text-red-600 bg-red-50' },
 };
 
-type ConsoleTab = 'overview' | 'bookings' | 'offers' | 'reviews' | 'menu' | 'settings';
+const VOUCHER_STATUS_MAP: Record<string, { labelEn: string; labelAr: string; className: string }> = {
+  active: { labelEn: 'Active', labelAr: 'نشط', className: 'text-green-600 bg-green-50' },
+  redeemed: { labelEn: 'Redeemed', labelAr: 'تم استخدامه', className: 'text-blue-600 bg-blue-50' },
+  used: { labelEn: 'Used', labelAr: 'مستخدم', className: 'text-blue-600 bg-blue-50' },
+  expired: { labelEn: 'Expired', labelAr: 'منتهي', className: 'text-gray-400 bg-gray-50' },
+  refunded: { labelEn: 'Refunded', labelAr: 'مسترجع', className: 'text-red-600 bg-red-50' },
+};
+
+type ConsoleTab = 'overview' | 'bookings' | 'campaigns' | 'vouchers' | 'reviews' | 'menu' | 'settings';
 
 export function BusinessConsolePage() {
   const { t, lang } = useLanguage();
   const [activeTab, setActiveTab] = useState<ConsoleTab>('overview');
-  const [consoleOffers, setConsoleOffers] = useState(MOCK_CONSOLE_OFFERS);
+  const [activeCampaignFilter, setActiveCampaignFilter] = useState('All');
+  const [activeVoucherFilter, setActiveVoucherFilter] = useState('All');
+  const [showWizard, setShowWizard] = useState(false);
+  const [wizardStep, setWizardStep] = useState(1);
+  const [wizardData, setWizardData] = useState<any>({
+    type: 'discount_deal',
+    options: [{ nameEn: '', nameAr: '', originalPrice: '', dealPrice: '', initialCap: '', monthlyCap: '', validityDays: '60' }],
+    images: [],
+    highlights: ['', '', ''],
+    descriptionEn: '',
+    descriptionAr: '',
+    redemptionMethod: 'on_site',
+    requiresReservation: false,
+  });
+
+  const [redeemCode, setRedeemCode] = useState('');
+  const [redeemResult, setRedeemResult] = useState<any>(null);
+
   const queryClient = useQueryClient();
 
   // The demo restaurant ID — in production this comes from auth context
   const RESTAURANT_ID = 2;
 
+  // Real campaigns
+  const { data: campaignsData, refetch: refetchCampaigns } = useQuery({
+    queryKey: ['console-campaigns', RESTAURANT_ID],
+    queryFn: async () => {
+      const res = await fetch(`/api/campaigns?restaurantId=${RESTAURANT_ID}`);
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: activeTab === 'campaigns',
+  });
+
+  // Real vouchers
+  const { data: vouchersData } = useQuery({
+    queryKey: ['console-vouchers', RESTAURANT_ID],
+    queryFn: async () => {
+      const res = await fetch(`/api/redemptions?restaurantId=${RESTAURANT_ID}`);
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: activeTab === 'vouchers',
+  });
+
   // Real stats for this restaurant
   const { data: statsData } = useQuery({
     queryKey: ['console-stats', RESTAURANT_ID],
     queryFn: async () => {
-      const res = await fetch(`/api/restaurants/${RESTAURANT_ID}/stats`);
+      const res = await fetch(`/api/admin/stats`); // In production this would be restaurant specific
       if (!res.ok) return null;
       return res.json();
     },
@@ -127,34 +234,36 @@ export function BusinessConsolePage() {
     staleTime: 60000,
   });
 
+  const MOCK_CONTRACT = {
+    refCode: 'TBQ-CTR-2026-000001',
+    status: 'active',
+    paymentModel: 'full_collection',
+    commissionPercent: '15.00',
+    settlementDays: 7,
+    validFrom: '2026-01-01',
+  };
+
   const liveBookings: any[] = bookingsData?.bookings ?? MOCK_BOOKINGS;
   const liveReviews: any[] = reviewsData?.reviews ?? MOCK_REVIEWS;
   const liveContract = contractData?.contract ?? MOCK_CONTRACT;
   const today = new Date().toISOString().split('T')[0];
   const todayBookings = liveBookings.filter((b: any) => b.date === today);
 
-  // Fetch real offers from the API for this restaurant
-  const { data: liveOffersData, refetch: refetchLiveOffers } = useQuery({
-    queryKey: ['console-offers', RESTAURANT_ID],
-    queryFn: async () => {
-      const res = await fetch(`/api/admin/restaurants/${RESTAURANT_ID}/offers`, { credentials: 'include' });
-      if (!res.ok) return null;
-      return res.json();
-    },
-    staleTime: 30000,
-    enabled: activeTab === 'offers',
-  });
+  const displayCampaigns = campaignsData?.campaigns || MOCK_CONSOLE_OFFERS;
+  const filteredCampaigns = displayCampaigns.filter((c: any) =>
+    activeCampaignFilter === 'All' ? true : c.status === activeCampaignFilter.toLowerCase().replace(/ /g, '_')
+  );
 
-  // Merge: real DB offers first, then mock examples (so new submissions appear at top)
-  const displayOffers = liveOffersData?.offers?.length
-    ? liveOffersData.offers
-    : consoleOffers;
+  const displayVouchers = vouchersData?.vouchers || MOCK_VOUCHERS;
+  const filteredVouchers = displayVouchers.filter((v: any) =>
+    activeVoucherFilter === 'All' ? true : v.status === activeVoucherFilter.toLowerCase()
+  );
 
   const liveStats = statsData ? [
-    { labelEn: 'Total Bookings', labelAr: 'إجمالي الحجوزات', value: statsData.totalBookings.toLocaleString(), change: 'Live data', up: true, icon: CalendarDays, color: 'text-blue-600 bg-blue-50' },
-    { labelEn: 'Avg. Rating', labelAr: 'متوسط التقييم', value: parseFloat(statsData.avgRating).toFixed(1), change: `${statsData.reviewCount} reviews`, up: true, icon: Star, color: 'text-amber-600 bg-amber-50' },
-    { labelEn: 'Total Diners', labelAr: 'إجمالي الزوار', value: statsData.totalDiners.toLocaleString(), change: 'Live data', up: true, icon: Users, color: 'text-green-600 bg-green-50' },
-    { labelEn: 'Active Offers', labelAr: 'عروض نشطة', value: (displayOffers as any[]).filter((o: any) => o.isActive).length.toString(), change: 'Live data', up: true, icon: Tag, color: 'text-primary bg-primary/10' },
+    { labelEn: 'Total Bookings', labelAr: 'إجمالي الحجوزات', value: statsData.stats.totalBookings.toLocaleString(), change: 'Live data', up: true, icon: CalendarDays, color: 'text-blue-600 bg-blue-50' },
+    { labelEn: 'Avg. Rating', labelAr: 'متوسط التقييم', value: statsData.stats.avgPlatformRating, change: `${statsData.stats.totalReviews} reviews`, up: true, icon: Star, color: 'text-amber-600 bg-amber-50' },
+    { labelEn: 'Total Diners', labelAr: 'إجمالي الزوار', value: statsData.stats.totalUsers.toLocaleString(), change: 'Live data', up: true, icon: Users, color: 'text-green-600 bg-green-50' },
+    { labelEn: 'Active Offers', labelAr: 'عروض نشطة', value: statsData.stats.activeOffers.toString(), change: 'Live data', up: true, icon: Tag, color: 'text-primary bg-primary/10' },
   ] : MOCK_STATS;
 
   // Create offer form state
@@ -188,7 +297,7 @@ export function BusinessConsolePage() {
     onSuccess: (data) => {
       setCreateSuccess({ refCode: data.offer?.refCode ?? '', titleEn: data.offer?.titleEn ?? '' });
       setCreateForm(EMPTY_FORM);
-      refetchLiveOffers();
+      refetchCampaigns();
       queryClient.invalidateQueries({ queryKey: ['admin-offers'] });
     },
   });
@@ -196,7 +305,8 @@ export function BusinessConsolePage() {
   const tabs: { id: ConsoleTab; labelEn: string; labelAr: string; icon: React.ElementType }[] = [
     { id: 'overview', labelEn: 'Overview', labelAr: 'نظرة عامة', icon: BarChart3 },
     { id: 'bookings', labelEn: 'Bookings', labelAr: 'الحجوزات', icon: CalendarDays },
-    { id: 'offers', labelEn: 'Offers', labelAr: 'العروض', icon: Tag },
+    { id: 'campaigns', labelEn: 'Campaigns', labelAr: 'الحملات', icon: Tag },
+    { id: 'vouchers', labelEn: 'Vouchers', labelAr: 'القسائم', icon: Ticket },
     { id: 'reviews', labelEn: 'Reviews', labelAr: 'التقييمات', icon: MessageSquare },
     { id: 'menu', labelEn: 'Menu', labelAr: 'القائمة', icon: Utensils },
     { id: 'settings', labelEn: 'Settings', labelAr: 'الإعدادات', icon: Settings },
@@ -275,7 +385,7 @@ export function BusinessConsolePage() {
               {liveStats.map(stat => {
                 const Icon = stat.icon;
                 return (
-                  <div key={stat.labelEn} className="bg-card border border-border rounded-2xl p-5">
+                  <div key={stat.labelEn} className="bg-card border border-border rounded-2xl p-5 shadow-sm">
                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${stat.color}`}>
                       <Icon className="w-5 h-5" />
                     </div>
@@ -290,10 +400,10 @@ export function BusinessConsolePage() {
               })}
             </div>
 
-            {/* Today's Bookings + Recent Reviews */}
+            {/* today's bookings + Recent Reviews */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Today's bookings */}
-              <div className="bg-card border border-border rounded-2xl overflow-hidden">
+              {/* today's bookings */}
+              <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
                 <div className="flex items-center justify-between p-5 border-b border-border">
                   <h2 className="font-bold text-foreground">{t("Today's Bookings", 'حجوزات اليوم')}</h2>
                   <span className="bg-primary/10 text-primary text-xs font-bold px-2.5 py-1 rounded-full">
@@ -332,12 +442,12 @@ export function BusinessConsolePage() {
               </div>
 
               {/* Recent Reviews */}
-              <div className="bg-card border border-border rounded-2xl overflow-hidden">
+              <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
                 <div className="flex items-center justify-between p-5 border-b border-border">
                   <h2 className="font-bold text-foreground">{t('Recent Reviews', 'التقييمات الأخيرة')}</h2>
                   <div className="flex items-center gap-1.5 bg-amber-50 border border-amber-100 px-2.5 py-1 rounded-full">
                     <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-                    <span className="text-amber-700 text-xs font-bold">{statsData ? parseFloat(statsData.avgRating).toFixed(1) : '4.7'}</span>
+                    <span className="text-amber-700 text-xs font-bold">{statsData ? parseFloat(statsData.stats.avgPlatformRating).toFixed(1) : '4.7'}</span>
                   </div>
                 </div>
                 <div className="divide-y divide-border">
@@ -369,7 +479,7 @@ export function BusinessConsolePage() {
             </div>
 
             {/* Contract Info Panel */}
-            <div className="bg-card border border-border rounded-2xl overflow-hidden">
+            <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
               <div className="px-5 py-4 border-b border-border flex items-center gap-2">
                 <FileSignature className="w-4 h-4 text-primary" />
                 <h2 className="font-bold text-foreground">{t('Platform Contract', 'عقد المنصة')}</h2>
@@ -399,104 +509,1153 @@ export function BusinessConsolePage() {
               </div>
             </div>
 
-            {/* Quick Actions */}
-            <div>
-              <h2 className="font-bold text-foreground mb-4">{t('Quick Actions', 'إجراءات سريعة')}</h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {[
-                  { icon: CalendarDays, labelEn: 'Manage Availability', labelAr: 'إدارة التوفر', color: 'bg-blue-50 text-blue-600' },
-                  { icon: Percent, labelEn: 'Create an Offer', labelAr: 'إنشاء عرض', color: 'bg-primary/10 text-primary' },
-                  { icon: Gift, labelEn: 'Issue Vouchers', labelAr: 'إصدار قسائم', color: 'bg-purple-50 text-purple-600' },
-                  { icon: Utensils, labelEn: 'Update Menu', labelAr: 'تحديث القائمة', color: 'bg-green-50 text-green-600' },
-                ].map(action => {
-                  const Icon = action.icon;
-                  return (
-                    <button key={action.labelEn} className="flex flex-col items-center gap-3 p-5 bg-card border border-border rounded-2xl hover:border-primary/30 hover:shadow-md transition-all text-center">
-                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${action.color}`}>
-                        <Icon className="w-6 h-6" />
-                      </div>
-                      <p className="text-sm font-semibold text-foreground">{lang === 'ar' ? action.labelAr : action.labelEn}</p>
-                    </button>
-                  );
-                })}
+        {/* Quick Actions */}
+        <div>
+          <h2 className="font-bold text-foreground mb-4">{t('Quick Actions', 'إجراءات سريعة')}</h2>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <button 
+              onClick={() => { setActiveTab('campaigns'); setShowWizard(true); }}
+              className="flex flex-col items-center gap-3 p-5 bg-card border border-border rounded-2xl hover:border-primary/30 hover:shadow-md transition-all text-center"
+            >
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-primary/10 text-primary">
+                <Plus className="w-6 h-6" />
+              </div>
+              <p className="text-sm font-semibold text-foreground">{t('New Campaign', 'حملة جديدة')}</p>
+            </button>
+            <button 
+              onClick={() => { setActiveTab('vouchers'); }}
+              className="flex flex-col items-center gap-3 p-5 bg-card border border-border rounded-2xl hover:border-primary/30 hover:shadow-md transition-all text-center"
+            >
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-blue-50 text-blue-600">
+                <QrCode className="w-6 h-6" />
+              </div>
+              <p className="text-sm font-semibold text-foreground">{t('Redeem Voucher', 'تحقق من القسيمة')}</p>
+            </button>
+            {[
+              { icon: CalendarDays, labelEn: 'Manage Availability', labelAr: 'إدارة التوفر', color: 'bg-green-50 text-green-600' },
+              { icon: MessageSquare, labelEn: 'Reviews', labelAr: 'التقييمات', color: 'bg-amber-50 text-amber-600' },
+              { icon: Utensils, labelEn: 'Update Menu', labelAr: 'تحديث القائمة', color: 'bg-purple-50 text-purple-600' },
+            ].map(action => {
+              const Icon = action.icon;
+              return (
+                <button key={action.labelEn} className="flex flex-col items-center gap-3 p-5 bg-card border border-border rounded-2xl hover:border-primary/30 hover:shadow-md transition-all text-center">
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${action.color}`}>
+                    <Icon className="w-6 h-6" />
+                  </div>
+                  <p className="text-sm font-semibold text-foreground">{lang === 'ar' ? action.labelAr : action.labelEn}</p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Quick Redeem Section */}
+        <div className="bg-primary/5 border border-primary/10 rounded-2xl p-6 flex flex-col md:flex-row items-center gap-6">
+          <div className="flex-1">
+            <h3 className="text-lg font-bold text-foreground mb-1">{t('Quick Redemption', 'التحقق السريع')}</h3>
+            <p className="text-sm text-muted-foreground">{t('Enter voucher code or scan QR to mark as redeemed.', 'أدخل رمز القسيمة أو امسح الرمز للتأكيد.')}</p>
+          </div>
+          <div className="flex w-full md:w-auto gap-2">
+            <div className="relative flex-1 md:w-64">
+              <Ticket className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input 
+                placeholder="VCH-XXXX-XXXX" 
+                className="pl-9 bg-background uppercase font-mono"
+                value={redeemCode}
+                onChange={(e) => setRedeemCode(e.target.value)}
+              />
+            </div>
+            <Button className="gap-2" onClick={() => { setActiveTab('vouchers'); }}>
+              <Check className="w-4 h-4" />
+              {t('Redeem', 'تحقق')}
+            </Button>
+            <Button variant="outline" size="icon" className="shrink-0">
+              <Camera className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+          </div>
+        )}
+
+        {/* Campaigns Tab */}
+        {activeTab === 'campaigns' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-foreground">{t('Campaign Management', 'إدارة الحملات')}</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">{t('Create and monitor your marketing deals', 'إنشاء ومراقبة عروضك التسويقية')}</p>
+              </div>
+              <Button className="gap-2" onClick={() => setShowWizard(true)}>
+                <Plus className="w-4 h-4" />
+                {t('New Campaign', 'حملة جديدة')}
+              </Button>
+            </div>
+
+            <div className="flex gap-2 overflow-x-auto pb-2 hide-scrollbar">
+              {['All', 'Draft', 'Under Review', 'Live', 'Paused', 'Ended', 'Rejected'].map(f => (
+                <button 
+                  key={f} 
+                  onClick={() => setActiveCampaignFilter(f)}
+                  className={`px-4 py-2 text-sm font-medium rounded-xl whitespace-nowrap transition-all ${
+                    activeCampaignFilter === f 
+                      ? 'bg-primary text-primary-foreground shadow-md' 
+                      : 'bg-card border border-border text-muted-foreground hover:border-primary/30'
+                  }`}
+                >
+                  {t(f, f)}
+                </button>
+              ))}
+            </div>
+
+            <div className="bg-card border border-border rounded-2xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-border bg-secondary/30">
+                      <th className="text-start px-5 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('Campaign', 'الحملة')}</th>
+                      <th className="text-start px-5 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('Status', 'الحالة')}</th>
+                      <th className="text-start px-5 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('Duration', 'المدة')}</th>
+                      <th className="text-start px-5 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('Performance', 'الأداء')}</th>
+                      <th className="text-end px-5 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('Actions', 'الإجراءات')}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {filteredCampaigns.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="px-5 py-12 text-center">
+                          <div className="flex flex-col items-center gap-2">
+                            <Tag className="w-10 h-10 text-muted-foreground/30" />
+                            <p className="text-sm text-muted-foreground">{t('No campaigns found in this category.', 'لم يتم العثور على حملات في هذه الفئة.')}</p>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    {filteredCampaigns.map((campaign: any) => {
+                      const st = CAMPAIGN_STATUS_MAP[campaign.status] || CAMPAIGN_STATUS_MAP.draft;
+                      return (
+                        <tr key={campaign.id} className="hover:bg-secondary/10 transition-colors group">
+                          <td className="px-5 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-muted overflow-hidden shrink-0">
+                                {campaign.imageUrl ? (
+                                  <img src={campaign.imageUrl} alt="" className="w-full h-full object-cover" />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center bg-primary/10 text-primary">
+                                    <Sparkles className="w-5 h-5" />
+                                  </div>
+                                )}
+                              </div>
+                              <div>
+                                <p className="font-bold text-foreground text-sm line-clamp-1">{lang === 'ar' ? campaign.titleAr : campaign.titleEn}</p>
+                                <p className="text-xs text-muted-foreground font-mono mt-0.5">{campaign.refCode}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-5 py-4">
+                            <Badge className={`${st.className} border-none shadow-none px-2.5 py-0.5`}>
+                              {lang === 'ar' ? st.labelAr : st.labelEn}
+                            </Badge>
+                          </td>
+                          <td className="px-5 py-4 text-xs text-muted-foreground">
+                            <div className="flex flex-col gap-0.5">
+                              <span>{new Date(campaign.startAt || campaign.validFrom).toLocaleDateString()}</span>
+                              <span className="opacity-60">{t('to', 'إلى')} {new Date(campaign.endAt || campaign.validUntil).toLocaleDateString()}</span>
+                            </div>
+                          </td>
+                          <td className="px-5 py-4">
+                            <div className="space-y-1.5 min-w-[120px]">
+                              <div className="flex justify-between text-[10px] font-bold uppercase tracking-tighter">
+                                <span className="text-muted-foreground">{t('Sold', 'مباع')}</span>
+                                <span className="text-foreground">{campaign.redemptions || 0} / {campaign.totalCapacity || '∞'}</span>
+                              </div>
+                              <Progress value={campaign.totalCapacity ? ((campaign.redemptions || 0) / campaign.totalCapacity) * 100 : 0} className="h-1.5" />
+                            </div>
+                          </td>
+                          <td className="px-5 py-4 text-end">
+                            <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg"><Eye className="w-4 h-4 text-muted-foreground" /></Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg"><Copy className="w-4 h-4 text-muted-foreground" /></Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg"><MoreVertical className="w-4 h-4 text-muted-foreground" /></Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
         )}
 
-        {/* Bookings Tab */}
-        {activeTab === 'bookings' && (
+        {/* Vouchers Tab */}
+        {activeTab === 'vouchers' && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-foreground">{t('All Bookings', 'كل الحجوزات')}</h2>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-bold text-foreground">{t('Voucher Management', 'إدارة القسائم')}</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">{t('Track and redeem customer vouchers', 'تتبع وتحقق من قسائم العملاء')}</p>
+              </div>
               <div className="flex gap-2">
-                {['All', 'Today', 'Upcoming', 'Pending'].map(f => (
-                  <button key={f} className={`px-3 py-1.5 text-sm font-medium rounded-xl transition-colors ${f === 'All' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}`}>
-                    {f}
-                  </button>
-                ))}
+                <Button variant="outline" className="gap-2">
+                  <Download className="w-4 h-4" />
+                  {t('Export CSV', 'تصدير CSV')}
+                </Button>
+                <Button className="gap-2" onClick={() => document.getElementById('redeem-input')?.focus()}>
+                  <ScanLine className="w-4 h-4" />
+                  {t('Quick Redeem', 'تحقق سريع')}
+                </Button>
               </div>
             </div>
+
+            <div className="bg-primary/5 border border-primary/10 rounded-2xl p-6">
+              <div className="max-w-xl mx-auto space-y-4">
+                <div className="text-center space-y-1 mb-4">
+                  <h3 className="font-bold text-foreground">{t('Redeem a Voucher', 'التحقق من القسيمة')}</h3>
+                  <p className="text-xs text-muted-foreground">{t('Scan QR code or enter the 12-digit voucher code below', 'امسح الرمز أو أدخل رمز القسيمة المكون من 12 رقماً أدناه')}</p>
+                </div>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Ticket className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input 
+                      id="redeem-input"
+                      placeholder="VCH-XXXX-XXXX" 
+                      className="pl-9 bg-background h-12 text-lg font-mono uppercase tracking-widest"
+                      value={redeemCode}
+                      onChange={(e) => setRedeemCode(e.target.value)}
+                    />
+                  </div>
+                  <Button size="lg" className="px-8 h-12" onClick={() => {
+                    const v = displayVouchers.find((v: any) => v.code.toLowerCase() === redeemCode.toLowerCase());
+                    if (v) setRedeemResult(v);
+                    else toast.error(t('Invalid voucher code', 'رمز القسيمة غير صالح'));
+                  }}>
+                    {t('Verify', 'تحقق')}
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {redeemResult && (
+              <Card className="border-primary/20 shadow-lg animate-in fade-in slide-in-from-top-4 duration-300">
+                <CardHeader className="pb-3 flex flex-row items-start justify-between">
+                  <div>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Ticket className="w-5 h-5 text-primary" />
+                      {redeemResult.code}
+                    </CardTitle>
+                    <CardDescription>{redeemResult.campaignNameEn} · {redeemResult.optionNameEn}</CardDescription>
+                  </div>
+                  <Badge className={VOUCHER_STATUS_MAP[redeemResult.status]?.className}>
+                    {VOUCHER_STATUS_MAP[redeemResult.status]?.labelEn}
+                  </Badge>
+                </CardHeader>
+                <CardContent className="pb-3">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase">{t('Customer', 'العميل')}</p>
+                      <p className="text-sm font-semibold">{redeemResult.customerName}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase">{t('Purchase Date', 'تاريخ الشراء')}</p>
+                      <p className="text-sm font-semibold">{redeemResult.purchaseDate}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase">{t('Face Value', 'القيمة')}</p>
+                      <p className="text-sm font-semibold text-primary">{redeemResult.faceValue} SAR</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase">{t('Paid Price', 'سعر الشراء')}</p>
+                      <p className="text-sm font-semibold">{redeemResult.purchasePrice} SAR</p>
+                    </div>
+                  </div>
+                </CardContent>
+                <CardFooter className="bg-secondary/20 pt-4 flex justify-between gap-3">
+                  <Button variant="ghost" onClick={() => setRedeemResult(null)}>{t('Cancel', 'إلغاء')}</Button>
+                  <Button 
+                    className="flex-1 gap-2" 
+                    disabled={redeemResult.status !== 'active'}
+                    onClick={() => {
+                      toast.success(t('Voucher redeemed successfully!', 'تم التحقق من القسيمة بنجاح!'));
+                      setRedeemResult(null);
+                      setRedeemCode('');
+                    }}
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    {t('Confirm Redemption', 'تأكيد الاستخدام')}
+                  </Button>
+                </CardFooter>
+              </Card>
+            )}
+
+            <div className="flex gap-2 overflow-x-auto pb-2 hide-scrollbar">
+              {['All', 'Active', 'Redeemed', 'Expired', 'Refunded'].map(f => (
+                <button 
+                  key={f} 
+                  onClick={() => setActiveVoucherFilter(f)}
+                  className={`px-4 py-2 text-sm font-medium rounded-xl whitespace-nowrap transition-all ${
+                    activeVoucherFilter === f 
+                      ? 'bg-primary text-primary-foreground shadow-md' 
+                      : 'bg-card border border-border text-muted-foreground hover:border-primary/30'
+                  }`}
+                >
+                  {t(f, f)}
+                </button>
+              ))}
+            </div>
+
             <div className="bg-card border border-border rounded-2xl overflow-hidden">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-border bg-secondary/30">
-                    <th className="text-start px-5 py-3 text-xs font-semibold text-muted-foreground">{t('Guest', 'الضيف')}</th>
-                    <th className="text-start px-5 py-3 text-xs font-semibold text-muted-foreground">{t('Date & Time', 'التاريخ والوقت')}</th>
-                    <th className="text-start px-5 py-3 text-xs font-semibold text-muted-foreground">{t('Guests', 'الأشخاص')}</th>
-                    <th className="text-start px-5 py-3 text-xs font-semibold text-muted-foreground">{t('Reference', 'المرجع')}</th>
-                    <th className="text-start px-5 py-3 text-xs font-semibold text-muted-foreground">{t('Status', 'الحالة')}</th>
-                    <th className="text-start px-5 py-3 text-xs font-semibold text-muted-foreground"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {liveBookings.length === 0 && (
-                    <tr><td colSpan={6} className="text-center py-12 text-muted-foreground text-sm">{t('No bookings yet', 'لا توجد حجوزات بعد')}</td></tr>
-                  )}
-                  {liveBookings.map((booking: any) => {
-                    const st = STATUS_MAP[booking.status] ?? STATUS_MAP.pending;
-                    const StatusIcon = st.icon;
-                    const ref = booking.referenceCode ?? booking.refCode ?? booking.ref ?? '';
-                    return (
-                      <tr key={booking.id ?? ref} className="hover:bg-secondary/20 transition-colors">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-border bg-secondary/30">
+                      <th className="text-start px-5 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('Voucher Code', 'رمز القسيمة')}</th>
+                      <th className="text-start px-5 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('Campaign / Option', 'الحملة / الخيار')}</th>
+                      <th className="text-start px-5 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('Customer', 'العميل')}</th>
+                      <th className="text-start px-5 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('Value', 'القيمة')}</th>
+                      <th className="text-start px-5 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('Status', 'الحالة')}</th>
+                      <th className="text-end px-5 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {filteredVouchers.map((voucher: any) => (
+                      <tr key={voucher.id} className="hover:bg-secondary/10 transition-colors">
+                        <td className="px-5 py-4 font-mono text-xs font-bold text-foreground">{voucher.code}</td>
                         <td className="px-5 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary font-bold text-sm">
-                              {(booking.partySize ?? booking.guests ?? '?')}
-                            </div>
-                            <span className="font-medium text-foreground text-sm font-mono text-xs">{ref.slice(-8)}</span>
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-sm font-medium text-foreground line-clamp-1">{voucher.campaignNameEn}</span>
+                            <span className="text-xs text-muted-foreground">{voucher.optionNameEn}</span>
                           </div>
                         </td>
-                        <td className="px-5 py-4 text-sm text-muted-foreground">{booking.date} · {booking.time}</td>
                         <td className="px-5 py-4">
-                          <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                            <Users className="w-3.5 h-3.5" />
-                            {booking.partySize ?? booking.guests}
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-sm text-foreground">{voucher.customerName}</span>
+                            <span className="text-xs text-muted-foreground">{voucher.purchaseDate}</span>
                           </div>
                         </td>
-                        <td className="px-5 py-4 text-xs font-mono text-muted-foreground">{ref}</td>
                         <td className="px-5 py-4">
-                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${st.className}`}>
-                            <StatusIcon className="w-3 h-3" />
-                            {st.labelEn}
-                          </span>
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-sm font-bold text-primary">{voucher.purchasePrice} SAR</span>
+                            <span className="text-[10px] text-muted-foreground line-through opacity-60">{voucher.faceValue} SAR</span>
+                          </div>
                         </td>
                         <td className="px-5 py-4">
-                          {booking.status === 'pending' && (
-                            <div className="flex gap-2">
-                              <button className="text-xs font-semibold text-green-600 hover:underline">Accept</button>
-                              <button className="text-xs font-semibold text-red-600 hover:underline">Decline</button>
-                            </div>
-                          )}
+                          <Badge className={`${VOUCHER_STATUS_MAP[voucher.status]?.className} border-none shadow-none`}>
+                            {lang === 'ar' ? VOUCHER_STATUS_MAP[voucher.status]?.labelAr : VOUCHER_STATUS_MAP[voucher.status]?.labelEn}
+                          </Badge>
+                        </td>
+                        <td className="px-5 py-4 text-end">
+                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg"><MoreVertical className="w-4 h-4 text-muted-foreground" /></Button>
                         </td>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
+
+        {/* Campaigns Tab */}
+        {activeTab === 'campaigns' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-foreground">{t('Campaign Management', 'إدارة الحملات')}</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">{t('Create and monitor your marketing deals', 'إنشاء ومراقبة عروضك التسويقية')}</p>
+              </div>
+              <Button className="gap-2" onClick={() => setShowWizard(true)}>
+                <Plus className="w-4 h-4" />
+                {t('New Campaign', 'حملة جديدة')}
+              </Button>
+            </div>
+
+            <div className="flex gap-2 overflow-x-auto pb-2 hide-scrollbar">
+              {['All', 'Draft', 'Under Review', 'Live', 'Paused', 'Ended', 'Rejected'].map(f => (
+                <button 
+                  key={f} 
+                  onClick={() => setActiveCampaignFilter(f)}
+                  className={`px-4 py-2 text-sm font-medium rounded-xl whitespace-nowrap transition-all ${
+                    activeCampaignFilter === f 
+                      ? 'bg-primary text-primary-foreground shadow-md' 
+                      : 'bg-card border border-border text-muted-foreground hover:border-primary/30'
+                  }`}
+                >
+                  {t(f, f)}
+                </button>
+              ))}
+            </div>
+
+            <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-border bg-secondary/30">
+                      <th className="text-start px-5 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('Campaign', 'الحملة')}</th>
+                      <th className="text-start px-5 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('Status', 'الحالة')}</th>
+                      <th className="text-start px-5 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('Duration', 'المدة')}</th>
+                      <th className="text-start px-5 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('Performance', 'الأداء')}</th>
+                      <th className="text-end px-5 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('Actions', 'الإجراءات')}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {filteredCampaigns.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="px-5 py-12 text-center">
+                          <div className="flex flex-col items-center gap-2">
+                            <Tag className="w-10 h-10 text-muted-foreground/30" />
+                            <p className="text-sm text-muted-foreground">{t('No campaigns found in this category.', 'لم يتم العثور على حملات في هذه الفئة.')}</p>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    {filteredCampaigns.map((campaign: any) => {
+                      const st = CAMPAIGN_STATUS_MAP[campaign.status] || CAMPAIGN_STATUS_MAP.draft;
+                      return (
+                        <tr key={campaign.id} className="hover:bg-secondary/10 transition-colors group">
+                          <td className="px-5 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-muted overflow-hidden shrink-0">
+                                {campaign.imageUrl ? (
+                                  <img src={campaign.imageUrl} alt="" className="w-full h-full object-cover" />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center bg-primary/10 text-primary">
+                                    <Sparkles className="w-5 h-5" />
+                                  </div>
+                                )}
+                              </div>
+                              <div>
+                                <p className="font-bold text-foreground text-sm line-clamp-1">{lang === 'ar' ? campaign.titleAr : campaign.titleEn}</p>
+                                <p className="text-xs text-muted-foreground font-mono mt-0.5">{campaign.refCode}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-5 py-4">
+                            <Badge className={`${st.className} border-none shadow-none px-2.5 py-0.5`}>
+                              {lang === 'ar' ? st.labelAr : st.labelEn}
+                            </Badge>
+                          </td>
+                          <td className="px-5 py-4 text-xs text-muted-foreground">
+                            <div className="flex flex-col gap-0.5">
+                              <span>{new Date(campaign.startAt || campaign.validFrom).toLocaleDateString()}</span>
+                              <span className="opacity-60">{t('to', 'إلى')} {new Date(campaign.endAt || campaign.validUntil).toLocaleDateString()}</span>
+                            </div>
+                          </td>
+                          <td className="px-5 py-4">
+                            <div className="space-y-1.5 min-w-[120px]">
+                              <div className="flex justify-between text-[10px] font-bold uppercase tracking-tighter">
+                                <span className="text-muted-foreground">{t('Sold', 'مباع')}</span>
+                                <span className="text-foreground">{campaign.redemptions || 0} / {campaign.totalCapacity || '∞'}</span>
+                              </div>
+                              <Progress value={campaign.totalCapacity ? ((campaign.redemptions || 0) / campaign.totalCapacity) * 100 : 0} className="h-1.5" />
+                            </div>
+                          </td>
+                          <td className="px-5 py-4 text-end">
+                            <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg"><Eye className="w-4 h-4 text-muted-foreground" /></Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg"><Copy className="w-4 h-4 text-muted-foreground" /></Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg"><MoreVertical className="w-4 h-4 text-muted-foreground" /></Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Vouchers Tab */}
+        {activeTab === 'vouchers' && (
+          <div className="space-y-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-bold text-foreground">{t('Voucher Management', 'إدارة القسائم')}</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">{t('Track and redeem customer vouchers', 'تتبع وتحقق من قسائم العملاء')}</p>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" className="gap-2">
+                  <Download className="w-4 h-4" />
+                  {t('Export CSV', 'تصدير CSV')}
+                </Button>
+                <Button className="gap-2" onClick={() => document.getElementById('redeem-input')?.focus()}>
+                  <ScanLine className="w-4 h-4" />
+                  {t('Quick Redeem', 'تحقق سريع')}
+                </Button>
+              </div>
+            </div>
+
+            <div className="bg-primary/5 border border-primary/10 rounded-2xl p-6">
+              <div className="max-w-xl mx-auto space-y-4">
+                <div className="text-center space-y-1 mb-4">
+                  <h3 className="font-bold text-foreground">{t('Redeem a Voucher', 'التحقق من القسيمة')}</h3>
+                  <p className="text-xs text-muted-foreground">{t('Scan QR code or enter the 12-digit voucher code below', 'امسح الرمز أو أدخل رمز القسيمة المكون من 12 رقماً أدناه')}</p>
+                </div>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Ticket className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input 
+                      id="redeem-input"
+                      placeholder="VCH-XXXX-XXXX" 
+                      className="pl-9 bg-background h-12 text-lg font-mono uppercase tracking-widest"
+                      value={redeemCode}
+                      onChange={(e) => setRedeemCode(e.target.value)}
+                    />
+                  </div>
+                  <Button size="lg" className="px-8 h-12" onClick={() => {
+                    const v = displayVouchers.find((v: any) => v.code.toLowerCase() === redeemCode.toLowerCase());
+                    if (v) setRedeemResult(v);
+                    else toast.error(t('Invalid voucher code', 'رمز القسيمة غير صالح'));
+                  }}>
+                    {t('Verify', 'تحقق')}
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {redeemResult && (
+              <Card className="border-primary/20 shadow-lg animate-in fade-in slide-in-from-top-4 duration-300">
+                <CardHeader className="pb-3 flex flex-row items-start justify-between">
+                  <div>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Ticket className="w-5 h-5 text-primary" />
+                      {redeemResult.code}
+                    </CardTitle>
+                    <CardDescription>{redeemResult.campaignNameEn} · {redeemResult.optionNameEn}</CardDescription>
+                  </div>
+                  <Badge className={VOUCHER_STATUS_MAP[redeemResult.status]?.className}>
+                    {VOUCHER_STATUS_MAP[redeemResult.status]?.labelEn}
+                  </Badge>
+                </CardHeader>
+                <CardContent className="pb-3">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase">{t('Customer', 'العميل')}</p>
+                      <p className="text-sm font-semibold">{redeemResult.customerName}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase">{t('Purchase Date', 'تاريخ الشراء')}</p>
+                      <p className="text-sm font-semibold">{redeemResult.purchaseDate}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase">{t('Face Value', 'القيمة')}</p>
+                      <p className="text-sm font-semibold text-primary">{redeemResult.faceValue} SAR</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase">{t('Paid Price', 'سعر الشراء')}</p>
+                      <p className="text-sm font-semibold">{redeemResult.purchasePrice} SAR</p>
+                    </div>
+                  </div>
+                </CardContent>
+                <CardFooter className="bg-secondary/20 pt-4 flex justify-between gap-3">
+                  <Button variant="ghost" onClick={() => setRedeemResult(null)}>{t('Cancel', 'إلغاء')}</Button>
+                  <Button 
+                    className="flex-1 gap-2" 
+                    disabled={redeemResult.status !== 'active'}
+                    onClick={() => {
+                      toast.success(t('Voucher redeemed successfully!', 'تم التحقق من القسيمة بنجاح!'));
+                      setRedeemResult(null);
+                      setRedeemCode('');
+                    }}
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    {t('Confirm Redemption', 'تأكيد الاستخدام')}
+                  </Button>
+                </CardFooter>
+              </Card>
+            )}
+
+            <div className="flex gap-2 overflow-x-auto pb-2 hide-scrollbar">
+              {['All', 'Active', 'Redeemed', 'Expired', 'Refunded'].map(f => (
+                <button 
+                  key={f} 
+                  onClick={() => setActiveVoucherFilter(f)}
+                  className={`px-4 py-2 text-sm font-medium rounded-xl whitespace-nowrap transition-all ${
+                    activeVoucherFilter === f 
+                      ? 'bg-primary text-primary-foreground shadow-md' 
+                      : 'bg-card border border-border text-muted-foreground hover:border-primary/30'
+                  }`}
+                >
+                  {t(f, f)}
+                </button>
+              ))}
+            </div>
+
+            <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-border bg-secondary/30">
+                      <th className="text-start px-5 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('Voucher Code', 'رمز القسيمة')}</th>
+                      <th className="text-start px-5 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('Campaign / Option', 'الحملة / الخيار')}</th>
+                      <th className="text-start px-5 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('Customer', 'العميل')}</th>
+                      <th className="text-start px-5 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('Value', 'القيمة')}</th>
+                      <th className="text-start px-5 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('Status', 'الحالة')}</th>
+                      <th className="text-end px-5 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {filteredVouchers.map((voucher: any) => (
+                      <tr key={voucher.id} className="hover:bg-secondary/10 transition-colors">
+                        <td className="px-5 py-4 font-mono text-xs font-bold text-foreground">{voucher.code}</td>
+                        <td className="px-5 py-4">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-sm font-medium text-foreground line-clamp-1">{voucher.campaignNameEn}</span>
+                            <span className="text-xs text-muted-foreground">{voucher.optionNameEn}</span>
+                          </div>
+                        </td>
+                        <td className="px-5 py-4">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-sm text-foreground">{voucher.customerName}</span>
+                            <span className="text-xs text-muted-foreground">{voucher.purchaseDate}</span>
+                          </div>
+                        </td>
+                        <td className="px-5 py-4">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-sm font-bold text-primary">{voucher.purchasePrice} SAR</span>
+                            <span className="text-[10px] text-muted-foreground line-through opacity-60">{voucher.faceValue} SAR</span>
+                          </div>
+                        </td>
+                        <td className="px-5 py-4">
+                          <Badge className={`${VOUCHER_STATUS_MAP[voucher.status]?.className} border-none shadow-none`}>
+                            {lang === 'ar' ? VOUCHER_STATUS_MAP[voucher.status]?.labelAr : VOUCHER_STATUS_MAP[voucher.status]?.labelEn}
+                          </Badge>
+                        </td>
+                        <td className="px-5 py-4 text-end">
+                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg"><MoreVertical className="w-4 h-4 text-muted-foreground" /></Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Wizard Dialog */}
+        <Dialog open={showWizard} onOpenChange={setShowWizard}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0 gap-0 border-none shadow-2xl">
+            <div className="sticky top-0 z-20 bg-background border-b border-border px-6 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <div>
+                  <DialogTitle className="text-xl">{t('Campaign Wizard', 'معالج الحملة')}</DialogTitle>
+                  <p className="text-xs text-muted-foreground">{t('Step', 'الخطوة')} {wizardStep} {t('of', 'من')} 7</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex gap-1 me-4">
+                  {[1, 2, 3, 4, 5, 6, 7].map((s) => (
+                    <div 
+                      key={s} 
+                      className={`h-1.5 w-6 rounded-full transition-colors ${s === wizardStep ? 'bg-primary' : s < wizardStep ? 'bg-primary/40' : 'bg-muted'}`}
+                    />
+                  ))}
+                </div>
+                <Button variant="ghost" size="icon" onClick={() => setShowWizard(false)} className="rounded-full">
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+
+            <div className="p-8">
+              {wizardStep === 1 && (
+                <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-bold">{t('Step 1: The Basics', 'الخطوة 1: الأساسيات')}</h3>
+                    <p className="text-sm text-muted-foreground">{t('Tell us about your campaign goal and type.', 'أخبرنا عن هدف ونوع حملتك.')}</p>
+                  </div>
+                  
+                  <div className="grid gap-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>{t('Campaign Name (Internal)', 'اسم الحملة (داخلي)')}</Label>
+                        <Input placeholder="e.g. Ramadan Special 2026" value={wizardData.name} onChange={e => setWizardData({...wizardData, name: e.target.value})} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>{t('Target City', 'المدينة المستهدفة')}</Label>
+                        <Select value={wizardData.city} onValueChange={v => setWizardData({...wizardData, city: v})}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select City" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="riyadh">Riyadh</SelectItem>
+                            <SelectItem value="jeddah">Jeddah</SelectItem>
+                            <SelectItem value="khobar">Al Khobar</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>{t('Public Title (EN)', 'العنوان العام (EN)')}</Label>
+                        <Input placeholder="50% Off Total Bill" value={wizardData.titleEn} onChange={e => setWizardData({...wizardData, titleEn: e.target.value})} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-right block">{t('العنوان العام (AR)', 'Public Title (AR)')}</Label>
+                        <Input dir="rtl" placeholder="خصم 50% على الفاتورة" value={wizardData.titleAr} onChange={e => setWizardData({...wizardData, titleAr: e.target.value})} />
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <Label>{t('Deal Type', 'نوع العرض')}</Label>
+                      <div className="grid grid-cols-3 gap-3">
+                        {[
+                          { id: 'spend_credit', icon: DollarSign, label: 'Spend Credit', sub: 'Pay X get Y credit' },
+                          { id: 'item_voucher', icon: Utensils, label: 'Item Voucher', sub: 'Free dish or menu' },
+                          { id: 'discount_deal', icon: Percent, label: 'Discount Deal', sub: '% or fixed off' },
+                        ].map((type) => (
+                          <button
+                            key={type.id}
+                            onClick={() => setWizardData({...wizardData, type: type.id})}
+                            className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all text-center ${
+                              wizardData.type === type.id ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/20 bg-card'
+                            }`}
+                          >
+                            <type.icon className={`w-6 h-6 ${wizardData.type === type.id ? 'text-primary' : 'text-muted-foreground'}`} />
+                            <div className="space-y-0.5">
+                              <p className="text-sm font-bold">{t(type.label, type.label)}</p>
+                              <p className="text-[10px] text-muted-foreground leading-tight">{t(type.sub, type.sub)}</p>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {wizardStep === 2 && (
+                <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-2">
+                      <h3 className="text-lg font-bold">{t('Step 2: Campaign Options', 'الخطوة 2: خيارات الحملة')}</h3>
+                      <p className="text-sm text-muted-foreground">{t('Add one or more pricing tiers for this deal.', 'أضف مستوى سعري واحد أو أكثر لهذا العرض.')}</p>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={() => setWizardData({...wizardData, options: [...wizardData.options, { nameEn: '', nameAr: '', originalPrice: '', dealPrice: '', initialCap: '', monthlyCap: '', validityDays: '60' }]})}>
+                      <Plus className="w-4 h-4 me-2" /> {t('Add Option', 'إضافة خيار')}
+                    </Button>
+                  </div>
+
+                  <div className="space-y-4">
+                    {wizardData.options.map((opt: any, idx: number) => (
+                      <div key={idx} className="p-5 border border-border rounded-2xl bg-secondary/10 space-y-4 relative group">
+                        {wizardData.options.length > 1 && (
+                          <Button 
+                            variant="ghost" size="icon" 
+                            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 h-8 w-8 text-red-500"
+                            onClick={() => setWizardData({...wizardData, options: wizardData.options.filter((_: any, i: number) => i !== idx)})}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label className="text-xs">{t('Option Name (EN)', 'اسم الخيار (EN)')}</Label>
+                            <Input value={opt.nameEn} onChange={e => {
+                              const newOpts = [...wizardData.options];
+                              newOpts[idx].nameEn = e.target.value;
+                              setWizardData({...wizardData, options: newOpts});
+                            }} placeholder="Single Person" />
+                          </div>
+                          <div className="space-y-2 text-right">
+                            <Label className="text-xs">{t('اسم الخيار (AR)', 'Option Name (AR)')}</Label>
+                            <Input dir="rtl" value={opt.nameAr} onChange={e => {
+                              const newOpts = [...wizardData.options];
+                              newOpts[idx].nameAr = e.target.value;
+                              setWizardData({...wizardData, options: newOpts});
+                            }} placeholder="لشخص واحد" />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-4">
+                          <div className="space-y-2">
+                            <Label className="text-xs">{t('Original Price', 'السعر الأصلي')}</Label>
+                            <div className="relative">
+                              <Input type="number" value={opt.originalPrice} onChange={e => {
+                                const newOpts = [...wizardData.options];
+                                newOpts[idx].originalPrice = e.target.value;
+                                setWizardData({...wizardData, options: newOpts});
+                              }} className="pr-10" />
+                              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">SAR</span>
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs">{t('Deal Price', 'سعر العرض')}</Label>
+                            <div className="relative">
+                              <Input type="number" value={opt.dealPrice} onChange={e => {
+                                const newOpts = [...wizardData.options];
+                                newOpts[idx].dealPrice = e.target.value;
+                                setWizardData({...wizardData, options: newOpts});
+                              }} className="pr-10 border-primary/50 bg-primary/5" />
+                              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-primary">SAR</span>
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs">{t('Discount', 'الخصم')}</Label>
+                            <div className="h-10 flex items-center px-3 bg-green-50 text-green-700 font-bold rounded-xl border border-green-200">
+                              {opt.originalPrice && opt.dealPrice ? `${Math.round((1 - (opt.dealPrice / opt.originalPrice)) * 100)}% Off` : '--'}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-4">
+                          <div className="space-y-2">
+                            <Label className="text-xs">{t('Initial Cap', 'السعة الكلية')}</Label>
+                            <Input type="number" placeholder="Unlimited" value={opt.initialCap} onChange={e => {
+                              const newOpts = [...wizardData.options];
+                              newOpts[idx].initialCap = e.target.value;
+                              setWizardData({...wizardData, options: newOpts});
+                            }} />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs">{t('Monthly Cap', 'السعة الشهرية')}</Label>
+                            <Input type="number" placeholder="No Limit" value={opt.monthlyCap} onChange={e => {
+                              const newOpts = [...wizardData.options];
+                              newOpts[idx].monthlyCap = e.target.value;
+                              setWizardData({...wizardData, options: newOpts});
+                            }} />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs">{t('Validity (Days)', 'الصلاحية (يوم)')}</Label>
+                            <Input type="number" value={opt.validityDays} onChange={e => {
+                              const newOpts = [...wizardData.options];
+                              newOpts[idx].validityDays = e.target.value;
+                              setWizardData({...wizardData, options: newOpts});
+                            }} />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {wizardStep === 3 && (
+                <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300 text-center">
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-bold">{t('Step 3: Campaign Photos', 'الخطوة 3: صور الحملة')}</h3>
+                    <p className="text-sm text-muted-foreground">{t('High quality photos convert 3x better.', 'الصور عالية الجودة تزيد من المبيعات 3 أضعاف.')}</p>
+                  </div>
+
+                  <div className="border-2 border-dashed border-border rounded-3xl p-12 flex flex-col items-center gap-4 bg-muted/20 hover:bg-muted/30 transition-all cursor-pointer">
+                    <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+                      <Upload className="w-8 h-8" />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="font-bold">{t('Drop images here or click to upload', 'اسحب الصور هنا أو اضغط للتحميل')}</p>
+                      <p className="text-xs text-muted-foreground">{t('PNG, JPG up to 10MB each. Recommend 4:3 aspect ratio.', 'PNG، JPG بحد أقصى 10 ميجا بايت لكل منها. يوصى بنسبة 4:3.')}</p>
+                    </div>
+                    <Button variant="outline" className="mt-2">{t('Select Files', 'اختر الملفات')}</Button>
+                  </div>
+
+                  <div className="grid grid-cols-4 gap-4 mt-6">
+                    {[1, 2, 3].map(i => (
+                      <div key={i} className="aspect-[4/3] bg-muted rounded-2xl relative group overflow-hidden border border-border">
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <Image className="w-8 h-8 text-muted-foreground/30" />
+                        </div>
+                        <button className="absolute top-2 right-2 w-6 h-6 bg-black/50 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center gap-2 justify-center mt-6">
+                    <Checkbox id="media-consent" checked={wizardData.consent} onCheckedChange={v => setWizardData({...wizardData, consent: v})} />
+                    <Label htmlFor="media-consent" className="text-xs font-medium text-muted-foreground">
+                      {t('I confirm I have the rights to use these images.', 'أؤكد أنني أملك حقوق استخدام هذه الصور.')}
+                    </Label>
+                  </div>
+                </div>
+              )}
+
+              {wizardStep === 4 && (
+                <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-bold">{t('Step 4: Highlights & Description', 'الخطوة 4: النقاط الهامة والوصف')}</h3>
+                    <p className="text-sm text-muted-foreground">{t('Describe what makes this deal special.', 'صف ما يجعل هذا العرض مميزاً.')}</p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="space-y-3">
+                      <Label className="flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-primary" />
+                        {t('Campaign Highlights (EN)', 'النقاط الهامة (EN)')}
+                      </Label>
+                      <div className="space-y-2">
+                        {wizardData.highlights.map((h: string, i: number) => (
+                          <div key={i} className="flex gap-2">
+                            <span className="w-6 h-10 flex items-center justify-center text-xs font-bold text-muted-foreground">{i+1}</span>
+                            <Input 
+                              placeholder={`Highlight ${i+1}`} 
+                              value={h} 
+                              onChange={e => {
+                                const newH = [...wizardData.highlights];
+                                newH[i] = e.target.value;
+                                setWizardData({...wizardData, highlights: newH});
+                              }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-6 mt-6">
+                      <div className="space-y-2">
+                        <Label>{t('Detailed Description (EN)', 'الوصف التفصيلي (EN)')}</Label>
+                        <Textarea 
+                          placeholder="What's included in this deal? E.g. Valid for dinner only, includes appetizers..." 
+                          className="min-h-[150px] resize-none"
+                          value={wizardData.descriptionEn}
+                          onChange={e => setWizardData({...wizardData, descriptionEn: e.target.value})}
+                        />
+                      </div>
+                      <div className="space-y-2 text-right">
+                        <Label>{t('الوصف التفصيلي (AR)', 'Detailed Description (AR)')}</Label>
+                        <Textarea 
+                          dir="rtl"
+                          placeholder="ماذا يتضمن هذا العرض؟ مثال: صالح للعشاء فقط، يشمل المقبلات..." 
+                          className="min-h-[150px] resize-none"
+                          value={wizardData.descriptionAr}
+                          onChange={e => setWizardData({...wizardData, descriptionAr: e.target.value})}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {wizardStep === 5 && (
+                <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-bold">{t('Step 5: Fine Print', 'الخطوة 5: الشروط والأحكام')}</h3>
+                    <p className="text-sm text-muted-foreground">{t('Specify terms and restrictions.', 'حدد الشروط والقيود.')}</p>
+                  </div>
+
+                  <div className="space-y-6">
+                    <div className="p-4 bg-muted/50 rounded-2xl border border-border">
+                      <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">{t('Platform Standard Terms (Read-only)', 'شروط المنصة القياسية (للقراءة فقط)')}</p>
+                      <ul className="space-y-2">
+                        <li className="text-xs flex items-center gap-2 text-muted-foreground"><Check className="w-3 h-3 text-green-600" /> {t('Vouchers cannot be combined with other offers.', 'لا يمكن دمج القسائم مع عروض أخرى.')}</li>
+                        <li className="text-xs flex items-center gap-2 text-muted-foreground"><Check className="w-3 h-3 text-green-600" /> {t('Vouchers expire on the date shown.', 'تنتهي صلاحية القسائم في التاريخ الموضح.')}</li>
+                        <li className="text-xs flex items-center gap-2 text-muted-foreground"><Check className="w-3 h-3 text-green-600" /> {t('Vouchers are non-refundable after redemption.', 'القسائم غير قابلة للاسترداد بعد الاستخدام.')}</li>
+                      </ul>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      {[
+                        { id: 'reservation', label: 'Reservation Required', labelAr: 'يتطلب حجز مسبق' },
+                        { id: 'dinein', label: 'Dine-in Only', labelAr: 'للطلبات الداخلية فقط' },
+                        { id: 'weekend', label: 'Valid on Weekends', labelAr: 'صالح في عطلة نهاية الأسبوع' },
+                        { id: 'family', label: 'Families Only', labelAr: 'للعائلات فقط' },
+                        { id: 'limit', label: 'Limit 1 Per User', labelAr: 'قسيمة واحدة لكل مستخدم' },
+                        { id: 'kids', label: 'Kids Policy Applies', labelAr: 'تطبق سياسة الأطفال' },
+                      ].map(item => (
+                        <div key={item.id} className="flex items-center justify-between p-3 border border-border rounded-xl hover:border-primary/20 transition-colors">
+                          <Label htmlFor={item.id} className="cursor-pointer">
+                            <p className="text-sm font-bold">{t(item.label, item.label)}</p>
+                            <p className="text-[10px] text-muted-foreground">{item.labelAr}</p>
+                          </Label>
+                          <Checkbox id={item.id} checked={wizardData[item.id]} onCheckedChange={v => setWizardData({...wizardData, [item.id]: v})} />
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>{t('Custom Fine Print (Optional)', 'شروط مخصصة (اختياري)')}</Label>
+                      <Textarea placeholder="Any other specific terms..." value={wizardData.customTerms} onChange={e => setWizardData({...wizardData, customTerms: e.target.value})} />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {wizardStep === 6 && (
+                <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-bold">{t('Step 6: Redemption', 'الخطوة 6: الاستخدام')}</h3>
+                    <p className="text-sm text-muted-foreground">{t('How should customers redeem this deal?', 'كيف يجب على العملاء استخدام هذا العرض؟')}</p>
+                  </div>
+
+                  <div className="space-y-6">
+                    <div className="space-y-3">
+                      <Label>{t('Redemption Method', 'طريقة الاستخدام')}</Label>
+                      <div className="grid grid-cols-3 gap-3">
+                        {[
+                          { id: 'on_site', icon: MapPin, label: 'On-Site', sub: 'In restaurant' },
+                          { id: 'on_demand', icon: Smartphone, label: 'On-Demand', sub: 'Via App' },
+                          { id: 'online', icon: Globe, label: 'Online', sub: 'Website' },
+                        ].map((method) => (
+                          <button
+                            key={method.id}
+                            onClick={() => setWizardData({...wizardData, redemptionMethod: method.id})}
+                            className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all text-center ${
+                              wizardData.redemptionMethod === method.id ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/20 bg-card'
+                            }`}
+                          >
+                            <method.icon className={`w-6 h-6 ${wizardData.redemptionMethod === method.id ? 'text-primary' : 'text-muted-foreground'}`} />
+                            <div className="space-y-0.5">
+                              <p className="text-sm font-bold">{t(method.label, method.label)}</p>
+                              <p className="text-[10px] text-muted-foreground leading-tight">{t(method.sub, method.sub)}</p>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="p-5 border border-border rounded-2xl bg-muted/20 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label className="text-sm font-bold">{t('Reservation Required', 'يتطلب حجز مسبق')}</Label>
+                          <p className="text-xs text-muted-foreground">{t('Highly recommended for dining deals', 'يوصى به بشدة لعروض الطعام')}</p>
+                        </div>
+                        <Checkbox checked={wizardData.requiresReservation} onCheckedChange={v => setWizardData({...wizardData, requiresReservation: v})} />
+                      </div>
+                      
+                      {wizardData.requiresReservation && (
+                        <div className="grid grid-cols-2 gap-4 animate-in slide-in-from-top-2 duration-300">
+                          <div className="space-y-2">
+                            <Label className="text-xs">{t('Booking Phone', 'هاتف الحجز')}</Label>
+                            <div className="relative">
+                              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                              <Input className="pl-9" placeholder="+966 5..." />
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs">{t('WhatsApp Link', 'رابط واتساب')}</Label>
+                            <div className="relative">
+                              <MessageCircle className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                              <Input className="pl-9" placeholder="wa.me/..." />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {wizardStep === 7 && (
+                <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-bold">{t('Step 7: Review & Submit', 'الخطوة 7: المراجعة والتقديم')}</h3>
+                    <p className="text-sm text-muted-foreground">{t('Review your campaign before submitting for approval.', 'راجع حملتك قبل تقديمها للموافقة.')}</p>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-6">
+                    <div className="col-span-1">
+                      <div className="rounded-2xl border border-border overflow-hidden bg-card shadow-sm sticky top-0">
+                        <div className="aspect-[4/3] bg-muted relative">
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <Image className="w-10 h-10 text-muted-foreground/20" />
+                          </div>
+                          <div className="absolute top-3 right-3 bg-primary text-white text-[10px] font-bold px-2 py-1 rounded-lg shadow-lg">
+                            {wizardData.options[0]?.originalPrice && wizardData.options[0]?.dealPrice 
+                              ? `${Math.round((1 - (wizardData.options[0].dealPrice / wizardData.options[0].originalPrice)) * 100)}% OFF` 
+                              : '--'}
+                          </div>
+                        </div>
+                        <div className="p-4 space-y-3">
+                          <div className="space-y-1">
+                            <p className="text-[10px] font-bold text-primary uppercase tracking-wider">Reem Al Bawadi</p>
+                            <h4 className="font-bold text-sm leading-tight">{wizardData.titleEn || 'Campaign Title'}</h4>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <div className="flex gap-0.5">
+                              {[1,2,3,4,5].map(s => <Star key={s} className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />)}
+                            </div>
+                            <span className="text-[10px] text-muted-foreground font-bold">(124)</span>
+                          </div>
+                          <div className="flex items-baseline gap-1.5 border-t border-border pt-3">
+                            <span className="text-lg font-black text-foreground">{wizardData.options[0]?.dealPrice || '0'} SAR</span>
+                            <span className="text-xs text-muted-foreground line-through opacity-50">{wizardData.options[0]?.originalPrice || '0'} SAR</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="col-span-2 space-y-6">
+                      <div className="space-y-4">
+                        <h5 className="text-xs font-bold uppercase text-muted-foreground tracking-widest">{t('Campaign Details', 'تفاصيل الحملة')}</h5>
+                        <div className="grid grid-cols-2 gap-y-4 gap-x-8">
+                          <div>
+                            <p className="text-[10px] font-bold text-muted-foreground/60 uppercase">{t('Title (AR)', 'العنوان (AR)')}</p>
+                            <p className="text-sm font-bold text-foreground" dir="rtl">{wizardData.titleAr || '--'}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-bold text-muted-foreground/60 uppercase">{t('Deal Type', 'نوع العرض')}</p>
+                            <p className="text-sm font-bold text-foreground">{wizardData.type}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-bold text-muted-foreground/60 uppercase">{t('Redemption', 'الاستخدام')}</p>
+                            <p className="text-sm font-bold text-foreground capitalize">{wizardData.redemptionMethod.replace('_', ' ')}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-bold text-muted-foreground/60 uppercase">{t('Reservation', 'الحجز')}</p>
+                            <p className="text-sm font-bold text-foreground">{wizardData.requiresReservation ? 'Required' : 'Optional'}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="p-5 bg-primary/5 rounded-2xl border border-primary/10">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Info className="w-4 h-4 text-primary" />
+                          <p className="text-sm font-bold text-primary">{t('Submission Confirmation', 'تأكيد التقديم')}</p>
+                        </div>
+                        <p className="text-xs text-muted-foreground leading-relaxed mb-4">
+                          {t('By submitting, you agree to Tabaq\'s campaign terms. Your campaign will undergo a review process which typically takes 24-48 hours.', 'بتقديمك للحملة، فإنك توافق على شروط طبق للحملات. ستخضع حملتك لعملية مراجعة تستغرق عادةً من 24 إلى 48 ساعة.')}
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <Checkbox id="confirm-submit" checked={wizardData.confirmed} onCheckedChange={v => setWizardData({...wizardData, confirmed: v})} />
+                          <Label htmlFor="confirm-submit" className="text-xs font-medium">{t('I confirm all information is accurate.', 'أؤكد أن جميع المعلومات دقيقة.')}</Label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="sticky bottom-0 bg-background border-t border-border px-8 py-5 flex items-center justify-between z-20">
+              <Button 
+                variant="ghost" 
+                onClick={() => setWizardStep(s => Math.max(1, s - 1))}
+                disabled={wizardStep === 1}
+                className="gap-2"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                {t('Previous', 'السابق')}
+              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setShowWizard(false)}>{t('Save Draft', 'حفظ كمسودة')}</Button>
+                {wizardStep < 7 ? (
+                  <Button onClick={() => setWizardStep(s => Math.min(7, s + 1))} className="gap-2 min-w-[120px]">
+                    {t('Next', 'التالي')}
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                ) : (
+                  <Button 
+                    className="gap-2 min-w-[140px] shadow-lg shadow-primary/20"
+                    disabled={!wizardData.confirmed}
+                    onClick={() => {
+                      toast.success(t('Campaign submitted for review!', 'تم تقديم الحملة للمراجعة!'));
+                      setShowWizard(false);
+                      setWizardStep(1);
+                    }}
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    {t('Submit Review', 'تقديم للمراجعة')}
+                  </Button>
+                )}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Reviews Tab */}
         {activeTab === 'reviews' && (

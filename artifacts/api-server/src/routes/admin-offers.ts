@@ -1,9 +1,90 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { offersTable, restaurantsTable, vouchersTable, usersTable } from "@workspace/db/schema";
-import { count, eq, desc, sql } from "drizzle-orm";
+import { offersTable, restaurantsTable, vouchersTable, usersTable, campaignsTable, promoCodesTable } from "@workspace/db/schema";
+import { count, eq, desc, sql, and, type SQL } from "drizzle-orm";
+import { requireAuth } from "../middleware/requireAuth.js";
 
 const router = Router();
+
+// GET /admin/campaigns — list all with approval status filter
+router.get("/admin/campaigns", requireAuth, async (req, res) => {
+  // TODO: verify admin role
+  try {
+    const { status } = req.query;
+    const conditions: SQL[] = [];
+    if (status) conditions.push(eq(campaignsTable.status, status as string as any));
+
+    const campaigns = await db.select({
+      id: campaignsTable.id,
+      refCode: campaignsTable.refCode,
+      status: campaignsTable.status,
+      type: campaignsTable.type,
+      titleEn: campaignsTable.titleEn,
+      titleAr: campaignsTable.titleAr,
+      restaurantNameEn: restaurantsTable.nameEn,
+      createdAt: campaignsTable.createdAt,
+    })
+    .from(campaignsTable)
+    .innerJoin(restaurantsTable, eq(campaignsTable.restaurantId, restaurantsTable.id))
+    .where(conditions.length ? and(...conditions) : undefined)
+    .orderBy(sql`${campaignsTable.createdAt} desc`);
+
+    res.json(campaigns);
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch admin campaigns");
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// PATCH /admin/campaigns/:id/review — approve/reject/request changes
+router.patch("/admin/campaigns/:id/review", requireAuth, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id as string);
+    const { status, adminNotes, commissionOverridePercent } = req.body;
+    const adminUserId = req.auth!.userId;
+
+    if (!["approved", "live", "rejected", "under_review"].includes(status)) {
+       res.status(400).json({ error: "bad_request" });
+       return;
+    }
+
+    const [updated] = await db.update(campaignsTable).set({
+      status,
+      adminNotes,
+      commissionOverridePercent,
+      approvedById: status === "approved" || status === "live" ? adminUserId : undefined,
+      approvedAt: status === "approved" || status === "live" ? new Date() : undefined,
+      updatedAt: new Date(),
+    }).where(eq(campaignsTable.id, id)).returning();
+
+    res.json(updated);
+  } catch (err) {
+    req.log.error({ err }, "Failed to review campaign");
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// GET /admin/promo-codes — all promo codes
+router.get("/admin/promo-codes", requireAuth, async (req, res) => {
+  try {
+    const codes = await db.select().from(promoCodesTable).orderBy(sql`${promoCodesTable.createdAt} desc`);
+    res.json(codes);
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch admin promo codes");
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// POST /admin/settlement/create-batch — create settlement batch
+router.post("/admin/settlement/create-batch", requireAuth, async (req, res) => {
+  try {
+    // This is a placeholder for a complex settlement logic
+    res.json({ message: "Settlement batch creation not fully implemented" });
+  } catch (err) {
+     req.log.error({ err }, "Failed to create settlement batch");
+     res.status(500).json({ error: "internal_error" });
+  }
+});
 
 // List all offers with approval status and voucher redemption counts
 router.get("/admin/offers", async (req, res) => {
