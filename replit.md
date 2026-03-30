@@ -191,4 +191,10 @@ All core features COMPLETE and world-class:
   - Reviews with provider response submission
   - DB schema: `experience_providers`, `experiences`, `experience_slots`, `experience_bookings`, `experience_reviews`
   - API routes: `POST /provider-applications`, `GET/POST /providers/me`, experiences CRUD, slots, bookings, analytics, reviews
+  - Additional DB tables: `experience_gifts`, `experience_commissions`, `experience_settings`, `provider_applications`
+  - Auth fix: all fetch calls in ExperiencesConsolePage and ProviderRegisterPage use `getAuthHeaders()`
+  - Schema corrected: `experience_bookings` uses `isDepositPaid: boolean("deposit_paid")` and `isFullPaid: boolean("full_paid")` matching actual DB columns; duplicate `ref_code` column removed
+- **Task #2** (Experiences consumer frontend) — IN PROGRESS
+- **Task #4** (Experiences admin controls) — IN PROGRESS
+- **Task #5** (City & neighborhood filter) — IN PROGRESS
 - **Task #9** (AI Features, SEO & Multilingual) — PENDING

@@ -477,7 +477,6 @@ router.post("/experience-bookings", requireAuth, async (req, res) => {
 
     const [booking] = await db.insert(experienceBookingsTable).values({
       referenceCode,
-      refCode: referenceCode,
       userId,
       experienceId,
       slotId: slotId ?? null,
@@ -1112,7 +1111,6 @@ router.get("/providers/me/bookings", requireAuth, async (req, res) => {
 
     const bookings = await db.select({
       id: experienceBookingsTable.id,
-      refCode: experienceBookingsTable.refCode,
       referenceCode: experienceBookingsTable.referenceCode,
       experienceId: experienceBookingsTable.experienceId,
       slotId: experienceBookingsTable.slotId,

@@ -39,7 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     safeRemove(TOKEN_KEY);
     setToken(null);
     setUser(null);
-    fetch("/api/auth/logout", { method: "POST", credentials: "include" }).catch(() => {});
+    fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -53,7 +53,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     fetch("/api/auth/me", {
       headers: { Authorization: `Bearer ${token}` },
-      credentials: "include",
     })
       .then(async (res) => {
         if (res.ok) {

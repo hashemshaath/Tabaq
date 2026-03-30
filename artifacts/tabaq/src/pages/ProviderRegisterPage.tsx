@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { getAuthHeaders } from "@/lib/api";
 import { useLanguage } from "@/hooks/use-language";
 import { Link, useLocation } from "wouter";
 import {
@@ -123,7 +124,7 @@ export function ProviderRegisterPage() {
     try {
       const res = await fetch("/api/provider-applications", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify(form),
       });
       if (res.ok) {
