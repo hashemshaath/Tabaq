@@ -3,13 +3,14 @@ import { useQuery } from '@tanstack/react-query';
 import { useLanguage } from '@/hooks/use-language';
 import { usePageMeta } from '@/hooks/use-page-meta';
 import { useCity } from '@/context/CityContext';
+import { useCart } from '@/context/CartContext';
 import { Link, useLocation } from 'wouter';
 import {
   Search, ChevronRight, Star, TrendingUp, Trophy, MapPin,
   Flame, Layers, ArrowRight, CalendarDays, MessageSquare,
   Utensils, Sparkles, BookOpen, Tag, Award, Clock, Zap,
   Heart, Navigation, Percent, BadgeCheck, ScanQrCode, CalendarCheck, BadgeDollarSign,
-  ChefHat,
+  ChefHat, RotateCcw, Plus, Minus, ShoppingBag, CheckCircle2,
   X
 } from 'lucide-react';
 import { ExperienceCard } from '@/components/ExperienceCard';
@@ -92,6 +93,103 @@ function DishItem({ d, rank }: { d: any; rank: number }) {
         </div>
       </div>
     </Link>
+  );
+}
+
+// ── Order Again Section ────────────────────────────────────────────
+const ORDER_AGAIN_ITEMS = [
+  { id: 7, nameEn: 'Jareesh', nameAr: 'جريش', restaurantId: 3, restaurantNameEn: 'Najd Village', restaurantNameAr: 'قرية نجد', price: 45, currency: 'SAR', imageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300&h=200&fit=crop' },
+  { id: 4, nameEn: 'Black Cod Miso', nameAr: 'سمك القد الأسود', restaurantId: 1, restaurantNameEn: 'Nobu Riyadh', restaurantNameAr: 'نوبو الرياض', price: 280, currency: 'SAR', imageUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=300&h=200&fit=crop' },
+  { id: 1, nameEn: 'Lamb Ouzi', nameAr: 'خروف أوزي', restaurantId: 2, restaurantNameEn: 'Lusin', restaurantNameAr: 'لوسين', price: 185, currency: 'SAR', imageUrl: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=300&h=200&fit=crop' },
+  { id: 5, nameEn: 'Dragon Roll', nameAr: 'رول التنين', restaurantId: 1, restaurantNameEn: 'Nobu Riyadh', restaurantNameAr: 'نوبو الرياض', price: 120, currency: 'SAR', imageUrl: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=300&h=200&fit=crop' },
+  { id: 11, nameEn: 'Wagyu Tenderloin', nameAr: 'تندرلوين واغيو', restaurantId: 5, restaurantNameEn: 'The Globe', restaurantNameAr: 'ذا غلوب', price: 490, currency: 'SAR', imageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300&h=200&fit=crop' },
+];
+
+function OrderAgainSection() {
+  const { t, lang } = useLanguage();
+  const { addItem, updateQty, items: cartItems } = useCart();
+  const [flashed, setFlashed] = useState<number | null>(null);
+
+  const handleAdd = (item: typeof ORDER_AGAIN_ITEMS[0]) => {
+    addItem({ ...item, imageUrl: item.imageUrl ?? undefined });
+    setFlashed(item.id);
+    setTimeout(() => setFlashed(null), 700);
+  };
+  const handleDec = (item: typeof ORDER_AGAIN_ITEMS[0]) => {
+    const ci = cartItems.find(i => i.dishId === item.id);
+    if (ci) updateQty(item.id, ci.qty - 1);
+  };
+
+  return (
+    <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-10 mb-10">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 bg-primary/10 rounded-xl flex items-center justify-center">
+            <RotateCcw className="w-4 h-4 text-primary" />
+          </div>
+          <div>
+            <h2 className="font-bold text-foreground text-base leading-none">{t('Order Again', 'اطلب مجدداً')}</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">{t('Your recent favourites', 'مفضلاتك الأخيرة')}</p>
+          </div>
+        </div>
+        <Link href="/orders" className="text-xs font-semibold text-primary hover:underline flex items-center gap-1">
+          {t('View orders', 'عرض الطلبات')} <ChevronRight className="w-3 h-3" />
+        </Link>
+      </div>
+      <div className="flex gap-3 overflow-x-auto pb-2 hide-scrollbar">
+        {ORDER_AGAIN_ITEMS.map(item => {
+          const ci = cartItems.find(i => i.dishId === item.id);
+          const qty = ci?.qty ?? 0;
+          const isFlashed = flashed === item.id;
+          return (
+            <div key={item.id} className="flex-shrink-0 w-[160px] sm:w-[176px] rounded-2xl border border-border/60 overflow-hidden hover:border-primary/30 hover:shadow-md transition-all bg-card group">
+              <Link href={`/dishes/${item.id}`}>
+                <div className="w-full h-24 bg-muted overflow-hidden relative">
+                  <img
+                    src={item.imageUrl}
+                    alt={lang === 'ar' ? item.nameAr : item.nameEn}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                </div>
+              </Link>
+              <div className="p-2.5">
+                <p className="text-xs font-semibold line-clamp-1 text-foreground">
+                  {lang === 'ar' ? item.nameAr : item.nameEn}
+                </p>
+                <p className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5">
+                  {lang === 'ar' ? item.restaurantNameAr : item.restaurantNameEn}
+                </p>
+                <div className="flex items-center justify-between mt-2">
+                  <span className="text-xs font-black text-primary">
+                    {item.currency} {item.price}
+                  </span>
+                  {qty === 0 ? (
+                    <button
+                      onClick={() => handleAdd(item)}
+                      className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all active:scale-95 ${
+                        isFlashed ? 'bg-emerald-500 text-white scale-110' : 'bg-primary text-white hover:bg-primary/90'
+                      }`}
+                    >
+                      {isFlashed ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-1 bg-secondary/60 rounded-lg px-1 py-0.5">
+                      <button onClick={() => handleDec(item)} className="w-5 h-5 flex items-center justify-center text-primary hover:bg-background rounded transition-colors">
+                        <Minus className="w-3 h-3" />
+                      </button>
+                      <span className="text-xs font-black text-primary tabular-nums w-4 text-center">{qty}</span>
+                      <button onClick={() => handleAdd(item)} className="w-5 h-5 flex items-center justify-center bg-primary text-white rounded transition-colors hover:bg-primary/90">
+                        <Plus className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -424,6 +522,9 @@ export function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* ══ ORDER AGAIN ══════════════════════════════════════════ */}
+      <OrderAgainSection />
 
       {/* ══ OCCASIONS ════════════════════════════════════════════ */}
       {!occasions.isLoading && (occasions.data || []).length > 0 && (
