@@ -5,26 +5,29 @@ import { useLanguage } from '@/hooks/use-language';
 import { usePageMeta, buildArticleSchema, buildBreadcrumbSchema } from '@/hooks/use-page-meta';
 import { Clock, User, Tag, ArrowLeft, ArrowRight, ChevronRight, Share2, Bookmark, ThumbsUp, MessageCircle, Facebook, Twitter, Link2, Check, Loader2 } from 'lucide-react';
 
-function slugify(text: string) {
-  return text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').trim();
+function slugify(text: string, idx: number) {
+  const ascii = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').replace(/^-+|-+$/g, '').replace(/-+/g, '-');
+  return ascii.length > 1 ? ascii : `heading-${idx}`;
 }
 
 function parseHeadings(html: string): { id: string; text: string; level: number }[] {
   const results: { id: string; text: string; level: number }[] = [];
   const re = /<h([23])[^>]*>(.*?)<\/h\1>/gi;
   let m: RegExpExecArray | null;
+  let idx = 0;
   while ((m = re.exec(html)) !== null) {
     const text = m[2].replace(/<[^>]+>/g, '').trim();
-    if (text) results.push({ level: parseInt(m[1]), text, id: slugify(text) });
+    if (text) { results.push({ level: parseInt(m[1]), text, id: slugify(text, idx) }); idx++; }
   }
   return results;
 }
 
 function injectHeadingIds(html: string): string {
+  let idx = 0;
   return html.replace(/<h([23])([^>]*)>(.*?)<\/h\1>/gi, (_, level, attrs, inner) => {
     const text = inner.replace(/<[^>]+>/g, '').trim();
-    const id = slugify(text);
     if (!text) return `<h${level}${attrs}>${inner}</h${level}>`;
+    const id = slugify(text, idx++);
     return `<h${level}${attrs} id="${id}">${inner}</h${level}>`;
   });
 }
@@ -108,6 +111,10 @@ export function BlogDetailPage() {
     structuredData: [articleJsonLd, breadcrumbJsonLd].filter(Boolean) as any,
   }, lang);
 
+  const rawContent = lang === 'ar' ? (post?.contentAr ?? null) : (post?.contentEn ?? null);
+  const content = rawContent ? injectHeadingIds(rawContent) : rawContent;
+  const headings = useMemo(() => parseHeadings(rawContent ?? ''), [rawContent]);
+
   if (postLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -129,10 +136,6 @@ export function BlogDetailPage() {
       </div>
     );
   }
-
-  const rawContent = lang === 'ar' ? post.contentAr : post.contentEn;
-  const content = rawContent ? injectHeadingIds(rawContent) : rawContent;
-  const headings = useMemo(() => parseHeadings(rawContent ?? ''), [rawContent]);
 
   const pageUrl = typeof window !== 'undefined' ? window.location.href : `https://tabaq.sa/blog/${slug}`;
   const pageTitle = lang === 'ar' ? post.titleAr : post.titleEn;

@@ -695,3 +695,23 @@ Rich mock data for all 6 new sections: MOCK_CHECK_INS (5 visits), MOCK_REVIEWS (
 - Reusable components: `SectionCard`, `ToggleRow`, `FormField`, `Input`, `Textarea`, `SaveBar`, `AddressForm`
 - Loading spinners, success states, error messages per section
 - Full RTL/LTR support via `lang` prop and `dir` attribute
+
+## Bug Fixes & Content Enrichment (March 2026)
+
+### Critical React Hooks Bug Fixed
+- **BlogDetailPage.tsx**: `useMemo` was called after conditional early returns (React hooks ordering violation). Fixed by moving `rawContent` + `useMemo` computations before all early returns.
+
+### Blog Content Enriched (All 6 Posts)
+- Arabic content expanded from 160–372 chars to **1000–1250 chars** each (proper HTML with `<h2>`, `<h3>`, `<p>` structure)
+- English content enriched for post 1 (1044→1513 chars)
+- All 6 posts now have bilingual full-article content with 3–4 headings and multiple paragraphs each
+
+### Duplicate-Key React Warning Fixed (BlogDetailPage.tsx)
+- Root cause: `slugify()` strips Arabic characters, producing `""` or `"-"` for all Arabic headings → duplicate `key` props
+- Fix: `slugify(text, idx)` now falls back to `heading-${idx}` when the ASCII result is 1 char or fewer
+- `parseHeadings()` and `injectHeadingIds()` both pass a sequential `idx` counter to guarantee unique IDs for Arabic headings
+
+### Scratchpad
+- **All 8 restaurants** have stories (13 total, all `status=approved`)
+- **Experiences**: 10 seeded across all 5 Saudi cities (Riyadh×4, Jeddah×2, Dammam×1, Makkah×1, Madinah×1 + bonus Diriyah)
+- **Blog heading IDs**: Arabic headings get `heading-0`, `heading-1`, … IDs; English headings get proper ASCII slugs
