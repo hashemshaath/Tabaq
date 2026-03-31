@@ -152,6 +152,20 @@ function CitySelector() {
   );
 }
 
+// ─── Shared menu data ─────────────────────────────────────────────────────────
+const ACTIVITY_ITEMS = [
+  { href: "/dashboard",      icon: LayoutDashboard, iconBg: "bg-primary/10 text-primary",                                        label: "Dashboard",         labelAr: "لوحتي",                desc: "Points & history",            descAr: "النقاط والتاريخ",          isNotif: false, isGold: false },
+  { href: "/notifications",  icon: Bell,            iconBg: "bg-primary/10 text-primary",                                        label: "Notifications",     labelAr: "الإشعارات",            desc: "Bookings, offers & more",     descAr: "الحجوزات والعروض وأكثر",  isNotif: true,  isGold: false },
+  { href: "/orders",         icon: ShoppingBag,     iconBg: "bg-primary/10 text-primary",                                        label: "My Orders",         labelAr: "طلباتي",               desc: "Track & reorder",             descAr: "تتبع وإعادة الطلب",       isNotif: false, isGold: false },
+  { href: "/bookings",       icon: CalendarDays,    iconBg: "bg-blue-100 text-blue-600",                                         label: "My Bookings",       labelAr: "حجوزاتي",              desc: "Upcoming & past",             descAr: "القادمة والسابقة",         isNotif: false, isGold: false },
+  { href: "/vouchers",       icon: Tag,             iconBg: "bg-purple-100 text-purple-600",                                     label: "My Vouchers",       labelAr: "قسائمي",               desc: "Offers & promotions",         descAr: "العروض والترقيات",         isNotif: false, isGold: false },
+  { href: "/gold",           icon: Crown,           iconBg: "bg-gradient-to-br from-amber-400 to-yellow-500 text-white",         label: "Tabaq Gold",        labelAr: "طبق الذهبي",           desc: "Membership & perks",          descAr: "العضوية والمزايا",         isNotif: false, isGold: true  },
+] as const;
+
+const ACCOUNT_ITEMS = [
+  { href: "/account", icon: Settings, iconBg: "bg-primary/10 text-primary", label: "Account & Settings", labelAr: "الحساب والإعدادات", desc: "Profile, privacy, security & more", descAr: "الملف الشخصي والخصوصية والأمان" },
+] as const;
+
 // ─── Account dropdown (desktop) ───────────────────────────────────────────────
 function AccountMenu({ user, token, logout }: { user: any; token: string | null; logout: () => void }) {
   const { lang } = useLanguage();
@@ -193,7 +207,6 @@ function AccountMenu({ user, token, logout }: { user: any; token: string | null;
             ? <img src={user.avatarUrl} alt={displayName || ""} className="w-full h-full object-cover" />
             : <User className="w-4 h-4 text-primary" />}
         </div>
-        <span className="hidden sm:block text-sm font-medium text-foreground max-w-24 truncate">{displayName}</span>
         <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform", open && "rotate-180")} />
       </button>
 
@@ -225,22 +238,27 @@ function AccountMenu({ user, token, logout }: { user: any; token: string | null;
               <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{t("My Activity", "نشاطي")}</p>
             </div>
 
-            <MenuItem href="/dashboard" icon={LayoutDashboard} iconBg="bg-primary/10 text-primary" label="Dashboard" labelAr="لوحتي" desc="Points & history" descAr="النقاط والتاريخ" />
-            <MenuItem href="/notifications" icon={Bell} iconBg="bg-primary/10 text-primary" label="Notifications" labelAr="الإشعارات"
-              desc={unreadCount > 0 ? `${unreadCount} unread` : "Bookings, offers & more"}
-              descAr={unreadCount > 0 ? `${unreadCount} غير مقروء` : "الحجوزات والعروض وأكثر"}
-              badge={unreadCount > 0 ? <span className="text-xs font-bold text-white bg-primary px-1.5 py-0.5 rounded-full shrink-0">{unreadCount}</span> : undefined}
-            />
-            <MenuItem href="/orders" icon={ShoppingBag} iconBg="bg-primary/10 text-primary" label="My Orders" labelAr="طلباتي" desc="Track & reorder" descAr="تتبع وإعادة الطلب" />
-            <MenuItem href="/bookings" icon={CalendarDays} iconBg="bg-blue-100 text-blue-600" label="My Bookings" labelAr="حجوزاتي" desc="Upcoming & past" descAr="القادمة والسابقة" />
-            <MenuItem href="/vouchers" icon={Tag} iconBg="bg-purple-100 text-purple-600" label="My Vouchers" labelAr="قسائمي" desc="Offers & promotions" descAr="العروض والترقيات" />
-            <MenuItem href="/gold" icon={Crown} iconBg="bg-gradient-to-br from-amber-400 to-yellow-500 text-white" label="Tabaq Gold" labelAr="طبق الذهبي" desc="Membership & perks" descAr="العضوية والمزايا" />
+            {ACTIVITY_ITEMS.map((item) => (
+              <MenuItem
+                key={item.href}
+                href={item.href}
+                icon={item.icon}
+                iconBg={item.iconBg}
+                label={item.label}
+                labelAr={item.labelAr}
+                desc={item.isNotif && unreadCount > 0 ? `${unreadCount} unread` : item.desc}
+                descAr={item.isNotif && unreadCount > 0 ? `${unreadCount} غير مقروء` : item.descAr}
+                badge={item.isNotif && unreadCount > 0 ? <span className="text-xs font-bold text-white bg-primary px-1.5 py-0.5 rounded-full shrink-0">{unreadCount}</span> : undefined}
+              />
+            ))}
 
             {/* Account */}
             <div className="px-4 py-1.5 mt-1 border-t border-border">
               <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{t("Account", "الحساب")}</p>
             </div>
-            <MenuItem href="/account" icon={Settings} iconBg="bg-primary/10 text-primary" label="Account & Settings" labelAr="الحساب والإعدادات" desc="Profile, privacy, security & more" descAr="الملف الشخصي والخصوصية والأمان" />
+            {ACCOUNT_ITEMS.map((item) => (
+              <MenuItem key={item.href} href={item.href} icon={item.icon} iconBg={item.iconBg} label={item.label} labelAr={item.labelAr} desc={item.desc} descAr={item.descAr} />
+            ))}
 
             {/* Business (conditional) */}
             {(isOwner || isAdmin) && (
@@ -367,7 +385,7 @@ function MobileMenu({ open, onClose, navLinks, user, logout, unreadCount, cities
           {/* Auth section */}
           {user ? (
             <>
-              {/* User identity */}
+              {/* Profile block */}
               <Link href={user.username ? `/${user.username}` : "/dashboard"} onClick={onClose} className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-accent transition-colors">
                 <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden shrink-0">
                   {user.avatarUrl
@@ -380,35 +398,49 @@ function MobileMenu({ open, onClose, navLinks, user, logout, unreadCount, cities
                 </div>
               </Link>
 
-              {/* Activity links */}
-              {[
-                { href: "/dashboard", icon: LayoutDashboard, en: "Dashboard", ar: "لوحتي" },
-                { href: "/orders", icon: ShoppingBag, en: "My Orders", ar: "طلباتي" },
-                { href: "/bookings", icon: CalendarDays, en: "My Bookings", ar: "حجوزاتي" },
-                { href: "/notifications", icon: Bell, en: "Notifications", ar: "الإشعارات", badge: unreadCount > 0 ? unreadCount : undefined },
-                { href: "/gold", icon: Crown, en: "Tabaq Gold", ar: "طبق الذهبي", gold: true },
-                { href: "/account", icon: Settings, en: "Account & Settings", ar: "الحساب والإعدادات" },
-              ].map((item: any) => (
+              {/* نشاطي / My Activity */}
+              <div className="px-4 pt-2 pb-1">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{t("My Activity", "نشاطي")}</p>
+              </div>
+              {ACTIVITY_ITEMS.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
                   onClick={onClose}
                   className={cn(
                     "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors",
-                    item.gold ? "text-amber-700 hover:bg-amber-50" : "text-foreground hover:bg-accent"
+                    item.isGold ? "text-amber-700 hover:bg-amber-50" : "text-foreground hover:bg-accent"
                   )}
                 >
-                  <item.icon className={cn("w-4 h-4", item.gold && "text-amber-500")} />
-                  <span className="flex-1">{t(item.en, item.ar)}</span>
-                  {item.badge && <span className="text-xs font-bold text-white bg-primary px-1.5 py-0.5 rounded-full">{item.badge}</span>}
-                  {item.gold && <span className="text-[10px] font-black bg-amber-500 text-white px-1.5 py-0.5 rounded-full">GOLD</span>}
+                  <item.icon className={cn("w-4 h-4", item.isGold && "text-amber-500")} />
+                  <span className="flex-1">{t(item.label, item.labelAr)}</span>
+                  {item.isNotif && unreadCount > 0 && <span className="text-xs font-bold text-white bg-primary px-1.5 py-0.5 rounded-full">{unreadCount}</span>}
+                  {item.isGold && <span className="text-[10px] font-black bg-amber-500 text-white px-1.5 py-0.5 rounded-full">GOLD</span>}
                 </Link>
               ))}
 
-              {/* Business links (owner/admin) */}
+              {/* الحساب / Account */}
+              <div className="px-4 pt-2 pb-1 border-t border-border mt-1">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{t("Account", "الحساب")}</p>
+              </div>
+              {ACCOUNT_ITEMS.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={onClose}
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-foreground hover:bg-accent transition-colors"
+                >
+                  <item.icon className="w-4 h-4" />
+                  <span className="flex-1">{t(item.label, item.labelAr)}</span>
+                </Link>
+              ))}
+
+              {/* الأعمال / Business links (owner/admin) */}
               {(isOwner || isAdmin) && (
                 <>
-                  <div className="h-px bg-border my-1" />
+                  <div className="px-4 pt-2 pb-1 border-t border-border mt-1">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{t("Business", "الأعمال")}</p>
+                  </div>
                   {isOwner && (
                     <Link href="/console" onClick={onClose} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-foreground hover:bg-accent transition-colors">
                       <BarChart3 className="w-4 h-4 text-green-600" />{t("Business Console", "لوحة الأعمال")}
@@ -422,6 +454,11 @@ function MobileMenu({ open, onClose, navLinks, user, logout, unreadCount, cities
                   {isAdmin && (
                     <Link href="/admin" onClick={onClose} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-foreground hover:bg-accent transition-colors">
                       <Shield className="w-4 h-4 text-red-500" />{t("Admin Panel", "لوحة الإدارة")}
+                    </Link>
+                  )}
+                  {isAdmin && (
+                    <Link href="/settings" onClick={onClose} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-foreground hover:bg-accent transition-colors">
+                      <Settings className="w-4 h-4 text-slate-500" />{t("Platform Settings", "إعدادات المنصة")}
                     </Link>
                   )}
                 </>
