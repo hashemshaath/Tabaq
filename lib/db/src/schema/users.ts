@@ -15,6 +15,7 @@ export const usersTable = pgTable("users", {
   bio: text("bio"),
   isVerified: boolean("is_verified").default(false).notNull(),
   isEmailVerified: boolean("is_email_verified").default(false).notNull(),
+  isPrivate: boolean("is_private").default(false).notNull(),
   points: integer("points").default(0).notNull(),
   credibilityScore: numeric("credibility_score", { precision: 5, scale: 2 }).default("0").notNull(),
   level: integer("level").default(1).notNull(),
@@ -32,9 +33,19 @@ export const userFollowsTable = pgTable("user_follows", {
   id: serial("id").primaryKey(),
   followerId: integer("follower_id").notNull().references(() => usersTable.id),
   followingId: integer("following_id").notNull().references(() => usersTable.id),
+  status: text("status").default("accepted").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (t) => [
   uniqueIndex("user_follows_unique").on(t.followerId, t.followingId),
+]);
+
+export const userBlocksTable = pgTable("user_blocks", {
+  id: serial("id").primaryKey(),
+  blockerId: integer("blocker_id").notNull().references(() => usersTable.id),
+  blockedId: integer("blocked_id").notNull().references(() => usersTable.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("user_blocks_unique").on(t.blockerId, t.blockedId),
 ]);
 
 export const otpRequestsTable = pgTable("otp_requests", {
@@ -58,10 +69,12 @@ export const emailVerificationTokensTable = pgTable("email_verification_tokens",
 
 export const insertUserSchema = createInsertSchema(usersTable).omit({ id: true, refCode: true, createdAt: true, updatedAt: true });
 export const insertUserFollowSchema = createInsertSchema(userFollowsTable).omit({ id: true, createdAt: true });
+export const insertUserBlockSchema = createInsertSchema(userBlocksTable).omit({ id: true, createdAt: true });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof usersTable.$inferSelect;
 export type InsertUserFollow = z.infer<typeof insertUserFollowSchema>;
 export type UserFollow = typeof userFollowsTable.$inferSelect;
+export type UserBlock = typeof userBlocksTable.$inferSelect;
 export type OtpRequest = typeof otpRequestsTable.$inferSelect;
 export type EmailVerificationToken = typeof emailVerificationTokensTable.$inferSelect;

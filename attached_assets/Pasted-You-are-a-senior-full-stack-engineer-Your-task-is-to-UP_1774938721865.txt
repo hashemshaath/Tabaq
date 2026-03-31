@@ -1,0 +1,162 @@
+You are a senior full-stack engineer.
+
+Your task is to UPGRADE and IMPLEMENT a professional social system (followers & privacy) similar in power and flexibility to X (Twitter), along with improving the username system and refining the homepage.
+
+========================
+
+1. FOLLOW SYSTEM (PROFESSIONAL)
+   ========================
+   Implement a complete follow/unfollow system:
+
+Core Features:
+
+* Follow / Unfollow users
+* Followers list
+* Following list
+* Follow requests (for private accounts)
+* Mutual followers indicator
+
+Advanced Features:
+
+* Suggested users to follow
+* "People you may know" (based on activity or mock logic)
+* Follow button states:
+
+  * Follow
+  * Following
+  * Requested
+
+UI:
+
+* Clean button states with animations
+* Hover effects
+* Loading states
+
+========================
+2. PRIVACY SYSTEM (LIKE X)
+==========================
+
+Build a strong privacy control system:
+
+Account Privacy:
+
+* Public account
+* Private account (requires approval)
+
+Controls:
+
+* Who can follow me
+* Who can send requests
+* Who can see my activity
+* Who can message me
+
+Additional:
+
+* Block user
+* Remove follower
+* Mute user (optional UI)
+
+========================
+3. FOLLOW REQUEST SYSTEM
+========================
+
+* Send follow request
+* Accept / Reject requests
+* Notification UI for requests
+* Pending requests page
+
+========================
+4. USERNAME SYSTEM (ADVANCED)
+=============================
+
+Upgrade username system professionally:
+
+Rules:
+
+* Unique username
+* Min/max length (e.g. 4–20 chars)
+* Allowed: letters, numbers, underscore
+* Prevent spaces & special characters
+
+Features:
+
+* Live availability check
+* Suggestions:
+
+  * Based on user name
+  * Add numbers or variations
+* Auto-generate suggestions list
+
+UI:
+
+* Inline validation messages
+* Green/red states
+* Real-time feedback
+
+During Registration:
+
+* Force username selection
+* Show suggestions instantly
+
+========================
+5. USER PROFILE IMPROVEMENTS
+============================
+
+* Show followers / following count
+* Display follow button
+* Show mutual connections
+* Activity visibility based on privacy
+
+========================
+6. NOTIFICATIONS SYSTEM
+=======================
+
+Add notifications for:
+
+* New followers
+* Follow requests
+* Accepted requests
+
+========================
+7. HOMEPAGE CLEANUP
+===================
+
+* REMOVE the section: "How a dish works"
+* Improve layout balance
+* Replace with:
+
+  * Recommended users
+  * Trending restaurants
+  * Personalized feed
+
+========================
+8. UX & DESIGN IMPROVEMENTS
+===========================
+
+* Smooth animations
+* Button transitions
+* Consistent spacing
+* Professional UI states
+
+========================
+9. PERFORMANCE
+==============
+
+* Optimize follow/unfollow actions
+* Prevent duplicate requests
+* Fast UI updates (optimistic UI)
+
+========================
+10. OUTPUT
+==========
+
+* Full updated code
+* Clean structure
+* All features connected
+* Ready to run
+
+========================
+FINAL GOAL
+==========
+
+Build a powerful, scalable, and professional social system with strong privacy controls and a refined username experience, similar to modern global platforms like X.

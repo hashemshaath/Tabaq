@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { usersTable, userFollowsTable, reviewsTable, bookingsTable, restaurantsTable, pointsTransactionsTable } from "@workspace/db/schema";
-import { eq, and, sql, desc, gte, type SQL } from "drizzle-orm";
+import { usersTable, userFollowsTable, userBlocksTable, reviewsTable, bookingsTable, restaurantsTable, pointsTransactionsTable } from "@workspace/db/schema";
+import { eq, and, sql, desc, gte, ne, notExists, type SQL } from "drizzle-orm";
 import { requireAuth, optionalAuth } from "../middleware/requireAuth.js";
 
 const router: IRouter = Router();
@@ -29,6 +29,44 @@ router.post("/users", async (req, res) => {
   }
 });
 
+router.get("/users/suggested", optionalAuth, async (req, res) => {
+  try {
+    const viewerId = req.auth?.userId;
+    const limit = parseInt((req.query.limit as string) ?? "6");
+
+    let candidates = await db
+      .select({
+        id: usersTable.id,
+        nameEn: usersTable.nameEn,
+        nameAr: usersTable.nameAr,
+        avatarUrl: usersTable.avatarUrl,
+        isVerified: usersTable.isVerified,
+        level: usersTable.level,
+        levelTitle: usersTable.levelTitle,
+        points: usersTable.points,
+        isPrivate: usersTable.isPrivate,
+      })
+      .from(usersTable)
+      .orderBy(desc(usersTable.points))
+      .limit(50);
+
+    if (viewerId) {
+      candidates = candidates.filter(u => u.id !== viewerId);
+      const followingRows = await db
+        .select({ followingId: userFollowsTable.followingId })
+        .from(userFollowsTable)
+        .where(eq(userFollowsTable.followerId, viewerId));
+      const followingSet = new Set(followingRows.map(r => r.followingId));
+      candidates = candidates.filter(u => !followingSet.has(u.id));
+    }
+
+    res.json(candidates.slice(0, limit));
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch suggested users");
+    res.status(500).json({ error: "internal_error", message: "Failed to fetch suggested users" });
+  }
+});
+
 router.get("/users/:userId", optionalAuth, async (req, res) => {
   try {
     const userId = parseInt(req.params["userId"] as string, 10);
@@ -41,17 +79,19 @@ router.get("/users/:userId", optionalAuth, async (req, res) => {
     const [reviewCount, bookingCount, followerCount, followingCount] = await Promise.all([
       db.select({ count: sql<number>`count(*)` }).from(reviewsTable).where(eq(reviewsTable.userId, userId)),
       db.select({ count: sql<number>`count(*)` }).from(bookingsTable).where(eq(bookingsTable.userId, userId)),
-      db.select({ count: sql<number>`count(*)` }).from(userFollowsTable).where(eq(userFollowsTable.followingId, userId)),
-      db.select({ count: sql<number>`count(*)` }).from(userFollowsTable).where(eq(userFollowsTable.followerId, userId)),
+      db.select({ count: sql<number>`count(*)` }).from(userFollowsTable).where(and(eq(userFollowsTable.followingId, userId), eq(userFollowsTable.status, 'accepted'))),
+      db.select({ count: sql<number>`count(*)` }).from(userFollowsTable).where(and(eq(userFollowsTable.followerId, userId), eq(userFollowsTable.status, 'accepted'))),
     ]);
 
-    let isFollowing = false;
+    let followStatus: 'none' | 'following' | 'pending' = 'none';
     const viewerId = req.auth?.userId;
     if (viewerId && viewerId !== userId) {
-      const [follow] = await db.select({ id: userFollowsTable.id })
+      const [follow] = await db.select({ id: userFollowsTable.id, status: userFollowsTable.status })
         .from(userFollowsTable)
         .where(and(eq(userFollowsTable.followerId, viewerId), eq(userFollowsTable.followingId, userId)));
-      isFollowing = !!follow;
+      if (follow) {
+        followStatus = follow.status === 'pending' ? 'pending' : 'following';
+      }
     }
 
     res.json({
@@ -60,7 +100,8 @@ router.get("/users/:userId", optionalAuth, async (req, res) => {
       bookingCount: Number(bookingCount[0]?.count ?? 0),
       followerCount: Number(followerCount[0]?.count ?? 0),
       followingCount: Number(followingCount[0]?.count ?? 0),
-      isFollowing,
+      isFollowing: followStatus === 'following',
+      followStatus,
     });
   } catch (err) {
     req.log.error({ err }, "Failed to fetch user");
@@ -99,10 +140,20 @@ router.post("/users/:userId/follow", requireAuth, async (req, res) => {
       res.status(400).json({ error: "bad_request", message: "Cannot follow yourself" });
       return;
     }
-    await db.insert(userFollowsTable).values({ followerId, followingId }).onConflictDoNothing();
+
+    const [target] = await db.select({ isPrivate: usersTable.isPrivate }).from(usersTable).where(eq(usersTable.id, followingId));
+    if (!target) {
+      res.status(404).json({ error: "not_found", message: "User not found" });
+      return;
+    }
+
+    const status = target.isPrivate ? 'pending' : 'accepted';
+
+    await db.insert(userFollowsTable).values({ followerId, followingId, status }).onConflictDoNothing();
+
     const [cnt] = await db.select({ count: sql<number>`count(*)` })
-      .from(userFollowsTable).where(eq(userFollowsTable.followingId, followingId));
-    res.json({ isFollowing: true, followerCount: Number(cnt?.count ?? 0) });
+      .from(userFollowsTable).where(and(eq(userFollowsTable.followingId, followingId), eq(userFollowsTable.status, 'accepted')));
+    res.json({ isFollowing: status === 'accepted', followStatus: status, followerCount: Number(cnt?.count ?? 0) });
   } catch (err) {
     req.log.error({ err }, "Failed to follow user");
     res.status(500).json({ error: "internal_error", message: "Failed to follow user" });
@@ -116,11 +167,124 @@ router.delete("/users/:userId/follow", requireAuth, async (req, res) => {
     await db.delete(userFollowsTable)
       .where(and(eq(userFollowsTable.followerId, followerId), eq(userFollowsTable.followingId, followingId)));
     const [cnt] = await db.select({ count: sql<number>`count(*)` })
-      .from(userFollowsTable).where(eq(userFollowsTable.followingId, followingId));
-    res.json({ isFollowing: false, followerCount: Number(cnt?.count ?? 0) });
+      .from(userFollowsTable).where(and(eq(userFollowsTable.followingId, followingId), eq(userFollowsTable.status, 'accepted')));
+    res.json({ isFollowing: false, followStatus: 'none', followerCount: Number(cnt?.count ?? 0) });
   } catch (err) {
     req.log.error({ err }, "Failed to unfollow user");
     res.status(500).json({ error: "internal_error", message: "Failed to unfollow user" });
+  }
+});
+
+// ─── GET /me/follow-requests — pending incoming requests for current user ─────
+router.get("/me/follow-requests", requireAuth, async (req, res) => {
+  try {
+    const userId = req.auth!.userId;
+    const requests = await db
+      .select({
+        id: userFollowsTable.id,
+        followerId: userFollowsTable.followerId,
+        createdAt: userFollowsTable.createdAt,
+        nameEn: usersTable.nameEn,
+        nameAr: usersTable.nameAr,
+        avatarUrl: usersTable.avatarUrl,
+        isVerified: usersTable.isVerified,
+        levelTitle: usersTable.levelTitle,
+      })
+      .from(userFollowsTable)
+      .innerJoin(usersTable, eq(userFollowsTable.followerId, usersTable.id))
+      .where(and(eq(userFollowsTable.followingId, userId), eq(userFollowsTable.status, 'pending')));
+    res.json(requests);
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch follow requests");
+    res.status(500).json({ error: "internal_error", message: "Failed to fetch follow requests" });
+  }
+});
+
+// ─── POST /me/follow-requests/:requesterId/accept ─────────────────────────────
+router.post("/me/follow-requests/:requesterId/accept", requireAuth, async (req, res) => {
+  try {
+    const userId = req.auth!.userId;
+    const requesterId = parseInt(req.params["requesterId"] as string, 10);
+    await db
+      .update(userFollowsTable)
+      .set({ status: 'accepted' })
+      .where(and(eq(userFollowsTable.followerId, requesterId), eq(userFollowsTable.followingId, userId), eq(userFollowsTable.status, 'pending')));
+    res.json({ success: true });
+  } catch (err) {
+    req.log.error({ err }, "Failed to accept follow request");
+    res.status(500).json({ error: "internal_error", message: "Failed to accept follow request" });
+  }
+});
+
+// ─── DELETE /me/follow-requests/:requesterId — reject or cancel ───────────────
+router.delete("/me/follow-requests/:requesterId", requireAuth, async (req, res) => {
+  try {
+    const userId = req.auth!.userId;
+    const requesterId = parseInt(req.params["requesterId"] as string, 10);
+    await db
+      .delete(userFollowsTable)
+      .where(and(eq(userFollowsTable.followerId, requesterId), eq(userFollowsTable.followingId, userId)));
+    res.json({ success: true });
+  } catch (err) {
+    req.log.error({ err }, "Failed to reject follow request");
+    res.status(500).json({ error: "internal_error", message: "Failed to reject follow request" });
+  }
+});
+
+// ─── PATCH /me/privacy — toggle isPrivate ────────────────────────────────────
+router.patch("/me/privacy", requireAuth, async (req, res) => {
+  try {
+    const userId = req.auth!.userId;
+    const { isPrivate } = req.body as { isPrivate: boolean };
+    const [updated] = await db
+      .update(usersTable)
+      .set({ isPrivate: !!isPrivate, updatedAt: new Date() })
+      .where(eq(usersTable.id, userId))
+      .returning({ isPrivate: usersTable.isPrivate });
+
+    if (updated && !isPrivate) {
+      await db
+        .update(userFollowsTable)
+        .set({ status: 'accepted' })
+        .where(and(eq(userFollowsTable.followingId, userId), eq(userFollowsTable.status, 'pending')));
+    }
+
+    res.json({ isPrivate: updated?.isPrivate ?? false });
+  } catch (err) {
+    req.log.error({ err }, "Failed to update privacy");
+    res.status(500).json({ error: "internal_error", message: "Failed to update privacy" });
+  }
+});
+
+// ─── POST /users/:userId/block ────────────────────────────────────────────────
+router.post("/users/:userId/block", requireAuth, async (req, res) => {
+  try {
+    const blockerId = req.auth!.userId;
+    const blockedId = parseInt(req.params["userId"] as string, 10);
+    if (blockerId === blockedId) {
+      res.status(400).json({ error: "bad_request", message: "Cannot block yourself" });
+      return;
+    }
+    await db.insert(userBlocksTable).values({ blockerId, blockedId }).onConflictDoNothing();
+    await db.delete(userFollowsTable).where(and(eq(userFollowsTable.followerId, blockerId), eq(userFollowsTable.followingId, blockedId)));
+    await db.delete(userFollowsTable).where(and(eq(userFollowsTable.followerId, blockedId), eq(userFollowsTable.followingId, blockerId)));
+    res.json({ isBlocked: true });
+  } catch (err) {
+    req.log.error({ err }, "Failed to block user");
+    res.status(500).json({ error: "internal_error", message: "Failed to block user" });
+  }
+});
+
+// ─── DELETE /users/:userId/block ──────────────────────────────────────────────
+router.delete("/users/:userId/block", requireAuth, async (req, res) => {
+  try {
+    const blockerId = req.auth!.userId;
+    const blockedId = parseInt(req.params["userId"] as string, 10);
+    await db.delete(userBlocksTable).where(and(eq(userBlocksTable.blockerId, blockerId), eq(userBlocksTable.blockedId, blockedId)));
+    res.json({ isBlocked: false });
+  } catch (err) {
+    req.log.error({ err }, "Failed to unblock user");
+    res.status(500).json({ error: "internal_error", message: "Failed to unblock user" });
   }
 });
 
@@ -137,7 +301,7 @@ router.get("/users/:userId/followers", async (req, res) => {
       levelTitle: usersTable.levelTitle,
     }).from(userFollowsTable)
       .innerJoin(usersTable, eq(userFollowsTable.followerId, usersTable.id))
-      .where(eq(userFollowsTable.followingId, userId));
+      .where(and(eq(userFollowsTable.followingId, userId), eq(userFollowsTable.status, 'accepted')));
 
     const enriched = await Promise.all(followers.map(async (f) => {
       const [cnt] = await db.select({ count: sql<number>`count(*)` })
@@ -164,7 +328,7 @@ router.get("/users/:userId/following", async (req, res) => {
       levelTitle: usersTable.levelTitle,
     }).from(userFollowsTable)
       .innerJoin(usersTable, eq(userFollowsTable.followingId, usersTable.id))
-      .where(eq(userFollowsTable.followerId, userId));
+      .where(and(eq(userFollowsTable.followerId, userId), eq(userFollowsTable.status, 'accepted')));
 
     const enriched = await Promise.all(following.map(async (f) => {
       const [cnt] = await db.select({ count: sql<number>`count(*)` })
