@@ -51,6 +51,7 @@ import { ChefsPage } from "@/pages/ChefsPage";
 import { ChefDetailPage } from "@/pages/ChefDetailPage";
 import { PublicProfilePage } from "@/pages/PublicProfilePage";
 import { EditProfilePage } from "@/pages/EditProfilePage";
+import { AccountSettingsPage } from "@/pages/AccountSettingsPage";
 import { BlogPage } from "@/pages/BlogPage";
 import { BlogDetailPage } from "@/pages/BlogDetailPage";
 
@@ -109,6 +110,7 @@ function Router() {
               <Route path="/experiences" component={ExperiencesPage} />
               <Route path="/experiences/:id" component={ExperienceDetailPage} />
               <Route path="/edit-profile" component={EditProfilePage} />
+              <Route path="/account-settings" component={AccountSettingsPage} />
               <Route path="/blog/:slug" component={BlogDetailPage} />
               <Route path="/blog" component={BlogPage} />
               <Route path="/gift-redeem/:code" component={GiftRedeemPage} />

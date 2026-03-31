@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, boolean, timestamp, uniqueIndex, numeric } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, boolean, timestamp, uniqueIndex, numeric, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { citiesTable } from "./countries";
@@ -33,6 +33,42 @@ export const usersTable = pgTable("users", {
   tiktokUrl: text("tiktok_url"),
   snapchatUrl: text("snapchat_url"),
   websiteUrl: text("website_url"),
+  privacySettings: jsonb("privacy_settings").$type<{
+    profileVisibility: 'public' | 'followers' | 'private';
+    visitsVisibility: 'public' | 'followers' | 'only_me';
+    reviewsVisibility: 'public' | 'followers' | 'only_me';
+    favoritesVisibility: 'public' | 'followers' | 'only_me';
+    plansVisibility: 'public' | 'followers' | 'only_me';
+    showInLeaderboard: boolean;
+    showInSuggested: boolean;
+  }>().default({
+    profileVisibility: 'public',
+    visitsVisibility: 'public',
+    reviewsVisibility: 'public',
+    favoritesVisibility: 'public',
+    plansVisibility: 'public',
+    showInLeaderboard: true,
+    showInSuggested: true,
+  }),
+  notificationPrefs: jsonb("notification_prefs").$type<{
+    newFollower: boolean;
+    reviewLiked: boolean;
+    reviewComment: boolean;
+    bookingConfirmed: boolean;
+    bookingReminder: boolean;
+    newOffer: boolean;
+    pointsEarned: boolean;
+    weeklyDigest: boolean;
+  }>().default({
+    newFollower: true,
+    reviewLiked: true,
+    reviewComment: true,
+    bookingConfirmed: true,
+    bookingReminder: true,
+    newOffer: false,
+    pointsEarned: true,
+    weeklyDigest: true,
+  }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

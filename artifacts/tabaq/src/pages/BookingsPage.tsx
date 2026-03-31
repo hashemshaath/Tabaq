@@ -474,7 +474,9 @@ function QuickBookPanel({
     staleTime: 60000,
   });
 
-  const suggestedTimes: string[] = suggestedData?.suggestedTimes ?? ['19:00', '19:30', '20:00'];
+  const suggestedTimes: string[] = suggestedData?.suggestions
+    ? suggestedData.suggestions.filter((s: any) => s.available && (s.isRecommended || s.score >= 60)).slice(0, 5).map((s: any) => s.time)
+    : ['19:00', '19:30', '20:00'];
 
   const handleBook = async () => {
     if (!restaurantId || !time) return;

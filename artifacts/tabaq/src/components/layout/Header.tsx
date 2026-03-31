@@ -462,6 +462,16 @@ export function Header() {
                       </Link>
                     )}
 
+                    <Link href="/account-settings" className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors" onClick={() => setUserMenuOpen(false)}>
+                      <div className="w-7 h-7 bg-primary/10 rounded-lg flex items-center justify-center">
+                        <Settings className="w-3.5 h-3.5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-foreground leading-none">{t("Account Settings", "إعدادات الحساب")}</p>
+                        <p className="text-xs text-muted-foreground">{t("Privacy, notifications & security", "الخصوصية والإشعارات والأمان")}</p>
+                      </div>
+                    </Link>
+
                     <Link href="/settings" className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors" onClick={() => setUserMenuOpen(false)}>
                       <div className="w-7 h-7 bg-slate-100 rounded-lg flex items-center justify-center">
                         <Settings className="w-3.5 h-3.5 text-slate-600" />

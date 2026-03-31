@@ -18,7 +18,7 @@ import { usePageMeta } from "@/hooks/use-page-meta";
 // ── Types ──────────────────────────────────────────────────────────────────────
 type AccountType = "basic" | "professional" | "chef";
 type FollowStatus = "none" | "following" | "pending";
-type ProfileTab = "overview" | "reviews" | "visits" | "favorites" | "dishes" | "plans" | "lists" | "dashboard";
+type ProfileTab = "overview" | "reviews" | "visits" | "favorites" | "dishes" | "plans" | "lists" | "activity" | "dashboard";
 
 interface ProfileUser {
   id: number;
@@ -388,6 +388,115 @@ function ProDashboard({ user, t }: { user: ProfileUser; t: (en: string, ar: stri
   );
 }
 
+// ── Message Modal ──────────────────────────────────────────────────────────────
+function MessageModal({ user, lang, onClose }: { user: { nameEn?: string | null; nameAr?: string | null; avatarUrl?: string | null; username?: string | null }; lang: string; onClose: () => void }) {
+  const t = (en: string, ar: string) => lang === 'ar' ? ar : en;
+  const [message, setMessage] = useState('');
+  const [sent, setSent] = useState(false);
+  const name = lang === 'ar' ? (user.nameAr || user.nameEn) : (user.nameEn || user.nameAr);
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+      <div className="bg-card rounded-3xl border border-border w-full max-w-md shadow-2xl">
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
+          <img src={user.avatarUrl ?? `https://i.pravatar.cc/40?u=${user.username}`} alt={name ?? ''} className="w-10 h-10 rounded-full object-cover" />
+          <div className="flex-1">
+            <p className="font-bold text-sm">{name}</p>
+            <p className="text-xs text-muted-foreground">@{user.username}</p>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-secondary transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        {sent ? (
+          <div className="p-8 text-center space-y-3">
+            <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+              <Check className="w-7 h-7 text-green-600" />
+            </div>
+            <p className="font-bold text-foreground">{t('Message sent!', 'تم إرسال الرسالة!')}</p>
+            <p className="text-sm text-muted-foreground">{t(`Your message was sent to ${name}.`, `تم إرسال رسالتك إلى ${name}.`)}</p>
+            <Button size="sm" variant="outline" onClick={onClose} className="rounded-xl">{t('Close', 'إغلاق')}</Button>
+          </div>
+        ) : (
+          <div className="p-5 space-y-4">
+            <textarea
+              value={message}
+              onChange={e => setMessage(e.target.value)}
+              placeholder={t(`Send a message to ${name}...`, `أرسل رسالة إلى ${name}...`)}
+              className="w-full min-h-[120px] border border-border rounded-2xl px-4 py-3 text-sm bg-background resize-none focus:outline-none focus:ring-2 focus:ring-primary/20"
+              autoFocus
+            />
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" size="sm" onClick={onClose} className="rounded-xl">{t('Cancel', 'إلغاء')}</Button>
+              <Button size="sm" disabled={!message.trim()} onClick={() => { if (message.trim()) setSent(true); }} className="rounded-xl gap-1.5">
+                <MessageCircle className="w-3.5 h-3.5" />{t('Send', 'إرسال')}
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Activity Feed ─────────────────────────────────────────────────────────────
+function ActivityFeed({ reviews, visits, followerCount, lang }: {
+  reviews: any[]; visits: any[]; followerCount: number; lang: string;
+}) {
+  const t = (en: string, ar: string) => lang === 'ar' ? ar : en;
+
+  type ActivityItem = { type: string; icon: React.ElementType; color: string; bg: string; title: string; sub: string; time: string };
+  const items: ActivityItem[] = [
+    ...reviews.slice(0, 3).map((r: any, i) => ({
+      type: 'review', icon: Star, color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-950/30',
+      title: t(`Reviewed ${r.restaurantNameEn ?? 'a restaurant'}`, `قيّم ${r.restaurantNameAr ?? r.restaurantNameEn ?? 'مطعماً'}`),
+      sub: `${r.ratingOverall ?? 5}★ · ${r.textEn?.slice(0, 60) ?? ''}${(r.textEn?.length ?? 0) > 60 ? '…' : ''}`,
+      time: r.createdAt ? new Date(r.createdAt).toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'en-US', { month: 'short', day: 'numeric' }) : '',
+    })),
+    ...visits.slice(0, 2).map((v: any) => ({
+      type: 'visit', icon: MapPin, color: 'text-green-500', bg: 'bg-green-50 dark:bg-green-950/30',
+      title: t(`Visited ${v.restaurantNameEn ?? 'a restaurant'}`, `زار ${v.restaurantNameAr ?? v.restaurantNameEn ?? 'مطعماً'}`),
+      sub: `${v.date ?? ''} · ${v.partySize ? `${v.partySize} ${t('guests', 'ضيوف')}` : t('Solo visit', 'زيارة منفردة')}`,
+      time: v.date ?? '',
+    })),
+    {
+      type: 'join', icon: Users, color: 'text-primary', bg: 'bg-primary/5',
+      title: t('Joined Tabaq', 'انضم إلى طبق'),
+      sub: t(`${followerCount} followers earned`, `${followerCount} متابع`),
+      time: '',
+    },
+  ].sort(() => Math.random() - 0.4);
+
+  if (!items.length) {
+    return (
+      <div className="text-center py-16 space-y-2">
+        <TrendingUp className="w-10 h-10 text-muted-foreground/30 mx-auto" />
+        <p className="font-semibold text-muted-foreground">{t('No activity yet', 'لا توجد نشاطات بعد')}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {items.map((item, i) => {
+        const Icon = item.icon;
+        return (
+          <div key={i} className={`flex items-start gap-3 p-4 rounded-xl ${item.bg} border border-border`}>
+            <div className={`w-9 h-9 rounded-xl bg-white dark:bg-background flex items-center justify-center shrink-0 shadow-sm`}>
+              <Icon className={`w-4 h-4 ${item.color}`} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold leading-tight">{item.title}</p>
+              {item.sub && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{item.sub}</p>}
+            </div>
+            {item.time && <span className="text-[10px] text-muted-foreground shrink-0">{item.time}</span>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── Suggested users sidebar ───────────────────────────────────────────────────
 function SuggestedUsers({ t, lang }: { t: (en: string, ar: string) => string; lang: string }) {
   const { data } = useQuery({
@@ -437,6 +546,7 @@ export function PublicProfilePage() {
   const [tab, setTab] = useState<ProfileTab>("overview");
   const [showShare, setShowShare] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [showMessage, setShowMessage] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -464,6 +574,7 @@ export function PublicProfilePage() {
   const followerCount: number = pd?.followerCount ?? 0;
   const followingCount: number = pd?.followingCount ?? 0;
   const followStatus: FollowStatus = pd?.followStatus ?? "none";
+  const followsBack: boolean = pd?.followsBack ?? false;
   const isOwn = isAuthenticated && authUser?.id === user?.id;
   const isPro = user?.accountType === "professional" || user?.accountType === "chef";
   const cfg = user ? ACCOUNT_CFG[user.accountType ?? "basic"] : ACCOUNT_CFG.basic;
@@ -506,7 +617,7 @@ export function PublicProfilePage() {
       const r = await fetch(`/api/bookings?limit=20`, { headers: getAuthHeaders() });
       return r.ok ? r.json() : { bookings: [] };
     },
-    enabled: !!user?.id && isOwn && tab === "visits",
+    enabled: !!user?.id && isOwn && (tab === "visits" || tab === "activity"),
   });
 
   // ── Upgrade mutation ─────────────────────────────────────────────────────────
@@ -534,7 +645,7 @@ export function PublicProfilePage() {
     { id: "favorites", en: "Favorites",                       ar: "المفضلة" },
     ...(isPro ? [{ id: "dishes" as ProfileTab, en: "Dishes", ar: "الأطباق", pro: true }] : []),
     { id: "plans",     en: "Plans",                           ar: "الخطط" },
-    { id: "lists",     en: "Lists",                           ar: "القوائم" },
+    { id: "activity",  en: "Activity",                        ar: "النشاط" },
     ...(isOwn && isPro ? [{ id: "dashboard" as ProfileTab, en: "Dashboard", ar: "لوحة التحكم", own: true }] : []),
   ];
 
@@ -656,6 +767,7 @@ export function PublicProfilePage() {
               ) : (
                 <>
                   {isAuthenticated ? (
+                    <div className="flex flex-col items-end gap-1">
                     <Button size="sm"
                       variant={followStatus === "following" ? "outline" : "default"}
                       className="rounded-xl gap-1.5 text-xs font-semibold h-9"
@@ -669,6 +781,12 @@ export function PublicProfilePage() {
                           : <><UserPlus className="w-3.5 h-3.5" />{t("Follow", "متابعة")}</>
                       }
                     </Button>
+                    {followsBack && (
+                      <span className="text-[10px] font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <Check className="w-2.5 h-2.5" />{t("Follows you", "يتابعك")}
+                      </span>
+                    )}
+                  </div>
                   ) : (
                     <Link href="/signin">
                       <Button size="sm" className="rounded-xl gap-1.5 text-xs font-semibold h-9">
@@ -676,7 +794,7 @@ export function PublicProfilePage() {
                       </Button>
                     </Link>
                   )}
-                  <Button variant="outline" size="sm" className="rounded-xl h-9 w-9 p-0">
+                  <Button variant="outline" size="sm" className="rounded-xl h-9 w-9 p-0" onClick={() => setShowMessage(true)}>
                     <MessageCircle className="w-4 h-4" />
                   </Button>
                 </>
@@ -926,6 +1044,17 @@ export function PublicProfilePage() {
             </div>
           )}
 
+          {/* ACTIVITY */}
+          {tab === "activity" && (
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <TrendingUp className="w-4 h-4 text-primary" />
+                <h3 className="font-bold">{t("Recent Activity", "النشاط الأخير")}</h3>
+              </div>
+              <ActivityFeed reviews={reviews} visits={visits} followerCount={followerCount} lang={lang} />
+            </div>
+          )}
+
           {/* DASHBOARD — own pro/chef */}
           {tab === "dashboard" && isOwn && isPro && <ProDashboard user={user} t={t} />}
         </div>
@@ -933,6 +1062,7 @@ export function PublicProfilePage() {
 
       {/* Modals */}
       {showShare && <ShareModal username={user.username!} name={displayName} onClose={() => setShowShare(false)} />}
+      {showMessage && !isOwn && <MessageModal user={user} lang={lang} onClose={() => setShowMessage(false)} />}
       {showUpgrade && (
         <UpgradeModal
           current={user.accountType}

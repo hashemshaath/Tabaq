@@ -85,12 +85,19 @@ router.get("/users/by-username/:username", optionalAuth, async (req, res) => {
     ]);
 
     let followStatus: 'none' | 'following' | 'pending' = 'none';
+    let followsBack = false;
     const viewerId = req.auth?.userId;
     if (viewerId && viewerId !== userId) {
-      const [follow] = await db.select({ id: userFollowsTable.id, status: userFollowsTable.status })
-        .from(userFollowsTable)
-        .where(and(eq(userFollowsTable.followerId, viewerId), eq(userFollowsTable.followingId, userId)));
-      if (follow) followStatus = follow.status === 'pending' ? 'pending' : 'following';
+      const [viewerFollow, profileFollow] = await Promise.all([
+        db.select({ id: userFollowsTable.id, status: userFollowsTable.status })
+          .from(userFollowsTable)
+          .where(and(eq(userFollowsTable.followerId, viewerId), eq(userFollowsTable.followingId, userId))),
+        db.select({ id: userFollowsTable.id, status: userFollowsTable.status })
+          .from(userFollowsTable)
+          .where(and(eq(userFollowsTable.followerId, userId), eq(userFollowsTable.followingId, viewerId))),
+      ]);
+      if (viewerFollow[0]) followStatus = viewerFollow[0].status === 'pending' ? 'pending' : 'following';
+      followsBack = !!profileFollow[0] && profileFollow[0].status === 'accepted';
     }
 
     res.json({
@@ -101,6 +108,7 @@ router.get("/users/by-username/:username", optionalAuth, async (req, res) => {
       followingCount: Number(followingCount[0]?.count ?? 0),
       isFollowing: followStatus === 'following',
       followStatus,
+      followsBack,
     });
   } catch (err) {
     req.log.error({ err }, "Failed to fetch user by username");
@@ -297,6 +305,47 @@ router.patch("/me/privacy", requireAuth, async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "Failed to update privacy");
     res.status(500).json({ error: "internal_error", message: "Failed to update privacy" });
+  }
+});
+
+// ─── GET /me/privacy-settings ────────────────────────────────────────────────
+router.get("/me/privacy-settings", requireAuth, async (req, res) => {
+  try {
+    const userId = req.auth!.userId;
+    const [user] = await db.select({ privacySettings: usersTable.privacySettings, notificationPrefs: usersTable.notificationPrefs })
+      .from(usersTable).where(eq(usersTable.id, userId));
+    if (!user) { res.status(404).json({ error: "not_found" }); return; }
+    res.json({
+      privacySettings: user.privacySettings ?? {},
+      notificationPrefs: user.notificationPrefs ?? {},
+    });
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch privacy settings");
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// ─── PATCH /me/privacy-settings ─────────────────────────────────────────────
+router.patch("/me/privacy-settings", requireAuth, async (req, res) => {
+  try {
+    const userId = req.auth!.userId;
+    const { privacySettings, notificationPrefs } = req.body as {
+      privacySettings?: Record<string, unknown>;
+      notificationPrefs?: Record<string, unknown>;
+    };
+    const [current] = await db.select({ privacySettings: usersTable.privacySettings, notificationPrefs: usersTable.notificationPrefs })
+      .from(usersTable).where(eq(usersTable.id, userId));
+    const merged: Record<string, unknown> = {};
+    if (privacySettings !== undefined) merged.privacySettings = { ...(current?.privacySettings ?? {}), ...privacySettings };
+    if (notificationPrefs !== undefined) merged.notificationPrefs = { ...(current?.notificationPrefs ?? {}), ...notificationPrefs };
+    if (!Object.keys(merged).length) { res.status(400).json({ error: "bad_request", message: "Nothing to update" }); return; }
+    const [updated] = await db.update(usersTable).set({ ...merged, updatedAt: new Date() })
+      .where(eq(usersTable.id, userId))
+      .returning({ privacySettings: usersTable.privacySettings, notificationPrefs: usersTable.notificationPrefs });
+    res.json({ privacySettings: updated?.privacySettings ?? {}, notificationPrefs: updated?.notificationPrefs ?? {} });
+  } catch (err) {
+    req.log.error({ err }, "Failed to update privacy settings");
+    res.status(500).json({ error: "internal_error" });
   }
 });
 
