@@ -76,12 +76,19 @@ Database is seeded with real data:
 - 4 countries, 8 canonical cities (Riyadh=1, Jeddah=2, Dammam=3, Al Khobar=4, Makkah=5, Madinah=6, Abha=7, Tabuk=8)
 - Categories, occasions, opening hours, menus, dishes with badge fields
 - 6 offers with discount percentages
-- 16 reviews (2 per restaurant, ratings updated)
+- 37 reviews total (16 original + 21 from community users; review_count + avg_rating updated on restaurants)
 - 10 bookings, 6 contracts, 8 transactions, 4 invoices
 - 8 food experiences with images (17) and time slots (33) — IDs 1-8, status=active
   - Categories used: fine_dining, street_food, heritage, cultural
   - Host users: user IDs 1, 2, 3, 4, 5, 6
   - Cities: Riyadh (city_id=1), Jeddah (city_id=2), Madinah (city_id=6)
+- **12 users total** — user 1 (admin/Food Explorer), user 2 (blank), users 3-12 (community):
+  - 3: Noura Al-Rashid, Master Chef, 3200pts — 4: Faisal Al-Saud, Food Critic, 2800pts
+  - 5: Lama Al-Otaibi, Food Critic, 2100pts — 6: Sultan Al-Ghamdi, Food Critic, 1650pts
+  - 7: Rawan Al-Harbi, Gourmet, 1420pts — 8: Ahmed Al-Dosari, Gourmet, 1180pts
+  - 9: Fatima Al-Zahrani, Enthusiast, 890pts — 10: Khalid Al-Malki, Enthusiast, 720pts
+  - 11: Sara Al-Mutairi, Enthusiast, 560pts — 12: Omar Al-Shehri, Explorer, 340pts
+- **9 approved restaurant stories** across 6 restaurants (IDs 1,2,3,4,7,8) — powers the stories strip in FeedPage
 
 ---
 
