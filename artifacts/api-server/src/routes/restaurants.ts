@@ -237,6 +237,8 @@ router.get("/restaurants/:restaurantId", async (req, res) => {
           userNameAr: usersTable.nameAr,
           userAvatarUrl: usersTable.avatarUrl,
           userLevel: usersTable.level,
+          userLevelTitle: usersTable.levelTitle,
+          userUsername: usersTable.username,
         }).from(reviewsTable)
         .leftJoin(usersTable, eq(reviewsTable.userId, usersTable.id))
         .where(eq(reviewsTable.restaurantId, restaurantId))
@@ -272,7 +274,8 @@ router.get("/restaurants/:restaurantId", async (req, res) => {
         userNameAr: r.userNameAr ?? "مستخدم",
         userAvatarUrl: r.userAvatarUrl ?? null,
         userLevel: r.userLevel ?? 1,
-        userLevelTitle: "Food Explorer",
+        userLevelTitle: r.userLevelTitle ?? "Food Explorer",
+        userUsername: r.userUsername ?? null,
         photoUrls: [],
         likeCount: r.review.likeCount,
         isLiked: false,

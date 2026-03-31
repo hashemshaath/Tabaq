@@ -72,11 +72,14 @@ Added `<link rel="sitemap" href="/api/sitemap.xml">` for crawler discovery.
 ## Database Status
 
 Database is seeded with real data:
-- 8 restaurants (Nobu, Lusin, Najd Village, Sushi Sama, etc.)
+- 8 restaurants (Nobu, Lusin, Najd Village, Sushi Sama, etc.) — all with `coverImageUrl` (Unsplash, cuisine-appropriate)
 - 4 countries, 8 canonical cities (Riyadh=1, Jeddah=2, Dammam=3, Al Khobar=4, Makkah=5, Madinah=6, Abha=7, Tabuk=8)
 - Categories, occasions, opening hours, menus, dishes with badge fields
 - 6 offers with discount percentages
-- 37 reviews total (16 original + 21 from community users; review_count + avg_rating updated on restaurants)
+- 37 restaurant reviews total (16 original + 21 from community users; review_count + avg_rating updated on restaurants)
+- 30 experience reviews (3 per experience × 10 experiences) — bilingual, all sub-ratings, verified, avgRating/reviewCount updated
+- 12 community users — all with `username` populated (e.g. noura_alrashid, rawan_alharbi, faisal_alsaud)
+- 49 follow relationships seeded — realistic social graph; Noura=10 followers, Faisal=8, Lama/Rawan=6 each
 - 10 bookings, 6 contracts, 8 transactions, 4 invoices
 - **10 food experiences** with time slots (6 each) — IDs 1-10, status=active:
   - EXP-001: Private Chef Wagyu Dinner — Riyadh, SAR 450, fine_dining
