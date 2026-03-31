@@ -26,6 +26,9 @@ export const usersTable = pgTable("users", {
   isAdmin: boolean("is_admin").default(false).notNull(),
   isOwner: boolean("is_owner").default(false).notNull(),
   accountType: text("account_type").default("basic").notNull(), // 'basic' | 'professional' | 'chef'
+  goldPlan: text("gold_plan"), // null | 'gourmet' | 'elite'
+  goldBilling: text("gold_billing"), // null | 'monthly' | 'annual'
+  goldSince: timestamp("gold_since"),
   coverPhotoUrl: text("cover_photo_url"),
   location: text("location"),
   instagramUrl: text("instagram_url"),

@@ -286,4 +286,59 @@ router.post("/auth/logout", (_req, res) => {
   res.json({ message: "Logged out" });
 });
 
+// GET /auth/me/membership — return user's current gold plan
+router.get("/auth/me/membership", requireAuth, async (req, res) => {
+  try {
+    const userId = req.auth!.userId;
+    const [user] = await db
+      .select({ goldPlan: usersTable.goldPlan, goldBilling: usersTable.goldBilling, goldSince: usersTable.goldSince })
+      .from(usersTable)
+      .where(eq(usersTable.id, userId));
+    if (!user) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ goldPlan: user.goldPlan ?? null, goldBilling: user.goldBilling ?? null, goldSince: user.goldSince ?? null });
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch membership");
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// PATCH /auth/me/membership — update user's gold plan
+router.patch("/auth/me/membership", requireAuth, async (req, res) => {
+  try {
+    const userId = req.auth!.userId;
+    const { plan, billing } = req.body as { plan?: string; billing?: string };
+
+    const VALID_PLANS = ["gourmet", "elite", null, "explorer"];
+    const VALID_BILLING = ["monthly", "annual", null];
+
+    if (!VALID_PLANS.includes(plan ?? null)) {
+      res.status(400).json({ error: "bad_request", message: "Invalid plan" });
+      return;
+    }
+    if (billing !== undefined && !VALID_BILLING.includes(billing ?? null)) {
+      res.status(400).json({ error: "bad_request", message: "Invalid billing cycle" });
+      return;
+    }
+
+    const resolvedPlan = (plan === "explorer" || !plan) ? null : plan;
+    const resolvedBilling = resolvedPlan ? (billing ?? "annual") : null;
+    const resolvedSince = resolvedPlan ? new Date() : null;
+
+    await db.update(usersTable).set({
+      goldPlan: resolvedPlan,
+      goldBilling: resolvedBilling,
+      goldSince: resolvedSince,
+      updatedAt: new Date(),
+    }).where(eq(usersTable.id, userId));
+
+    res.json({ goldPlan: resolvedPlan, goldBilling: resolvedBilling, goldSince: resolvedSince });
+  } catch (err) {
+    req.log.error({ err }, "Failed to update membership");
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
 export default router;

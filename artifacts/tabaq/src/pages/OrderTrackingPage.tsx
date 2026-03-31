@@ -37,14 +37,6 @@ function mapStatus(apiStatus: string): Stage {
   }
 }
 
-// Static driver card (would come from driver assignment in a full system)
-const DRIVER = {
-  nameEn: 'Khalid Al-Otaibi', nameAr: 'خالد العتيبي',
-  rating: 4.9, totalDeliveries: 1240,
-  vehicleEn: 'Toyota Camry · White', vehicleAr: 'تويوتا كامري · أبيض',
-  plate: 'RYD 4892',
-  avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop&crop=face',
-};
 
 // ─── AnimatedMap ─────────────────────────────────────────────────────────────
 function AnimatedMap({ stage }: { stage: Stage }) {
@@ -392,17 +384,18 @@ export function OrderTrackingPage() {
                 </h2>
                 <div className="flex items-center gap-4">
                   <div className="relative shrink-0">
-                    <img src={DRIVER.avatar} alt="driver" className="w-14 h-14 rounded-2xl object-cover" />
+                    <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
+                      <Bike className="w-7 h-7 text-primary" />
+                    </div>
                     <div className="absolute -bottom-1 -end-1 w-5 h-5 bg-green-500 rounded-full border-2 border-card" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-bold text-foreground text-base">{lang === 'ar' ? DRIVER.nameAr : DRIVER.nameEn}</p>
+                    <p className="font-bold text-foreground text-base">{t('Driver Assigned', 'تم تعيين السائق')}</p>
                     <div className="flex items-center gap-1 mt-0.5">
-                      <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-                      <span className="text-sm font-semibold text-foreground">{DRIVER.rating}</span>
-                      <span className="text-xs text-muted-foreground">· {DRIVER.totalDeliveries.toLocaleString()} {t('deliveries', 'توصيل')}</span>
+                      <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                      <span className="text-xs text-green-600 font-medium">{t('On the way', 'في الطريق إليك')}</span>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">{lang === 'ar' ? DRIVER.vehicleAr : DRIVER.vehicleEn} · {DRIVER.plate}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{t('Driver details available in the app', 'تفاصيل السائق متاحة في التطبيق')}</p>
                   </div>
                   <div className="flex gap-2">
                     <div className="relative">

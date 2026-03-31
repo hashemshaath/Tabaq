@@ -614,6 +614,20 @@ Rich mock data for all 6 new sections: MOCK_CHECK_INS (5 visits), MOCK_REVIEWS (
 - Lightbox renders outside the `<Link>` wrapper using `<>` fragment to avoid navigation conflicts
 - Works with `e.preventDefault()` + `e.stopPropagation()` pattern consistent with existing CounterButton
 
+## Session — Platform Completion: Remaining Fixes
+
+### DB Schema Additions
+- Added `goldPlan text` (nullable), `goldBilling text` (nullable), `goldSince timestamp` (nullable) to `usersTable` — pushed to DB via drizzle-kit push
+
+### New Backend Endpoints
+- `GET /api/auth/me/membership` — returns current user's `goldPlan`, `goldBilling`, `goldSince` (requires auth)
+- `PATCH /api/auth/me/membership` — updates user's gold plan; `plan` must be `gourmet | elite | explorer | null`; `billing` must be `monthly | annual`; sets `goldSince` when activating
+
+### Bug Fixes
+- **campaigns.ts `best_value` sort** — was using `desc(sql\`max_discount\`)` referencing a non-existent column; now uses a proper correlated subquery: `(SELECT MAX(discount_percent) FROM campaign_options WHERE campaign_id = campaigns.id)`
+- **OrderTrackingPage** — removed hardcoded `DRIVER` constant (with fake Saudi name/rating/vehicle data); driver card now shows a generic "Driver Assigned" UI with live indicator and contact buttons
+- **TabaqGoldPage** — replaced fake `setTimeout` simulation in `confirmUpgrade` with a real `PATCH /api/auth/me/membership` call; fetches current plan via `GET /api/auth/me/membership` and shows "Current Plan ✓" badge on the user's active plan card; shows error message on failure; success modal now says "Plan Activated!" not "Request Submitted"
+
 ## Session — Backend Security Hardening & Mock Data Removal
 
 ### Backend Security Fixes (all verified with 401 tests)

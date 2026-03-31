@@ -32,8 +32,7 @@ router.get("/campaigns", async (req, res) => {
     let orderBy: SQL;
     switch (sort) {
       case "best_value":
-        // This is tricky as discount is on options. We might need a subquery or join.
-        orderBy = desc(sql`max_discount`); 
+        orderBy = desc(sql`(SELECT MAX(discount_percent) FROM campaign_options WHERE campaign_id = ${campaignsTable.id})`);
         break;
       case "highest_rated":
         orderBy = desc(restaurantsTable.avgRating);

@@ -1,14 +1,18 @@
 import React, { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLanguage } from '@/hooks/use-language';
 import { usePageMeta } from '@/hooks/use-page-meta';
 import { Link, useLocation } from 'wouter';
 import { useAuth } from '@/context/AuthContext';
+import { getAuthHeaders } from '@/lib/api';
 import {
   Crown, Star, Check, Zap, Shield, Gift, ChefHat, CalendarDays,
   Tag, Users, Award, ChevronDown, ChevronRight, Sparkles, X,
   BadgePercent, Ticket, Clock, Globe, Heart, MessageSquare, CheckCircle2,
   Loader2,
 } from 'lucide-react';
+
+const API_BASE = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
 
 type PlanId = 'explorer' | 'gourmet' | 'elite';
 type BillingCycle = 'monthly' | 'annual';
@@ -139,24 +143,52 @@ export function TabaqGoldPage() {
   const { t, lang } = useLanguage();
   const { user } = useAuth();
   const [, setLocation] = useLocation();
+  const queryClient = useQueryClient();
   const [upgradeModal, setUpgradeModal] = useState<{ plan: Plan; billing: BillingCycle } | null>(null);
   const [upgrading, setUpgrading] = useState(false);
   const [upgraded, setUpgraded] = useState(false);
+  const [upgradeError, setUpgradeError] = useState<string | null>(null);
+  const [billing, setBilling] = useState<BillingCycle>('annual');
+
+  const { data: membershipData, refetch: refetchMembership } = useQuery({
+    queryKey: ['me-membership'],
+    queryFn: async () => {
+      const r = await fetch(`${API_BASE}/api/auth/me/membership`, { headers: getAuthHeaders() });
+      if (!r.ok) return null;
+      return r.json() as Promise<{ goldPlan: string | null; goldBilling: string | null; goldSince: string | null }>;
+    },
+    enabled: !!user,
+  });
+
+  const activePlan: PlanId = (membershipData?.goldPlan as PlanId | null) ?? 'explorer';
 
   function handleUpgrade(plan: Plan, currentBilling: BillingCycle) {
     if (!user) { setLocation('/sign-in'); return; }
     setUpgraded(false);
+    setUpgradeError(null);
     setUpgradeModal({ plan, billing: currentBilling });
   }
 
   async function confirmUpgrade() {
     if (!upgradeModal) return;
     setUpgrading(true);
-    await new Promise(r => setTimeout(r, 1400));
-    setUpgrading(false);
-    setUpgraded(true);
+    setUpgradeError(null);
+    try {
+      const r = await fetch(`${API_BASE}/api/auth/me/membership`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({ plan: upgradeModal.plan.id, billing: upgradeModal.billing }),
+      });
+      if (!r.ok) throw new Error('upgrade_failed');
+      await refetchMembership();
+      queryClient.invalidateQueries({ queryKey: ['me'] });
+      setUpgraded(true);
+    } catch {
+      setUpgradeError(t('Something went wrong. Please try again.', 'حدث خطأ. يرجى المحاولة مجدداً.'));
+    } finally {
+      setUpgrading(false);
+    }
   }
-  const [billing, setBilling] = useState<BillingCycle>('annual');
 
   usePageMeta({
     titleEn: 'Tabaq Gold — Exclusive Dining Membership',
@@ -332,13 +364,19 @@ export function TabaqGoldPage() {
 
                 {/* CTA */}
                 <div className="px-6 pb-6">
-                  <button
-                    className={`w-full py-3 rounded-xl text-sm font-bold transition-all active:scale-[0.98] ${plan.ctaBg} ${plan.id === 'explorer' ? 'cursor-default opacity-60' : 'cursor-pointer hover:opacity-90'}`}
-                    onClick={() => plan.id !== 'explorer' ? handleUpgrade(plan, billing) : undefined}
-                    disabled={plan.id === 'explorer'}
-                  >
-                    {lang === 'ar' ? plan.ctaLabelAr : plan.ctaLabelEn}
-                  </button>
+                  {plan.id === activePlan ? (
+                    <div className="w-full py-3 rounded-xl text-sm font-bold text-center bg-emerald-100 text-emerald-700 flex items-center justify-center gap-2">
+                      <CheckCircle2 className="w-4 h-4" />
+                      {t('Current Plan', 'خطتك الحالية')}
+                    </div>
+                  ) : (
+                    <button
+                      className={`w-full py-3 rounded-xl text-sm font-bold transition-all active:scale-[0.98] ${plan.ctaBg} cursor-pointer hover:opacity-90`}
+                      onClick={() => handleUpgrade(plan, billing)}
+                    >
+                      {lang === 'ar' ? plan.ctaLabelAr : plan.ctaLabelEn}
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -449,14 +487,17 @@ export function TabaqGoldPage() {
                   </div>
                 </div>
                 <p className="text-sm text-muted-foreground mb-5">
-                  {t('Payment integration is coming soon. By confirming, our team will reach out to complete your upgrade within 24 hours.', 'تكامل الدفع قادم قريباً. بالتأكيد، سيتواصل فريقنا لإتمام ترقيتك خلال 24 ساعة.')}
+                  {t('Your plan will be activated immediately. Billing details will be finalized with our team.', 'سيتم تفعيل خطتك فوراً. سيتم إتمام تفاصيل الفوترة مع فريقنا.')}
                 </p>
+                {upgradeError && (
+                  <p className="text-sm text-destructive bg-destructive/10 rounded-xl px-4 py-2 mb-4">{upgradeError}</p>
+                )}
                 <div className="flex gap-3">
                   <button onClick={() => setUpgradeModal(null)} disabled={upgrading} className="flex-1 py-3 rounded-xl border border-border text-sm font-semibold text-muted-foreground hover:bg-secondary transition-colors disabled:opacity-50">
                     {t('Cancel', 'إلغاء')}
                   </button>
                   <button onClick={confirmUpgrade} disabled={upgrading} className="flex-1 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-black text-sm transition-colors disabled:opacity-70 flex items-center justify-center gap-2">
-                    {upgrading ? <><Loader2 className="w-4 h-4 animate-spin" />{t('Processing...', 'جارٍ المعالجة...')}</> : t('Confirm Upgrade', 'تأكيد الترقية')}
+                    {upgrading ? <><Loader2 className="w-4 h-4 animate-spin" />{t('Activating...', 'جارٍ التفعيل...')}</> : t('Confirm Upgrade', 'تأكيد الترقية')}
                   </button>
                 </div>
               </>
@@ -465,9 +506,9 @@ export function TabaqGoldPage() {
                 <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <CheckCircle2 className="w-8 h-8 text-emerald-600" />
                 </div>
-                <h3 className="font-black text-xl text-foreground mb-2">{t('Request Submitted!', 'تم إرسال الطلب!')}</h3>
+                <h3 className="font-black text-xl text-foreground mb-2">{t('Plan Activated!', 'تم تفعيل الخطة!')}</h3>
                 <p className="text-muted-foreground text-sm mb-6">
-                  {t("We've received your upgrade request for", 'لقد استلمنا طلب ترقيتك إلى')} <strong>{lang === 'ar' ? upgradeModal.plan.nameAr : upgradeModal.plan.nameEn}</strong>. {t('Our team will contact you within 24 hours.', 'سيتواصل فريقنا معك خلال 24 ساعة.')}
+                  {t('You are now on', 'أنت الآن على خطة')} <strong>{lang === 'ar' ? upgradeModal.plan.nameAr : upgradeModal.plan.nameEn}</strong>. {t('Enjoy your exclusive dining benefits.', 'استمتع بمزايا الطعام الحصرية الخاصة بك.')}
                 </p>
                 <button onClick={() => { setUpgradeModal(null); setUpgraded(false); }} className="w-full py-3 rounded-xl bg-primary text-white font-bold text-sm hover:bg-primary/90 transition-colors">
                   {t('Done', 'تم')}
