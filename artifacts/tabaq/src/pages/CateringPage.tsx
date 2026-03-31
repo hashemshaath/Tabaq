@@ -469,7 +469,7 @@ export function CateringPage() {
               {t('Browse Packages', 'استعرض الباقات')}
               <ArrowRight className="w-4 h-4" />
             </a>
-            <button onClick={() => setInquiryPkg(MOCK_PACKAGES[0])} className="border border-white/30 text-white px-8 py-4 rounded-2xl font-bold text-base hover:bg-white/10 transition-colors backdrop-blur-sm">
+            <button onClick={() => setInquiryPkg(rawPackages[0] ?? null)} className="border border-white/30 text-white px-8 py-4 rounded-2xl font-bold text-base hover:bg-white/10 transition-colors backdrop-blur-sm">
               {t('Get a Custom Quote', 'احصل على عرض مخصص')}
             </button>
           </div>
@@ -668,7 +668,7 @@ export function CateringPage() {
             {t('Get a personalised catering proposal from our team within 24 hours — no commitment required.', 'احصل على عرض تموين مخصص من فريقنا خلال ٢٤ ساعة — دون أي التزام.')}
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <button onClick={() => setInquiryPkg(MOCK_PACKAGES[0])} className="bg-white text-primary px-8 py-4 rounded-2xl font-bold hover:bg-white/90 transition-colors flex items-center justify-center gap-2">
+            <button onClick={() => setInquiryPkg(rawPackages[0] ?? null)} className="bg-white text-primary px-8 py-4 rounded-2xl font-bold hover:bg-white/90 transition-colors flex items-center justify-center gap-2">
               <Send className="w-4 h-4" />
               {t('Send Inquiry Now', 'أرسل طلبك الآن')}
             </button>

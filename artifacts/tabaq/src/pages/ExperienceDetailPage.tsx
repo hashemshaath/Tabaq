@@ -1,8 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { useParams, Link } from 'wouter';
+import { useQuery } from '@tanstack/react-query';
 import { useLanguage } from '@/hooks/use-language';
 import { usePageMeta } from '@/hooks/use-page-meta';
 import { useAuth } from '@/context/AuthContext';
+import { getAuthHeaders } from '@/lib/api';
 import {
   Star, MapPin, Clock, Users, ChevronLeft, ChevronRight, X,
   CalendarDays, CheckCircle2, Gift, QrCode, Camera,
@@ -485,6 +487,25 @@ export function ExperienceDetailPage() {
     { query: { enabled: !!expId && activeTab === 'reviews' } as any }
   );
 
+  const { data: myBookingsData } = useQuery({
+    queryKey: ['my-experience-bookings', expId],
+    queryFn: async () => {
+      const res = await fetch('/api/me/experience-bookings', { headers: getAuthHeaders() });
+      if (!res.ok) return null;
+      return res.json() as Promise<{ bookings: ExperienceBooking[] }>;
+    },
+    enabled: !!user,
+  });
+
+  const pastConfirmedBooking = useMemo(() => {
+    if (!myBookingsData?.bookings) return null;
+    return myBookingsData.bookings.find(
+      b => (b as any).experienceId === expId && (b.status === 'confirmed' || b.status === 'completed' || b.status === 'pending')
+    ) ?? null;
+  }, [myBookingsData, expId]);
+
+  const effectiveConfirmedBooking = confirmedBooking ?? pastConfirmedBooking;
+
   const createBooking = useCreateExperienceBooking();
   const payBooking = usePayExperienceBooking();
   const createGift = useCreateExperienceGift();
@@ -598,13 +619,13 @@ export function ExperienceDetailPage() {
   };
 
   const handleSubmitReview = async () => {
-    if (!user || reviewRating === 0 || !reviewText.trim() || !confirmedBooking) return;
+    if (!user || reviewRating === 0 || !reviewText.trim() || !effectiveConfirmedBooking) return;
     setReviewError('');
     try {
       await createReview.mutateAsync({
         data: {
           experienceId: expId,
-          bookingId: confirmedBooking.id,
+          bookingId: effectiveConfirmedBooking.id,
           ratingOverall: reviewRating,
           ratingFood: reviewFood || undefined,
           ratingHospitality: reviewHospitality || undefined,
@@ -789,8 +810,8 @@ export function ExperienceDetailPage() {
                       </div>
                     </div>
 
-                    {/* Leave a review — only if user has a confirmed booking */}
-                    {user && confirmedBooking && !reviewSubmitted && (
+                    {/* Leave a review — only if user has a confirmed booking (session or past) */}
+                    {user && effectiveConfirmedBooking && !reviewSubmitted && (
                       <div className="border border-dashed border-primary/40 rounded-2xl p-5">
                         <h3 className="font-semibold text-foreground mb-4">{t('Share Your Experience', 'شارك تجربتك')}</h3>
                         <div className="space-y-4">
