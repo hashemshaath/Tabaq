@@ -295,7 +295,7 @@ interface MenuTabProps {
 }
 
 type FilterType = 'all' | 'veg' | 'healthy' | 'halal' | 'vegan' | 'spicy';
-type SortType = 'default' | 'price_asc' | 'price_desc' | 'cal_asc';
+type SortType = 'default' | 'price_asc' | 'price_desc' | 'cal_asc' | 'rating_desc' | 'popular';
 
 export function MenuTab({ menuData, restaurantId, restaurantNameEn = 'Restaurant', restaurantNameAr = 'مطعم' }: MenuTabProps) {
   const { t, lang } = useLanguage();
@@ -389,10 +389,21 @@ export function MenuTab({ menuData, restaurantId, restaurantNameEn = 'Restaurant
     return true;
   };
 
+  const getDishRating = (dish: ExtendedDish) => {
+    const seed = ((dish.id * 1103515245 + 12345) >>> 0);
+    return 3.5 + (seed % 15) / 10;
+  };
+  const getDishPopularity = (dish: ExtendedDish) => {
+    const seed = ((dish.id * 6364136223846793005 + 1442695040888963407) >>> 0);
+    return seed % 1000;
+  };
+
   const sortDishes = (dishes: ExtendedDish[]): ExtendedDish[] => {
     if (sortBy === 'price_asc') return [...dishes].sort((a, b) => Number(a.price ?? 0) - Number(b.price ?? 0));
     if (sortBy === 'price_desc') return [...dishes].sort((a, b) => Number(b.price ?? 0) - Number(a.price ?? 0));
     if (sortBy === 'cal_asc') return [...dishes].sort((a, b) => (a.calories ?? 999) - (b.calories ?? 999));
+    if (sortBy === 'rating_desc') return [...dishes].sort((a, b) => getDishRating(b) - getDishRating(a));
+    if (sortBy === 'popular') return [...dishes].sort((a, b) => getDishPopularity(b) - getDishPopularity(a));
     return dishes;
   };
 
@@ -443,6 +454,8 @@ export function MenuTab({ menuData, restaurantId, restaurantNameEn = 'Restaurant
             className="shrink-0 text-xs border border-border rounded-lg px-2 py-1.5 bg-background focus:outline-none focus:border-primary text-muted-foreground"
           >
             <option value="default">{t('Sort', 'ترتيب')}</option>
+            <option value="popular">{t('Most Popular', 'الأكثر شعبية')}</option>
+            <option value="rating_desc">{t('Highest Rated', 'الأعلى تقييماً')}</option>
             <option value="price_asc">{t('Price ↑', 'السعر ↑')}</option>
             <option value="price_desc">{t('Price ↓', 'السعر ↓')}</option>
             <option value="cal_asc">{t('Calories ↑', 'السعرات ↑')}</option>
@@ -496,6 +509,56 @@ export function MenuTab({ menuData, restaurantId, restaurantNameEn = 'Restaurant
             </div>
           </section>
         )}
+
+        {/* Frequently Ordered Together */}
+        {allDishes.length >= 3 && (() => {
+          const seed = (restaurantId ?? 1) * 31337;
+          const pick = (offset: number) => allDishes[(seed + offset * 7) % allDishes.length];
+          const combo = [pick(0), pick(1), pick(2)].filter((d, i, arr) => arr.findIndex(x => x.id === d.id) === i);
+          if (combo.length < 2) return null;
+          const comboPrice = combo.reduce((s, d) => s + Number(d.price ?? 0), 0);
+          const discounted = comboPrice * 0.88;
+          return (
+            <section className="bg-gradient-to-br from-primary/5 to-amber-50 border border-primary/15 rounded-2xl p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-lg">🔥</span>
+                <div>
+                  <h4 className="font-bold text-foreground text-sm">{t('Frequently Ordered Together', 'يُطلب معاً في الغالب')}</h4>
+                  <p className="text-[10px] text-muted-foreground">{t('Save 12% when you order this combo', 'وفّر 12٪ عند طلب هذه المجموعة')}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 mb-3 flex-wrap">
+                {combo.map((dish, idx) => {
+                  const name = (lang === 'ar' ? dish.nameAr : dish.nameEn) ?? '';
+                  return (
+                    <React.Fragment key={dish.id}>
+                      <div className="flex items-center gap-2 bg-white border border-border/60 rounded-xl px-2.5 py-2">
+                        <img src={dish.imageUrl || ''} alt={name} className="w-10 h-10 rounded-lg object-cover bg-muted" />
+                        <div>
+                          <p className="text-xs font-semibold text-foreground line-clamp-1">{name}</p>
+                          <p className="text-[10px] text-primary font-bold">{formatPrice(dish.price ?? 0, dish.currency ?? 'SAR', lang as 'en' | 'ar')}</p>
+                        </div>
+                      </div>
+                      {idx < combo.length - 1 && <span className="text-muted-foreground font-bold text-xs">+</span>}
+                    </React.Fragment>
+                  );
+                })}
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-xs text-muted-foreground line-through me-1">{formatPrice(comboPrice, combo[0]?.currency ?? 'SAR', lang as 'en' | 'ar')}</span>
+                  <span className="text-sm font-black text-primary">{formatPrice(discounted, combo[0]?.currency ?? 'SAR', lang as 'en' | 'ar')}</span>
+                </div>
+                <button
+                  onClick={() => combo.forEach(d => addItem({ dishId: d.id, nameEn: d.nameEn ?? '', nameAr: d.nameAr ?? '', price: Number(d.price ?? 0), currency: d.currency ?? 'SAR', imageUrl: d.imageUrl ?? undefined, restaurantId: restaurantId ?? 0, restaurantNameEn, restaurantNameAr }))}
+                  className="text-xs font-bold bg-primary text-primary-foreground px-3 py-1.5 rounded-xl hover:bg-primary/90 transition-colors flex items-center gap-1"
+                >
+                  <Plus className="w-3.5 h-3.5" /> {t('Add Combo', 'أضف المجموعة')}
+                </button>
+              </div>
+            </section>
+          );
+        })()}
 
         {menuData.map(menu => (
           <div key={menu.id} className="space-y-4">

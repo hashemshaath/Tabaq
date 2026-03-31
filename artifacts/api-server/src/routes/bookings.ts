@@ -257,7 +257,7 @@ router.patch("/bookings/:bookingId", requireAuth, async (req, res) => {
   try {
     const bookingId = parseInt(req.params["bookingId"] as string, 10);
     const userId = req.auth!.userId;
-    const { status } = req.body;
+    const { status, date, time, partySize } = req.body;
 
     const [existing] = await db.select({
       userId: bookingsTable.userId,
@@ -279,17 +279,28 @@ router.patch("/bookings/:bookingId", requireAuth, async (req, res) => {
       return;
     }
     // Only restaurant owners can confirm / complete / mark no_show
-    if (status !== "cancelled" && !isRestaurantOwner && existing.userId !== userId) {
+    if (status && status !== "cancelled" && !isRestaurantOwner && existing.userId !== userId) {
       res.status(403).json({ error: "forbidden", message: "Not authorized to update this booking" });
       return;
     }
-    if (["confirmed", "completed", "no_show"].includes(status) && !isRestaurantOwner) {
+    if (status && ["confirmed", "completed", "no_show"].includes(status) && !isRestaurantOwner) {
       res.status(403).json({ error: "forbidden", message: "Only restaurant owners can confirm, complete or mark no-show" });
       return;
     }
+    // Users can modify date/time/partySize of their own upcoming bookings
+    if ((date || time || partySize) && existing.userId !== userId) {
+      res.status(403).json({ error: "forbidden", message: "You can only modify your own bookings" });
+      return;
+    }
+
+    const updatePayload: Record<string, unknown> = { updatedAt: new Date() };
+    if (status) updatePayload["status"] = status;
+    if (date) updatePayload["date"] = date;
+    if (time) updatePayload["time"] = time;
+    if (partySize) updatePayload["partySize"] = partySize;
 
     const [booking] = await db.update(bookingsTable)
-      .set({ status, updatedAt: new Date() })
+      .set(updatePayload)
       .where(eq(bookingsTable.id, bookingId))
       .returning();
 

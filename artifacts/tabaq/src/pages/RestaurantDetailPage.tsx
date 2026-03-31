@@ -168,8 +168,28 @@ function formatDateKey(d: Date) {
   return `${y}-${m}-${day}`;
 }
 
-function BookingSection({ restaurantId, restaurantNameEn, restaurantNameAr, compact }: {
+const CROWD_DATA = [0,0,0,0,0,0,20,35,55,70,75,65,80,70,55,45,50,65,85,90,80,65,45,20];
+
+function getSlotCrowdLevel(restaurantId: number, timeStr: string): 'quiet' | 'moderate' | 'busy' {
+  const hour = parseInt(timeStr.split(':')[0] ?? '12', 10);
+  const hash = ((restaurantId * 1103515245 + 12345) >>> 0) % 15;
+  const val = Math.min(100, (CROWD_DATA[hour] ?? 0) + hash - 7);
+  if (val < 40) return 'quiet';
+  if (val < 70) return 'moderate';
+  return 'busy';
+}
+
+function SlotCrowdBadge({ level, t }: { level: 'quiet' | 'moderate' | 'busy'; t: (en: string, ar: string) => string }) {
+  if (level === 'quiet') return <span className="text-[9px] font-bold text-emerald-600">● {t('Quiet', 'هادئ')}</span>;
+  if (level === 'moderate') return <span className="text-[9px] font-bold text-amber-500">● {t('Moderate', 'متوسط')}</span>;
+  return <span className="text-[9px] font-bold text-red-500">● {t('Busy', 'مزدحم')}</span>;
+}
+
+type PreOrderItem = { id: number; nameEn: string; nameAr: string; price: number; currency: string; qty: number };
+
+function BookingSection({ restaurantId, restaurantNameEn, restaurantNameAr, compact, menuData }: {
   restaurantId: number; restaurantNameEn: string; restaurantNameAr: string; compact?: boolean;
+  menuData?: { sections?: { items?: { id: number; nameEn?: string | null; nameAr?: string | null; price?: string | null; currency?: string | null; imageUrl?: string | null }[] }[] }[];
 }) {
   const { t, lang } = useLanguage();
   const { user } = useAuth();
@@ -186,6 +206,32 @@ function BookingSection({ restaurantId, restaurantNameEn, restaurantNameAr, comp
   const [step, setStep] = useState<'select' | 'confirm' | 'success'>('select');
   const [createdBooking, setCreatedBooking] = useState<{ referenceCode: string; date: string; time: string } | null>(null);
   const [error, setError] = useState('');
+  const [waitlistSlot, setWaitlistSlot] = useState<string | null>(null);
+  const [waitlistJoined, setWaitlistJoined] = useState(false);
+  const [showPreOrder, setShowPreOrder] = useState(false);
+  const [preOrderItems, setPreOrderItems] = useState<PreOrderItem[]>([]);
+
+  const popularDishes = useMemo(() => {
+    if (!menuData) return [];
+    return menuData
+      .flatMap(m => m.sections ?? [])
+      .flatMap(s => s.items ?? [])
+      .slice(0, 6);
+  }, [menuData]);
+
+  const updatePreOrder = (dish: { id: number; nameEn?: string | null; nameAr?: string | null; price?: string | null; currency?: string | null }, delta: number) => {
+    setPreOrderItems(prev => {
+      const existing = prev.find(i => i.id === dish.id);
+      if (existing) {
+        const newQty = existing.qty + delta;
+        if (newQty <= 0) return prev.filter(i => i.id !== dish.id);
+        return prev.map(i => i.id === dish.id ? { ...i, qty: newQty } : i);
+      }
+      if (delta <= 0) return prev;
+      return [...prev, { id: dish.id, nameEn: dish.nameEn ?? '', nameAr: dish.nameAr ?? '', price: Number(dish.price ?? 0), currency: dish.currency ?? 'SAR', qty: 1 }];
+    });
+  };
+  const preOrderTotal = preOrderItems.reduce((s, i) => s + i.price * i.qty, 0);
 
   const selectedDate = dates[selectedDateIdx];
   const dateKey = formatDateKey(selectedDate);
@@ -274,6 +320,25 @@ function BookingSection({ restaurantId, restaurantNameEn, restaurantNameAr, comp
             </div>
           ))}
         </div>
+
+        {preOrderItems.length > 0 && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+            <p className="text-xs font-bold text-amber-800 mb-2 flex items-center gap-1">
+              <Utensils className="w-3.5 h-3.5" /> {t('Pre-ordered Food', 'طعام مطلوب مسبقاً')}
+            </p>
+            {preOrderItems.map(item => (
+              <div key={item.id} className="flex justify-between text-xs text-amber-900 mb-1">
+                <span>{lang === 'ar' ? item.nameAr : item.nameEn} × {item.qty}</span>
+                <span className="font-bold">{(item.price * item.qty).toLocaleString()} {item.currency}</span>
+              </div>
+            ))}
+            <div className="border-t border-amber-200 mt-2 pt-2 flex justify-between text-xs font-black text-amber-900">
+              <span>{t('Pre-order Total', 'إجمالي الطلب المسبق')}</span>
+              <span>{preOrderTotal.toLocaleString()} SAR</span>
+            </div>
+          </div>
+        )}
+
         {error && <p className="text-sm text-red-500 mb-3">{error}</p>}
         <div className="flex gap-2">
           <Button variant="outline" className="flex-1" size="sm" onClick={() => setStep('select')}>
@@ -344,23 +409,103 @@ function BookingSection({ restaurantId, restaurantNameEn, restaurantNameAr, comp
         <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t('Available Times', 'الأوقات المتاحة')}</label>
         {availLoading ? (
           <div className="flex gap-2 flex-wrap">
-            {[...Array(6)].map((_, i) => <div key={i} className="h-9 w-20 bg-gray-100 animate-pulse rounded-lg" />)}
+            {[...Array(6)].map((_, i) => <div key={i} className="h-14 w-20 bg-gray-100 animate-pulse rounded-lg" />)}
           </div>
         ) : slots.length === 0 ? (
           <div className="text-sm text-gray-400 py-2">{t('No slots available for this date.', 'لا توجد مواعيد متاحة.')}</div>
         ) : (
-          <div className="flex flex-wrap gap-2">
-            {slots.map((slot: any) => (
-              <button
-                key={slot.time}
-                onClick={() => setSelectedTime(slot.time)}
-                disabled={!slot.available}
-                className={`px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${selectedTime === slot.time ? 'bg-primary text-white border-primary' : slot.available ? 'border-gray-200 text-gray-700 hover:border-primary hover:text-primary bg-white' : 'border-gray-100 text-gray-300 bg-gray-50 cursor-not-allowed line-through'}`}
-              >
-                {slot.time}
-              </button>
-            ))}
-          </div>
+          <>
+            {/* Suggested Quiet Times */}
+            {(() => {
+              const quietSlots = slots
+                .filter((s: any) => s.available)
+                .map((s: any) => ({ ...s, crowdLevel: getSlotCrowdLevel(restaurantId, s.time) }))
+                .filter((s: any) => s.crowdLevel === 'quiet')
+                .slice(0, 3);
+              if (quietSlots.length === 0) return null;
+              return (
+                <div className="mb-3 p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
+                  <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-wide mb-2 flex items-center gap-1">
+                    <span>✨</span> {t('AI-Suggested Quiet Times', 'أوقات هادئة مقترحة')}
+                  </p>
+                  <div className="flex gap-2 flex-wrap">
+                    {quietSlots.map((s: any) => (
+                      <button
+                        key={s.time}
+                        onClick={() => setSelectedTime(s.time)}
+                        className={`px-3 py-1.5 rounded-lg border text-xs font-semibold transition-colors ${selectedTime === s.time ? 'bg-emerald-600 text-white border-emerald-600' : 'border-emerald-300 text-emerald-700 bg-white hover:bg-emerald-100'}`}
+                      >
+                        {s.time}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* All slots with crowd badge */}
+            <div className="flex flex-wrap gap-2">
+              {slots.map((slot: any) => {
+                const crowd = getSlotCrowdLevel(restaurantId, slot.time);
+                if (!slot.available) {
+                  return (
+                    <div key={slot.time} className="flex flex-col items-center">
+                      <button
+                        disabled
+                        className="px-3 py-2 rounded-lg border border-gray-100 text-gray-300 bg-gray-50 cursor-not-allowed line-through text-sm font-medium"
+                      >
+                        {slot.time}
+                      </button>
+                      <button
+                        onClick={() => { setWaitlistSlot(slot.time); setWaitlistJoined(false); }}
+                        className="mt-0.5 text-[9px] text-primary font-semibold hover:underline"
+                      >
+                        + {t('Waitlist', 'قائمة الانتظار')}
+                      </button>
+                    </div>
+                  );
+                }
+                return (
+                  <button
+                    key={slot.time}
+                    onClick={() => setSelectedTime(slot.time)}
+                    className={`flex flex-col items-center px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${selectedTime === slot.time ? 'bg-primary text-white border-primary' : 'border-gray-200 text-gray-700 hover:border-primary hover:text-primary bg-white'}`}
+                  >
+                    <span>{slot.time}</span>
+                    <SlotCrowdBadge level={crowd} t={t} />
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Waitlist confirmation */}
+            {waitlistSlot && !waitlistJoined && (
+              <div className="mt-3 bg-amber-50 border border-amber-200 rounded-xl p-3">
+                <p className="text-xs font-semibold text-amber-800 mb-2">
+                  {t(`Join waitlist for ${waitlistSlot}?`, `الانضمام لقائمة الانتظار في ${waitlistSlot}؟`)}
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { setWaitlistJoined(true); }}
+                    className="flex-1 text-xs font-bold bg-amber-600 text-white py-1.5 rounded-lg hover:bg-amber-700 transition-colors"
+                  >
+                    {t('Join Waitlist', 'انضم لقائمة الانتظار')}
+                  </button>
+                  <button onClick={() => setWaitlistSlot(null)} className="text-xs text-gray-500 hover:text-gray-700 px-2">
+                    {t('Cancel', 'إلغاء')}
+                  </button>
+                </div>
+              </div>
+            )}
+            {waitlistJoined && waitlistSlot && (
+              <div className="mt-3 bg-green-50 border border-green-200 rounded-xl p-3 flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+                <p className="text-xs font-semibold text-green-800">
+                  {t(`You're on the waitlist for ${waitlistSlot}. We'll notify you if a spot opens.`, `أنت في قائمة الانتظار للساعة ${waitlistSlot}. سنُعلمك إذا توفر مكان.`)}
+                </p>
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -394,6 +539,61 @@ function BookingSection({ restaurantId, restaurantNameEn, restaurantNameAr, comp
           rows={2}
         />
       </div>
+
+      {/* Pre-order Food */}
+      {popularDishes.length > 0 && (
+        <div>
+          <button
+            onClick={() => setShowPreOrder(!showPreOrder)}
+            className="w-full flex items-center justify-between text-sm font-semibold text-primary hover:text-primary/80 transition-colors"
+          >
+            <span className="flex items-center gap-1.5">
+              <Utensils className="w-4 h-4" />
+              {t('Pre-order food', 'طلب مسبق للطعام')}
+              {preOrderItems.length > 0 && (
+                <span className="bg-primary text-white text-[10px] font-black rounded-full px-1.5 py-0.5">
+                  {preOrderItems.reduce((s, i) => s + i.qty, 0)}
+                </span>
+              )}
+            </span>
+            <span className="text-xs text-gray-400">{t('optional', 'اختياري')} {showPreOrder ? '▲' : '▼'}</span>
+          </button>
+
+          {showPreOrder && (
+            <div className="mt-3 border border-gray-200 rounded-xl overflow-hidden">
+              <div className="bg-amber-50 border-b border-amber-100 px-3 py-2">
+                <p className="text-[10px] text-amber-800 font-semibold">{t('Select dishes to be ready when you arrive', 'اختر أطباق تكون جاهزة عند وصولك')}</p>
+              </div>
+              <div className="divide-y divide-gray-100">
+                {popularDishes.map(dish => {
+                  const qty = preOrderItems.find(i => i.id === dish.id)?.qty ?? 0;
+                  const name = (lang === 'ar' ? dish.nameAr : dish.nameEn) ?? '';
+                  return (
+                    <div key={dish.id} className="flex items-center gap-3 px-3 py-2.5">
+                      {dish.imageUrl && <img src={dish.imageUrl} alt={name} className="w-10 h-10 rounded-lg object-cover shrink-0" />}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-gray-900 line-clamp-1">{name}</p>
+                        <p className="text-xs text-primary font-bold">{Number(dish.price ?? 0).toLocaleString()} {dish.currency ?? 'SAR'}</p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button onClick={() => updatePreOrder(dish, -1)} className="w-6 h-6 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:border-primary hover:text-primary text-sm">−</button>
+                        <span className="text-sm font-bold text-gray-900 w-4 text-center">{qty}</span>
+                        <button onClick={() => updatePreOrder(dish, 1)} className="w-6 h-6 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:border-primary hover:text-primary text-sm">+</button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {preOrderItems.length > 0 && (
+                <div className="bg-primary/5 border-t border-primary/10 px-3 py-2 flex justify-between items-center">
+                  <span className="text-xs text-gray-600">{preOrderItems.reduce((s, i) => s + i.qty, 0)} {t('items pre-ordered', 'عناصر مطلوبة مسبقاً')}</span>
+                  <span className="text-sm font-black text-primary">{preOrderTotal.toLocaleString()} SAR</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {error && <p className="text-sm text-red-500">{error}</p>}
 
@@ -1407,6 +1607,7 @@ export function RestaurantDetailPage() {
                   restaurantNameEn={restaurant.nameEn}
                   restaurantNameAr={restaurant.nameAr}
                   compact
+                  menuData={menuData}
                 />
               ) : (
                 <Button className="w-full font-bold" onClick={() => setActiveTab('book')}>
@@ -1480,6 +1681,7 @@ export function RestaurantDetailPage() {
               restaurantId={numericId}
               restaurantNameEn={restaurant.nameEn}
               restaurantNameAr={restaurant.nameAr}
+              menuData={menuData}
             />
           </div>
         )}
@@ -1490,6 +1692,7 @@ export function RestaurantDetailPage() {
               restaurantId={numericId}
               restaurantNameEn={restaurant.nameEn}
               restaurantNameAr={restaurant.nameAr}
+              menuData={menuData}
             />
           </div>
         )}

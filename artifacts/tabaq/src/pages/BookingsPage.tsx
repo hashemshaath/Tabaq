@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useLanguage } from '@/hooks/use-language';
 import { useAuth } from '@/context/AuthContext';
 import { useListBookings, useUpdateBookingStatus } from '@workspace/api-client-react';
@@ -6,7 +6,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getAuthHeaders } from '@/lib/api';
 import {
   CalendarDays, Clock, Users, CheckCircle2, XCircle, AlertCircle,
-  QrCode, ChevronDown, ChevronUp, MapPin, Sparkles, Utensils
+  QrCode, ChevronDown, ChevronUp, MapPin, Sparkles, Utensils, Edit2
 } from 'lucide-react';
 import { Link } from 'wouter';
 import { Button } from '@/components/ui/button';
@@ -45,20 +45,51 @@ type Booking = {
   occasionId?: number;
 };
 
-function BookingCard({ booking, lang, t, onCancel }: {
+function getDatesAhead(n: number) {
+  const dates: Date[] = [];
+  const d = new Date();
+  for (let i = 0; i < n; i++) { const x = new Date(d); x.setDate(d.getDate() + i); dates.push(x); }
+  return dates;
+}
+function formatDateKey(d: Date) {
+  const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+const MODIFY_TIMES = ['12:00','12:30','13:00','13:30','14:00','18:00','18:30','19:00','19:30','20:00','20:30','21:00','21:30'];
+
+function BookingCard({ booking, lang, t, onCancel, onModify }: {
   booking: Booking;
   lang: string;
   t: (en: string, ar: string) => string;
   onCancel: (id: number) => void;
+  onModify: (id: number, data: { date: string; time: string }) => Promise<void>;
 }) {
   const [showQR, setShowQR] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [showModify, setShowModify] = useState(false);
+  const [modifyDateIdx, setModifyDateIdx] = useState(0);
+  const [modifyTime, setModifyTime] = useState('');
+  const [modifyLoading, setModifyLoading] = useState(false);
+  const [modifySuccess, setModifySuccess] = useState(false);
+  const modifyDates = useMemo(() => getDatesAhead(14), []);
 
   const restaurantName = lang === 'ar' ? booking.restaurantNameAr : booking.restaurantNameEn;
   const status = STATUS_CONFIG[booking.status] ?? STATUS_CONFIG.pending;
   const StatusIcon = status.icon;
   const canCancel = booking.status === 'pending' || booking.status === 'confirmed';
   const isActive = booking.status === 'confirmed' || booking.status === 'pending';
+
+  const handleModifySubmit = async () => {
+    if (!modifyTime) return;
+    setModifyLoading(true);
+    try {
+      await onModify(booking.id, { date: formatDateKey(modifyDates[modifyDateIdx]), time: modifyTime });
+      setModifySuccess(true);
+      setTimeout(() => { setShowModify(false); setModifySuccess(false); setModifyTime(''); }, 1500);
+    } finally {
+      setModifyLoading(false);
+    }
+  };
 
   return (
     <div className={`bg-card rounded-3xl border overflow-hidden shadow-sm hover:shadow-md transition-shadow ${isActive ? 'border-border' : 'border-border/50 opacity-80'}`}>
@@ -142,15 +173,74 @@ function BookingCard({ booking, lang, t, onCancel }: {
 
         {/* Actions */}
         {canCancel && (
-          <div>
+          <div className="space-y-3">
+            {modifySuccess && (
+              <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-3 py-2">
+                <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+                <p className="text-xs font-semibold text-green-800">{t('Booking updated!', 'تم تحديث الحجز!')}</p>
+              </div>
+            )}
+
+            {showModify && !modifySuccess && (
+              <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 space-y-3">
+                <p className="text-xs font-bold text-blue-800 uppercase tracking-wide">{t('Modify Reservation', 'تعديل الحجز')}</p>
+                <div>
+                  <label className="text-[10px] text-blue-700 font-semibold uppercase tracking-wide mb-1 block">{t('New Date', 'التاريخ الجديد')}</label>
+                  <div className="flex gap-2 overflow-x-auto pb-1">
+                    {modifyDates.slice(0, 7).map((d, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setModifyDateIdx(i)}
+                        className={`shrink-0 flex flex-col items-center w-12 py-1.5 rounded-lg border text-[10px] font-semibold transition-colors ${modifyDateIdx === i ? 'bg-blue-600 text-white border-blue-600' : 'border-blue-200 text-blue-700 bg-white hover:bg-blue-100'}`}
+                      >
+                        <span className="uppercase">{d.toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'en-US', { weekday: 'short' })}</span>
+                        <span className="text-sm font-bold">{d.getDate()}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px] text-blue-700 font-semibold uppercase tracking-wide mb-1 block">{t('New Time', 'الوقت الجديد')}</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {MODIFY_TIMES.map(tm => (
+                      <button
+                        key={tm}
+                        onClick={() => setModifyTime(tm)}
+                        className={`px-2.5 py-1 rounded-lg border text-xs font-medium transition-colors ${modifyTime === tm ? 'bg-blue-600 text-white border-blue-600' : 'border-blue-200 text-blue-700 bg-white hover:bg-blue-100'}`}
+                      >
+                        {tm}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" className="flex-1 border-blue-200 text-blue-700 hover:bg-blue-100" onClick={() => { setShowModify(false); setModifyTime(''); }}>
+                    {t('Cancel', 'إلغاء')}
+                  </Button>
+                  <Button size="sm" className="flex-1 bg-blue-600 hover:bg-blue-700 text-white" onClick={handleModifySubmit} disabled={!modifyTime || modifyLoading}>
+                    {modifyLoading ? t('Saving...', 'جاري الحفظ...') : t('Confirm Change', 'تأكيد التغيير')}
+                  </Button>
+                </div>
+              </div>
+            )}
+
             {!confirmCancel ? (
-              <div className="flex gap-3">
+              <div className="flex gap-2">
                 <Link href={`/restaurants/${booking.restaurantId}`} className="flex-1">
                   <Button variant="outline" size="sm" className="w-full gap-1.5">
                     <MapPin className="w-3.5 h-3.5" />
-                    {t('View Restaurant', 'عرض المطعم')}
+                    {t('View', 'عرض')}
                   </Button>
                 </Link>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-blue-700 border-blue-200 hover:bg-blue-50"
+                  onClick={() => { setShowModify(!showModify); setConfirmCancel(false); }}
+                >
+                  <Edit2 className="w-3.5 h-3.5" />
+                  {t('Modify', 'تعديل')}
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"
@@ -383,6 +473,16 @@ export function BookingsPage() {
     cancelBooking.mutate({ bookingId, data: { status: 'cancelled' } });
   };
 
+  const handleModify = async (bookingId: number, data: { date: string; time: string }) => {
+    const headers = await getAuthHeaders();
+    await fetch(`/api/bookings/${bookingId}`, {
+      method: 'PATCH',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    queryClient.invalidateQueries({ queryKey: ['bookings'] });
+  };
+
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -481,7 +581,7 @@ export function BookingsPage() {
             ) : (
               <div className="space-y-5">
                 {displayedBookings.map(booking => (
-                  <BookingCard key={booking.id} booking={booking} lang={lang} t={t} onCancel={handleCancel} />
+                  <BookingCard key={booking.id} booking={booking} lang={lang} t={t} onCancel={handleCancel} onModify={handleModify} />
                 ))}
               </div>
             )}
