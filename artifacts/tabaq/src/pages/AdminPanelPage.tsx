@@ -16,6 +16,275 @@ import { Button } from '@/components/ui/button';
 import { StarRating } from '@/components/StarRating';
 import { getAuthHeaders } from '@/lib/api';
 
+// ─── Menu Management Tab ────────────────────────────────────────
+function MenuManagementTab({ lang, t }: { lang: string; t: (en: string, ar: string) => string }) {
+  const qc = useQueryClient();
+  const [restaurantId, setRestaurantId] = useState<number | null>(null);
+  const [expandedMenu, setExpandedMenu] = useState<number | null>(null);
+  const [expandedSection, setExpandedSection] = useState<number | null>(null);
+  const [showDishForm, setShowDishForm] = useState<{ menuId: number; sectionId: number } | null>(null);
+  const [dishForm, setDishForm] = useState({ nameEn: '', nameAr: '', price: '', descriptionEn: '', isBestseller: false, isChefChoice: false, isNewItem: false, discountPercentage: '' });
+
+  const { data: restData } = useQuery({
+    queryKey: ['admin-restaurants-list'],
+    queryFn: async () => {
+      const res = await fetch('/api/restaurants?limit=50', { headers: await getAuthHeaders() });
+      return res.json();
+    },
+  });
+
+  const { data: menuData, isLoading } = useQuery({
+    queryKey: ['admin-menus', restaurantId],
+    queryFn: async () => {
+      const res = await fetch(`/api/restaurants/${restaurantId}/menus`, { headers: await getAuthHeaders() });
+      return res.json();
+    },
+    enabled: !!restaurantId,
+  });
+
+  const createDish = useMutation({
+    mutationFn: async ({ sectionId, data }: { sectionId: number; data: object }) => {
+      const res = await fetch(`/api/menu-sections/${sectionId}/dishes`, {
+        method: 'POST',
+        headers: { ...(await getAuthHeaders()), 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      return res.json();
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-menus', restaurantId] }); setShowDishForm(null); setDishForm({ nameEn: '', nameAr: '', price: '', descriptionEn: '', isBestseller: false, isChefChoice: false, isNewItem: false, discountPercentage: '' }); },
+  });
+
+  const deleteDish = useMutation({
+    mutationFn: async (dishId: number) => {
+      await fetch(`/api/dishes/${dishId}`, { method: 'DELETE', headers: await getAuthHeaders() });
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-menus', restaurantId] }),
+  });
+
+  const restaurants = restData?.restaurants ?? restData ?? [];
+  const menus = menuData?.menus ?? menuData ?? [];
+
+  const MENU_TYPE_COLORS: Record<string, string> = {
+    regular: 'bg-blue-100 text-blue-700', kids: 'bg-yellow-100 text-yellow-700',
+    drinks: 'bg-cyan-100 text-cyan-700', desserts: 'bg-pink-100 text-pink-700',
+    catering: 'bg-orange-100 text-orange-700', home_kitchen: 'bg-green-100 text-green-700',
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Restaurant Selector */}
+      <div className="bg-card border border-border rounded-2xl p-5">
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2 shrink-0">
+            <Utensils className="w-5 h-5 text-primary" />
+            <span className="font-bold text-foreground">{t('Select Restaurant', 'اختر مطعماً')}</span>
+          </div>
+          <select
+            className="flex-1 min-w-[200px] border border-border rounded-xl px-3 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+            value={restaurantId ?? ''}
+            onChange={e => { setRestaurantId(e.target.value ? Number(e.target.value) : null); setExpandedMenu(null); }}
+          >
+            <option value="">{t('-- Choose a restaurant --', '-- اختر مطعماً --')}</option>
+            {restaurants.map((r: any) => (
+              <option key={r.id} value={r.id}>{lang === 'ar' ? (r.nameAr ?? r.nameEn) : r.nameEn}</option>
+            ))}
+          </select>
+          {restaurantId && (
+            <Link href={`/restaurants/${restaurantId}`}>
+              <button className="flex items-center gap-1.5 text-xs text-primary hover:underline font-medium">
+                <Eye className="w-3.5 h-3.5" />{t('View Live', 'عرض المباشر')}
+              </button>
+            </Link>
+          )}
+        </div>
+      </div>
+
+      {!restaurantId && (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="w-16 h-16 bg-secondary rounded-3xl flex items-center justify-center mx-auto mb-4">
+            <Utensils className="w-8 h-8 text-muted-foreground/40" />
+          </div>
+          <p className="text-muted-foreground font-medium">{t('Select a restaurant to manage its menus', 'اختر مطعماً لإدارة قوائمه')}</p>
+        </div>
+      )}
+
+      {restaurantId && isLoading && (
+        <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-16 bg-muted animate-pulse rounded-2xl" />)}</div>
+      )}
+
+      {restaurantId && !isLoading && menus.length === 0 && (
+        <div className="text-center py-12">
+          <p className="text-muted-foreground mb-4">{t('No menus found for this restaurant', 'لا توجد قوائم لهذا المطعم')}</p>
+          <button className="flex items-center gap-2 bg-primary text-primary-foreground px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors mx-auto">
+            <Plus className="w-4 h-4" />{t('Create First Menu', 'إنشاء أول قائمة')}
+          </button>
+        </div>
+      )}
+
+      {restaurantId && !isLoading && menus.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-foreground">{t('Menus', 'القوائم')} ({menus.length})</h3>
+            <button className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors">
+              <Plus className="w-4 h-4" />{t('Add Menu', 'إضافة قائمة')}
+            </button>
+          </div>
+
+          {menus.map((menu: any) => {
+            const sections = menu.sections ?? [];
+            const isExpanded = expandedMenu === menu.id;
+            const menuColor = MENU_TYPE_COLORS[menu.type] ?? 'bg-gray-100 text-gray-700';
+            return (
+              <div key={menu.id} className="bg-card border border-border rounded-2xl overflow-hidden">
+                {/* Menu Header */}
+                <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-secondary/20 transition-colors" onClick={() => setExpandedMenu(isExpanded ? null : menu.id)}>
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
+                      <Utensils className="w-4 h-4 text-primary" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="font-bold text-foreground">{lang === 'ar' ? menu.nameAr : menu.nameEn}</p>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${menuColor}`}>{menu.type}</span>
+                        {!menu.isActive && <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-semibold">Inactive</span>}
+                      </div>
+                      <p className="text-xs text-muted-foreground">{sections.length} {t('sections', 'أقسام')} · {sections.reduce((sum: number, s: any) => sum + (s.items?.length ?? 0), 0)} {t('dishes', 'أطباق')}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button onClick={e => e.stopPropagation()} className="p-2 hover:bg-secondary rounded-lg text-muted-foreground hover:text-foreground transition-colors">
+                      <Edit className="w-4 h-4" />
+                    </button>
+                    <button onClick={e => e.stopPropagation()} className="p-2 hover:bg-red-50 rounded-lg text-muted-foreground hover:text-red-600 transition-colors">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                    {isExpanded ? <ChevronRight className="w-4 h-4 text-muted-foreground rotate-90 transition-transform" /> : <ChevronRight className="w-4 h-4 text-muted-foreground transition-transform" />}
+                  </div>
+                </div>
+
+                {/* Sections */}
+                {isExpanded && (
+                  <div className="border-t border-border divide-y divide-border">
+                    {sections.length === 0 ? (
+                      <div className="p-6 text-center">
+                        <p className="text-sm text-muted-foreground mb-3">{t('No sections yet', 'لا توجد أقسام بعد')}</p>
+                        <button className="text-xs text-primary font-semibold hover:underline flex items-center gap-1 mx-auto">
+                          <Plus className="w-3 h-3" />{t('Add Section', 'إضافة قسم')}
+                        </button>
+                      </div>
+                    ) : sections.map((section: any) => {
+                      const items = section.items ?? [];
+                      const isSectionExpanded = expandedSection === section.id;
+                      return (
+                        <div key={section.id}>
+                          <div
+                            className="flex items-center justify-between px-5 py-3 bg-secondary/10 cursor-pointer hover:bg-secondary/20 transition-colors"
+                            onClick={() => setExpandedSection(isSectionExpanded ? null : section.id)}
+                          >
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 bg-primary rounded-full" />
+                              <p className="font-semibold text-foreground text-sm">{lang === 'ar' ? section.nameAr : section.nameEn}</p>
+                              <span className="text-xs text-muted-foreground">({items.length} {t('items', 'عناصر')})</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                onClick={e => { e.stopPropagation(); setShowDishForm({ menuId: menu.id, sectionId: section.id }); }}
+                                className="flex items-center gap-1 text-xs text-primary font-semibold hover:bg-primary/10 px-2 py-1 rounded-lg transition-colors"
+                              >
+                                <Plus className="w-3 h-3" />{t('Add Dish', 'إضافة طبق')}
+                              </button>
+                              <button onClick={e => e.stopPropagation()} className="p-1.5 hover:bg-secondary rounded-lg text-muted-foreground">
+                                <Edit className="w-3.5 h-3.5" />
+                              </button>
+                              {isSectionExpanded ? <ChevronRight className="w-4 h-4 text-muted-foreground rotate-90" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+                            </div>
+                          </div>
+
+                          {/* Add Dish Form */}
+                          {showDishForm?.sectionId === section.id && (
+                            <div className="px-5 py-4 bg-primary/5 border-b border-primary/10">
+                              <p className="text-sm font-bold text-foreground mb-3">{t('Add New Dish', 'إضافة طبق جديد')}</p>
+                              <div className="grid grid-cols-2 gap-3 mb-3">
+                                <input value={dishForm.nameEn} onChange={e => setDishForm(f => ({...f, nameEn: e.target.value}))} placeholder={t('Name (English)', 'الاسم (إنجليزي)')} className="border border-border rounded-xl px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                                <input value={dishForm.nameAr} onChange={e => setDishForm(f => ({...f, nameAr: e.target.value}))} placeholder={t('Name (Arabic)', 'الاسم (عربي)')} className="border border-border rounded-xl px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30" dir="rtl" />
+                                <input value={dishForm.price} onChange={e => setDishForm(f => ({...f, price: e.target.value}))} placeholder={t('Price (SAR)', 'السعر (ريال)')} type="number" className="border border-border rounded-xl px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                                <input value={dishForm.discountPercentage} onChange={e => setDishForm(f => ({...f, discountPercentage: e.target.value}))} placeholder={t('Discount %', 'نسبة الخصم %')} type="number" className="border border-border rounded-xl px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                              </div>
+                              <input value={dishForm.descriptionEn} onChange={e => setDishForm(f => ({...f, descriptionEn: e.target.value}))} placeholder={t('Description', 'الوصف')} className="w-full border border-border rounded-xl px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 mb-3" />
+                              <div className="flex gap-3 mb-3">
+                                {[{key:'isBestseller', labelEn:'Bestseller', labelAr:'الأكثر مبيعاً'},{key:'isChefChoice', labelEn:"Chef's Choice", labelAr:'اختيار الشيف'},{key:'isNewItem', labelEn:'New Item', labelAr:'جديد'}].map(badge => (
+                                  <label key={badge.key} className="flex items-center gap-1.5 text-xs font-medium cursor-pointer">
+                                    <input type="checkbox" checked={(dishForm as any)[badge.key]} onChange={e => setDishForm(f => ({...f, [badge.key]: e.target.checked}))} className="rounded" />
+                                    {t(badge.labelEn, badge.labelAr)}
+                                  </label>
+                                ))}
+                              </div>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => createDish.mutate({ sectionId: section.id, data: { nameEn: dishForm.nameEn, nameAr: dishForm.nameAr, price: dishForm.price ? Number(dishForm.price) : undefined, descriptionEn: dishForm.descriptionEn || undefined, isBestseller: dishForm.isBestseller, isChefChoice: dishForm.isChefChoice, isNewItem: dishForm.isNewItem, discountPercentage: dishForm.discountPercentage ? Number(dishForm.discountPercentage) : undefined } })}
+                                  disabled={!dishForm.nameEn || createDish.isPending}
+                                  className="bg-primary text-primary-foreground px-4 py-2 rounded-xl text-sm font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors flex items-center gap-2"
+                                >
+                                  {createDish.isPending ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                                  {t('Add Dish', 'إضافة')}
+                                </button>
+                                <button onClick={() => setShowDishForm(null)} className="px-4 py-2 rounded-xl text-sm font-semibold border border-border hover:bg-secondary transition-colors">
+                                  {t('Cancel', 'إلغاء')}
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Dish List */}
+                          {isSectionExpanded && (
+                            <div className="divide-y divide-border/50">
+                              {items.length === 0 ? (
+                                <div className="px-8 py-4 text-xs text-muted-foreground">{t('No dishes in this section', 'لا توجد أطباق في هذا القسم')}</div>
+                              ) : items.map((dish: any) => (
+                                <div key={dish.id} className="flex items-center gap-4 px-8 py-3 hover:bg-secondary/10 group transition-colors">
+                                  {dish.imageUrl && <img src={dish.imageUrl} alt={dish.nameEn} className="w-10 h-10 rounded-lg object-cover shrink-0" />}
+                                  {!dish.imageUrl && <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center shrink-0"><Utensils className="w-4 h-4 text-muted-foreground" /></div>}
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <p className="text-sm font-semibold text-foreground">{lang === 'ar' ? dish.nameAr : dish.nameEn}</p>
+                                      {dish.isBestseller && <span className="text-[9px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-md font-bold">Bestseller</span>}
+                                      {dish.isChefChoice && <span className="text-[9px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-md font-bold">Chef's Choice</span>}
+                                      {dish.isNewItem && <span className="text-[9px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-md font-bold">New</span>}
+                                      {!dish.isAvailable && <span className="text-[9px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded-md font-bold">Unavailable</span>}
+                                    </div>
+                                    <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{dish.descriptionEn ?? '—'}</p>
+                                  </div>
+                                  <div className="flex items-center gap-3 shrink-0">
+                                    {dish.price && <span className="text-sm font-bold text-primary">{Number(dish.price).toLocaleString('en-SA', { style: 'currency', currency: dish.currency || 'SAR', minimumFractionDigits: 0 })}</span>}
+                                    {(dish.discountPercentage ?? 0) > 0 && <span className="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded-md font-bold">-{dish.discountPercentage}%</span>}
+                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <button className="p-1.5 hover:bg-secondary rounded-lg text-muted-foreground hover:text-foreground"><Edit className="w-3.5 h-3.5" /></button>
+                                      <button onClick={() => deleteDish.mutate(dish.id)} className="p-1.5 hover:bg-red-50 rounded-lg text-muted-foreground hover:text-red-600"><Trash2 className="w-3.5 h-3.5" /></button>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                    <div className="p-4 flex justify-center">
+                      <button className="flex items-center gap-2 text-xs text-muted-foreground hover:text-primary font-medium transition-colors">
+                        <Plus className="w-3.5 h-3.5" />{t('Add Section', 'إضافة قسم')}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const BLOG_POSTS = [
   { id: 1, title: 'Top 10 Fine Dining Restaurants in Riyadh 2026', status: 'published', views: 12450, date: '2026-03-25' },
   { id: 2, title: 'The Rise of Plant-Based Dining in Saudi Arabia', status: 'draft', views: 0, date: '2026-03-28' },
@@ -58,7 +327,7 @@ const INITIAL_MODULES: Module[] = [
 ];
 
 // ─── Types ──────────────────────────────────────────────────────
-type AdminTab = 'overview' | 'offers' | 'contracts' | 'finance' | 'messages' | 'referrals' | 'restaurants' | 'registrations' | 'users' | 'bookings' | 'reviews' | 'blog' | 'seo' | 'modules' | 'settings' | 'review-queue' | 'promo-codes' | 'settlement' | 'exp-providers' | 'exp-listings' | 'exp-bookings' | 'exp-settings';
+type AdminTab = 'overview' | 'offers' | 'contracts' | 'finance' | 'messages' | 'referrals' | 'restaurants' | 'registrations' | 'users' | 'bookings' | 'reviews' | 'blog' | 'seo' | 'modules' | 'settings' | 'review-queue' | 'promo-codes' | 'settlement' | 'exp-providers' | 'exp-listings' | 'exp-bookings' | 'exp-settings' | 'menus';
 
 // ─── Component ──────────────────────────────────────────────────
 export function AdminPanelPage() {
@@ -554,6 +823,7 @@ export function AdminPanelPage() {
     { id: 'messages', label: 'Messages', icon: Send },
     { id: 'referrals', label: 'Referrals & Points', icon: Award },
     { id: 'reviews', label: 'Reviews', icon: Star, badge: 1 },
+    { id: 'menus', label: 'Menu Management', icon: Utensils },
     { id: 'blog', label: 'Blog & Content', icon: BookOpen },
     { id: 'seo', label: 'SEO Manager', icon: Globe },
     { id: 'modules', label: 'Modules', icon: Layers },
@@ -1125,6 +1395,9 @@ export function AdminPanelPage() {
               })}
             </div>
           )}
+
+          {/* ── MENUS ── */}
+          {activeTab === 'menus' && <MenuManagementTab lang={lang} t={t} />}
 
           {/* ── BLOG ── */}
           {activeTab === 'blog' && (

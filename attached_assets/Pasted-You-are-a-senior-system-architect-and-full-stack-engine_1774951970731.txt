@@ -1,0 +1,233 @@
+You are a senior system architect and full-stack engineer.
+
+Your task is to DESIGN and IMPLEMENT a scalable, production-level system including:
+
+* Follow system (users, reviewers, restaurants, service providers)
+* Advanced notification system (multi-language + customizable)
+* Microservices architecture
+* Full CRM integration
+
+========================
+
+1. FOLLOW SYSTEM (EXTENDED)
+   ========================
+   Implement a complete follow system supporting:
+
+Entities:
+
+* Users
+* Food reviewers
+* Restaurants
+* Service providers
+
+Features:
+
+* Follow / Unfollow
+* Followers / Following lists
+* Follow categories (interests-based):
+
+  * Dishes
+  * New openings
+  * Offers
+  * Events
+
+Advanced:
+
+* Follow with preferences:
+
+  * Example: follow restaurant for “offers only”
+* Smart suggestions:
+
+  * Recommended users/restaurants
+* Activity tracking:
+
+  * Who followed what
+
+========================
+2. INTEREST-BASED FOLLOWING
+===========================
+
+Allow users to select interests:
+
+* Food categories (Italian, Arabic, etc.)
+* Dish types (desserts, coffee, grills)
+* Events & offers
+* New restaurant openings
+
+Use this data to:
+
+* Personalize feed
+* Trigger notifications
+* Improve recommendations
+
+========================
+3. NOTIFICATION SYSTEM (ADVANCED)
+=================================
+
+Build a full notification engine:
+
+Notification Types:
+
+* Follow / unfollow
+* New reviews
+* New dishes
+* Offers & discounts
+* Reservations updates
+* Order status
+* New restaurant openings
+
+Delivery Channels:
+
+* In-app notifications
+* Email (SMTP)
+* SMS (API)
+* Push notifications (Firebase)
+
+========================
+4. NOTIFICATION CUSTOMIZATION
+=============================
+
+Allow users to control:
+
+* Enable/disable notifications per type
+* Choose delivery channel
+* Mute specific users or restaurants
+
+========================
+5. MULTI-LANGUAGE SUPPORT
+=========================
+
+Support:
+
+* Arabic (RTL)
+* English (LTR)
+
+Features:
+
+* Dynamic language switching
+* Translatable notification templates
+
+========================
+6. NOTIFICATION TEMPLATE SYSTEM
+===============================
+
+Build a template engine:
+
+* Create/edit/delete templates
+* Variables support:
+
+  * {user_name}
+  * {restaurant_name}
+  * {offer}
+* Template types:
+
+  * Email
+  * SMS
+  * Push
+* Preview before sending
+
+========================
+7. MICROSERVICES ARCHITECTURE
+=============================
+
+Design services:
+
+* User Service
+* Follow Service
+* Notification Service
+* Menu Service
+* Order Service
+* Reservation Service
+* CRM Service
+
+Requirements:
+
+* Each service independent
+* API-based communication (REST)
+* Scalable structure
+* Ready for deployment
+
+========================
+8. CRM SYSTEM (PROFESSIONAL)
+============================
+
+Build a full CRM system:
+
+For Admin:
+
+* Manage users
+* Manage restaurants/providers
+* Track activity logs
+* View analytics dashboard
+
+For Restaurants:
+
+* Customer insights
+* Order history
+* Reservation tracking
+* Campaign management
+
+Features:
+
+* Customer segmentation
+* Campaign targeting (offers/messages)
+* Notification triggers
+* Full interaction history
+
+========================
+9. TRACKING & ANALYTICS
+=======================
+
+Track:
+
+* User behavior
+* Follow activity
+* Engagement
+* Notifications performance
+
+Dashboard:
+
+* Graphs
+* KPIs
+* Real-time updates (mock)
+
+========================
+10. EVENT-DRIVEN SYSTEM
+=======================
+
+* Trigger notifications based on events:
+
+  * New order
+  * New follower
+  * New offer
+* Use event-based architecture (mock implementation)
+
+========================
+11. PERFORMANCE & UX
+====================
+
+* Fast updates (optimistic UI)
+* Background processing (simulate queues)
+* Smooth UI transitions
+
+========================
+12. OUTPUT
+==========
+
+* Full working code
+* Modular microservices-ready structure
+* Clean architecture
+* Ready to scale
+
+========================
+FINAL GOAL
+==========
+
+Build a scalable, enterprise-level system that combines:
+
+* Social features (follow system)
+* Smart notifications
+* CRM capabilities
+* Microservices architecture
+
+The system must be flexible, customizable, and suitable for large-scale platforms.

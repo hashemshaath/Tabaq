@@ -1,0 +1,226 @@
+You are a senior full-stack engineer and product designer.
+
+Your task is to DESIGN and IMPLEMENT a professional, feature-rich user profile system for a restaurant platform, similar to Facebook and X (Twitter) in terms of privacy and control, with advanced food experience tracking features.
+
+========================
+
+1. USER PROFILE SYSTEM (CORE)
+   ========================
+   Build a complete user profile system:
+
+Profile includes:
+
+* Profile picture
+* Username (unique)
+* Bio
+* Location (optional)
+* Followers / Following count
+* Activity summary
+
+Profile visibility:
+
+* Public (visible to everyone)
+* Followers-only
+* Private (only user)
+
+========================
+2. PRIVACY SYSTEM (ADVANCED)
+============================
+
+Implement full privacy controls similar to Facebook/X:
+
+User can control:
+
+* Who can view profile
+* Who can see visited places
+* Who can see reviews
+* Who can see favorite dishes/restaurants
+* Who can see activity feed
+
+Options:
+
+* Public
+* Followers only
+* Only me
+* Custom (optional advanced)
+
+Additional:
+
+* Block users
+* Remove followers
+* Hide specific content
+
+========================
+3. CHECK-IN SYSTEM (VISITED PLACES)
+===================================
+
+Allow users to log visits:
+
+Features:
+
+* Check-in to restaurant
+* Add visit date & time
+* Add notes (experience)
+* Tag companions (optional UI)
+
+History:
+
+* List of visited places
+* Timeline view (activity feed style)
+* Map view (optional mock)
+
+========================
+4. REVIEW SYSTEM (ADVANCED)
+===========================
+
+* Review per restaurant
+* Review per dish (IMPORTANT)
+
+Each review includes:
+
+* Rating (1–5 stars)
+* Text review
+* Visit date
+* Photos (optional)
+
+Dish rating:
+
+* Taste
+* Presentation
+* Value
+* Portion size
+
+========================
+5. FAVORITES SYSTEM
+===================
+
+Users can save:
+
+* Favorite restaurants
+* Favorite dishes (per restaurant)
+
+Display:
+
+* Organized sections
+* Easy filtering
+
+========================
+6. FOOD JOURNEY / EXPERIENCE TRACKING
+=====================================
+
+Create a "Food Journey" system:
+
+* Timeline of:
+
+  * Visits
+  * Reviews
+  * Favorites
+* Monthly or weekly summaries
+* Insights:
+
+  * Most visited cuisine
+  * Top rated dishes
+
+========================
+7. PLANNING SYSTEM (ADVANCED)
+=============================
+
+Allow users to plan future experiences:
+
+* Visit planner:
+
+  * Select restaurants
+  * Set dates
+* Weekly plan
+* Food tasting plan (e.g. “Dessert week”)
+
+Features:
+
+* Add notes
+* Add priority
+* Reminders (mock)
+
+========================
+8. RECOMMENDATION SYSTEM
+========================
+
+* Users can recommend:
+
+  * Restaurants
+  * Specific dishes
+
+Display:
+
+* “Recommended by user” section
+* Shareable cards
+
+========================
+9. PROFILE SECTIONS UI
+======================
+
+Organize profile into tabs:
+
+* Overview
+* Visits
+* Reviews
+* Favorites
+* Plans
+* Recommendations
+
+========================
+10. ACTIVITY FEED
+=================
+
+Show user activity:
+
+* New visit
+* New review
+* New favorite
+* New follow
+
+Respect privacy settings.
+
+========================
+11. UX & DESIGN
+===============
+
+* Clean, modern UI
+* Smooth transitions
+* Card-based layout
+* RTL + LTR support
+* Mobile responsive
+
+========================
+12. PERFORMANCE
+===============
+
+* Lazy loading
+* Optimized lists
+* Smooth scrolling
+
+========================
+13. DATA STRUCTURE (READY FOR SCALE)
+====================================
+
+Prepare models for:
+
+* Users
+* Visits
+* Reviews
+* Favorites
+* Plans
+
+========================
+14. OUTPUT
+==========
+
+* Full working code
+* Clean structure
+* Ready to run
+* Modular and scalable
+
+========================
+FINAL GOAL
+==========
+
+Create a powerful, flexible, and privacy-focused user profile system that allows users to track, share, and plan their full food experience in a professional and engaging way.

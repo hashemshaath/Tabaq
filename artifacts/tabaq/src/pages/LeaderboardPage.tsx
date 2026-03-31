@@ -125,6 +125,7 @@ export function LeaderboardPage() {
   const liveEntries = (liveData ?? []).map((e: any, i: number) => ({
     rank: i + 1,
     userId: e.user.id,
+    username: e.user.username,
     nameEn: e.user.nameEn,
     nameAr: e.user.nameAr,
     avatar: e.user.avatarUrl || `https://i.pravatar.cc/80?u=${e.user.id}`,
@@ -234,10 +235,14 @@ export function LeaderboardPage() {
                     <div className={`w-10 text-center shrink-0 ${medalColors[index]}`}>
                       <Medal className="w-8 h-8 mx-auto" />
                     </div>
-                    <img src={entry.avatar} alt={lang === 'ar' ? entry.nameAr : entry.nameEn} className="w-12 h-12 rounded-full object-cover shrink-0 border-2 border-white shadow" />
+                    <Link href={entry.username ? `/user/${entry.username}` : '#'}>
+                      <img src={entry.avatar} alt={lang === 'ar' ? entry.nameAr : entry.nameEn} className="w-12 h-12 rounded-full object-cover shrink-0 border-2 border-white shadow hover:opacity-80 transition-opacity cursor-pointer" />
+                    </Link>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
-                        <p className="font-extrabold text-foreground truncate">{lang === 'ar' ? entry.nameAr : entry.nameEn}</p>
+                        <Link href={entry.username ? `/user/${entry.username}` : '#'}>
+                          <p className="font-extrabold text-foreground truncate hover:text-primary transition-colors cursor-pointer">{lang === 'ar' ? entry.nameAr : entry.nameEn}</p>
+                        </Link>
                         <span className="text-base shrink-0">{entry.badge}</span>
                       </div>
                       <div className="flex items-center gap-2 mt-0.5">
@@ -296,17 +301,19 @@ export function LeaderboardPage() {
                       <div className="w-8 text-center shrink-0">
                         <span className="text-sm font-black text-muted-foreground">#{entry.rank}</span>
                       </div>
-                      <div className="relative shrink-0">
-                        <img src={entry.avatar} alt={lang === 'ar' ? entry.nameAr : entry.nameEn} className="w-11 h-11 rounded-full object-cover border border-border" />
+                      <Link href={entry.username ? `/user/${entry.username}` : '#'} className="relative shrink-0">
+                        <img src={entry.avatar} alt={lang === 'ar' ? entry.nameAr : entry.nameEn} className="w-11 h-11 rounded-full object-cover border border-border hover:opacity-80 transition-opacity" />
                         {entry.trending && (
                           <div className="absolute -top-1 -end-1 w-4 h-4 bg-orange-500 rounded-full flex items-center justify-center">
                             <Flame className="w-2.5 h-2.5 text-white" />
                           </div>
                         )}
-                      </div>
+                      </Link>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1">
-                          <p className="font-semibold text-foreground text-sm truncate">{lang === 'ar' ? entry.nameAr : entry.nameEn}</p>
+                          <Link href={entry.username ? `/user/${entry.username}` : '#'}>
+                            <p className="font-semibold text-foreground text-sm truncate hover:text-primary transition-colors cursor-pointer">{lang === 'ar' ? entry.nameAr : entry.nameEn}</p>
+                          </Link>
                           <span className="text-sm shrink-0">{entry.badge}</span>
                         </div>
                         <p className="text-xs text-muted-foreground mt-0.5">{lang === 'ar' ? entry.levelTitleAr : entry.levelTitle} · {entry.reviewCount} {t('reviews', 'تقييم')}</p>

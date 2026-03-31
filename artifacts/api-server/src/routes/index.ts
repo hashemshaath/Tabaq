@@ -30,6 +30,7 @@ import adminExperiencesRouter from "./admin-experiences.js";
 import { recommendationsRouter } from "./recommendations.js";
 import analyticsRouter from "./analytics.js";
 import profileRouter from "./profile.js";
+import blogRouter from "./blog.js";
 
 const router: IRouter = Router();
 
@@ -64,5 +65,6 @@ router.use(adminExperiencesRouter);
 router.use(recommendationsRouter);
 router.use(analyticsRouter);
 router.use(profileRouter);
+router.use(blogRouter);
 
 export default router;

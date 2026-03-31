@@ -1,0 +1,204 @@
+You are a senior full-stack architect.
+
+Your task is to DESIGN and IMPLEMENT a production-level table reservation system and a highly scalable, modular menu system (microservices-ready) for a restaurant & service platform.
+
+========================
+
+1. TABLE RESERVATION SYSTEM (ADVANCED)
+   ========================
+   Build a professional booking system similar to OpenTable:
+
+Core Features:
+
+* Select date
+* Select time slot
+* Number of guests
+* Table type:
+
+  * Indoor
+  * Outdoor
+  * VIP
+  * Window
+
+Advanced Features:
+
+* Real-time availability (mock or simulated)
+* Time slot management
+* Booking status:
+
+  * Confirmed
+  * Pending
+  * Cancelled
+* Modify reservation
+* Cancel reservation
+
+Smart Features:
+
+* Crowd prediction (low / medium / busy)
+* Waitlist system (join queue if full)
+* Suggested times (AI-based mock logic)
+* Pre-order food before arrival
+
+Admin Features:
+
+* Manage reservations
+* Set capacity per time slot
+* Define peak hours
+
+UI:
+
+* Calendar picker
+* Time slot selector
+* Smooth UX flow
+
+========================
+2. MENU SYSTEM (MICROSERVICES-READY)
+====================================
+
+Design a highly flexible and scalable menu system:
+
+Architecture:
+
+* Modular structure (can be separated into microservices)
+* API-ready design
+* Each module independent
+
+========================
+3. MENU TYPES SUPPORT
+=====================
+
+The system must support:
+
+* Restaurants (full meals)
+* Cafés (drinks, desserts)
+* Catering (bulk orders, events)
+* Buffets (fixed pricing, packages)
+* Home kitchens (limited menus)
+
+========================
+4. MENU ITEM STRUCTURE
+======================
+
+Each item must include:
+
+* Name
+* Description
+* Price
+* Discount (optional)
+* Calories
+* Preparation time
+* Ingredients list
+* Allergen info
+* Spice level
+* Rating
+* Popularity score
+* Availability status
+
+Media Support:
+
+* Cover image
+* Gallery images
+* Optional video
+
+Badges:
+
+* Bestseller
+* Chef’s choice
+* New
+* Discounted
+
+========================
+5. MENU FEATURES (ADVANCED)
+===========================
+
+* Categories & subcategories
+* Dynamic filtering:
+
+  * Veg / Non-veg
+  * Spicy level
+  * Price range
+* Sorting:
+
+  * Price
+  * Rating
+  * Popularity
+
+Smart Features:
+
+* AI recommendations
+* Frequently ordered together
+* Combo builder
+* Upsell suggestions
+
+========================
+6. CATERING & BUFFET FEATURES
+=============================
+
+* Package-based menus
+* Price per person
+* Minimum order quantity
+* Event date selection
+* Customizable dishes per package
+
+========================
+7. ADMIN CONTROL (MENU MANAGEMENT)
+==================================
+
+* Add/edit/delete items
+* Upload images/videos
+* Manage categories
+* Set availability schedules
+* Toggle visibility
+
+========================
+8. UX/UI DESIGN
+===============
+
+* Premium card layout
+* Clean spacing
+* Soft shadows
+* Reduced border radius (6px–10px)
+* Responsive design
+
+========================
+9. PERFORMANCE
+==============
+
+* Lazy load images/videos
+* Optimize media
+* Fast filtering system
+
+========================
+10. INTEGRATION WITH ORDER SYSTEM
+=================================
+
+* Add to cart
+* Quantity control
+* Notes per item
+* Checkout simulation
+
+========================
+11. FUTURE MICRO-SERVICES (STRUCTURE READY)
+===========================================
+
+Prepare system to be split into:
+
+* Menu service
+* Order service
+* Reservation service
+* User service
+
+========================
+12. OUTPUT
+==========
+
+* Full working code
+* Modular structure
+* Ready to scale
+* Clean and maintainable
+
+========================
+FINAL GOAL
+==========
+
+Build a highly scalable, flexible, and premium reservation + menu system that can serve multiple business types (restaurants, cafes, catering, buffets) with modern UX and microservices-ready architecture.

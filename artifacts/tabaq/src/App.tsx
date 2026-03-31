@@ -50,6 +50,8 @@ import { JoinPage } from "@/pages/JoinPage";
 import { ChefsPage } from "@/pages/ChefsPage";
 import { ChefDetailPage } from "@/pages/ChefDetailPage";
 import { PublicProfilePage } from "@/pages/PublicProfilePage";
+import { BlogPage } from "@/pages/BlogPage";
+import { BlogDetailPage } from "@/pages/BlogDetailPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -105,6 +107,8 @@ function Router() {
               <Route path="/michelin" component={MichelinPage} />
               <Route path="/experiences" component={ExperiencesPage} />
               <Route path="/experiences/:id" component={ExperienceDetailPage} />
+              <Route path="/blog/:slug" component={BlogDetailPage} />
+              <Route path="/blog" component={BlogPage} />
               <Route path="/gift-redeem/:code" component={GiftRedeemPage} />
               <Route path="/terms" component={TermsPage} />
               <Route path="/privacy" component={PrivacyPage} />

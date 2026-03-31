@@ -1,0 +1,132 @@
+You are a senior SEO architect and full-stack engineer with experience in content strategy for large platforms.
+
+Your task is to DESIGN and IMPLEMENT a comprehensive SEO strategy for a restaurant & food platform including:
+
+========================
+
+1. SEO OPTIMIZATION SYSTEM
+   ========================
+
+* Optimize all text content and headings
+* Include restaurant name, dish name, category, and type in titles
+* Use proper heading hierarchy (H1, H2, H3)
+* Meta title and description generation per page
+* Alt text for all images
+* Structured data (JSON-LD schema):
+
+  * Restaurant
+  * Menu
+  * Reviews
+  * Events
+
+========================
+2. MULTI-LANGUAGE SUPPORT
+=========================
+
+* Arabic and English support
+* SEO optimized URLs per language
+* Language-specific meta tags
+
+========================
+3. ON-PAGE SEO
+==============
+
+* Analyze all pages for keyword coverage
+* Optimize internal linking
+* Optimize text readability
+* Suggest headline improvements dynamically
+* Include primary and secondary keywords in text and headings
+
+========================
+4. SITEMAP & ROBOTS
+===================
+
+* Generate dynamic sitemap
+* robots.txt management
+* Ensure crawlability of all pages:
+
+  * Restaurants
+  * Dishes
+  * Reviews
+  * Blog
+  * News
+  * Profiles
+
+========================
+5. ADMIN SEO DASHBOARD
+======================
+
+* Full control panel for SEO settings:
+
+  * Meta titles & descriptions
+  * Keywords management
+  * Track search ranking
+  * Suggest improvements
+  * Monitor page performance
+
+========================
+6. BLOG & CONTENT HUB
+=====================
+
+* Smart blog system:
+
+  * Authors (users, reviewers, chefs)
+  * Categories & tags
+  * Drafts & publishing workflow
+* News center for platform updates
+* Reviewers and professional chef contributions
+* SEO-friendly article templates
+* Suggest keywords and headlines automatically
+* Integration with social sharing
+
+========================
+7. RECOMMENDATION ENGINE FOR CONTENT
+====================================
+
+* Suggest related articles
+* Highlight trending restaurants/dishes
+* AI-powered headline and keyword recommendations
+
+========================
+8. PERFORMANCE & MONITORING
+===========================
+
+* Track SEO performance metrics:
+
+  * Page views
+  * Bounce rate
+  * CTR
+* Suggest improvements
+* Update SEO policies dynamically
+* Automated alerts for broken links or missing metadata
+
+========================
+9. ADVANCED FEATURES
+====================
+
+* Knowledge graph / structured data for Google rich results
+* Local SEO optimization for restaurants
+* Optimize images and media
+* Enable rich snippets for reviews, dishes, and restaurants
+
+========================
+10. OUTPUT
+==========
+
+* Full working code & templates
+* Admin dashboard for SEO management
+* Modular and scalable structure
+* Ready for real-world deployment
+
+========================
+FINAL GOAL
+==========
+
+Build a professional, scalable, AI-assisted SEO and content management system that ensures:
+
+* Maximum visibility in search engines
+* Optimized titles, headings, and content
+* Centralized admin control
+* Fully-featured blog & news system
+* Expert & user-generated content contribution
+* Continuous monitoring, improvement, and recommendation system

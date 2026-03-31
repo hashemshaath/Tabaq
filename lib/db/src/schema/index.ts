@@ -15,3 +15,4 @@ export * from "./platform";
 export * from "./finance";
 export * from "./experiences";
 export * from "./profile";
+export * from "./blog";

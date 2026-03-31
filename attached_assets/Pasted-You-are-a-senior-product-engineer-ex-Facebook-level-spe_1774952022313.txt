@@ -1,0 +1,228 @@
+You are a senior product engineer (ex-Facebook level) specializing in user profile systems and social platforms.
+
+Your task is to REBUILD and UPGRADE the entire user profile system to a production-level, highly polished, feature-rich experience with full visibility control, social interaction, and professional UI.
+
+========================
+
+1. PROFILE ROUTING & ACCESS
+   ========================
+   Implement proper routing:
+
+* Public profile URL:
+  /user/:username
+
+* Ensure:
+
+  * Clicking any username opens profile page
+  * Clicking reviewers / top foodies opens their profile
+  * Profiles are shareable via URL
+
+Add:
+
+* Copy profile link button
+* Share profile (UI for social sharing)
+
+========================
+2. PROFILE VISIBILITY SYSTEM
+============================
+
+Implement advanced visibility control:
+
+Profile visibility options:
+
+* Public
+* Followers only
+* Private
+
+Content-level visibility:
+
+* Visits
+* Reviews
+* Favorites
+* Plans
+
+Each can be:
+
+* Public
+* Followers only
+* Only me
+
+System must:
+
+* Respect privacy settings dynamically
+* Hide or show sections based on viewer
+
+========================
+3. FULL PROFILE UI (PROFESSIONAL)
+=================================
+
+Rebuild profile page with sections:
+
+Header:
+
+* Cover image
+* Profile picture
+* Username
+* Bio
+* Location
+* Social media links (IMPORTANT)
+
+Stats:
+
+* Followers
+* Following
+* Reviews count
+* Visits count
+
+Buttons:
+
+* Follow / Unfollow
+* Message (UI)
+* Share
+
+Tabs:
+
+* Overview
+* Visits
+* Reviews
+* Favorites
+* Plans
+* Recommendations
+
+========================
+4. SOCIAL MEDIA LINKS
+=====================
+
+Allow user to add:
+
+* Instagram
+* X (Twitter)
+* TikTok
+* Snapchat
+* Website
+
+Features:
+
+* Editable in settings
+* Display icons in profile header
+* Open links externally
+
+========================
+5. PROFILE SETTINGS PAGE
+========================
+
+Create full settings dashboard:
+
+Sections:
+
+* Account info
+* Privacy settings
+* Social links
+* Notification settings
+* Visibility controls
+
+Features:
+
+* Toggle switches
+* Save settings (localStorage or mock API)
+
+========================
+6. VISITS & REVIEWS DISPLAY
+===========================
+
+Show user data professionally:
+
+Visits:
+
+* Restaurant name
+* Date
+* Notes
+* Photos
+
+Reviews:
+
+* Restaurant & dish
+* Rating
+* Detailed scoring
+* Comments
+
+Display:
+
+* Card layout
+* Clean UI
+* Filter options
+
+========================
+7. FOLLOW & INTERACTION
+=======================
+
+* Follow / Unfollow system
+* Mutual followers indicator
+* Suggested users
+
+When clicking:
+
+* Reviewers → open profile
+* Top foodies → open profile
+
+========================
+8. ACTIVITY & FEED
+==================
+
+Show activity:
+
+* New visits
+* Reviews
+* Favorites
+* Follows
+
+Respect privacy settings.
+
+========================
+9. SHARE & DISCOVERY
+====================
+
+* Share profile link
+* Recommend user (UI)
+* Highlight “Top Foodie” badge
+
+========================
+10. UX & DESIGN (PREMIUM)
+=========================
+
+* Clean modern UI (Zomato + social media hybrid)
+* Smooth animations
+* Consistent spacing
+* Reduced border radius (6px–8px)
+* IBM Plex Sans Arabic font
+* RTL + LTR support
+
+========================
+11. PERFORMANCE
+===============
+
+* Lazy loading lists
+* Optimize rendering
+* Fast navigation between profiles
+
+========================
+12. OUTPUT
+==========
+
+* Full working code
+* Clean architecture
+* All features connected
+* Ready to run
+
+========================
+FINAL GOAL
+==========
+
+Build a world-class user profile system that combines:
+
+* Social media power (like Facebook/X)
+* Food experience tracking
+* Full privacy control
+* Shareable and interactive profiles
+
+Profiles must feel alive, interactive, and professional.

@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { bookingsTable, restaurantsTable, openingHoursTable } from "@workspace/db/schema";
-import { eq, and, sql, gte, lte, type SQL } from "drizzle-orm";
+import { bookingsTable, restaurantsTable, openingHoursTable, waitlistTable } from "@workspace/db/schema";
+import { eq, and, sql, gte, lte, type SQL, count } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { awardPoints, POINTS } from "../lib/points.js";
@@ -170,6 +170,8 @@ router.post("/bookings", requireAuth, async (req, res) => {
           occasionId,
           specialRequests,
           referenceCode,
+          tableType: req.body.tableType ?? "indoor",
+          preOrderItems: req.body.preOrderItems ?? [],
           status: "confirmed",
         }).returning();
         return created!;
@@ -322,6 +324,241 @@ router.patch("/bookings/:bookingId", requireAuth, async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "Failed to update booking");
     res.status(500).json({ error: "internal_error", message: "Failed to update booking" });
+  }
+});
+
+// Crowd prediction for a restaurant on a given date
+router.get("/restaurants/:restaurantId/crowd-prediction", async (req, res) => {
+  try {
+    const restaurantId = parseInt(req.params["restaurantId"] as string, 10);
+    const { date } = req.query;
+    if (!date) return void res.status(400).json({ error: "bad_request", message: "date required" });
+
+    const SEAT_CAPACITY = 40;
+    const slots = await db.select({
+      time: bookingsTable.time,
+      bookedSeats: sql<number>`COALESCE(SUM(${bookingsTable.partySize}), 0)`,
+    }).from(bookingsTable)
+      .where(and(
+        eq(bookingsTable.restaurantId, restaurantId),
+        eq(bookingsTable.date, date as string),
+        sql`${bookingsTable.status} IN ('pending','confirmed')`,
+      ))
+      .groupBy(bookingsTable.time);
+
+    const slotPredictions = slots.map(s => {
+      const pct = Number(s.bookedSeats) / SEAT_CAPACITY;
+      const level = pct >= 0.8 ? "busy" : pct >= 0.5 ? "moderate" : "quiet";
+      return { time: s.time, bookedSeats: Number(s.bookedSeats), capacity: SEAT_CAPACITY, fillPercent: Math.round(pct * 100), level };
+    });
+
+    // Overall day prediction
+    const totalBooked = slotPredictions.reduce((sum, s) => sum + s.bookedSeats, 0);
+    const avgFill = slotPredictions.length ? totalBooked / (slotPredictions.length * SEAT_CAPACITY) : 0;
+    const dayLevel = avgFill >= 0.75 ? "busy" : avgFill >= 0.4 ? "moderate" : "quiet";
+
+    res.json({ date, dayLevel, fillPercent: Math.round(avgFill * 100), slots: slotPredictions });
+  } catch (err) {
+    req.log.error({ err }, "Failed to get crowd prediction");
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// Suggested booking times (AI-mock logic based on crowd data)
+router.get("/restaurants/:restaurantId/suggested-times", async (req, res) => {
+  try {
+    const restaurantId = parseInt(req.params["restaurantId"] as string, 10);
+    const { date, partySize = "2" } = req.query;
+    if (!date) return void res.status(400).json({ error: "bad_request", message: "date required" });
+
+    const SEAT_CAPACITY = 40;
+    const [hours] = await db.select().from(openingHoursTable)
+      .where(and(
+        eq(openingHoursTable.restaurantId, restaurantId),
+      ));
+
+    const openTime = hours?.openTime ?? "12:00";
+    const closeTime = hours?.closeTime ?? "22:00";
+    const [openH, openM] = openTime.split(":").map(Number);
+    const [closeH, closeM] = closeTime.split(":").map(Number);
+    const openMin = (openH ?? 12) * 60 + (openM ?? 0);
+    const closeMin = (closeH ?? 22) * 60 + (closeM ?? 0);
+
+    // Generate all 30-min slots
+    const allSlots: string[] = [];
+    for (let m = openMin; m < closeMin; m += 30) {
+      const h = Math.floor(m / 60).toString().padStart(2, "0");
+      const min = (m % 60).toString().padStart(2, "0");
+      allSlots.push(`${h}:${min}`);
+    }
+
+    // Get booked seats per slot
+    const booked = await db.select({
+      time: bookingsTable.time,
+      bookedSeats: sql<number>`COALESCE(SUM(${bookingsTable.partySize}), 0)`,
+    }).from(bookingsTable)
+      .where(and(
+        eq(bookingsTable.restaurantId, restaurantId),
+        eq(bookingsTable.date, date as string),
+        sql`${bookingsTable.status} IN ('pending','confirmed')`,
+      ))
+      .groupBy(bookingsTable.time);
+
+    const bookedMap = Object.fromEntries(booked.map(b => [b.time, Number(b.bookedSeats)]));
+    const reqPartySize = parseInt(partySize as string, 10);
+
+    const suggestions = allSlots
+      .map(slot => {
+        const seated = bookedMap[slot] ?? 0;
+        const remaining = SEAT_CAPACITY - seated;
+        const fillPct = seated / SEAT_CAPACITY;
+        const available = remaining >= reqPartySize;
+        // Score: lower fill = better score; add bonus for "ideal dining hours" (19:00-21:00)
+        const [h] = slot.split(":").map(Number);
+        const idealBonus = (h ?? 0) >= 19 && (h ?? 0) <= 21 ? 20 : 0;
+        const score = available ? Math.round((1 - fillPct) * 80 + idealBonus) : 0;
+        return { time: slot, remaining, fillPercent: Math.round(fillPct * 100), available, score, isRecommended: score >= 80 };
+      })
+      .filter(s => s.available)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 6);
+
+    res.json({ suggestions, date });
+  } catch (err) {
+    req.log.error({ err }, "Failed to get suggested times");
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// Get availability for a restaurant on a date
+router.get("/restaurants/:restaurantId/availability", async (req, res) => {
+  try {
+    const restaurantId = parseInt(req.params["restaurantId"] as string, 10);
+    const { date } = req.query;
+    if (!date) return void res.status(400).json({ error: "bad_request", message: "date required" });
+
+    const SEAT_CAPACITY = 40;
+    const [hours] = await db.select().from(openingHoursTable)
+      .where(eq(openingHoursTable.restaurantId, restaurantId));
+
+    if (!hours || hours.isClosed) {
+      return void res.json({ slots: [], isClosed: true });
+    }
+
+    const openTime = hours.openTime ?? "12:00";
+    const closeTime = hours.closeTime ?? "22:00";
+    const [openH, openM] = openTime.split(":").map(Number);
+    const [closeH, closeM] = closeTime.split(":").map(Number);
+    const openMin = (openH ?? 12) * 60 + (openM ?? 0);
+    const closeMin = (closeH ?? 22) * 60 + (closeM ?? 0);
+
+    const allSlots: string[] = [];
+    for (let m = openMin; m < closeMin; m += 30) {
+      const h = Math.floor(m / 60).toString().padStart(2, "0");
+      const min = (m % 60).toString().padStart(2, "0");
+      allSlots.push(`${h}:${min}`);
+    }
+
+    const booked = await db.select({
+      time: bookingsTable.time,
+      bookedSeats: sql<number>`COALESCE(SUM(${bookingsTable.partySize}), 0)`,
+    }).from(bookingsTable)
+      .where(and(
+        eq(bookingsTable.restaurantId, restaurantId),
+        eq(bookingsTable.date, date as string),
+        sql`${bookingsTable.status} IN ('pending','confirmed')`,
+      ))
+      .groupBy(bookingsTable.time);
+
+    const bookedMap = Object.fromEntries(booked.map(b => [b.time, Number(b.bookedSeats)]));
+    const slots = allSlots.map(slot => {
+      const seated = bookedMap[slot] ?? 0;
+      const remaining = SEAT_CAPACITY - seated;
+      return { time: slot, remaining, capacity: SEAT_CAPACITY, available: remaining > 0 };
+    });
+
+    res.json({ slots, isClosed: false, openTime, closeTime });
+  } catch (err) {
+    req.log.error({ err }, "Failed to get availability");
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// Join waitlist
+router.post("/waitlist", requireAuth, async (req, res) => {
+  try {
+    const userId = req.auth!.userId;
+    const { restaurantId, date, time, partySize, tableType } = req.body;
+    if (!restaurantId || !date || !time || !partySize) {
+      return void res.status(400).json({ error: "bad_request", message: "Missing required fields" });
+    }
+
+    // Get current waitlist position
+    const [posResult] = await db.select({ cnt: sql<number>`count(*)` })
+      .from(waitlistTable)
+      .where(and(
+        eq(waitlistTable.restaurantId, restaurantId),
+        eq(waitlistTable.date, date),
+        eq(waitlistTable.time, time),
+        sql`${waitlistTable.status} = 'waiting'`,
+      ));
+    const position = Number(posResult?.cnt ?? 0) + 1;
+
+    const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000); // 2 hours
+    const [entry] = await db.insert(waitlistTable).values({
+      userId, restaurantId, date, time, partySize,
+      tableType: tableType ?? "indoor",
+      position, status: "waiting", expiresAt,
+    }).returning();
+
+    res.status(201).json(entry);
+  } catch (err) {
+    req.log.error({ err }, "Failed to join waitlist");
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// Get user's waitlist entries
+router.get("/waitlist", requireAuth, async (req, res) => {
+  try {
+    const userId = req.auth!.userId;
+    const entries = await db.select({
+      id: waitlistTable.id,
+      restaurantId: waitlistTable.restaurantId,
+      date: waitlistTable.date,
+      time: waitlistTable.time,
+      partySize: waitlistTable.partySize,
+      tableType: waitlistTable.tableType,
+      status: waitlistTable.status,
+      position: waitlistTable.position,
+      expiresAt: waitlistTable.expiresAt,
+      createdAt: waitlistTable.createdAt,
+      restaurantNameEn: restaurantsTable.nameEn,
+      restaurantNameAr: restaurantsTable.nameAr,
+    }).from(waitlistTable)
+      .innerJoin(restaurantsTable, eq(waitlistTable.restaurantId, restaurantsTable.id))
+      .where(eq(waitlistTable.userId, userId))
+      .orderBy(waitlistTable.createdAt);
+    res.json(entries);
+  } catch (err) {
+    req.log.error({ err }, "Failed to get waitlist" );
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// Leave waitlist
+router.delete("/waitlist/:id", requireAuth, async (req, res) => {
+  try {
+    const id = parseInt(req.params["id"] as string, 10);
+    const userId = req.auth!.userId;
+    const [entry] = await db.select({ userId: waitlistTable.userId }).from(waitlistTable).where(eq(waitlistTable.id, id));
+    if (!entry) return void res.status(404).json({ error: "not_found" });
+    if (entry.userId !== userId) return void res.status(403).json({ error: "forbidden" });
+    await db.delete(waitlistTable).where(eq(waitlistTable.id, id));
+    res.json({ success: true });
+  } catch (err) {
+    req.log.error({ err }, "Failed to leave waitlist");
+    res.status(500).json({ error: "internal_error" });
   }
 });
 

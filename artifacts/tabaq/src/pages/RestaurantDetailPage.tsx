@@ -264,7 +264,7 @@ function BookingSection({ restaurantId, restaurantNameEn, restaurantNameAr, comp
 
   const handleBook = () => {
     if (!user) return;
-    createBooking.mutate({ data: { restaurantId, date: dateKey, time: selectedTime, partySize, occasionId, specialRequests: specialRequests || undefined } });
+    createBooking.mutate({ data: { restaurantId, date: dateKey, time: selectedTime, partySize, tableType: tableType as any, occasionId, specialRequests: specialRequests || undefined } });
   };
 
   if (!user) {

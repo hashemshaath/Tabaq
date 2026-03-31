@@ -4,7 +4,7 @@ import { z } from "zod/v4";
 import { restaurantsTable } from "./restaurants";
 import { usersTable } from "./users";
 
-export const menuTypeEnum = pgEnum("menu_type", ["food", "drinks", "desserts", "set_menu", "buffet"]);
+export const menuTypeEnum = pgEnum("menu_type", ["food", "drinks", "desserts", "set_menu", "buffet", "catering", "home_kitchen"]);
 
 export const menusTable = pgTable("menus", {
   id: serial("id").primaryKey(),
@@ -33,8 +33,11 @@ export const dishesTable = pgTable("dishes", {
   descriptionEn: text("description_en"),
   descriptionAr: text("description_ar"),
   price: numeric("price", { precision: 10, scale: 2 }),
+  discountPercentage: numeric("discount_percentage", { precision: 5, scale: 2 }).default("0"),
   currency: text("currency").default("SAR").notNull(),
   imageUrl: text("image_url"),
+  galleryImages: jsonb("gallery_images").$type<string[]>().default([]),
+  videoUrl: text("video_url"),
   avgRating: numeric("avg_rating", { precision: 3, scale: 2 }).default("0").notNull(),
   reviewCount: integer("review_count").default(0).notNull(),
   popularityScore: numeric("popularity_score", { precision: 10, scale: 4 }).default("0").notNull(),
@@ -48,10 +51,30 @@ export const dishesTable = pgTable("dishes", {
   isHealthy: boolean("is_healthy").default(false).notNull(),
   isTabaqStar: boolean("is_tabaq_star").default(false).notNull(),
   isMostOrdered: boolean("is_most_ordered").default(false).notNull(),
+  isBestseller: boolean("is_bestseller").default(false).notNull(),
+  isChefChoice: boolean("is_chef_choice").default(false).notNull(),
+  isNewItem: boolean("is_new_item").default(false).notNull(),
   allergens: jsonb("allergens").$type<string[]>().default([]),
   spiceLevel: integer("spice_level").default(0),
   prepTimeMinutes: integer("prep_time_minutes"),
   calories: integer("calories"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const menuPackagesTable = pgTable("menu_packages", {
+  id: serial("id").primaryKey(),
+  menuId: integer("menu_id").notNull().references(() => menusTable.id),
+  nameEn: text("name_en").notNull(),
+  nameAr: text("name_ar").notNull(),
+  descriptionEn: text("description_en"),
+  descriptionAr: text("description_ar"),
+  pricePerPerson: numeric("price_per_person", { precision: 10, scale: 2 }).notNull(),
+  minGuests: integer("min_guests").default(10).notNull(),
+  maxGuests: integer("max_guests"),
+  currency: text("currency").default("SAR").notNull(),
+  imageUrl: text("image_url"),
+  includedDishes: jsonb("included_dishes").$type<Array<{ nameEn: string; nameAr: string; description?: string }>>().default([]),
+  isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -76,6 +99,7 @@ export const restaurantStoriesTable = pgTable("restaurant_stories", {
 export const insertMenuSchema = createInsertSchema(menusTable).omit({ id: true });
 export const insertMenuSectionSchema = createInsertSchema(menuSectionsTable).omit({ id: true });
 export const insertDishSchema = createInsertSchema(dishesTable).omit({ id: true });
+export const insertMenuPackageSchema = createInsertSchema(menuPackagesTable).omit({ id: true, createdAt: true });
 export const insertRestaurantStorySchema = createInsertSchema(restaurantStoriesTable).omit({ id: true, createdAt: true, approvedAt: true, viewCount: true, likeCount: true });
 
 export type InsertMenu = z.infer<typeof insertMenuSchema>;
@@ -84,5 +108,7 @@ export type InsertMenuSection = z.infer<typeof insertMenuSectionSchema>;
 export type MenuSection = typeof menuSectionsTable.$inferSelect;
 export type InsertDish = z.infer<typeof insertDishSchema>;
 export type Dish = typeof dishesTable.$inferSelect;
+export type InsertMenuPackage = z.infer<typeof insertMenuPackageSchema>;
+export type MenuPackage = typeof menuPackagesTable.$inferSelect;
 export type InsertRestaurantStory = z.infer<typeof insertRestaurantStorySchema>;
 export type RestaurantStory = typeof restaurantStoriesTable.$inferSelect;

@@ -81,6 +81,7 @@ export function Footer() {
                 { href: '/offers', en: 'Deals & Offers', ar: 'عروض وخصومات' },
                 { href: '/experiences', en: 'Food Experiences', ar: 'التجارب الغذائية' },
                 { href: '/collections', en: 'Curated Lists', ar: 'قوائم منتقاة' },
+                { href: '/blog', en: 'Food Blog', ar: 'مدونة الطعام' },
               ].map(link => (
                 <li key={link.href}>
                   <Link href={link.href} className="hover:text-primary transition-colors">

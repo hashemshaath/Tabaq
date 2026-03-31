@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'wouter';
-import { Star, Clock, Flame, Leaf, Wheat, AlertCircle, ChevronDown, ChevronUp, Zap, Plus, Minus, ShoppingBag, X, ArrowRight } from 'lucide-react';
+import { Star, Clock, Flame, Leaf, AlertCircle, ChevronDown, ChevronUp, Zap, Plus, Minus, ShoppingBag, X, ArrowRight, ChefHat, Sparkles, Tag } from 'lucide-react';
 import { useLanguage } from '@/hooks/use-language';
 import { useCart } from '@/context/CartContext';
 import { formatPrice } from '@/lib/utils';
@@ -15,6 +15,11 @@ type ExtendedDish = Dish & {
   allergens?: string[];
   spiceLevel?: number;
   prepTimeMinutes?: number;
+  isBestseller?: boolean;
+  isChefChoice?: boolean;
+  isNewItem?: boolean;
+  discountPercentage?: number;
+  galleryImages?: string[];
 };
 
 type MenuSection = {
@@ -209,11 +214,22 @@ function DishCard({
           <div className="flex-grow min-w-0">
             <div className="flex justify-between items-start gap-1">
               <h5 className="font-semibold text-foreground text-sm line-clamp-1 group-hover:text-primary transition-colors">{name}</h5>
-              {dish.price && (
-                <span className="text-primary font-bold text-sm shrink-0 ms-1">
-                  {formatPrice(dish.price, dish.currency, lang as 'en' | 'ar')}
-                </span>
-              )}
+              <div className="flex items-center gap-1 shrink-0 ms-1">
+                {(dish.discountPercentage ?? 0) > 0 && dish.price ? (
+                  <div className="text-end">
+                    <span className="text-primary font-bold text-sm">{formatPrice(dish.price * (1 - (dish.discountPercentage ?? 0) / 100), dish.currency, lang as 'en' | 'ar')}</span>
+                    <span className="text-muted-foreground line-through text-[10px] ms-1">{formatPrice(dish.price, dish.currency, lang as 'en' | 'ar')}</span>
+                  </div>
+                ) : dish.price ? (
+                  <span className="text-primary font-bold text-sm">{formatPrice(dish.price, dish.currency, lang as 'en' | 'ar')}</span>
+                ) : null}
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-1 mt-1">
+              {dish.isBestseller && <span className="text-[9px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-md font-bold flex items-center gap-0.5"><Zap className="w-2.5 h-2.5" />{t('Bestseller','الأكثر مبيعاً')}</span>}
+              {dish.isChefChoice && <span className="text-[9px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-md font-bold flex items-center gap-0.5"><ChefHat className="w-2.5 h-2.5" />{t("Chef's",'الشيف')}</span>}
+              {dish.isNewItem && <span className="text-[9px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-md font-bold flex items-center gap-0.5"><Sparkles className="w-2.5 h-2.5" />{t('New','جديد')}</span>}
+              {(dish.discountPercentage ?? 0) > 0 && <span className="text-[9px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded-md font-bold flex items-center gap-0.5"><Tag className="w-2.5 h-2.5" />{dish.discountPercentage}% {t('OFF','خصم')}</span>}
             </div>
             {desc && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{desc}</p>}
             <div className="flex flex-wrap items-center gap-2 mt-1.5">
@@ -257,10 +273,34 @@ function DishCard({
               {t('Tabaq Star', 'نجمة طبق')}
             </div>
           )}
-          {dish.isMostOrdered && !dish.isTabaqStar && (
+          {dish.isChefChoice && !dish.isTabaqStar && (
+            <div className="absolute top-2 start-2 bg-purple-600 text-white text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1">
+              <ChefHat className="w-3 h-3" />
+              {t("Chef's Choice", 'اختيار الشيف')}
+            </div>
+          )}
+          {dish.isBestseller && !dish.isTabaqStar && !dish.isChefChoice && (
+            <div className="absolute top-2 start-2 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1">
+              <Zap className="w-3 h-3 fill-current" />
+              {t('Bestseller', 'الأكثر مبيعاً')}
+            </div>
+          )}
+          {dish.isMostOrdered && !dish.isTabaqStar && !dish.isChefChoice && !dish.isBestseller && (
             <div className="absolute top-2 start-2 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1">
               <Zap className="w-3 h-3 fill-current" />
               {t('Most Ordered', 'الأكثر طلباً')}
+            </div>
+          )}
+          {dish.isNewItem && (
+            <div className="absolute top-2 end-2 bg-green-500 text-white text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1">
+              <Sparkles className="w-3 h-3" />
+              {t('New', 'جديد')}
+            </div>
+          )}
+          {(dish.discountPercentage ?? 0) > 0 && (
+            <div className="absolute bottom-10 start-2 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1">
+              <Tag className="w-3 h-3" />
+              {dish.discountPercentage}% {t('OFF', 'خصم')}
             </div>
           )}
           <div className="absolute bottom-2 start-2" onClick={e => e.preventDefault()}>

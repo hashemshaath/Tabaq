@@ -483,3 +483,37 @@ Rich mock data for all 6 new sections: MOCK_CHECK_INS (5 visits), MOCK_REVIEWS (
 - **"New Openings" section on HomePage** — 6-card grid between Featured Restaurants and Top-Rated rankings. Each card shows a pulsing "New / جديد" green badge, cuisine category, rating, and days since opening (e.g. "3d ago / منذ 3 يوم"). Mock data for: Bab Al Qasr (Riyadh), Ōkami Ramen (Riyadh), Saffron House (Riyadh), Cielo Terrace (Jeddah), Terroir Garden (Riyadh), The Black Pearl (Jeddah). Section uses `SectionHeader` with "Just Arrived / وصل حديثاً" badge. Data in `NEW_OPENINGS` const in `HomePage.tsx`.
 - **Chef Profile section in RestaurantDetailPage** — "Meet the Chef / تعرف على الشيف" card in the Overview tab, inserted after About and before Chef's Highlights. Shows chef photo, name (bilingual), title, specialty, bio (line-clamp-3), years experience, awards count, and Michelin stars (Award icons). `CHEF_DATA` record keyed by restaurant ID (IDs 1–5). Chefs: Abdullah Al-Ghamdi (Najd Village, 18yr), Nora Al-Rasheed (Lusin, 14yr, 1⭐), Kenji Watanabe (Sushi Sama, 20yr), Marcus Sinclair (Nobu, 22yr, 2⭐), Andrei Constantin (The Globe, 16yr, 1⭐). Requires `Award` from lucide-react (added to imports).
 - **"Pairs Well With" section in DishDetailPage** — 3-card grid before Reviews. Shows curated drink, side, and dessert pairings with color-coded category pills (blue=Drink, green=Side, amber=Dessert). Three rotating pairing sets (`DISH_PAIRING_SETS`) selected by `numericId % 3`. Pairings include: Saudi Coffee + Hummus + Umm Ali, Mint Lemonade + Mixed Salad + Baklava Trio, Rose Jallab + Stuffed Grape Leaves + Maamoul Cookies. Uses new `Sparkles` icon (added to imports).
+
+---
+
+## Session N — Spec Completion: Advanced Reservations, Blog Hub, Menu Badges, Leaderboard Profiles, Admin Menus
+
+### T001–T002: DB Schema + API Updates (previously completed)
+- `bookings.ts`: Added `tableType` enum (indoor/outdoor/vip/window_seat), `preOrderItems` jsonb, `waitlistTable`
+- `menus.ts`: Added `isBestseller`, `isChefChoice`, `isNewItem`, `discountPercentage`, `galleryImages` to dishes; added `catering`/`home_kitchen` menu types; added `menuPackagesTable`
+- `blog.ts`: New schema with `blogCategoriesTable`, `blogPostsTable`
+- API routes: menus.ts full CRUD, blog.ts full CRUD, bookings.ts waitlist + crowd prediction + suggested times
+
+### T003: Advanced Reservation (RestaurantDetailPage)
+- `tableType` is now passed to the `createBooking` mutation call
+- Table type selector UI (Indoor/Outdoor/VIP/Window) was already implemented in RestaurantDetailPage
+- Crowd prediction badges on time slots, waitlist join button — already implemented
+
+### T004: Enhanced Menu System
+- `MenuTab.tsx`: Added `isBestseller`, `isChefChoice`, `isNewItem`, `discountPercentage`, `galleryImages` to `ExtendedDish` type
+- New badge overlays in full card view: Chef's Choice (purple), Bestseller (red/primary), New (green), Discount % (red)
+- Compact card view: inline badge row below price
+- Discounted price display: shows sale price + strikethrough original
+- **Admin Panel**: New "Menu Management" tab — restaurant dropdown selector, collapsible menu/section/dish tree, inline "Add Dish" form with badge checkboxes (Bestseller/Chef's Choice/New/Discount %), delete buttons
+
+### T005: Blog & SEO Hub
+- `BlogPage.tsx`: Full bilingual blog listing with hero, category pill filter, search, featured 2-column grid, trending sidebar, tag cloud, newsletter CTA, category sidebar
+- `BlogDetailPage.tsx`: Full article view with breadcrumb, author bio card, table of contents sidebar, HTML content rendering via `dangerouslySetInnerHTML`, tag chips, share buttons (Facebook/X/Copy Link), reactions, related posts grid
+- Sample articles: 6 bilingual posts (Riyadh restaurants, Saudi coffee culture, chef interview, Jeddah waterfront, Ramadan guide, new openings)
+- Routes added to `App.tsx`: `/blog` → `BlogPage`, `/blog/:slug` → `BlogDetailPage`
+- Footer updated: "Food Blog / مدونة الطعام" link added
+
+### T006: Leaderboard + Profile Polish
+- Leaderboard API (`users.ts`): `username` now included in both all-time and period-based responses
+- `LeaderboardPage.tsx`: `username` mapped from API; top-3 cards and "Rising Explorers" list now have clickable avatars + names → `/user/:username`
+- PublicProfilePage social links (Instagram/X/TikTok/Snapchat/Website) were already implemented
