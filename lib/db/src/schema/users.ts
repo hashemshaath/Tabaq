@@ -25,6 +25,7 @@ export const usersTable = pgTable("users", {
   cityId: integer("city_id").references(() => citiesTable.id),
   isAdmin: boolean("is_admin").default(false).notNull(),
   isOwner: boolean("is_owner").default(false).notNull(),
+  accountType: text("account_type").default("basic").notNull(), // 'basic' | 'professional' | 'chef'
   coverPhotoUrl: text("cover_photo_url"),
   location: text("location"),
   instagramUrl: text("instagram_url"),

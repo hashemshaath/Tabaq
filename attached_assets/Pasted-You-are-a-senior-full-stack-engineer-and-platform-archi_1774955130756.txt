@@ -1,0 +1,144 @@
+You are a senior full-stack engineer and platform architect with extensive experience in social & food platforms.
+
+Your task is to **build a fully integrated system for the leaderboard, users, restaurants, services, and content** with real-data workflows, professional management, and full access control.
+
+========================
+
+1. LEADERBOARD INTEGRATION
+   ========================
+
+* `/leaderboard` page lists all users, chefs, and top contributors
+* Clicking any profile opens **full profile** on `/username`
+* All data is displayed, respecting privacy settings
+* Profiles include:
+
+  * Basic info (name, bio, account type)
+  * Visits
+  * Reviews & ratings
+  * Favorites
+  * Dishes (if professional)
+  * Activity feed
+  * Stories
+
+========================
+2. DATA CAPTURE & REAL EXPERIENCE
+=================================
+
+* Ensure **full real-data simulation**:
+
+  * Fill out profiles completely
+  * Upload images, cover photos
+  * Add reviews and ratings
+  * Test all interactions (follow, comment, story view)
+* Detect and log errors automatically
+* Track engagement metrics for each action
+
+========================
+3. RESTAURANT & SERVICE PROVIDER MANAGEMENT
+===========================================
+
+* Add new restaurants and service providers
+* Manage branches and locations
+* Assign managers and staff roles
+* Full CRUD for restaurants and branches
+* Assign access levels to users:
+
+  * Admin
+  * Manager
+  * Contributor
+  * Basic user
+* Set professional vs basic account types
+
+========================
+4. MENU & DISH MANAGEMENT
+=========================
+
+* Build **professional menu system** for all restaurants:
+
+  * Add categories (Starters, Main, Desserts, etc.)
+  * Add dishes with:
+
+    * Name
+    * Description
+    * Price
+    * Preparation time
+    * Calories
+    * Ratings
+    * Photos
+    * Awards / badges
+  * Edit, update, or remove items
+* Support multimedia (images/videos) per dish
+* Ensure menu is consistent across all sections and mobile-friendly
+
+========================
+5. PROFILE ACCESS & PRIVACY
+===========================
+
+* All users can see leaderboard profiles
+* Full profile pages accessible via `/username`
+* Privacy and visibility controls for sensitive data
+* Admin can override for testing or moderation
+
+========================
+6. UX & DESIGN
+==============
+
+* Premium, card-based layout
+* Smooth transitions
+* Clear hierarchy of information
+* Mobile responsive
+* Consistent style and font (IBM Plex Sans Arabic for Arabic sections)
+
+========================
+7. ADMIN & CONTROL PANEL
+========================
+
+* Full admin dashboard:
+
+  * Manage users and roles
+  * Assign account types
+  * Track performance & stats
+  * Review uploaded media and content
+  * Edit menus and dishes
+  * Manage branches and locations
+  * Monitor leaderboard activity
+  * Detect and log errors
+
+========================
+8. PERFORMANCE & TESTING
+========================
+
+* Test full user flows:
+
+  * Creating profiles
+  * Adding restaurants
+  * Filling menus
+  * Uploading images
+  * Checking leaderboard integration
+* Track errors and warnings
+* Optimize database queries for large-scale user and restaurant data
+* Ensure fast page loads and smooth interactions
+
+========================
+9. OUTPUT
+=========
+
+* Fully working production-ready code
+* Modular and scalable architecture
+* All features integrated and tested
+* Realistic data simulation for debugging and QA
+* `/leaderboard` fully functional with clickable profiles
+
+========================
+FINAL GOAL
+==========
+
+Create a **comprehensive, end-to-end food platform system** where:
+
+* All users and professionals have rich, accessible profiles
+* Leaderboard integrates seamlessly with profiles
+* Restaurants and service providers are fully manageable
+* Menus are professional, editable, and multimedia-rich
+* Admin panel controls all aspects with full oversight
+* Data capture is complete and realistic for QA/testing
+* UI/UX is premium, responsive, and consistent

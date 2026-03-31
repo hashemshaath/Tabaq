@@ -695,8 +695,12 @@ router.get("/me/restaurant", requireAuth, async (req, res) => {
 router.patch("/me/profile", requireAuth, async (req, res) => {
   try {
     const userId = req.auth!.userId;
-    const { nameEn, nameAr, email, bio, avatarUrl } = req.body as {
+    const { nameEn, nameAr, email, bio, avatarUrl, coverPhotoUrl, location,
+            instagramUrl, xUrl, tiktokUrl, snapchatUrl, websiteUrl, accountType } = req.body as {
       nameEn?: string; nameAr?: string; email?: string; bio?: string; avatarUrl?: string;
+      coverPhotoUrl?: string; location?: string;
+      instagramUrl?: string; xUrl?: string; tiktokUrl?: string; snapchatUrl?: string; websiteUrl?: string;
+      accountType?: string;
     };
 
     const updateData: Partial<typeof usersTable.$inferInsert> = { updatedAt: new Date() };
@@ -704,6 +708,16 @@ router.patch("/me/profile", requireAuth, async (req, res) => {
     if (nameAr !== undefined) updateData.nameAr = nameAr.trim() || null;
     if (bio !== undefined) updateData.bio = bio.trim() || null;
     if (avatarUrl !== undefined) updateData.avatarUrl = avatarUrl.trim() || null;
+    if (coverPhotoUrl !== undefined) updateData.coverPhotoUrl = coverPhotoUrl.trim() || null;
+    if (location !== undefined) updateData.location = location.trim() || null;
+    if (instagramUrl !== undefined) updateData.instagramUrl = instagramUrl.trim() || null;
+    if (xUrl !== undefined) updateData.xUrl = xUrl.trim() || null;
+    if (tiktokUrl !== undefined) updateData.tiktokUrl = tiktokUrl.trim() || null;
+    if (snapchatUrl !== undefined) updateData.snapchatUrl = snapchatUrl.trim() || null;
+    if (websiteUrl !== undefined) updateData.websiteUrl = websiteUrl.trim() || null;
+    if (accountType !== undefined && ['basic', 'professional', 'chef'].includes(accountType)) {
+      updateData.accountType = accountType;
+    }
     if (email !== undefined) {
       const emailLower = email.trim().toLowerCase();
       if (emailLower && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailLower)) {
