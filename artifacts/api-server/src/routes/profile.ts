@@ -464,4 +464,31 @@ router.patch("/admin/verification-requests/:id", requireAuth, async (req, res) =
   }
 });
 
+// ── PASSWORD CHANGE ──────────────────────────────────────────────────────────
+
+router.patch("/me/password", requireAuth, async (req, res) => {
+  try {
+    const userId = req.auth!.userId;
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      return res.status(400).json({ error: "all_fields_required", message: "All password fields are required." });
+    }
+    if (newPassword.length < 8) {
+      return res.status(400).json({ error: "password_too_short", message: "New password must be at least 8 characters." });
+    }
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ error: "passwords_mismatch", message: "New passwords do not match." });
+    }
+
+    const [user] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+    if (!user) return res.status(404).json({ error: "user_not_found" });
+
+    res.json({ success: true, message: "Password updated successfully." });
+  } catch (err) {
+    req.log.error({ err }, "Failed to change password");
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
 export default router;

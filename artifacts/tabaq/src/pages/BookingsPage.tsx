@@ -7,6 +7,7 @@ import { getAuthHeaders } from '@/lib/api';
 import {
   CalendarDays, Clock, Users, CheckCircle2, XCircle, AlertCircle,
   QrCode, ChevronDown, ChevronUp, MapPin, Sparkles, Utensils, Edit2, X,
+  Plus, Minus, ShoppingBag, ChevronRight,
 } from 'lucide-react';
 import { Link } from 'wouter';
 import { Button } from '@/components/ui/button';
@@ -447,6 +448,8 @@ function QuickBookPanel({
   const [submitting, setSubmitting] = useState(false);
   const [booked, setBooked] = useState(false);
   const [joinedWaitlist, setJoinedWaitlist] = useState(false);
+  const [preOrderQty, setPreOrderQty] = useState<Record<number, number>>({});
+  const [showPreOrder, setShowPreOrder] = useState(false);
 
   const dates = useMemo(() => getDatesAhead(14), []);
   const selectedDate = dates[dateIdx];
@@ -478,9 +481,52 @@ function QuickBookPanel({
     ? suggestedData.suggestions.filter((s: any) => s.available && (s.isRecommended || s.score >= 60)).slice(0, 5).map((s: any) => s.time)
     : ['19:00', '19:30', '20:00'];
 
+  const { data: menuData } = useQuery({
+    queryKey: ['restaurant-menus-preorder', restaurantId],
+    queryFn: async () => {
+      if (!restaurantId) return null;
+      const r = await fetch(`${apiBase}/api/restaurants/${restaurantId}/menus`);
+      return r.ok ? r.json() : null;
+    },
+    enabled: !!restaurantId,
+    staleTime: 300000,
+  });
+
+  const preOrderDishes = useMemo(() => {
+    if (!menuData) return [];
+    const dishes: Array<{ id: number; nameEn: string; nameAr: string; price: number | null; imageUrl: string | null; isBestseller?: boolean; isChefChoice?: boolean }> = [];
+    for (const menu of menuData) {
+      if (menu.type === 'catering' || menu.type === 'home_kitchen') continue;
+      for (const section of (menu.sections ?? [])) {
+        for (const dish of (section.items ?? [])) {
+          dishes.push(dish);
+        }
+      }
+    }
+    const sorted = [...dishes].sort((a, b) => {
+      if (a.isBestseller && !b.isBestseller) return -1;
+      if (b.isBestseller && !a.isBestseller) return 1;
+      if (a.isChefChoice && !b.isChefChoice) return -1;
+      if (b.isChefChoice && !a.isChefChoice) return 1;
+      return 0;
+    });
+    return sorted.slice(0, 10);
+  }, [menuData]);
+
+  const preOrderTotal = useMemo(() => {
+    return Object.entries(preOrderQty).reduce((acc, [id, qty]) => {
+      const dish = preOrderDishes.find(d => d.id === Number(id));
+      if (dish && dish.price && qty > 0) acc += Number(dish.price) * qty;
+      return acc;
+    }, 0);
+  }, [preOrderQty, preOrderDishes]);
+
   const handleBook = async () => {
     if (!restaurantId || !time) return;
     setSubmitting(true);
+    const selectedPreOrder = preOrderDishes
+      .filter(d => (preOrderQty[d.id] ?? 0) > 0)
+      .map(d => ({ dishId: d.id, name: d.nameEn, quantity: preOrderQty[d.id], price: Number(d.price ?? 0) }));
     try {
       const r = await fetch(`${apiBase}/api/bookings`, {
         method: 'POST',
@@ -492,6 +538,7 @@ function QuickBookPanel({
           partySize,
           tableType,
           specialRequests: specialRequests || undefined,
+          preOrderItems: selectedPreOrder.length > 0 ? selectedPreOrder : undefined,
         }),
       });
       if (r.ok) { setBooked(true); setTimeout(() => { onBooked(); onClose(); }, 1800); }
@@ -684,6 +731,82 @@ function QuickBookPanel({
             </div>
           )}
         </div>
+
+        {/* Pre-order Food Section */}
+        {restaurantId && time && preOrderDishes.length > 0 && (
+          <div className="border border-border rounded-2xl overflow-hidden">
+            <button
+              onClick={() => setShowPreOrder(v => !v)}
+              className="w-full flex items-center justify-between px-4 py-3 bg-secondary/40 hover:bg-secondary/60 transition-colors text-sm font-semibold"
+            >
+              <div className="flex items-center gap-2">
+                <ShoppingBag className="w-4 h-4 text-primary" />
+                <span>{t('Pre-order Food (optional)', 'طلب طعام مسبق (اختياري)')}</span>
+                {Object.values(preOrderQty).some(q => q > 0) && (
+                  <span className="bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full">
+                    {Object.values(preOrderQty).filter(q => q > 0).reduce((a, b) => a + b, 0)} {t('items', 'عناصر')}
+                  </span>
+                )}
+              </div>
+              {showPreOrder ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+            </button>
+            {showPreOrder && (
+              <div className="divide-y divide-border/50">
+                <p className="px-4 py-2 text-[11px] text-muted-foreground bg-muted/30">
+                  {t('Add items to enjoy when you arrive — we will have them ready.', 'أضف عناصر لتستمتع بها عند وصولك — سنجهزها لك مسبقاً.')}
+                </p>
+                {preOrderDishes.map(dish => {
+                  const qty = preOrderQty[dish.id] ?? 0;
+                  const dname = lang === 'ar' ? dish.nameAr : dish.nameEn;
+                  return (
+                    <div key={dish.id} className="flex items-center gap-3 px-4 py-3 hover:bg-accent/20 transition-colors">
+                      {dish.imageUrl ? (
+                        <img src={dish.imageUrl} alt={dname} className="w-12 h-12 rounded-xl object-cover shrink-0 border border-border/40" />
+                      ) : (
+                        <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center shrink-0">
+                          <Utensils className="w-5 h-5 text-muted-foreground/40" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-foreground line-clamp-1">{dname}</p>
+                        {dish.price && (
+                          <p className="text-xs text-primary font-bold mt-0.5">
+                            {dish.price} {t('SAR', 'ر.س')}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {qty > 0 ? (
+                          <>
+                            <button
+                              onClick={() => setPreOrderQty(q => ({ ...q, [dish.id]: Math.max(0, (q[dish.id] ?? 0) - 1) }))}
+                              className="w-7 h-7 rounded-full bg-secondary border border-border flex items-center justify-center hover:bg-destructive/10 transition-colors"
+                            >
+                              <Minus className="w-3 h-3" />
+                            </button>
+                            <span className="text-sm font-bold w-5 text-center tabular-nums">{qty}</span>
+                          </>
+                        ) : null}
+                        <button
+                          onClick={() => setPreOrderQty(q => ({ ...q, [dish.id]: (q[dish.id] ?? 0) + 1 }))}
+                          className="w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:bg-primary/90 transition-all hover:scale-110"
+                        >
+                          <Plus className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+                {preOrderTotal > 0 && (
+                  <div className="flex items-center justify-between px-4 py-3 bg-primary/5">
+                    <span className="text-sm font-semibold text-foreground">{t('Pre-order Total', 'إجمالي الطلب المسبق')}</span>
+                    <span className="text-base font-bold text-primary">{preOrderTotal.toFixed(0)} {t('SAR', 'ر.س')}</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Actions */}
         <div className="pt-2 space-y-2">

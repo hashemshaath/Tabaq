@@ -321,23 +321,6 @@ export function OrderTrackingPage() {
             })}
           </div>
 
-          {/* Dev: progress simulation buttons */}
-          {!isDelivered && (
-            <div className="mt-2 pt-4 border-t border-border">
-              <p className="text-[10px] text-muted-foreground mb-2 text-center">Simulate progress</p>
-              <div className="flex gap-2 justify-center">
-                {STAGES.filter((_, i) => i !== stageIdx).map(s => (
-                  <button
-                    key={s.key}
-                    onClick={() => setStage(s.key)}
-                    className="text-[10px] px-2.5 py-1 rounded-lg bg-secondary text-muted-foreground hover:bg-secondary/80 hover:text-foreground transition-colors"
-                  >
-                    {lang === 'ar' ? s.labelAr : s.labelEn}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Driver Card — only for delivery orders in transit */}

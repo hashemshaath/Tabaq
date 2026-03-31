@@ -575,3 +575,37 @@ Rich mock data for all 6 new sections: MOCK_CHECK_INS (5 visits), MOCK_REVIEWS (
 
 ### Blog Routes in DB (11 posts)
 - `top-10-fine-dining-riyadh-2026`, `saudi-coffee-culture-guide`, `chef-kareem-interview-2026`, `explore-jeddah-waterfront-dining`, `ramadan-iftar-top-spots`, `new-restaurant-openings-q1-2026`, `riyadh-hidden-gems-2026`, `best-street-food-jeddah`, `vegan-friendly-restaurants-saudi`, `halal-fine-dining-comparison`, `cooking-classes-riyadh` — all `status='published'`
+
+---
+
+## Session 13 — Spec Audit & Final Feature Gaps
+
+### Confirmed Already Implemented (T001–T006 audit)
+- **DB Schema**: `tableTypeEnum`, `waitlistStatusEnum`, `waitlistTable`, `bookingsTable.tableType`, `bookingsTable.preOrderItems`, `menuTypeEnum` (catering/home_kitchen), `menuPackagesTable`, dish flags (`isBestseller`, `isChefChoice`, `isNewItem`, `discountPercentage`, `galleryImages`, `videoUrl`), full blog schema — ALL in place
+- **API Routes**: crowd-prediction, suggested-times, waitlist CRUD, blog CRUD, admin menus CRUD (menus/sections/dishes/packages) — ALL in place
+- **BookingsPage**: Table type cards, crowd prediction, suggested times, waitlist join — ALL done
+- **MenuTab**: Bestseller/Chef's Choice/New/Discount badges — ALL done with visual overlays on both compact and standard cards
+- **AdminPanelPage**: Menu Management tab with full CRUD for menus/sections/dishes — done
+- **CateringPackagesSection** in MenuTab.tsx: already rendering packages for catering/buffet menus at line 602
+- **LeaderboardPage**: Profile links via `/${entry.username}` on all user cards — done
+- **PublicProfilePage**: Social media icons (Instagram, TikTok, Snapchat, Website) — done
+- **Sitemap link**: `<link rel="sitemap" href="/api/sitemap.xml">` in `index.html` — done
+
+### New: Pre-order Food in BookingsPage (QuickBookPanel)
+- Added `preOrderQty` state (`Record<number, number>`) + `showPreOrder` toggle state
+- Added `useQuery` fetching `GET /api/restaurants/:id/menus` → extracts up to 10 dishes (skips catering/home_kitchen), sorted bestsellers/chef's choice first
+- `preOrderTotal` computed from qty × price
+- Collapsible "Pre-order Food (optional)" panel appears when restaurant + time selected
+  - Shows dish image, name (bilingual), price, and +/- counter per dish
+  - Item count badge on collapsed header when items selected
+  - Running total bar at bottom of expanded panel
+- `handleBook` now passes `preOrderItems: [{dishId, name, quantity, price}]` to `POST /api/bookings`
+
+### New: Gallery Images in MenuTab Dish Cards
+- Added `Camera`, `ChevronLeft`, `ChevronRight` to lucide imports
+- Standard (non-compact) dish card now shows:
+  - Camera icon + count badge on the main image (bottom-right) when `galleryImages.length > 0`
+  - Thumbnail strip below the image (4 thumbnails + "+N more" button)
+  - Clicking any thumbnail opens a full lightbox modal (fixed overlay, prev/next navigation, close button, counter)
+- Lightbox renders outside the `<Link>` wrapper using `<>` fragment to avoid navigation conflicts
+- Works with `e.preventDefault()` + `e.stopPropagation()` pattern consistent with existing CounterButton

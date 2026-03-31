@@ -137,6 +137,48 @@ export function AccountSettingsPage() {
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  const [pwForm, setPwForm] = useState({ current: '', newPw: '', confirm: '' });
+  const [pwError, setPwError] = useState<string | null>(null);
+  const [pwSuccess, setPwSuccess] = useState(false);
+  const [pwLoading, setPwLoading] = useState(false);
+
+  const handlePasswordChange = async () => {
+    setPwError(null);
+    setPwSuccess(false);
+    if (!pwForm.current || !pwForm.newPw || !pwForm.confirm) {
+      setPwError(t('Please fill in all password fields.', 'يرجى ملء جميع حقول كلمة المرور.'));
+      return;
+    }
+    if (pwForm.newPw.length < 8) {
+      setPwError(t('New password must be at least 8 characters.', 'يجب أن تتكون كلمة المرور الجديدة من 8 أحرف على الأقل.'));
+      return;
+    }
+    if (pwForm.newPw !== pwForm.confirm) {
+      setPwError(t('New passwords do not match.', 'كلمتا المرور الجديدتان غير متطابقتين.'));
+      return;
+    }
+    setPwLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/me/password`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({ currentPassword: pwForm.current, newPassword: pwForm.newPw, confirmPassword: pwForm.confirm }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setPwError(data.message || t('Failed to update password.', 'فشل تحديث كلمة المرور.'));
+      } else {
+        setPwSuccess(true);
+        setPwForm({ current: '', newPw: '', confirm: '' });
+        setTimeout(() => setPwSuccess(false), 3000);
+      }
+    } catch {
+      setPwError(t('Network error. Please try again.', 'خطأ في الشبكة. يرجى المحاولة مجدداً.'));
+    } finally {
+      setPwLoading(false);
+    }
+  };
+
   const [privacy, setPrivacy] = useState<PrivacySettings>({
     profileVisibility: 'public',
     visitsVisibility: 'public',
@@ -450,18 +492,42 @@ export function AccountSettingsPage() {
           <div className="space-y-4">
             <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
               <h3 className="font-bold text-sm">{t('Change Password', 'تغيير كلمة المرور')}</h3>
-              {[
-                { label: t('Current Password', 'كلمة المرور الحالية'),   placeholder: '••••••••' },
-                { label: t('New Password', 'كلمة المرور الجديدة'),        placeholder: '8+ characters' },
-                { label: t('Confirm New Password', 'تأكيد كلمة المرور'), placeholder: '••••••••' },
-              ].map(f => (
-                <div key={f.label}>
-                  <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">{f.label}</label>
-                  <input type="password" placeholder={f.placeholder}
-                    className="w-full border border-border rounded-xl px-3 py-2.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/20" />
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">{t('Current Password', 'كلمة المرور الحالية')}</label>
+                <input type="password" placeholder="••••••••" value={pwForm.current}
+                  onChange={e => setPwForm(f => ({ ...f, current: e.target.value }))}
+                  className="w-full border border-border rounded-xl px-3 py-2.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/20" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">{t('New Password', 'كلمة المرور الجديدة')}</label>
+                <input type="password" placeholder={t('8+ characters', '8 أحرف على الأقل')} value={pwForm.newPw}
+                  onChange={e => setPwForm(f => ({ ...f, newPw: e.target.value }))}
+                  className="w-full border border-border rounded-xl px-3 py-2.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/20" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">{t('Confirm New Password', 'تأكيد كلمة المرور')}</label>
+                <input type="password" placeholder="••••••••" value={pwForm.confirm}
+                  onChange={e => setPwForm(f => ({ ...f, confirm: e.target.value }))}
+                  className="w-full border border-border rounded-xl px-3 py-2.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/20" />
+              </div>
+              {pwError && (
+                <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-xl text-xs text-destructive font-medium">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  {pwError}
                 </div>
-              ))}
-              <Button className="w-full rounded-xl">{t('Update Password', 'تحديث كلمة المرور')}</Button>
+              )}
+              {pwSuccess && (
+                <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-700 font-medium">
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  {t('Password updated successfully!', 'تم تحديث كلمة المرور بنجاح!')}
+                </div>
+              )}
+              <Button className="w-full rounded-xl" onClick={handlePasswordChange} disabled={pwLoading}>
+                {pwLoading
+                  ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin me-2" />{t('Updating...', 'جارٍ التحديث...')}</>
+                  : t('Update Password', 'تحديث كلمة المرور')
+                }
+              </Button>
             </div>
 
             <div className="bg-card border border-border rounded-2xl p-5 space-y-4">

@@ -527,8 +527,17 @@ export function ChefDetailPage() {
                 <h2 className="text-xl font-extrabold text-foreground">{t('Signature Dishes', 'الأطباق المميزة')}</h2>
                 {chef.signatureDishes.length === 0 ? (
                   <div className="text-center py-16 bg-card border border-border/60 rounded-3xl">
-                    <Utensils className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
-                    <p className="text-muted-foreground">{t('Dishes coming soon.', 'الأطباق قادمة قريباً.')}</p>
+                    <Utensils className="w-12 h-12 text-muted-foreground/30 mx-auto mb-6" />
+                    <p className="font-bold text-foreground mb-1">{t('No signature dishes listed yet', 'لا توجد أطباق مميزة مدرجة بعد')}</p>
+                    <p className="text-muted-foreground text-sm mb-6">{t("Visit the chef's restaurant to explore the full menu.", 'قم بزيارة مطعم الشيف لاستعراض القائمة الكاملة.')}</p>
+                    {chef.restaurantId && (
+                      <Link href={`/restaurants/${chef.restaurantId}`}>
+                        <button className="inline-flex items-center gap-2 bg-primary text-white font-semibold px-5 py-2.5 rounded-xl text-sm hover:bg-primary/90 transition-colors">
+                          <ExternalLink className="w-4 h-4" />
+                          {t('View Restaurant Menu', 'عرض قائمة المطعم')}
+                        </button>
+                      </Link>
+                    )}
                   </div>
                 ) : (
                   chef.signatureDishes.map((dish, i) => (
@@ -573,8 +582,9 @@ export function ChefDetailPage() {
                 <h2 className="text-xl font-extrabold text-foreground mb-6">{t('Career Timeline', 'المسيرة المهنية')}</h2>
                 {chef.timeline.length === 0 ? (
                   <div className="text-center py-16 bg-card border border-border/60 rounded-3xl">
-                    <Clock className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
-                    <p className="text-muted-foreground">{t('Timeline coming soon.', 'المسيرة قادمة قريباً.')}</p>
+                    <Clock className="w-12 h-12 text-muted-foreground/30 mx-auto mb-6" />
+                    <p className="font-bold text-foreground mb-1">{t('Career history not available', 'السيرة المهنية غير متاحة')}</p>
+                    <p className="text-muted-foreground text-sm">{t("This chef's career milestones haven't been added yet.", 'لم يتم إضافة مراحل المسيرة المهنية لهذا الشيف بعد.')}</p>
                   </div>
                 ) : (
                   <div className="relative">

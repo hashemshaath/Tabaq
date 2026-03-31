@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'wouter';
-import { Star, Clock, Flame, Leaf, AlertCircle, ChevronDown, ChevronUp, Zap, Plus, Minus, ShoppingBag, X, ArrowRight, ChefHat, Sparkles, Tag, Users, Package } from 'lucide-react';
+import { Star, Clock, Flame, Leaf, AlertCircle, ChevronDown, ChevronUp, Zap, Plus, Minus, ShoppingBag, X, ArrowRight, ChefHat, Sparkles, Tag, Users, Package, Camera, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useLanguage } from '@/hooks/use-language';
 import { useCart } from '@/context/CartContext';
 import { formatPrice } from '@/lib/utils';
@@ -186,6 +186,9 @@ function DishCard({
   const name = lang === 'ar' ? dish.nameAr : dish.nameEn;
   const desc = lang === 'ar' ? dish.descriptionAr : dish.descriptionEn;
   const fallbackImg = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300&h=300&fit=crop';
+  const [lightboxImg, setLightboxImg] = useState<string | null>(null);
+  const [lightboxIdx, setLightboxIdx] = useState(0);
+  const gallery = dish.galleryImages && dish.galleryImages.length > 0 ? dish.galleryImages : [];
 
   const CounterButton = ({ size = 'md' }: { size?: 'sm' | 'md' }) => {
     const base = size === 'sm' ? 'w-6 h-6 text-[11px]' : 'w-7 h-7 text-xs';
@@ -271,76 +274,134 @@ function DishCard({
   }
 
   return (
-    <Link href={`/dishes/${dish.id}`}>
-      <div className="group cursor-pointer rounded-2xl border border-border/60 hover:border-primary/30 hover:shadow-md transition-all overflow-hidden bg-card">
-        <div className="relative aspect-[4/3] bg-muted overflow-hidden">
-          <img
-            src={dish.imageUrl || fallbackImg}
-            alt={name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          />
-          {dish.price && (
-            <div className="absolute bottom-2 end-2 bg-black/70 backdrop-blur-sm text-white text-sm font-bold px-2.5 py-1 rounded-xl">
-              {formatPrice(dish.price, dish.currency, lang as 'en' | 'ar')}
-            </div>
-          )}
-          {dish.isTabaqStar && (
-            <div className="absolute top-2 start-2 bg-amber-500 text-white text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1">
-              <Star className="w-3 h-3 fill-white" />
-              {t('Tabaq Star', 'نجمة طبق')}
-            </div>
-          )}
-          {dish.isChefChoice && !dish.isTabaqStar && (
-            <div className="absolute top-2 start-2 bg-purple-600 text-white text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1">
-              <ChefHat className="w-3 h-3" />
-              {t("Chef's Choice", 'اختيار الشيف')}
-            </div>
-          )}
-          {dish.isBestseller && !dish.isTabaqStar && !dish.isChefChoice && (
-            <div className="absolute top-2 start-2 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1">
-              <Zap className="w-3 h-3 fill-current" />
-              {t('Bestseller', 'الأكثر مبيعاً')}
-            </div>
-          )}
-          {dish.isMostOrdered && !dish.isTabaqStar && !dish.isChefChoice && !dish.isBestseller && (
-            <div className="absolute top-2 start-2 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1">
-              <Zap className="w-3 h-3 fill-current" />
-              {t('Most Ordered', 'الأكثر طلباً')}
-            </div>
-          )}
-          {dish.isNewItem && (
-            <div className="absolute top-2 end-2 bg-green-500 text-white text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1">
-              <Sparkles className="w-3 h-3" />
-              {t('New', 'جديد')}
-            </div>
-          )}
-          {(dish.discountPercentage ?? 0) > 0 && (
-            <div className="absolute bottom-10 start-2 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1">
-              <Tag className="w-3 h-3" />
-              {dish.discountPercentage}% {t('OFF', 'خصم')}
-            </div>
-          )}
-          <div className="absolute bottom-2 start-2" onClick={e => e.preventDefault()}>
-            <CounterButton />
-          </div>
+    <>
+      {lightboxImg && (
+        <div
+          className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4"
+          onClick={() => setLightboxImg(null)}
+        >
+          <button
+            onClick={e => { e.stopPropagation(); const ni = (lightboxIdx - 1 + gallery.length) % gallery.length; setLightboxIdx(ni); setLightboxImg(gallery[ni]); }}
+            className="absolute start-4 top-1/2 -translate-y-1/2 p-3 text-white bg-white/20 rounded-full hover:bg-white/30 transition-colors"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <img src={lightboxImg} alt={name ?? ''} className="max-h-[80vh] max-w-full object-contain rounded-2xl shadow-2xl" onClick={e => e.stopPropagation()} />
+          <button
+            onClick={e => { e.stopPropagation(); const ni = (lightboxIdx + 1) % gallery.length; setLightboxIdx(ni); setLightboxImg(gallery[ni]); }}
+            className="absolute end-4 top-1/2 -translate-y-1/2 p-3 text-white bg-white/20 rounded-full hover:bg-white/30 transition-colors"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() => setLightboxImg(null)}
+            className="absolute top-4 end-4 p-2 text-white bg-white/20 rounded-full hover:bg-white/30 transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+          <div className="absolute bottom-4 text-white/60 text-sm font-medium">{lightboxIdx + 1} / {gallery.length}</div>
         </div>
-        <div className="p-3">
-          <h5 className="font-semibold text-foreground text-sm line-clamp-1 group-hover:text-primary transition-colors">{name}</h5>
-          {desc && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{desc}</p>}
-          <div className="flex items-center gap-3 mt-2">
-            {dish.calories && <span className="text-[10px] text-muted-foreground">{dish.calories} {t('kcal', 'سعرة')}</span>}
-            {dish.prepTimeMinutes && (
-              <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                <Clock className="w-3 h-3" />{dish.prepTimeMinutes}{t('m', 'د')}
-              </span>
+      )}
+      <Link href={`/dishes/${dish.id}`}>
+        <div className="group cursor-pointer rounded-2xl border border-border/60 hover:border-primary/30 hover:shadow-md transition-all overflow-hidden bg-card">
+          <div className="relative aspect-[4/3] bg-muted overflow-hidden">
+            <img
+              src={dish.imageUrl || fallbackImg}
+              alt={name}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            />
+            {dish.price && (
+              <div className="absolute bottom-2 end-2 bg-black/70 backdrop-blur-sm text-white text-sm font-bold px-2.5 py-1 rounded-xl">
+                {formatPrice(dish.price, dish.currency, lang as 'en' | 'ar')}
+              </div>
             )}
-            <SpiceIndicator level={dish.spiceLevel ?? 0} />
+            {dish.isTabaqStar && (
+              <div className="absolute top-2 start-2 bg-amber-500 text-white text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1">
+                <Star className="w-3 h-3 fill-white" />
+                {t('Tabaq Star', 'نجمة طبق')}
+              </div>
+            )}
+            {dish.isChefChoice && !dish.isTabaqStar && (
+              <div className="absolute top-2 start-2 bg-purple-600 text-white text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1">
+                <ChefHat className="w-3 h-3" />
+                {t("Chef's Choice", 'اختيار الشيف')}
+              </div>
+            )}
+            {dish.isBestseller && !dish.isTabaqStar && !dish.isChefChoice && (
+              <div className="absolute top-2 start-2 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1">
+                <Zap className="w-3 h-3 fill-current" />
+                {t('Bestseller', 'الأكثر مبيعاً')}
+              </div>
+            )}
+            {dish.isMostOrdered && !dish.isTabaqStar && !dish.isChefChoice && !dish.isBestseller && (
+              <div className="absolute top-2 start-2 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1">
+                <Zap className="w-3 h-3 fill-current" />
+                {t('Most Ordered', 'الأكثر طلباً')}
+              </div>
+            )}
+            {dish.isNewItem && (
+              <div className="absolute top-2 end-2 bg-green-500 text-white text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1">
+                <Sparkles className="w-3 h-3" />
+                {t('New', 'جديد')}
+              </div>
+            )}
+            {(dish.discountPercentage ?? 0) > 0 && (
+              <div className="absolute bottom-10 start-2 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1">
+                <Tag className="w-3 h-3" />
+                {dish.discountPercentage}% {t('OFF', 'خصم')}
+              </div>
+            )}
+            <div className="absolute bottom-2 start-2" onClick={e => e.preventDefault()}>
+              <CounterButton />
+            </div>
+            {gallery.length > 0 && (
+              <div className="absolute bottom-2 end-2 bg-black/60 backdrop-blur-sm text-white text-[10px] font-semibold px-2 py-1 rounded-lg flex items-center gap-1">
+                <Camera className="w-2.5 h-2.5" />{gallery.length}
+              </div>
+            )}
           </div>
-          <DietaryBadges dish={dish} lang={lang} />
-          <AllergenChips allergens={dish.allergens ?? []} lang={lang} />
+          {gallery.length > 0 && (
+            <div className="flex items-center gap-2 px-3 py-2 border-t border-border/30 bg-muted/20" onClick={e => e.preventDefault()}>
+              <Camera className="w-3 h-3 text-muted-foreground shrink-0" />
+              <div className="flex gap-1.5 overflow-x-auto hide-scrollbar">
+                {gallery.slice(0, 4).map((img, i) => (
+                  <button
+                    key={i}
+                    onClick={e => { e.preventDefault(); e.stopPropagation(); setLightboxIdx(i); setLightboxImg(img); }}
+                    className="w-9 h-9 rounded-lg overflow-hidden border border-border flex-shrink-0 hover:ring-2 hover:ring-primary/50 transition-all"
+                  >
+                    <img src={img} alt="" className="w-full h-full object-cover" />
+                  </button>
+                ))}
+                {gallery.length > 4 && (
+                  <button
+                    onClick={e => { e.preventDefault(); e.stopPropagation(); setLightboxIdx(4); setLightboxImg(gallery[4]); }}
+                    className="w-9 h-9 rounded-lg bg-muted border border-border flex items-center justify-center text-[10px] font-bold text-muted-foreground flex-shrink-0 hover:bg-secondary transition-colors"
+                  >
+                    +{gallery.length - 4}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+          <div className="p-3">
+            <h5 className="font-semibold text-foreground text-sm line-clamp-1 group-hover:text-primary transition-colors">{name}</h5>
+            {desc && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{desc}</p>}
+            <div className="flex items-center gap-3 mt-2">
+              {dish.calories && <span className="text-[10px] text-muted-foreground">{dish.calories} {t('kcal', 'سعرة')}</span>}
+              {dish.prepTimeMinutes && (
+                <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                  <Clock className="w-3 h-3" />{dish.prepTimeMinutes}{t('m', 'د')}
+                </span>
+              )}
+              <SpiceIndicator level={dish.spiceLevel ?? 0} />
+            </div>
+            <DietaryBadges dish={dish} lang={lang} />
+            <AllergenChips allergens={dish.allergens ?? []} lang={lang} />
+          </div>
         </div>
-      </div>
-    </Link>
+      </Link>
+    </>
   );
 }
 

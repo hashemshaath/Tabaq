@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useLanguage } from '@/hooks/use-language';
 import { usePageMeta } from '@/hooks/use-page-meta';
-import { Link } from 'wouter';
+import { Link, useLocation } from 'wouter';
+import { useAuth } from '@/context/AuthContext';
 import {
   Crown, Star, Check, Zap, Shield, Gift, ChefHat, CalendarDays,
   Tag, Users, Award, ChevronDown, ChevronRight, Sparkles, X,
-  BadgePercent, Ticket, Clock, Globe, Heart, MessageSquare,
+  BadgePercent, Ticket, Clock, Globe, Heart, MessageSquare, CheckCircle2,
+  Loader2,
 } from 'lucide-react';
 
 type PlanId = 'explorer' | 'gourmet' | 'elite';
@@ -135,6 +137,25 @@ function FeatureValue({ val, planId }: { val: boolean | string; planId: PlanId }
 
 export function TabaqGoldPage() {
   const { t, lang } = useLanguage();
+  const { user } = useAuth();
+  const [, setLocation] = useLocation();
+  const [upgradeModal, setUpgradeModal] = useState<{ plan: Plan; billing: BillingCycle } | null>(null);
+  const [upgrading, setUpgrading] = useState(false);
+  const [upgraded, setUpgraded] = useState(false);
+
+  function handleUpgrade(plan: Plan, currentBilling: BillingCycle) {
+    if (!user) { setLocation('/sign-in'); return; }
+    setUpgraded(false);
+    setUpgradeModal({ plan, billing: currentBilling });
+  }
+
+  async function confirmUpgrade() {
+    if (!upgradeModal) return;
+    setUpgrading(true);
+    await new Promise(r => setTimeout(r, 1400));
+    setUpgrading(false);
+    setUpgraded(true);
+  }
   const [billing, setBilling] = useState<BillingCycle>('annual');
 
   usePageMeta({
@@ -311,7 +332,11 @@ export function TabaqGoldPage() {
 
                 {/* CTA */}
                 <div className="px-6 pb-6">
-                  <button className={`w-full py-3 rounded-xl text-sm font-bold transition-all active:scale-[0.98] ${plan.ctaBg} ${plan.id === 'explorer' ? 'cursor-default opacity-60' : 'cursor-pointer'}`}>
+                  <button
+                    className={`w-full py-3 rounded-xl text-sm font-bold transition-all active:scale-[0.98] ${plan.ctaBg} ${plan.id === 'explorer' ? 'cursor-default opacity-60' : 'cursor-pointer hover:opacity-90'}`}
+                    onClick={() => plan.id !== 'explorer' ? handleUpgrade(plan, billing) : undefined}
+                    disabled={plan.id === 'explorer'}
+                  >
                     {lang === 'ar' ? plan.ctaLabelAr : plan.ctaLabelEn}
                   </button>
                 </div>
@@ -392,6 +417,67 @@ export function TabaqGoldPage() {
         </div>
       </section>
 
+      {/* ── UPGRADE MODAL ────────────────────────────────────────── */}
+      {upgradeModal && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => { if (!upgrading) { setUpgradeModal(null); setUpgraded(false); } }}>
+          <div className="bg-card rounded-3xl border border-border shadow-2xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
+            {!upgraded ? (
+              <>
+                <div className="flex items-center justify-between mb-5">
+                  <h3 className="font-black text-lg text-foreground">{t('Confirm Upgrade', 'تأكيد الترقية')}</h3>
+                  {!upgrading && (
+                    <button onClick={() => setUpgradeModal(null)} className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center hover:bg-secondary/80 transition-colors">
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+                <div className={`rounded-2xl border-2 p-4 mb-5 ${upgradeModal.plan.borderColor} ${upgradeModal.plan.cardBg}`}>
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${upgradeModal.plan.badgeBg} ${upgradeModal.plan.badgeColor}`}>
+                      {upgradeModal.plan.icon}
+                    </div>
+                    <div>
+                      <p className="font-black text-foreground">{lang === 'ar' ? upgradeModal.plan.nameAr : upgradeModal.plan.nameEn}</p>
+                      <p className="text-xs text-muted-foreground">{lang === 'ar' ? upgradeModal.plan.descAr : upgradeModal.plan.descEn}</p>
+                    </div>
+                    <div className="ms-auto text-end">
+                      <p className="font-black text-lg text-foreground">
+                        {upgradeModal.plan.currency} {upgradeModal.billing === 'annual' ? upgradeModal.plan.annualPrice : upgradeModal.plan.monthlyPrice}
+                      </p>
+                      <p className="text-xs text-muted-foreground">/{t('month', 'شهر')}</p>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground mb-5">
+                  {t('Payment integration is coming soon. By confirming, our team will reach out to complete your upgrade within 24 hours.', 'تكامل الدفع قادم قريباً. بالتأكيد، سيتواصل فريقنا لإتمام ترقيتك خلال 24 ساعة.')}
+                </p>
+                <div className="flex gap-3">
+                  <button onClick={() => setUpgradeModal(null)} disabled={upgrading} className="flex-1 py-3 rounded-xl border border-border text-sm font-semibold text-muted-foreground hover:bg-secondary transition-colors disabled:opacity-50">
+                    {t('Cancel', 'إلغاء')}
+                  </button>
+                  <button onClick={confirmUpgrade} disabled={upgrading} className="flex-1 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-black text-sm transition-colors disabled:opacity-70 flex items-center justify-center gap-2">
+                    {upgrading ? <><Loader2 className="w-4 h-4 animate-spin" />{t('Processing...', 'جارٍ المعالجة...')}</> : t('Confirm Upgrade', 'تأكيد الترقية')}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-4">
+                <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle2 className="w-8 h-8 text-emerald-600" />
+                </div>
+                <h3 className="font-black text-xl text-foreground mb-2">{t('Request Submitted!', 'تم إرسال الطلب!')}</h3>
+                <p className="text-muted-foreground text-sm mb-6">
+                  {t("We've received your upgrade request for", 'لقد استلمنا طلب ترقيتك إلى')} <strong>{lang === 'ar' ? upgradeModal.plan.nameAr : upgradeModal.plan.nameEn}</strong>. {t('Our team will contact you within 24 hours.', 'سيتواصل فريقنا معك خلال 24 ساعة.')}
+                </p>
+                <button onClick={() => { setUpgradeModal(null); setUpgraded(false); }} className="w-full py-3 rounded-xl bg-primary text-white font-bold text-sm hover:bg-primary/90 transition-colors">
+                  {t('Done', 'تم')}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── FAQ ─────────────────────────────────────────────────── */}
       <section className="max-w-3xl mx-auto px-4 sm:px-6 py-14">
         <div className="text-center mb-8">
@@ -416,7 +502,10 @@ export function TabaqGoldPage() {
             {t('Join 50,000+ Gold members enjoying priority access, dining credits and exclusive Saudi dining experiences.', 'انضم إلى أكثر من 50,000 عضو ذهبي يستمتعون بالوصول ذي الأولوية والرصيد الغذائي وتجارب الطعام السعودية الحصرية.')}
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <button className="bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-600 hover:to-yellow-500 text-gray-900 font-black px-8 py-3.5 rounded-2xl transition-all shadow-xl shadow-amber-500/30 text-sm">
+            <button
+              onClick={() => handleUpgrade(PLANS[1], billing)}
+              className="bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-600 hover:to-yellow-500 text-gray-900 font-black px-8 py-3.5 rounded-2xl transition-all shadow-xl shadow-amber-500/30 text-sm"
+            >
               {t('Start with Gourmet — SAR 39/mo', 'ابدأ بذواقة — 39 ريال/شهر')}
             </button>
             <Link href="/restaurants">
