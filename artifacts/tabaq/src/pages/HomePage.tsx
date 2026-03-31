@@ -428,6 +428,62 @@ function SectionHeader({ badge, badgeIcon: Icon, title, subtitle, viewAllHref, v
   );
 }
 
+// ── Suggested People Strip ─────────────────────────────────────────
+const SUGGESTED_CRITICS = [
+  { id: 1, nameEn: 'Noura Al-Rashid', nameAr: 'نورة الراشد', handle: 'noura', avatar: 'https://i.pravatar.cc/80?img=47', reviewCount: 142, badge: '👑', specialtyEn: 'Fine Dining', specialtyAr: 'المطاعم الفاخرة' },
+  { id: 2, nameEn: 'Faisal Al-Harbi', nameAr: 'فيصل الحربي', handle: 'faisal', avatar: 'https://i.pravatar.cc/80?img=12', reviewCount: 98, badge: '🍽️', specialtyEn: 'Street Food', specialtyAr: 'أكل الشوارع' },
+  { id: 3, nameEn: 'Lama Khalid', nameAr: 'لمى خالد', handle: 'lama', avatar: 'https://i.pravatar.cc/80?img=32', reviewCount: 87, badge: '⭐', specialtyEn: 'Desserts', specialtyAr: 'الحلويات' },
+  { id: 4, nameEn: 'Sultan Qahtani', nameAr: 'سلطان القحطاني', handle: 'sultan', avatar: 'https://i.pravatar.cc/80?img=15', reviewCount: 64, badge: '🌱', specialtyEn: 'Healthy Eats', specialtyAr: 'الأكل الصحي' },
+  { id: 5, nameEn: 'Reem Alobaidan', nameAr: 'ريم العبيدان', handle: 'reem', avatar: 'https://i.pravatar.cc/80?img=25', reviewCount: 201, badge: '🔥', specialtyEn: 'Saudi Cuisine', specialtyAr: 'المطبخ السعودي' },
+  { id: 6, nameEn: 'Khaled Nasser', nameAr: 'خالد ناصر', handle: 'khaled', avatar: 'https://i.pravatar.cc/80?img=8', reviewCount: 55, badge: '🎯', specialtyEn: 'Grills & BBQ', specialtyAr: 'المشويات والباربيكيو' },
+];
+
+function SuggestedPeopleStrip({ t, lang }: { t: (en: string, ar: string) => string; lang: string }) {
+  const [following, setFollowing] = useState<Record<number, boolean>>({});
+
+  return (
+    <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-14">
+      <div className="flex items-center justify-between mb-5">
+        <div>
+          <h2 className="text-lg font-bold text-foreground">{t('People to Follow', 'مميّزون في عالم الطعام')}</h2>
+          <p className="text-muted-foreground text-sm mt-0.5">{t('Top food critics loved by the Tabaq community', 'نقاد الطعام المميزون في مجتمع طبق')}</p>
+        </div>
+        <Link href="/feed" className="text-primary text-sm font-medium hover:underline flex items-center gap-1">
+          {t('See all', 'عرض الكل')} <ChevronRight className="w-3.5 h-3.5" />
+        </Link>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+        {SUGGESTED_CRITICS.map(person => (
+          <div key={person.id} className="bg-card border border-border rounded-2xl p-4 flex flex-col items-center text-center hover:shadow-md transition-shadow group">
+            <div className="relative mb-3">
+              <img
+                src={person.avatar}
+                alt={person.nameEn}
+                className="w-14 h-14 rounded-full object-cover ring-2 ring-background group-hover:ring-primary/30 transition-all"
+              />
+              <span className="absolute -bottom-1 -end-1 text-base leading-none">{person.badge}</span>
+            </div>
+            <p className="font-semibold text-foreground text-sm leading-tight mb-0.5">{lang === 'ar' ? person.nameAr : person.nameEn}</p>
+            <p className="text-xs text-muted-foreground mb-1">{lang === 'ar' ? person.specialtyAr : person.specialtyEn}</p>
+            <p className="text-xs text-muted-foreground mb-3">{person.reviewCount} {t('reviews', 'تقييم')}</p>
+            <button
+              onClick={() => setFollowing(prev => ({ ...prev, [person.id]: !prev[person.id] }))}
+              className={`w-full py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                following[person.id]
+                  ? 'bg-muted text-muted-foreground border border-border'
+                  : 'bg-primary text-primary-foreground hover:bg-primary/90'
+              }`}
+            >
+              {following[person.id] ? t('Following', 'متابَع') : t('Follow', 'متابعة')}
+            </button>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 // ── Main Page ──────────────────────────────────────────────────────
 export function HomePage() {
   const { t, lang } = useLanguage();
@@ -658,61 +714,8 @@ export function HomePage() {
         </section>
       )}
 
-      {/* ══ HOW IT WORKS ═════════════════════════════════════════ */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-14">
-        <div className="bg-gradient-to-br from-slate-50 to-slate-100/60 dark:from-slate-900/50 dark:to-slate-800/30 rounded-3xl p-8 md:p-12 border border-border/40">
-          <div className="text-center mb-10">
-            <div className="flex items-center justify-center gap-1.5 mb-2">
-              <Sparkles className="w-3.5 h-3.5 text-primary" />
-              <span className="text-primary font-medium text-xs tracking-[0.05em] uppercase">{t('Simple & Fast', 'بسيط وسريع')}</span>
-            </div>
-            <h2 className="text-xl md:text-2xl font-bold text-foreground">{t('How Tabaq Works', 'كيف يعمل طبق')}</h2>
-            <p className="text-muted-foreground text-sm mt-2">{t('From discovery to your table in three easy steps', 'من الاكتشاف إلى طاولتك في ثلاث خطوات سهلة')}</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-10 relative">
-            {/* Connector lines (desktop only) */}
-            <div className="hidden md:block absolute top-8 start-1/3 end-1/3 h-px bg-gradient-to-r from-border via-primary/30 to-border" />
-            {[
-              {
-                step: '01',
-                icon: Search,
-                color: 'from-primary to-red-600',
-                titleEn: 'Discover',
-                titleAr: 'اكتشف',
-                descEn: 'Browse restaurants, read reviews, and explore exclusive deals tailored to your taste.',
-                descAr: 'تصفح المطاعم، اقرأ التقييمات، واستكشف العروض الحصرية المناسبة لذوقك.',
-              },
-              {
-                step: '02',
-                icon: CalendarCheck,
-                color: 'from-gray-800 to-gray-950',
-                titleEn: 'Book or Buy',
-                titleAr: 'احجز أو اشتر',
-                descEn: 'Reserve a table instantly or purchase a deal voucher at a discounted price.',
-                descAr: 'احجز طاولة فوراً أو اشتر قسيمة عرض بسعر مخفض.',
-              },
-              {
-                step: '03',
-                icon: ScanQrCode,
-                color: 'from-primary to-red-800',
-                titleEn: 'Dine & Enjoy',
-                titleAr: 'تناول واستمتع',
-                descEn: 'Show your QR voucher at the restaurant, enjoy your meal, and earn reward points.',
-                descAr: 'أظهر قسيمة QR في المطعم، استمتع بوجبتك، واكسب نقاط مكافآت.',
-              },
-            ].map(({ step, icon: Icon, color, titleEn, titleAr, descEn, descAr }) => (
-              <div key={step} className="flex flex-col items-center text-center relative">
-                <div className={`relative w-16 h-16 rounded-2xl bg-gradient-to-br ${color} flex items-center justify-center shadow-lg mb-4`}>
-                  <Icon className="w-7 h-7 text-white" />
-                  <span className="absolute -top-2 -end-2 w-6 h-6 bg-background border-2 border-border rounded-full text-[10px] font-black text-foreground flex items-center justify-center">{step}</span>
-                </div>
-                <h3 className="font-bold text-foreground text-base mb-2">{t(titleEn, titleAr)}</h3>
-                <p className="text-muted-foreground text-sm leading-relaxed max-w-xs">{t(descEn, descAr)}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* ══ SUGGESTED PEOPLE ══════════════════════════════════════ */}
+      <SuggestedPeopleStrip t={t} lang={lang} />
 
       {/* ══ CUISINE TYPES ════════════════════════════════════════ */}
       {!categories.isLoading && (categories.data || []).length > 0 && (

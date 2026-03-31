@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   Rss, TrendingUp, Users, Search, Heart, MessageSquare, Share2,
   Star, Award, ChevronRight, Utensils, Camera, Flame, Bookmark,
-  Plus, ArrowUp, MapPin, Clock, CheckCircle2
+  Plus, ArrowUp, MapPin, Clock, CheckCircle2, UserPlus
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useGetFeed, useListReviews } from '@workspace/api-client-react';
@@ -205,6 +205,62 @@ function ActivityCard({ activity, lang, t }: { activity: typeof MOCK_FEED_ACTIVI
         </div>
       </div>
     </article>
+  );
+}
+
+const PEOPLE_YOU_MAY_KNOW = [
+  { id: 1, nameEn: 'Noura Al-Rashid', nameAr: 'نورة الراشد', handle: 'noura', avatar: 'https://i.pravatar.cc/60?img=47', reviewCount: 142, mutualEn: '12 mutual followers', mutualAr: '12 متابع مشترك' },
+  { id: 2, nameEn: 'Lama Khalid', nameAr: 'لمى خالد', handle: 'lama', avatar: 'https://i.pravatar.cc/60?img=32', reviewCount: 87, mutualEn: '8 mutual followers', mutualAr: '8 متابعين مشتركين' },
+  { id: 3, nameEn: 'Sultan Qahtani', nameAr: 'سلطان القحطاني', handle: 'sultan', avatar: 'https://i.pravatar.cc/60?img=15', reviewCount: 64, mutualEn: '5 mutual followers', mutualAr: '5 متابعين مشتركين' },
+];
+
+function PeopleYouMayKnowCard({ t, lang }: { t: (en: string, ar: string) => string; lang: string }) {
+  const [following, setFollowing] = useState<Record<number, boolean>>({});
+  const [dismissed, setDismissed] = useState<Record<number, boolean>>({});
+
+  const visible = PEOPLE_YOU_MAY_KNOW.filter(p => !dismissed[p.id]);
+  if (visible.length === 0) return null;
+
+  return (
+    <div className="bg-card border border-border rounded-3xl overflow-hidden">
+      <div className="px-4 py-3 border-b border-border/60 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <UserPlus className="w-4 h-4 text-primary" />
+          <h3 className="font-bold text-foreground text-sm">{t('People You May Know', 'أشخاص قد تعرفهم')}</h3>
+        </div>
+        <Link href="/feed" className="text-xs text-primary font-medium hover:underline">{t('See all', 'عرض الكل')}</Link>
+      </div>
+      <div className="divide-y divide-border/40">
+        {visible.map(person => (
+          <div key={person.id} className="flex items-center gap-3 px-4 py-3">
+            <img src={person.avatar} alt={person.nameEn} className="w-10 h-10 rounded-full object-cover shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-foreground truncate">{lang === 'ar' ? person.nameAr : person.nameEn}</p>
+              <p className="text-xs text-muted-foreground truncate">{lang === 'ar' ? person.mutualAr : person.mutualEn}</p>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                onClick={() => setFollowing(prev => ({ ...prev, [person.id]: !prev[person.id] }))}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                  following[person.id]
+                    ? 'bg-muted text-muted-foreground border border-border'
+                    : 'bg-primary text-primary-foreground hover:bg-primary/90'
+                }`}
+              >
+                {following[person.id] ? t('Following', 'متابَع') : t('Follow', 'متابعة')}
+              </button>
+              <button
+                onClick={() => setDismissed(prev => ({ ...prev, [person.id]: true }))}
+                className="w-7 h-7 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors"
+                aria-label="Dismiss"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -541,6 +597,7 @@ export default function FeedPage() {
           {/* Right Sidebar */}
           <div className="lg:col-span-5 xl:col-span-5 space-y-5">
             <TrendingRestaurantsCard t={t} lang={lang} />
+            <PeopleYouMayKnowCard t={t} lang={lang} />
             <TrendingCriticsCard t={t} lang={lang} />
             <TrendingDishesCard t={t} lang={lang} />
 

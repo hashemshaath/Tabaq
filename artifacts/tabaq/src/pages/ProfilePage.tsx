@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getAuthHeaders } from '@/lib/api';
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/context/AuthContext";
@@ -18,6 +18,7 @@ import {
   User, Settings, ShieldCheck, MapPin, Calendar, Star,
   BookOpen, Clock, Users, AtSign, CheckCircle2, XCircle, Loader2,
   Gift, Copy, ChevronRight, Sparkles, Lock, UserPlus, UserMinus,
+  Shield, Check, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -70,6 +71,193 @@ const MOCK_FOLLOWING_LIST = [
   { id: 16, nameEn: 'Hessa Al-Salmani', nameAr: 'حصة السلماني', avatarUrl: 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=80&h=80&fit=crop&crop=face', levelTitle: 'Michelin Tracker', isVerified: true },
   { id: 17, nameEn: 'Turki Al-Anzi', nameAr: 'تركي العنزي', avatarUrl: 'https://images.unsplash.com/photo-1463453091185-61582044d556?w=80&h=80&fit=crop&crop=face', levelTitle: 'Street Food Lover', isVerified: false },
 ];
+type FollowRequest = {
+  followerId: number;
+  followerName?: string;
+  followerAvatar?: string;
+  followerUsername?: string;
+  createdAt: string;
+};
+
+function PrivacyCard({
+  t, apiBase, token, user,
+}: {
+  t: (en: string, ar: string) => string;
+  apiBase: string;
+  token: string | null;
+  user: { id?: number; isPrivate?: boolean } | null;
+}) {
+  const qc = useQueryClient();
+  const [isPrivate, setIsPrivate] = useState<boolean>(user?.isPrivate ?? false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setIsPrivate(user?.isPrivate ?? false);
+  }, [user?.isPrivate]);
+
+  const { data: requestsData, isLoading: reqLoading, refetch: refetchReqs } = useQuery<{ requests: FollowRequest[] }>({
+    queryKey: ['follow-requests'],
+    queryFn: async () => {
+      const res = await fetch(`${apiBase}/api/me/follow-requests`, {
+        headers: getAuthHeaders() as Record<string, string>,
+      });
+      if (!res.ok) return { requests: [] };
+      return res.json();
+    },
+    enabled: !!token && isPrivate,
+  });
+
+  const requests = requestsData?.requests ?? [];
+
+  async function togglePrivacy() {
+    setSaving(true);
+    const newVal = !isPrivate;
+    try {
+      await fetch(`${apiBase}/api/me`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...(getAuthHeaders() as Record<string, string>) },
+        body: JSON.stringify({ isPrivate: newVal }),
+      });
+      setIsPrivate(newVal);
+      qc.invalidateQueries({ queryKey: ['follow-requests'] });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function respondRequest(requesterId: number, action: 'accept' | 'reject') {
+    const url = `${apiBase}/api/me/follow-requests/${requesterId}/${action === 'accept' ? 'accept' : ''}`;
+    await fetch(url, {
+      method: action === 'accept' ? 'POST' : 'DELETE',
+      headers: getAuthHeaders() as Record<string, string>,
+    });
+    refetchReqs();
+  }
+
+  return (
+    <div className="bg-card border border-border rounded-2xl overflow-hidden">
+      <div className="p-5 border-b border-border flex items-center gap-3">
+        <div className="w-9 h-9 bg-primary/10 rounded-xl flex items-center justify-center">
+          <Shield className="w-4 h-4 text-primary" />
+        </div>
+        <div className="flex-1">
+          <h3 className="font-bold text-foreground">{t('Privacy', 'الخصوصية')}</h3>
+          <p className="text-xs text-muted-foreground">
+            {t('Control who can see your activity and follow you', 'تحكم في من يمكنه رؤية نشاطك ومتابعتك')}
+          </p>
+        </div>
+      </div>
+
+      <div className="p-5 space-y-4">
+        {/* Private Account Toggle */}
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-foreground">{t('Private Account', 'حساب خاص')}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {t(
+                'When on, only approved followers can see your reviews and activity.',
+                'عند التفعيل، يمكن فقط للمتابعين الموافق عليهم رؤية تقييماتك ونشاطك.'
+              )}
+            </p>
+          </div>
+          <button
+            onClick={togglePrivacy}
+            disabled={saving}
+            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+              isPrivate ? 'bg-primary' : 'bg-muted'
+            } ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
+            role="switch"
+            aria-checked={isPrivate}
+          >
+            <span
+              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                isPrivate ? 'translate-x-5' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
+
+        {/* Follow Requests (only shown when private) */}
+        {isPrivate && (
+          <div className="border-t border-border pt-4">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-semibold text-foreground">
+                {t('Follow Requests', 'طلبات المتابعة')}
+              </p>
+              {requests.length > 0 && (
+                <span className="bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5 rounded-full">
+                  {requests.length}
+                </span>
+              )}
+            </div>
+
+            {reqLoading ? (
+              <div className="space-y-3">
+                {[1, 2].map(i => (
+                  <div key={i} className="flex items-center gap-3 animate-pulse">
+                    <div className="w-9 h-9 bg-muted rounded-full" />
+                    <div className="flex-1 space-y-1.5">
+                      <div className="h-3 bg-muted rounded w-28" />
+                      <div className="h-2.5 bg-muted rounded w-20" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : requests.length === 0 ? (
+              <div className="flex flex-col items-center py-5 text-center">
+                <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center mb-2">
+                  <UserPlus className="w-5 h-5 text-muted-foreground/50" />
+                </div>
+                <p className="text-sm text-muted-foreground">{t('No pending requests', 'لا توجد طلبات معلقة')}</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {requests.map(req => (
+                  <div key={req.followerId} className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-muted overflow-hidden shrink-0">
+                      {req.followerAvatar ? (
+                        <img src={req.followerAvatar} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                          <User className="w-4 h-4" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">
+                        {req.followerName ?? `@${req.followerUsername ?? req.followerId}`}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(req.createdAt).toLocaleDateString(t('en-US', 'ar-SA'))}
+                      </p>
+                    </div>
+                    <div className="flex gap-1.5 shrink-0">
+                      <button
+                        onClick={() => respondRequest(req.followerId, 'accept')}
+                        className="w-8 h-8 rounded-full bg-green-100 text-green-700 hover:bg-green-200 transition-colors flex items-center justify-center"
+                        title={t('Accept', 'قبول')}
+                      >
+                        <Check className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => respondRequest(req.followerId, 'reject')}
+                        className="w-8 h-8 rounded-full bg-muted text-muted-foreground hover:bg-red-100 hover:text-red-600 transition-colors flex items-center justify-center"
+                        title={t('Reject', 'رفض')}
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 const USERNAME_REGEX = /^[a-zA-Z0-9_\.]{3,30}$/;
 
 function validateUsername(value: string): string | null {
@@ -632,6 +820,9 @@ export function ProfilePage() {
                   </div>
                 </div>
               </div>
+
+              {/* Privacy Card */}
+              <PrivacyCard t={t} apiBase={apiBase} token={token} user={data?.user ?? null} />
 
               {/* Referral & Rewards Shortcut */}
               <Link href="/referral">
