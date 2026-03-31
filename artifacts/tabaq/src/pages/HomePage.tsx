@@ -190,27 +190,45 @@ function DishItem({ d, rank }: { d: any; rank: number }) {
 }
 
 // ── Order Again Section ────────────────────────────────────────────
-const ORDER_AGAIN_ITEMS = [
-  { id: 7, nameEn: 'Jareesh', nameAr: 'جريش', restaurantId: 3, restaurantNameEn: 'Najd Village', restaurantNameAr: 'قرية نجد', price: 45, currency: 'SAR', imageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300&h=200&fit=crop' },
-  { id: 4, nameEn: 'Black Cod Miso', nameAr: 'سمك القد الأسود', restaurantId: 1, restaurantNameEn: 'Nobu Riyadh', restaurantNameAr: 'نوبو الرياض', price: 280, currency: 'SAR', imageUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=300&h=200&fit=crop' },
-  { id: 1, nameEn: 'Lamb Ouzi', nameAr: 'خروف أوزي', restaurantId: 2, restaurantNameEn: 'Lusin', restaurantNameAr: 'لوسين', price: 185, currency: 'SAR', imageUrl: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=300&h=200&fit=crop' },
-  { id: 5, nameEn: 'Dragon Roll', nameAr: 'رول التنين', restaurantId: 1, restaurantNameEn: 'Nobu Riyadh', restaurantNameAr: 'نوبو الرياض', price: 120, currency: 'SAR', imageUrl: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=300&h=200&fit=crop' },
-  { id: 11, nameEn: 'Wagyu Tenderloin', nameAr: 'تندرلوين واغيو', restaurantId: 5, restaurantNameEn: 'The Globe', restaurantNameAr: 'ذا غلوب', price: 490, currency: 'SAR', imageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300&h=200&fit=crop' },
-];
+type ReorderItem = { dishId: number; nameEn: string; nameAr: string; price: number; currency: string; imageUrl?: string; restaurantId: number; restaurantNameEn: string; restaurantNameAr: string };
 
 function OrderAgainSection() {
   const { t, lang } = useLanguage();
+  const { user } = useAuth();
   const { addItem, updateQty, items: cartItems } = useCart();
   const [flashed, setFlashed] = useState<number | null>(null);
 
-  const handleAdd = (item: typeof ORDER_AGAIN_ITEMS[0]) => {
+  const { data: ordersData } = useQuery({
+    queryKey: ['my-orders-reorder'],
+    queryFn: async () => {
+      const res = await fetch('/api/orders', { headers: getAuthHeaders(), credentials: 'include' });
+      if (!res.ok) return null;
+      return res.json() as Promise<{ orders: Array<{ items: ReorderItem[] }> }>;
+    },
+    enabled: !!user,
+    staleTime: 60_000,
+  });
+
+  const recentItems: ReorderItem[] = [];
+  const seen = new Set<number>();
+  for (const order of (ordersData?.orders ?? [])) {
+    for (const item of (order.items ?? [])) {
+      if (!seen.has(item.dishId)) { seen.add(item.dishId); recentItems.push(item); }
+      if (recentItems.length >= 8) break;
+    }
+    if (recentItems.length >= 8) break;
+  }
+
+  if (!user || recentItems.length === 0) return null;
+
+  const handleAdd = (item: ReorderItem) => {
     addItem({ ...item, imageUrl: item.imageUrl ?? undefined });
-    setFlashed(item.id);
+    setFlashed(item.dishId);
     setTimeout(() => setFlashed(null), 700);
   };
-  const handleDec = (item: typeof ORDER_AGAIN_ITEMS[0]) => {
-    const ci = cartItems.find(i => i.dishId === item.id);
-    if (ci) updateQty(item.id, ci.qty - 1);
+  const handleDec = (item: ReorderItem) => {
+    const ci = cartItems.find(i => i.dishId === item.dishId);
+    if (ci) updateQty(item.dishId, ci.qty - 1);
   };
 
   return (
@@ -230,13 +248,13 @@ function OrderAgainSection() {
         </Link>
       </div>
       <div className="flex gap-3 overflow-x-auto pb-2 hide-scrollbar">
-        {ORDER_AGAIN_ITEMS.map(item => {
-          const ci = cartItems.find(i => i.dishId === item.id);
+        {recentItems.map(item => {
+          const ci = cartItems.find(i => i.dishId === item.dishId);
           const qty = ci?.qty ?? 0;
-          const isFlashed = flashed === item.id;
+          const isFlashed = flashed === item.dishId;
           return (
-            <div key={item.id} className="flex-shrink-0 w-[160px] sm:w-[176px] rounded-2xl border border-border/60 overflow-hidden hover:border-primary/30 hover:shadow-md transition-all bg-card group">
-              <Link href={`/dishes/${item.id}`}>
+            <div key={item.dishId} className="flex-shrink-0 w-[160px] sm:w-[176px] rounded-2xl border border-border/60 overflow-hidden hover:border-primary/30 hover:shadow-md transition-all bg-card group">
+              <Link href={`/dishes/${item.dishId}`}>
                 <div className="w-full h-24 bg-muted overflow-hidden relative">
                   <img
                     src={item.imageUrl}

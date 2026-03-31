@@ -77,85 +77,6 @@ function Lightbox({ photos, index, onClose }: { photos: { url: string; alt: stri
 }
 
 // ── Chef Data ────────────────────────────────────────────────────────
-const CHEF_DATA: Record<number, {
-  photo: string;
-  nameEn: string; nameAr: string;
-  titleEn: string; titleAr: string;
-  specialtyEn: string; specialtyAr: string;
-  bioEn: string; bioAr: string;
-  yearsExp: number;
-  awardsCount: number;
-  michelinStars?: number;
-}> = {
-  1: {
-    photo: 'https://images.unsplash.com/photo-1577219491135-ce391730fb2c?w=200&h=200&fit=crop&face',
-    nameEn: 'Chef Abdullah Al-Ghamdi',
-    nameAr: 'الشيف عبدالله الغامدي',
-    titleEn: 'Executive Chef',
-    titleAr: 'الشيف التنفيذي',
-    specialtyEn: 'Traditional Najdi Cuisine',
-    specialtyAr: 'المطبخ النجدي التقليدي',
-    bioEn: 'A fourth-generation chef from Najd, Chef Abdullah has spent 18 years perfecting slow-cooked Saudi classics — from harees to kabsa. He trained under legendary chef Mohammed Al-Harbi and now leads one of the Kingdom\'s most beloved kitchens.',
-    bioAr: 'شيف من الجيل الرابع في نجد، أمضى عبدالله ١٨ عاماً في إتقان الأطباق السعودية التقليدية كالهريس والكبسة. تتلمذ على يد الشيف الأسطوري محمد الحربي، ويقود الآن أحد أحب مطابخ المملكة.',
-    yearsExp: 18,
-    awardsCount: 5,
-  },
-  2: {
-    photo: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&h=200&fit=crop&face',
-    nameEn: 'Chef Nora Al-Rasheed',
-    nameAr: 'الشيف نورة الرشيد',
-    titleEn: 'Head Chef & Co-Founder',
-    titleAr: 'شيف رئيسية ومؤسسة مشاركة',
-    specialtyEn: 'Modern Armenian–Levantine Fusion',
-    specialtyAr: 'فيوجن أرمني شامي معاصر',
-    bioEn: 'Born in Beirut and trained in Lyon, Chef Nora brings the warmth of the Levant to Riyadh\'s fine dining scene. Her rose-water-infused signature dishes and open-fire lamb preparations have earned her a cult following across the Kingdom.',
-    bioAr: 'وُلدت في بيروت وتدربت في ليون، تجلب الشيف نورة دفء بلاد الشام إلى مشهد الطعام الراقي في الرياض. أطباقها المميزة بماء الورد وطهو اللحم على النار المكشوفة جعلتها نجمة في المملكة.',
-    yearsExp: 14,
-    awardsCount: 8,
-    michelinStars: 1,
-  },
-  3: {
-    photo: 'https://images.unsplash.com/photo-1607631568010-a87245c0daf8?w=200&h=200&fit=crop',
-    nameEn: 'Chef Kenji Watanabe',
-    nameAr: 'الشيف كينجي واتانابي',
-    titleEn: 'Head Sushi Master',
-    titleAr: 'أستاذ السوشي الرئيسي',
-    specialtyEn: 'Omakase & Nigiri',
-    specialtyAr: 'أوماكاسي ونيغيري',
-    bioEn: 'A Tokyo native with 20 years of Tsukiji fish market expertise, Chef Kenji trained under Jiro Ono\'s protégés and has mastered the art of Omakase dining. Every plate is a meditation on precision, freshness, and restraint.',
-    bioAr: 'مواطن طوكيوي بـ٢٠ عاماً من خبرة سوق سمك تسوكيجي، تتلمذ الشيف كينجي على يد تلاميذ جيرو أونو. كل طبق يعكس تأمله في الدقة والطزاجة والبساطة.',
-    yearsExp: 20,
-    awardsCount: 6,
-  },
-  4: {
-    photo: 'https://images.unsplash.com/photo-1595273670150-bd0c3c392e46?w=200&h=200&fit=crop',
-    nameEn: 'Chef Marcus Sinclair',
-    nameAr: 'الشيف ماركوس سينكلير',
-    titleEn: 'Culinary Director',
-    titleAr: 'المدير الطهوي',
-    specialtyEn: 'Nobu-Style Fusion',
-    specialtyAr: 'فيوجن على طراز نوبو',
-    bioEn: 'Trained at the original Nobu NYC under Chef Nobu Matsuhisa himself, Marcus brings the legendary Peruvian-Japanese fusion to Riyadh. A Michelin 2-star veteran, he has helmed kitchens in Tokyo, London, and Dubai.',
-    bioAr: 'تدرب في نوبو نيويورك الأصلي تحت إشراف الشيف نوبو ماتسوهيسا شخصياً، يجلب ماركوس الفيوجن البيروفي الياباني الأسطوري إلى الرياض. محترف بنجمتين ميشلان، أدار مطابخ في طوكيو ولندن ودبي.',
-    yearsExp: 22,
-    awardsCount: 12,
-    michelinStars: 2,
-  },
-  5: {
-    photo: 'https://images.unsplash.com/photo-1566554273541-37a9ca77b91f?w=200&h=200&fit=crop',
-    nameEn: 'Chef Andrei Constantin',
-    nameAr: 'الشيف أندريه كونستانتين',
-    titleEn: 'Executive Chef',
-    titleAr: 'الشيف التنفيذي',
-    specialtyEn: 'Modern European & Global Fusion',
-    specialtyAr: 'أوروبي حديث وفيوجن عالمي',
-    bioEn: 'Romanian-born Chef Andrei learned his craft across Michelin kitchens in Paris and Copenhagen before settling in the Gulf. His philosophy: honor local ingredients, surprise with global technique.',
-    bioAr: 'الشيف أندريه الروماني الأصل تعلم حرفته في مطابخ ميشلان بباريس وكوبنهاغن قبل الاستقرار في الخليج. فلسفته: تكريم المكونات المحلية والمفاجأة بالتقنيات العالمية.',
-    yearsExp: 16,
-    awardsCount: 7,
-    michelinStars: 1,
-  },
-};
 
 // ── Booking Section ─────────────────────────────────────────────────
 function getDatesAhead(n: number) {
@@ -804,24 +725,14 @@ export function RestaurantDetailPage() {
     fine_dining: t('Fine Dining · SAR 350+', 'فاخر · ٣٥٠+ ريال'),
   } as Record<string, string>)[restaurant.priceTier as string] ?? restaurant.priceTier;
 
-  // Gallery photos
-  const GALLERY_SEEDS = [
-    '1414235077428-338989a2e8c0','1555396273-367ea4eb4db5','1517248135467-4c7edcad34c4',
-    '1504674900247-0877df9cc836','1579871494447-9811cf80d66c','1556742049-0cfed4f6a45d',
-    '1546069901-ba9599a7e63c','1551218808-94e220e084d2',
-  ];
+  // Gallery photos — only real data from the API
   const dishPhotos = menuData
     ? menuData.flatMap(m => m.sections).flatMap(s => (s.items || []) as any[])
         .filter((d: any) => d.imageUrl).map((d: any) => ({ url: d.imageUrl, alt: lang === 'ar' ? d.nameAr : d.nameEn }))
     : [];
-  const curatedPhotos = GALLERY_SEEDS.map((id, i) => ({
-    url: `https://images.unsplash.com/photo-${id}?w=800&h=600&fit=crop`,
-    alt: `Photo ${i + 1}`,
-  }));
   const allGalleryPhotos = [
     ...(restaurant.coverImageUrl ? [{ url: restaurant.coverImageUrl, alt: name }] : []),
     ...dishPhotos,
-    ...curatedPhotos,
   ];
 
   const openLightbox = (photos: { url: string; alt: string }[], index: number) => {
@@ -1138,61 +1049,6 @@ export function RestaurantDetailPage() {
                   </div>
                 )}
 
-                {/* Chef Profile */}
-                {CHEF_DATA[Number(id)] && (() => {
-                  const chef = CHEF_DATA[Number(id)];
-                  return (
-                    <div className="bg-white rounded-lg border border-gray-200 p-5">
-                      <h2 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
-                        <ChefHat className="w-4 h-4 text-primary" />
-                        {t('Meet the Chef', 'تعرف على الشيف')}
-                      </h2>
-                      <div className="flex gap-4 items-start">
-                        <img
-                          src={chef.photo}
-                          alt={lang === 'ar' ? chef.nameAr : chef.nameEn}
-                          className="w-16 h-16 rounded-2xl object-cover shrink-0 border border-gray-100"
-                        />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="font-bold text-gray-900 text-sm">
-                              {lang === 'ar' ? chef.nameAr : chef.nameEn}
-                            </h3>
-                            <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-semibold">
-                              {lang === 'ar' ? chef.titleAr : chef.titleEn}
-                            </span>
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {lang === 'ar' ? chef.specialtyAr : chef.specialtyEn}
-                          </p>
-                          <p className="text-xs text-gray-600 mt-2 leading-relaxed line-clamp-3">
-                            {lang === 'ar' ? chef.bioAr : chef.bioEn}
-                          </p>
-                          <div className="flex items-center gap-4 mt-3 pt-3 border-t border-gray-100">
-                            <div className="text-center">
-                              <div className="text-sm font-black text-foreground">{chef.yearsExp}+</div>
-                              <div className="text-[10px] text-muted-foreground uppercase tracking-wide">{t('Years Exp.', 'سنة خبرة')}</div>
-                            </div>
-                            <div className="text-center">
-                              <div className="text-sm font-black text-foreground">{chef.awardsCount}</div>
-                              <div className="text-[10px] text-muted-foreground uppercase tracking-wide">{t('Awards', 'جوائز')}</div>
-                            </div>
-                            {chef.michelinStars && (
-                              <div className="text-center">
-                                <div className="text-sm font-black text-foreground flex items-center gap-0.5">
-                                  {Array.from({ length: chef.michelinStars }).map((_, i) => (
-                                    <Award key={i} className="w-3.5 h-3.5 text-amber-500" />
-                                  ))}
-                                </div>
-                                <div className="text-[10px] text-muted-foreground uppercase tracking-wide">{t('Michelin', 'ميشلان')}</div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })()}
 
                 {/* Chef's Highlights */}
                 {menuData && (() => {

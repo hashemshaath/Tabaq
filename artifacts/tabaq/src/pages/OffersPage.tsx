@@ -318,23 +318,31 @@ function DealDetailPage({ offer, onBack }: { offer: ExtendedOffer; onBack: () =>
   const promoSaving = appliedPromo ? promoDiscountAmt : 0;
   const totalPrice = Math.max(0, subtotal - promoSaving);
 
-  const handleApplyPromo = () => {
+  const handleApplyPromo = async () => {
     if (!promoInput.trim()) return;
     setPromoLoading(true);
     setPromoError(null);
-    const VALID_CODES: Record<string, number> = { 'TABAQ10': 10, 'SAVE15': 15, 'NEWUSER20': 20 };
     const code = promoInput.trim().toUpperCase();
-    setTimeout(() => {
-      const pct = VALID_CODES[code];
-      if (pct) {
+    try {
+      const res = await fetch('/api/promo-codes/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ code, orderValue: subtotal }),
+      });
+      const data = await res.json();
+      if (res.ok && data.discountPercent) {
         setAppliedPromo(code);
-        setPromoDiscountAmt(Math.round(subtotal * pct / 100));
+        setPromoDiscountAmt(Math.round(subtotal * Number(data.discountPercent) / 100));
         setPromoError(null);
       } else {
-        setPromoError(t('Invalid promo code. Try TABAQ10.', 'رمز خاطئ. جرب TABAQ10.'));
+        setPromoError(t('Invalid or expired promo code.', 'رمز ترويجي غير صالح أو منتهي الصلاحية.'));
       }
+    } catch {
+      setPromoError(t('Could not validate promo code. Please try again.', 'تعذّر التحقق من الرمز الترويجي. حاول مرة أخرى.'));
+    } finally {
       setPromoLoading(false);
-    }, 600);
+    }
   };
   const clearPromo = () => { setAppliedPromo(null); setPromoDiscountAmt(0); setPromoInput(''); setPromoError(null); };
 

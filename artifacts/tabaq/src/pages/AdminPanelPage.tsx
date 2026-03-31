@@ -200,16 +200,7 @@ function AdminSeoTab({ t }: { t: (en: string, ar: string) => string }) {
   const [editingRobots, setEditingRobots] = useState(false);
   const [sitemapRefreshed, setSitemapRefreshed] = useState(false);
   const [newKeyword, setNewKeyword] = useState('');
-  const [keywords, setKeywords] = useState<{ word: string; volume: string; difficulty: string }[]>([
-    { word: 'مطاعم الرياض', volume: '22K/mo', difficulty: 'medium' },
-    { word: 'restaurants Riyadh', volume: '18K/mo', difficulty: 'high' },
-    { word: 'حجز مطعم', volume: '12K/mo', difficulty: 'medium' },
-    { word: 'restaurant booking Saudi Arabia', volume: '9K/mo', difficulty: 'high' },
-    { word: 'مطاعم جدة', volume: '15K/mo', difficulty: 'low' },
-    { word: 'fine dining Riyadh', volume: '8K/mo', difficulty: 'medium' },
-    { word: 'أفضل مطاعم', volume: '30K/mo', difficulty: 'high' },
-    { word: 'food experiences KSA', volume: '5K/mo', difficulty: 'low' },
-  ]);
+  const [keywords, setKeywords] = useState<{ word: string; volume: string; difficulty: string }[]>([]);
 
   const { data: overviewData, isLoading: overviewLoading } = useQuery({
     queryKey: ['admin-seo-overview'],
@@ -1142,19 +1133,6 @@ function MenuManagementTab({ lang, t }: { lang: string; t: (en: string, ar: stri
   );
 }
 
-const BLOG_POSTS = [
-  { id: 1, title: 'Top 10 Fine Dining Restaurants in Riyadh 2026', status: 'published', views: 12450, date: '2026-03-25' },
-  { id: 2, title: 'The Rise of Plant-Based Dining in Saudi Arabia', status: 'draft', views: 0, date: '2026-03-28' },
-  { id: 3, title: 'Ramadan Dining Guide: Best Iftar Experiences', status: 'published', views: 8920, date: '2026-03-15' },
-  { id: 4, title: 'Interview: Chef Mohammed Al-Harbi on Saudi Cuisine', status: 'scheduled', views: 0, date: '2026-04-01' },
-];
-
-const SEO_PAGES = [
-  { path: '/', title: 'Tabaq | طبق — Discover Saudi Arabia\'s Best Restaurants', score: 94 },
-  { path: '/restaurants', title: 'Explore Restaurants in Saudi Arabia | Tabaq', score: 89 },
-  { path: '/collections', title: 'Restaurant Collections & Curated Lists | Tabaq', score: 82 },
-  { path: '/collections/top-rated', title: 'Top Rated Restaurants in Saudi Arabia | Tabaq', score: 91 },
-];
 
 // ─── Module Configuration ────────────────────────────────────────
 type Module = {

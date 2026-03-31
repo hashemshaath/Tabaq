@@ -8,6 +8,7 @@ import {
   useGetUserActivity, getGetUserActivityQueryKey,
   useGetUserFollowers, getGetUserFollowersQueryKey,
   useGetUserFollowing, getGetUserFollowingQueryKey,
+  useListRestaurants,
 } from "@workspace/api-client-react";
 import { Link } from "wouter";
 import {
@@ -114,27 +115,20 @@ function PriorityBadge({ priority, t }: { priority: string; t: (en: string, ar: 
 
 function CheckInDialog({ onClose, onSave, t, lang }: {
   onClose: () => void;
-  onSave: (data: { restaurantId: number; restaurantName: string; visitDate: string; visitTime: string; partySize: number; notes: string; companionNames: string }) => void;
+  onSave: (data: { restaurantId: number | null; restaurantName: string; visitDate: string; visitTime: string; partySize: number; notes: string; companionNames: string }) => void;
   t: (en: string, ar: string) => string;
   lang: string;
 }) {
-  const [restaurantId, setRestaurantId] = useState(7);
-  const [restaurantName, setRestaurantName] = useState("Nobu Riyadh");
+  const [restaurantId, setRestaurantId] = useState<number | null>(null);
+  const [restaurantName, setRestaurantName] = useState("");
   const [visitDate, setVisitDate] = useState(new Date().toISOString().split("T")[0]!);
   const [visitTime, setVisitTime] = useState("20:00");
   const [partySize, setPartySize] = useState(2);
   const [notes, setNotes] = useState("");
   const [companionNames, setCompanionNames] = useState("");
 
-  const RESTAURANT_OPTIONS = [
-    { id: 7,  nameEn: "Nobu Riyadh",       nameAr: "نوبو الرياض" },
-    { id: 1,  nameEn: "Najd Village",       nameAr: "قرية نجد" },
-    { id: 3,  nameEn: "Sushi Sama",         nameAr: "سوشي ساما" },
-    { id: 8,  nameEn: "Nusr-Et Riyadh",     nameAr: "نصرت الرياض" },
-    { id: 9,  nameEn: "La Petite Maison",   nameAr: "لا بيتيت ميزون" },
-    { id: 2,  nameEn: "Lucine",             nameAr: "لوسين" },
-    { id: 11, nameEn: "Zuma Riyadh",        nameAr: "زوما الرياض" },
-  ];
+  const { data: restaurantsData } = useListRestaurants({} as any);
+  const RESTAURANT_OPTIONS = (restaurantsData?.restaurants ?? []).map(r => ({ id: r.id, nameEn: r.nameEn, nameAr: r.nameAr }));
 
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
@@ -229,14 +223,8 @@ function PlanDialog({ onClose, onSave, t, lang }: {
   const [themeLabel, setThemeLabel] = useState("");
   const [reminderEnabled, setReminderEnabled] = useState(false);
 
-  const RESTAURANT_OPTIONS = [
-    { id: 7,  nameEn: "Nobu Riyadh",       nameAr: "نوبو الرياض" },
-    { id: 1,  nameEn: "Najd Village",       nameAr: "قرية نجد" },
-    { id: 3,  nameEn: "Sushi Sama",         nameAr: "سوشي ساما" },
-    { id: 8,  nameEn: "Nusr-Et Riyadh",     nameAr: "نصرت الرياض" },
-    { id: 9,  nameEn: "La Petite Maison",   nameAr: "لا بيتيت ميزون" },
-    { id: 11, nameEn: "Zuma Riyadh",        nameAr: "زوما الرياض" },
-  ];
+  const { data: restaurantsData } = useListRestaurants({} as any);
+  const RESTAURANT_OPTIONS = (restaurantsData?.restaurants ?? []).map(r => ({ id: r.id, nameEn: r.nameEn, nameAr: r.nameAr }));
 
   const THEME_OPTIONS = ["", "Special Occasion", "Date Night", "Weekend Brunch", "Business Lunch", "Food Theme Week", "Family Gathering", "Michelin Hunt"];
 
