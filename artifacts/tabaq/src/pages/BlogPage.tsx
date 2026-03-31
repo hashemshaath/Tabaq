@@ -122,7 +122,21 @@ export function BlogPage() {
     retry: false,
   });
 
-  const posts = (apiPosts?.posts?.length ? apiPosts.posts : SAMPLE_POSTS);
+  const rawApiPosts = apiPosts?.posts ?? [];
+  const normalizedApiPosts = rawApiPosts.map((p: any) => ({
+    ...p,
+    featured: p.isFeatured ?? false,
+    trending: p.viewCount > 5000,
+    categorySlug: p.categorySlug ?? (p.categoryNameEn ? p.categoryNameEn.toLowerCase().replace(/\s+/g, '-') : 'restaurant-guides'),
+    coverImage: p.coverImageUrl ?? 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80',
+    author: { nameEn: p.authorNameEn ?? 'Tabaq Editorial', nameAr: 'فريق طبق التحريري', avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=100&q=80' },
+    readTime: p.readTimeMinutes ?? 5,
+    tags: Array.isArray(p.tags) ? p.tags : [],
+    commentsCount: Math.floor((p.viewCount ?? 0) / 120),
+    likesCount: Math.floor((p.viewCount ?? 0) / 40),
+  }));
+
+  const posts = normalizedApiPosts.length > 0 ? normalizedApiPosts : SAMPLE_POSTS;
 
   const filtered = posts.filter((p: typeof SAMPLE_POSTS[0]) => {
     const matchesCat = selectedCategory === 'all' || p.categorySlug === selectedCategory;
@@ -135,7 +149,7 @@ export function BlogPage() {
   });
 
   const featured = filtered.filter((p: typeof SAMPLE_POSTS[0]) => p.featured);
-  const trending = SAMPLE_POSTS.filter(p => p.trending).slice(0, 4);
+  const trending = (normalizedApiPosts.length > 0 ? normalizedApiPosts : SAMPLE_POSTS).filter((p: any) => p.trending).slice(0, 4);
   const regular = filtered.filter((p: typeof SAMPLE_POSTS[0]) => !p.featured);
 
   return (

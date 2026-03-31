@@ -16,6 +16,213 @@ import { Button } from '@/components/ui/button';
 import { StarRating } from '@/components/StarRating';
 import { getAuthHeaders } from '@/lib/api';
 
+// ─── Blog Management Tab ────────────────────────────────────────
+function BlogManagementTab({ t }: { t: (en: string, ar: string) => string }) {
+  const qc = useQueryClient();
+  const apiBase = import.meta.env.BASE_URL?.replace(/\/$/, '') || '';
+  const [filter, setFilter] = useState<'all' | 'published' | 'draft' | 'scheduled'>('all');
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ titleEn: '', titleAr: '', status: 'draft', categoryId: '' });
+  const [submitting, setSubmitting] = useState(false);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
+
+  const { data: categories = [] } = useQuery({
+    queryKey: ['admin-blog-categories'],
+    queryFn: async () => {
+      const r = await fetch(`${apiBase}/api/blog/categories`, { credentials: 'include' });
+      return r.ok ? r.json() : [];
+    },
+  });
+
+  const { data: allPosts = [], isLoading } = useQuery({
+    queryKey: ['admin-blog-posts'],
+    queryFn: async () => {
+      const r = await fetch(`${apiBase}/api/admin/blog/posts?limit=100`, { credentials: 'include', headers: getAuthHeaders() });
+      return r.ok ? r.json() : [];
+    },
+  });
+  const posts = filter === 'all' ? allPosts : allPosts.filter((p: any) => p.status === filter);
+
+  const deleteMut = useMutation({
+    mutationFn: async (id: number) => {
+      const r = await fetch(`${apiBase}/api/blog/posts/${id}`, { method: 'DELETE', headers: getAuthHeaders(), credentials: 'include' });
+      if (!r.ok) throw new Error('Delete failed');
+    },
+    onSuccess: () => {
+      setDeleteId(null);
+      qc.invalidateQueries({ queryKey: ['admin-blog-posts'] });
+    },
+  });
+
+  const createMut = async () => {
+    if (!form.titleEn || !form.titleAr) return;
+    setSubmitting(true);
+    const slug = form.titleEn.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    try {
+      await fetch(`${apiBase}/api/blog/posts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        credentials: 'include',
+        body: JSON.stringify({
+          titleEn: form.titleEn,
+          titleAr: form.titleAr,
+          slug: `${slug}-${Date.now()}`,
+          status: form.status,
+          categoryId: form.categoryId ? parseInt(form.categoryId) : undefined,
+          authorId: 1,
+        }),
+      });
+      setForm({ titleEn: '', titleAr: '', status: 'draft', categoryId: '' });
+      setShowForm(false);
+      qc.invalidateQueries({ queryKey: ['admin-blog-posts'] });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const filters: Array<{ id: typeof filter; label: string }> = [
+    { id: 'all', label: 'All' }, { id: 'published', label: 'Published' }, { id: 'draft', label: 'Draft' },
+  ];
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex gap-2 flex-wrap">
+          {filters.map(f => (
+            <button key={f.id} onClick={() => setFilter(f.id)}
+              className={`px-4 py-2 text-sm font-semibold rounded-full border transition-all ${filter === f.id ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-secondary'}`}>
+              {f.label}
+            </button>
+          ))}
+        </div>
+        <button onClick={() => setShowForm(v => !v)}
+          className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors">
+          <Plus className="w-4 h-4" /> {showForm ? t('Cancel', 'إلغاء') : t('New Post', 'مقال جديد')}
+        </button>
+      </div>
+
+      {showForm && (
+        <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+          <h3 className="font-bold text-foreground">{t('New Blog Post', 'مقال جديد')}</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground mb-1 block">{t('Title (English)', 'العنوان (إنجليزي)')}</label>
+              <input value={form.titleEn} onChange={e => setForm(p => ({ ...p, titleEn: e.target.value }))}
+                placeholder="Article title in English..."
+                className="w-full text-sm border border-border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-background" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground mb-1 block">{t('Title (Arabic)', 'العنوان (عربي)')}</label>
+              <input value={form.titleAr} onChange={e => setForm(p => ({ ...p, titleAr: e.target.value }))}
+                dir="rtl" placeholder="عنوان المقال بالعربية..."
+                className="w-full text-sm border border-border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-background" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground mb-1 block">{t('Status', 'الحالة')}</label>
+              <select value={form.status} onChange={e => setForm(p => ({ ...p, status: e.target.value }))}
+                className="w-full text-sm border border-border rounded-xl px-3 py-2 focus:outline-none focus:border-primary bg-background">
+                <option value="draft">Draft</option>
+                <option value="published">Published</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground mb-1 block">{t('Category', 'الفئة')}</label>
+              <select value={form.categoryId} onChange={e => setForm(p => ({ ...p, categoryId: e.target.value }))}
+                className="w-full text-sm border border-border rounded-xl px-3 py-2 focus:outline-none focus:border-primary bg-background">
+                <option value="">-- No category --</option>
+                {categories.map((c: any) => (
+                  <option key={c.id} value={c.id}>{c.nameEn}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="flex justify-end gap-3 pt-2 border-t border-border">
+            <button onClick={() => setShowForm(false)} className="px-4 py-2 text-sm border border-border rounded-xl hover:bg-secondary transition-colors">{t('Cancel', 'إلغاء')}</button>
+            <button onClick={createMut} disabled={submitting || !form.titleEn || !form.titleAr}
+              className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50">
+              {submitting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+              {t('Create Post', 'إنشاء مقال')}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="bg-card border border-border rounded-2xl overflow-hidden">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <RefreshCw className="w-5 h-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : posts.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
+            <BookOpen className="w-8 h-8 text-muted-foreground/40" />
+            <p className="text-sm text-muted-foreground">{t('No posts found', 'لا توجد مقالات')}</p>
+          </div>
+        ) : (
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-border bg-secondary/30">
+                {['Title', 'Category', 'Status', 'Views', 'Date', 'Actions'].map(h => (
+                  <th key={h} className="text-start px-5 py-3 text-xs font-semibold text-muted-foreground">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {posts.map((post: any) => (
+                <tr key={post.id} className="hover:bg-secondary/20">
+                  <td className="px-5 py-4">
+                    <div className="flex items-center gap-3">
+                      {post.coverImageUrl ? (
+                        <img src={post.coverImageUrl} alt="" className="w-8 h-8 rounded-lg object-cover shrink-0" />
+                      ) : (
+                        <div className="w-8 h-8 bg-teal-100 rounded-lg flex items-center justify-center shrink-0">
+                          <FileText className="w-4 h-4 text-teal-600" />
+                        </div>
+                      )}
+                      <p className="text-sm font-semibold text-foreground line-clamp-1 max-w-[200px]">{post.titleEn}</p>
+                    </div>
+                  </td>
+                  <td className="px-5 py-4">
+                    <span className="text-xs text-muted-foreground">{post.categoryNameEn || '—'}</span>
+                  </td>
+                  <td className="px-5 py-4">
+                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${post.status === 'published' ? 'bg-green-100 text-green-700' : post.status === 'draft' ? 'bg-gray-100 text-gray-600' : 'bg-blue-100 text-blue-700'}`}>
+                      {post.status}
+                    </span>
+                  </td>
+                  <td className="px-5 py-4 text-sm font-medium text-foreground">
+                    {post.viewCount > 0 ? post.viewCount.toLocaleString() : '—'}
+                  </td>
+                  <td className="px-5 py-4 text-xs text-muted-foreground">
+                    {post.publishedAt ? new Date(post.publishedAt).toLocaleDateString() : new Date(post.createdAt).toLocaleDateString()}
+                  </td>
+                  <td className="px-5 py-4">
+                    <div className="flex items-center gap-1.5">
+                      <a href={`/blog/${post.slug}`} target="_blank" rel="noreferrer"
+                        className="p-1.5 rounded hover:bg-secondary text-muted-foreground"><Eye className="w-3.5 h-3.5" /></a>
+                      {deleteId === post.id ? (
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => deleteMut.mutate(post.id)} className="px-2 py-0.5 text-xs bg-red-500 text-white rounded font-semibold hover:bg-red-600">
+                            {deleteMut.isPending ? '...' : 'Yes'}
+                          </button>
+                          <button onClick={() => setDeleteId(null)} className="px-2 py-0.5 text-xs border border-border rounded hover:bg-secondary">No</button>
+                        </div>
+                      ) : (
+                        <button onClick={() => setDeleteId(post.id)} className="p-1.5 rounded hover:bg-red-50 text-muted-foreground hover:text-red-600">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Menu Management Tab ────────────────────────────────────────
 function MenuManagementTab({ lang, t }: { lang: string; t: (en: string, ar: string) => string }) {
   const qc = useQueryClient();
@@ -1400,57 +1607,7 @@ export function AdminPanelPage() {
           {activeTab === 'menus' && <MenuManagementTab lang={lang} t={t} />}
 
           {/* ── BLOG ── */}
-          {activeTab === 'blog' && (
-            <div className="space-y-5">
-              <div className="flex items-center justify-between">
-                <div className="flex gap-2">
-                  {['All', 'Published', 'Draft', 'Scheduled'].map(f => (
-                    <button key={f} className={`px-4 py-2 text-sm font-semibold rounded-full border transition-all ${f === 'All' ? 'bg-primary text-primary-foreground border-primary' : 'border-border'}`}>{f}</button>
-                  ))}
-                </div>
-                <button className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors">
-                  <Plus className="w-4 h-4" /> New Post
-                </button>
-              </div>
-              <div className="bg-card border border-border rounded-2xl overflow-hidden">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-border bg-secondary/30">
-                      {['Title', 'Status', 'Views', 'Date', 'Actions'].map(h => (
-                        <th key={h} className="text-start px-5 py-3 text-xs font-semibold text-muted-foreground">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {BLOG_POSTS.map(post => (
-                      <tr key={post.id} className="hover:bg-secondary/20">
-                        <td className="px-5 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-teal-100 rounded-lg flex items-center justify-center shrink-0">
-                              <FileText className="w-4 h-4 text-teal-600" />
-                            </div>
-                            <p className="text-sm font-semibold text-foreground line-clamp-1">{post.title}</p>
-                          </div>
-                        </td>
-                        <td className="px-5 py-4">
-                          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${post.status === 'published' ? 'bg-green-100 text-green-700' : post.status === 'draft' ? 'bg-gray-100 text-gray-600' : 'bg-blue-100 text-blue-700'}`}>{post.status}</span>
-                        </td>
-                        <td className="px-5 py-4 text-sm font-medium text-foreground">{post.views > 0 ? post.views.toLocaleString() : '—'}</td>
-                        <td className="px-5 py-4 text-xs text-muted-foreground">{post.date}</td>
-                        <td className="px-5 py-4">
-                          <div className="flex items-center gap-1.5">
-                            <button className="p-1.5 rounded hover:bg-secondary text-muted-foreground"><Eye className="w-3.5 h-3.5" /></button>
-                            <button className="p-1.5 rounded hover:bg-secondary text-muted-foreground"><Edit className="w-3.5 h-3.5" /></button>
-                            <button className="p-1.5 rounded hover:bg-red-50 text-muted-foreground hover:text-red-600"><Trash2 className="w-3.5 h-3.5" /></button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
+          {activeTab === 'blog' && <BlogManagementTab t={t} />}
 
           {/* ── SEO ── */}
           {activeTab === 'seo' && (

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'wouter';
-import { Star, Clock, Flame, Leaf, AlertCircle, ChevronDown, ChevronUp, Zap, Plus, Minus, ShoppingBag, X, ArrowRight, ChefHat, Sparkles, Tag } from 'lucide-react';
+import { Star, Clock, Flame, Leaf, AlertCircle, ChevronDown, ChevronUp, Zap, Plus, Minus, ShoppingBag, X, ArrowRight, ChefHat, Sparkles, Tag, Users, Package } from 'lucide-react';
 import { useLanguage } from '@/hooks/use-language';
 import { useCart } from '@/context/CartContext';
 import { formatPrice } from '@/lib/utils';
@@ -30,11 +30,28 @@ type MenuSection = {
   [key: string]: unknown;
 };
 
+type CateringPackage = {
+  id: number;
+  nameEn: string;
+  nameAr: string;
+  descriptionEn?: string | null;
+  descriptionAr?: string | null;
+  pricePerPerson: string | number;
+  minGuests: number;
+  maxGuests?: number | null;
+  currency?: string;
+  imageUrl?: string | null;
+  includedDishes?: Array<{ nameEn: string; nameAr: string; description?: string }>;
+  isActive?: boolean;
+};
+
 type Menu = {
   id: number;
   nameEn: string;
   nameAr: string;
+  type?: string;
   sections?: MenuSection[];
+  packages?: CateringPackage[];
   [key: string]: unknown;
 };
 
@@ -327,6 +344,85 @@ function DishCard({
   );
 }
 
+// ─── Catering Packages Section ─────────────────────────────────
+function CateringPackagesSection({ menus }: { menus: Menu[] }) {
+  const { t, lang } = useLanguage();
+  const cateringMenus = menus.filter(m => (m.type === 'catering' || m.type === 'buffet') && m.packages && m.packages.length > 0);
+  if (cateringMenus.length === 0) return null;
+
+  const allPackages = cateringMenus.flatMap(m => m.packages ?? []).filter(p => p.isActive !== false);
+  if (allPackages.length === 0) return null;
+
+  return (
+    <section className="mb-8">
+      <div className="flex items-center gap-2 mb-4">
+        <div className="flex items-center gap-2 bg-violet-50 text-violet-700 px-3 py-1.5 rounded-full border border-violet-200">
+          <Package className="w-4 h-4" />
+          <span className="text-sm font-bold">{t('Catering Packages', 'باقات التموين')}</span>
+        </div>
+        <p className="text-xs text-muted-foreground">{t('Ideal for events & large gatherings', 'مثالية للفعاليات والتجمعات الكبيرة')}</p>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {allPackages.map(pkg => (
+          <div key={pkg.id} className="bg-card border border-border rounded-2xl overflow-hidden hover:shadow-md transition-shadow group">
+            {pkg.imageUrl ? (
+              <div className="h-36 overflow-hidden">
+                <img src={pkg.imageUrl} alt={lang === 'ar' ? pkg.nameAr : pkg.nameEn} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+              </div>
+            ) : (
+              <div className="h-36 bg-gradient-to-br from-violet-50 to-purple-100 flex items-center justify-center">
+                <Package className="w-10 h-10 text-violet-300" />
+              </div>
+            )}
+            <div className="p-4">
+              <h4 className="font-bold text-foreground mb-1 text-sm">
+                {lang === 'ar' ? pkg.nameAr : pkg.nameEn}
+              </h4>
+              {(lang === 'ar' ? pkg.descriptionAr : pkg.descriptionEn) && (
+                <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
+                  {lang === 'ar' ? pkg.descriptionAr : pkg.descriptionEn}
+                </p>
+              )}
+              <div className="flex items-center gap-2 mb-3">
+                <Users className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                <span className="text-xs text-muted-foreground">
+                  {pkg.maxGuests
+                    ? t(`${pkg.minGuests}–${pkg.maxGuests} guests`, `${pkg.minGuests}–${pkg.maxGuests} ضيف`)
+                    : t(`Min. ${pkg.minGuests} guests`, `${pkg.minGuests} ضيوف على الأقل`)}
+                </span>
+              </div>
+              {pkg.includedDishes && pkg.includedDishes.length > 0 && (
+                <div className="mb-3">
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">{t('Includes', 'يشمل')}</p>
+                  <div className="flex flex-wrap gap-1">
+                    {pkg.includedDishes.slice(0, 4).map((dish, i) => (
+                      <span key={i} className="text-[10px] bg-secondary text-muted-foreground px-2 py-0.5 rounded-full">
+                        {lang === 'ar' ? dish.nameAr : dish.nameEn}
+                      </span>
+                    ))}
+                    {pkg.includedDishes.length > 4 && (
+                      <span className="text-[10px] bg-secondary text-muted-foreground px-2 py-0.5 rounded-full">+{pkg.includedDishes.length - 4}</span>
+                    )}
+                  </div>
+                </div>
+              )}
+              <div className="flex items-center justify-between pt-2 border-t border-border">
+                <div>
+                  <span className="text-lg font-extrabold text-primary">{Number(pkg.pricePerPerson).toLocaleString()}</span>
+                  <span className="text-xs text-muted-foreground ms-1">{pkg.currency ?? 'SAR'} {t('/person', '/شخص')}</span>
+                </div>
+                <button className="text-xs bg-primary text-white font-semibold px-3 py-1.5 rounded-full hover:bg-primary/90 transition-colors">
+                  {t('Enquire', 'استفسار')}
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 interface MenuTabProps {
   menuData: Menu[] | undefined;
   restaurantId?: number;
@@ -502,6 +598,8 @@ export function MenuTab({ menuData, restaurantId, restaurantNameEn = 'Restaurant
           </select>
         </div>
       </div>
+
+      {menuData && <CateringPackagesSection menus={menuData} />}
 
       <div className={`space-y-8 ${hasCart ? 'pb-28' : ''}`}>
         {tabaqStarDishes.length > 0 && (

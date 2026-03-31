@@ -95,7 +95,7 @@ export function BlogDetailPage() {
   const [, params] = useRoute('/blog/:slug');
   const slug = params?.slug ?? '';
 
-  const { data: apiPost } = useQuery({
+  const { data: rawApiPost } = useQuery({
     queryKey: ['blog-post', slug],
     queryFn: async () => {
       const res = await fetch(`/api/blog/posts/${slug}`);
@@ -105,6 +105,21 @@ export function BlogDetailPage() {
     retry: false,
     enabled: !!slug,
   });
+
+  const apiPost = rawApiPost ? {
+    ...rawApiPost,
+    coverImage: rawApiPost.coverImageUrl ?? rawApiPost.coverImage ?? 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1200&h=600&fit=crop',
+    authorName: rawApiPost.authorNameEn ?? rawApiPost.authorName ?? 'Tabaq Editorial',
+    authorAr: rawApiPost.authorNameAr ?? rawApiPost.authorAr ?? 'فريق طبق التحريري',
+    authorAvatar: rawApiPost.authorAvatar ?? 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=100&q=80',
+    authorBioEn: rawApiPost.authorBioEn ?? 'Member of the Tabaq editorial team, passionate about discovering the best dining experiences across the Arab world.',
+    authorBioAr: rawApiPost.authorBioAr ?? 'عضو في فريق طبق التحريري، شغوف باكتشاف أفضل تجارب تناول الطعام في العالم العربي.',
+    readTimeEn: `${rawApiPost.readTimeMinutes ?? 5} min read`,
+    readTimeAr: `${rawApiPost.readTimeMinutes ?? 5} دقائق قراءة`,
+    publishedAt: rawApiPost.publishedAt ? new Date(rawApiPost.publishedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : rawApiPost.publishedAt,
+    tags: Array.isArray(rawApiPost.tags) ? rawApiPost.tags : [],
+    content: lang === 'ar' ? (rawApiPost.contentAr ?? rawApiPost.content ?? '') : (rawApiPost.contentEn ?? rawApiPost.content ?? ''),
+  } : null;
 
   const post = apiPost ?? SAMPLE_POSTS[slug] ?? SAMPLE_POSTS['best-restaurants-riyadh-2025'];
 
