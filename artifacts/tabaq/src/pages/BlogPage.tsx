@@ -146,9 +146,9 @@ export function BlogPage() {
     likesCount: Math.floor((p.viewCount ?? 0) / 40),
   }));
 
-  const posts = normalizedApiPosts.length > 0 ? normalizedApiPosts : SAMPLE_POSTS;
+  const posts = normalizedApiPosts;
 
-  const filtered = posts.filter((p: typeof SAMPLE_POSTS[0]) => {
+  const filtered = posts.filter((p: any) => {
     const query = searchQuery.toLowerCase();
     const matchesSearch = !query ||
       (p.titleEn?.toLowerCase().includes(query)) ||
@@ -157,9 +157,9 @@ export function BlogPage() {
     return matchesSearch;
   });
 
-  const featured = filtered.filter((p: typeof SAMPLE_POSTS[0]) => p.featured);
-  const trending = (normalizedApiPosts.length > 0 ? normalizedApiPosts : SAMPLE_POSTS).filter((p: any) => p.trending).slice(0, 4);
-  const regular = filtered.filter((p: typeof SAMPLE_POSTS[0]) => !p.featured);
+  const featured = filtered.filter((p: any) => p.featured);
+  const trending = normalizedApiPosts.filter((p: any) => p.trending).slice(0, 4);
+  const regular = filtered.filter((p: any) => !p.featured);
 
   return (
     <div className="min-h-screen bg-background" dir={lang === 'ar' ? 'rtl' : 'ltr'}>

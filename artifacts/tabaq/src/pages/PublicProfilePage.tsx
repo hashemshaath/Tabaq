@@ -77,22 +77,6 @@ type UserStory = {
   seen: boolean;
 };
 
-function generateStories(userId: number): UserStory[] {
-  const foods = [
-    { img: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&q=80', en: "Tonight's dinner \u2728", ar: '\u0639\u0634\u0627\u0621 \u0627\u0644\u0644\u064a\u0644\u0629 \u2728' },
-    { img: 'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=600&q=80', en: 'Fresh flavors 🌿', ar: 'نكهات طازجة 🌿' },
-    { img: 'https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?w=600&q=80', en: 'Brunch vibes ☀️', ar: 'برانش ممتع ☀️' },
-    { img: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&q=80', en: 'Fine dining 🕯️', ar: 'مطعم فاخر 🕯️' },
-    { img: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=600&q=80', en: 'Pizza night 🍕', ar: 'ليلة بيتزا 🍕' },
-    { img: 'https://images.unsplash.com/photo-1565958011703-44f9829ba187?w=600&q=80', en: 'Dessert time 🍰', ar: 'وقت الحلويات 🍰' },
-  ];
-  const times = ['2h', '5h', '8h', '14h', '20h', '23h'];
-  return foods.slice(0, 4 + (userId % 3)).map((f, i) => ({
-    id: i + 1, image: f.img, caption: f.en, captionAr: f.ar,
-    timeAgo: times[i], seen: i > 1,
-  }));
-}
-
 function StoryViewer({ stories, startIdx, username, onClose }: {
   stories: UserStory[]; startIdx: number; username: string; onClose: () => void;
 }) {
@@ -165,9 +149,34 @@ function StoryViewer({ stories, startIdx, username, onClose }: {
 
 function UserStoriesBar({ userId, username, isOwn, lang }: { userId: number; username: string; isOwn: boolean; lang: string }) {
   const t = (en: string, ar: string) => lang === 'ar' ? ar : en;
-  const stories = generateStories(userId);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerStart, setViewerStart] = useState(0);
+  const apiBase = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
+
+  const { data } = useQuery({
+    queryKey: ['user-stories', userId],
+    queryFn: async () => {
+      const res = await fetch(`${apiBase}/api/users/${userId}/stories?limit=20`);
+      if (!res.ok) return { stories: [] };
+      return res.json();
+    },
+    enabled: !!userId,
+  });
+
+  const stories: UserStory[] = (data?.stories ?? []).map((s: any, i: number) => ({
+    id: s.id,
+    image: Array.isArray(s.mediaUrls) && s.mediaUrls.length > 0 ? s.mediaUrls[0] : 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&q=80',
+    caption: s.captionEn ?? '',
+    captionAr: s.captionAr ?? '',
+    timeAgo: (() => {
+      const diff = Date.now() - new Date(s.createdAt).getTime();
+      const h = Math.floor(diff / 3600000);
+      return h < 1 ? 'now' : h < 24 ? `${h}h` : `${Math.floor(h / 24)}d`;
+    })(),
+    seen: false,
+  }));
+
+  if (!isOwn && stories.length === 0) return null;
 
   return (
     <>
@@ -194,7 +203,7 @@ function UserStoriesBar({ userId, username, isOwn, lang }: { userId: number; use
           ))}
         </div>
       </div>
-      {viewerOpen && (
+      {viewerOpen && stories.length > 0 && (
         <StoryViewer stories={stories} startIdx={viewerStart} username={username} onClose={() => setViewerOpen(false)} />
       )}
     </>

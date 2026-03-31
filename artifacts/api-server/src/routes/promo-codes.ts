@@ -2,12 +2,12 @@ import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { promoCodesTable, promoCodeRedemptionsTable } from "@workspace/db/schema";
 import { eq, and, sql, gte, lte } from "drizzle-orm";
-import { requireAuth } from "../middleware/requireAuth.js";
+import { requireAuth, requireAdmin } from "../middleware/requireAuth.js";
 
 const router: IRouter = Router();
 
-// GET /promo-codes — admin only list (protected by requireAuth)
-router.get("/promo-codes", requireAuth, async (req, res) => {
+// GET /promo-codes — admin only list
+router.get("/promo-codes", requireAdmin, async (req, res) => {
   try {
     const codes = await db.select().from(promoCodesTable).orderBy(sql`${promoCodesTable.createdAt} desc`);
     res.json(codes);
@@ -18,7 +18,7 @@ router.get("/promo-codes", requireAuth, async (req, res) => {
 });
 
 // POST /promo-codes — admin create
-router.post("/promo-codes", requireAuth, async (req, res) => {
+router.post("/promo-codes", requireAdmin, async (req, res) => {
   try {
     const [code] = await db.insert(promoCodesTable).values({
       ...req.body,
@@ -32,7 +32,7 @@ router.post("/promo-codes", requireAuth, async (req, res) => {
 });
 
 // PATCH /promo-codes/:id — admin update
-router.patch("/promo-codes/:id", requireAuth, async (req, res) => {
+router.patch("/promo-codes/:id", requireAdmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id as string);
     const [updated] = await db.update(promoCodesTable).set({ ...req.body, updatedAt: new Date() }).where(eq(promoCodesTable.id, id)).returning();

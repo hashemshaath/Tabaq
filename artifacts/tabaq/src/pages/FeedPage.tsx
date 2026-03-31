@@ -60,195 +60,6 @@ const STORY_COLORS: Record<StoryType, string> = {
   recommendation: 'from-pink-500 to-fuchsia-400',
 };
 
-const MOCK_STORY_GROUPS: StoryGroup[] = [
-  {
-    id: 0,
-    kind: 'user',
-    nameEn: 'Your Story',
-    nameAr: 'قصتك',
-    avatar: 'https://i.pravatar.cc/80?img=5',
-    isMe: true,
-    seen: true,
-    stories: [],
-  },
-  {
-    id: 1,
-    kind: 'user',
-    nameEn: 'Noura',
-    nameAr: 'نورة',
-    avatar: 'https://i.pravatar.cc/80?img=47',
-    handle: '@noura',
-    badge: '👑',
-    seen: false,
-    stories: [
-      {
-        id: 11,
-        image: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&h=1000&fit=crop',
-        type: 'checkin',
-        typeEn: 'Check-in',
-        typeAr: 'تسجيل وصول',
-        captionEn: 'Back at Reem Al-Bawadi for date night — the lamb ouzi is a masterpiece every single time. 🍖✨',
-        captionAr: 'عودة إلى ريم البوادي لسهرة رومانسية — خروف الأوزي تحفة فنية في كل مرة. 🍖✨',
-        locationEn: 'Reem Al-Bawadi, Riyadh',
-        locationAr: 'ريم البوادي، الرياض',
-        restaurantId: 2,
-        restaurantEn: 'Reem Al-Bawadi',
-        restaurantAr: 'ريم البوادي',
-        accentColor: '#e23744',
-      },
-      {
-        id: 12,
-        image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&h=1000&fit=crop',
-        type: 'dish_spotlight',
-        typeEn: 'Dish Spotlight',
-        typeAr: 'طبق مميز',
-        captionEn: 'The mezze platter here is unreal — 12 dips, all house-made. Don\'t skip the smoked labneh!',
-        captionAr: 'طبق المزة هنا لا يصدق — 12 صوص، كلها محلية الصنع. لا تفوتوا اللبنة المدخنة!',
-        tagEn: 'Mezze Platter · 55 SAR',
-        tagAr: 'طبق المزة · ٥٥ ر.س',
-        accentColor: '#f59e0b',
-      },
-    ],
-  },
-  {
-    id: 2,
-    kind: 'user',
-    nameEn: 'Faisal',
-    nameAr: 'فيصل',
-    avatar: 'https://i.pravatar.cc/80?img=12',
-    handle: '@faisal',
-    badge: '🍽️',
-    seen: false,
-    stories: [
-      {
-        id: 21,
-        image: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=600&h=1000&fit=crop',
-        type: 'recommendation',
-        typeEn: 'Recommendation',
-        typeAr: 'توصية',
-        captionEn: 'If you haven\'t tried Sushi Sama\'s omakase, you\'re missing out. Pure perfection on a plate.',
-        captionAr: 'إذا لم تجرّب أوماكاسي سوشي ساما، فأنت تفوّت شيئاً رائعاً. كمال مطلق.',
-        locationEn: 'Sushi Sama, Riyadh',
-        locationAr: 'سوشي ساما، الرياض',
-        restaurantId: 3,
-        restaurantEn: 'Sushi Sama',
-        restaurantAr: 'سوشي ساما',
-        accentColor: '#8b5cf6',
-      },
-    ],
-  },
-  {
-    id: 3,
-    kind: 'restaurant',
-    nameEn: 'Nobu',
-    nameAr: 'نوبو',
-    avatar: 'https://images.unsplash.com/photo-1562802378-063ec186a863?w=80&h=80&fit=crop',
-    seen: false,
-    stories: [
-      {
-        id: 31,
-        image: 'https://images.unsplash.com/photo-1562802378-063ec186a863?w=600&h=1000&fit=crop',
-        type: 'new_menu',
-        typeEn: 'New Menu',
-        typeAr: 'قائمة جديدة',
-        captionEn: '🌸 Spring Omakase is here. 9-course seasonal journey, available Wednesday to Sunday. Reserve now.',
-        captionAr: '🌸 وصل أوماكاسي الربيع. رحلة موسمية من ٩ أطباق، متاحة من الأربعاء إلى الأحد. احجز الآن.',
-        tagEn: 'Book now · Nobu Riyadh',
-        tagAr: 'احجز الآن · نوبو الرياض',
-        restaurantId: 7,
-        restaurantEn: 'Nobu Riyadh',
-        restaurantAr: 'نوبو الرياض',
-        accentColor: '#0d0d0f',
-      },
-      {
-        id: 32,
-        image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&h=1000&fit=crop',
-        type: 'dish_spotlight',
-        typeEn: 'Dish Spotlight',
-        typeAr: 'طبق مميز',
-        captionEn: 'Black Cod Miso — Nobu\'s iconic signature dish. Marinated 72 hours for maximum depth of flavour.',
-        captionAr: 'قد أسود بالميسو — الطبق الأيقوني المميز لنوبو. مُتبَّل لمدة ٧٢ ساعة لعمق استثنائي من النكهة.',
-        tagEn: 'Black Cod Miso · 185 SAR',
-        tagAr: 'قد أسود بالميسو · ١٨٥ ر.س',
-        accentColor: '#c9a84c',
-      },
-    ],
-  },
-  {
-    id: 4,
-    kind: 'user',
-    nameEn: 'Lama',
-    nameAr: 'لمى',
-    avatar: 'https://i.pravatar.cc/80?img=32',
-    handle: '@lama',
-    badge: '⭐',
-    seen: false,
-    stories: [
-      {
-        id: 41,
-        image: 'https://images.unsplash.com/photo-1551024601-bec78aea704b?w=600&h=1000&fit=crop',
-        type: 'dish_spotlight',
-        typeEn: 'Dish Spotlight',
-        typeAr: 'طبق مميز',
-        captionEn: 'Kunafa from Al-Baik is unmatched. This dessert needs its own Michelin star honestly.',
-        captionAr: 'كنافة الوطن لا مثيل لها. هذا الحلوى تستحق نجمة ميشلان وحدها صراحة.',
-        tagEn: 'Kunafa Nabulsiyya · 28 SAR',
-        tagAr: 'كنافة نابلسية · ٢٨ ر.س',
-        accentColor: '#f59e0b',
-      },
-    ],
-  },
-  {
-    id: 5,
-    kind: 'restaurant',
-    nameEn: 'Zuma',
-    nameAr: 'زوما',
-    avatar: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=80&h=80&fit=crop',
-    seen: true,
-    stories: [
-      {
-        id: 51,
-        image: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600&h=1000&fit=crop',
-        type: 'event',
-        typeEn: 'Event',
-        typeAr: 'حدث',
-        captionEn: '🎉 Zuma\'s annual Chef\'s Table Series returns this April. Limited seats — 12 guests max per evening.',
-        captionAr: '🎉 سلسلة طاولة الشيف السنوية في زوما تعود هذا أبريل. مقاعد محدودة — ١٢ ضيفاً فقط كل مساء.',
-        tagEn: 'April 5–25 · Book via Tabaq',
-        tagAr: '٥–٢٥ أبريل · احجز عبر طبق',
-        restaurantId: 3,
-        restaurantEn: 'Zuma Riyadh',
-        restaurantAr: 'زوما الرياض',
-        accentColor: '#7c3aed',
-      },
-    ],
-  },
-  {
-    id: 6,
-    kind: 'user',
-    nameEn: 'Sultan',
-    nameAr: 'سلطان',
-    avatar: 'https://i.pravatar.cc/80?img=15',
-    handle: '@sultan',
-    badge: '🌱',
-    seen: true,
-    stories: [
-      {
-        id: 61,
-        image: 'https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=600&h=1000&fit=crop',
-        type: 'checkin',
-        typeEn: 'Check-in',
-        typeAr: 'تسجيل وصول',
-        captionEn: 'Healthy brunch at Organic Table — this acai bowl is a work of art. Highly recommend for a light but satisfying meal.',
-        captionAr: 'إفطار صحي في أورغانيك تيبل — طبق الأساي هذا تحفة فنية. أوصي به للوجبة الخفيفة المُشبعة.',
-        locationEn: 'Organic Table, Jeddah',
-        locationAr: 'أورغانيك تيبل، جدة',
-        accentColor: '#10b981',
-      },
-    ],
-  },
-];
-
 const STORY_DURATION_MS = 6000;
 
 // ── Story Viewer ───────────────────────────────────────────────────────────────
@@ -1089,9 +900,65 @@ export default function FeedPage() {
   const t = (en: string, ar: string) => lang === 'ar' ? ar : en;
   const { user } = useAuth();
   const [tab, setTab] = useState<FeedTab>('community');
-  const [storyGroups, setStoryGroups] = useState<StoryGroup[]>(MOCK_STORY_GROUPS);
+  const [seenGroupIds, setSeenGroupIds] = useState<Set<number>>(new Set());
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerStartIndex, setViewerStartIndex] = useState(0);
+  const apiBase = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
+
+  const { data: storiesData } = useQuery({
+    queryKey: ['stories-recent'],
+    queryFn: async () => {
+      const res = await fetch(`${apiBase}/api/stories/recent?limit=30`);
+      if (!res.ok) return { stories: [] };
+      return res.json();
+    },
+  });
+
+  const storyGroups = React.useMemo<StoryGroup[]>(() => {
+    const rawStories: any[] = storiesData?.stories ?? [];
+    const grouped = new Map<number, any[]>();
+    for (const s of rawStories) {
+      const rid = s.restaurantId ?? 0;
+      if (!grouped.has(rid)) grouped.set(rid, []);
+      grouped.get(rid)!.push(s);
+    }
+    const restaurantGroups: StoryGroup[] = Array.from(grouped.entries()).map(([rid, stories]) => {
+      const first = stories[0];
+      return {
+        id: rid,
+        kind: 'restaurant' as const,
+        nameEn: first.restaurantNameEn ?? 'Restaurant',
+        nameAr: first.restaurantNameAr ?? 'مطعم',
+        avatar: first.restaurantLogoUrl ?? `https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=80&h=80&fit=crop`,
+        seen: seenGroupIds.has(rid),
+        stories: stories.map((s: any) => ({
+          id: s.id,
+          image: Array.isArray(s.mediaUrls) && s.mediaUrls.length > 0
+            ? s.mediaUrls[0]
+            : 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&h=1000&fit=crop',
+          type: 'checkin' as const,
+          typeEn: 'Story',
+          typeAr: 'قصة',
+          captionEn: s.captionEn ?? '',
+          captionAr: s.captionAr ?? '',
+          restaurantId: s.restaurantId,
+          restaurantEn: s.restaurantNameEn ?? '',
+          restaurantAr: s.restaurantNameAr ?? '',
+        })),
+      };
+    });
+    const myGroup: StoryGroup = {
+      id: 0,
+      kind: 'user',
+      nameEn: 'Your Story',
+      nameAr: 'قصتك',
+      avatar: user?.avatarUrl ?? `https://i.pravatar.cc/80?u=${user?.id ?? 'me'}`,
+      isMe: true,
+      seen: true,
+      stories: [],
+    };
+    return [myGroup, ...restaurantGroups];
+  }, [storiesData, seenGroupIds, user]);
 
   const openStory = useCallback((groupIndex: number) => {
     setViewerStartIndex(groupIndex);
@@ -1100,10 +967,9 @@ export default function FeedPage() {
 
   const closeStory = useCallback(() => {
     setViewerOpen(false);
-    setStoryGroups(prev =>
-      prev.map((g, i) => (i === viewerStartIndex ? { ...g, seen: true } : g))
-    );
-  }, [viewerStartIndex]);
+    const group = storyGroups[viewerStartIndex];
+    if (group) setSeenGroupIds(prev => new Set([...prev, group.id]));
+  }, [viewerStartIndex, storyGroups]);
 
   const { data: feedData, isLoading: feedLoading } = useGetFeed(
     { limit: 30 },

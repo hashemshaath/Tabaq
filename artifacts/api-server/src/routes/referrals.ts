@@ -89,15 +89,13 @@ router.get("/me/referral", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/referrals/use", async (req, res) => {
+router.post("/referrals/use", requireAuth, async (req, res) => {
   try {
-    const { referralCode, newUserId } = req.body as {
-      referralCode: string;
-      newUserId: number;
-    };
+    const { referralCode } = req.body as { referralCode: string };
+    const newUserId = req.auth!.userId;
 
-    if (!referralCode || !newUserId) {
-      return res.status(400).json({ error: "referralCode and newUserId are required" });
+    if (!referralCode) {
+      return res.status(400).json({ error: "referralCode is required" });
     }
 
     const [referrer] = await db

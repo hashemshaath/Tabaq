@@ -614,6 +614,26 @@ Rich mock data for all 6 new sections: MOCK_CHECK_INS (5 visits), MOCK_REVIEWS (
 - Lightbox renders outside the `<Link>` wrapper using `<>` fragment to avoid navigation conflicts
 - Works with `e.preventDefault()` + `e.stopPropagation()` pattern consistent with existing CounterButton
 
+## Session — Backend Security Hardening & Mock Data Removal
+
+### Backend Security Fixes (all verified with 401 tests)
+- `POST /events` — added `requireAuth` (previously unauthenticated)
+- `POST/PATCH/DELETE /blog/posts`, `POST /blog/categories`, `GET /admin/blog/posts` — upgraded from `requireAuth` → `requireAdmin`
+- `GET/PATCH /admin/stories` — upgraded from `requireAuth` → `requireAdmin`
+- `GET/POST/PATCH /promo-codes` — upgraded from `requireAuth` → `requireAdmin`
+- `POST /referrals/use` — added `requireAuth`; `newUserId` now comes from `req.auth.userId` (not request body)
+- Fixed AI model name: `gpt-5-nano` → `gpt-4o-mini` in `recommendations.ts`
+
+### New Backend Endpoints
+- `GET /stories/recent` — returns recently approved stories grouped by restaurant for the Feed
+- `GET /users/:userId/stories` — returns approved stories submitted by a specific user (for PublicProfile)
+
+### Frontend Mock Data Removal (connected to real APIs)
+- **VouchersPage** — removed `MOCK_VOUCHERS` fallback; shows real empty state when user has no vouchers
+- **BlogPage** — removed `SAMPLE_POSTS` fallback; shows real empty state when no blog posts exist
+- **FeedPage** — removed `MOCK_STORY_GROUPS`; now fetches `/api/stories/recent`, groups by restaurant, keeps "Your Story" placeholder
+- **PublicProfilePage** — removed `generateStories()` fake function; now fetches `/api/users/:userId/stories` and maps to real media
+
 ## Session — Comprehensive Account Settings System
 
 ### AccountPage (`/account`)

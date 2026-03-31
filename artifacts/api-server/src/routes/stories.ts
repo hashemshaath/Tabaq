@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { restaurantStoriesTable, usersTable, restaurantsTable } from "@workspace/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
-import { requireAuth, optionalAuth } from "../middleware/requireAuth.js";
+import { requireAuth, requireAdmin, optionalAuth } from "../middleware/requireAuth.js";
 
 const router: IRouter = Router();
 
@@ -113,7 +113,7 @@ router.post("/restaurants/:restaurantId/stories", requireAuth, async (req, res) 
 });
 
 // Admin: list all pending stories
-router.get("/admin/stories", requireAuth, async (req, res) => {
+router.get("/admin/stories", requireAdmin, async (req, res) => {
   try {
     const { status = "pending", limit = "50", offset = "0" } = req.query;
 
@@ -150,7 +150,7 @@ router.get("/admin/stories", requireAuth, async (req, res) => {
 });
 
 // Admin: approve or reject a story
-router.patch("/admin/stories/:storyId", requireAuth, async (req, res) => {
+router.patch("/admin/stories/:storyId", requireAdmin, async (req, res) => {
   try {
     const storyId = parseInt(req.params["storyId"] as string, 10);
     const { action, adminNote } = req.body;
@@ -185,6 +185,78 @@ router.patch("/admin/stories/:storyId", requireAuth, async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "Failed to update story");
     res.status(500).json({ error: "internal_error", message: "Failed to update story" });
+  }
+});
+
+// GET /stories/recent — recent approved stories for the feed, grouped by restaurant
+router.get("/stories/recent", optionalAuth, async (req, res) => {
+  try {
+    const { limit = "30" } = req.query;
+    const stories = await db
+      .select({
+        id: restaurantStoriesTable.id,
+        restaurantId: restaurantStoriesTable.restaurantId,
+        userId: restaurantStoriesTable.userId,
+        captionEn: restaurantStoriesTable.captionEn,
+        captionAr: restaurantStoriesTable.captionAr,
+        mediaUrls: restaurantStoriesTable.mediaUrls,
+        mediaType: restaurantStoriesTable.mediaType,
+        viewCount: restaurantStoriesTable.viewCount,
+        likeCount: restaurantStoriesTable.likeCount,
+        createdAt: restaurantStoriesTable.createdAt,
+        userNameEn: usersTable.nameEn,
+        userNameAr: usersTable.nameAr,
+        userAvatarUrl: usersTable.avatarUrl,
+        restaurantNameEn: restaurantsTable.nameEn,
+        restaurantNameAr: restaurantsTable.nameAr,
+        restaurantLogoUrl: restaurantsTable.logoUrl,
+      })
+      .from(restaurantStoriesTable)
+      .leftJoin(usersTable, eq(restaurantStoriesTable.userId, usersTable.id))
+      .leftJoin(restaurantsTable, eq(restaurantStoriesTable.restaurantId, restaurantsTable.id))
+      .where(eq(restaurantStoriesTable.status, "approved"))
+      .orderBy(desc(restaurantStoriesTable.approvedAt))
+      .limit(parseInt(limit as string));
+    res.json({ stories });
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch recent stories");
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// GET /users/:userId/stories — approved stories submitted by a specific user
+router.get("/users/:userId/stories", optionalAuth, async (req, res) => {
+  try {
+    const userId = parseInt(req.params["userId"] as string, 10);
+    const { limit = "20", offset = "0" } = req.query;
+    const stories = await db
+      .select({
+        id: restaurantStoriesTable.id,
+        restaurantId: restaurantStoriesTable.restaurantId,
+        captionEn: restaurantStoriesTable.captionEn,
+        captionAr: restaurantStoriesTable.captionAr,
+        mediaUrls: restaurantStoriesTable.mediaUrls,
+        mediaType: restaurantStoriesTable.mediaType,
+        viewCount: restaurantStoriesTable.viewCount,
+        likeCount: restaurantStoriesTable.likeCount,
+        createdAt: restaurantStoriesTable.createdAt,
+        restaurantNameEn: restaurantsTable.nameEn,
+        restaurantNameAr: restaurantsTable.nameAr,
+        restaurantLogoUrl: restaurantsTable.logoUrl,
+      })
+      .from(restaurantStoriesTable)
+      .leftJoin(restaurantsTable, eq(restaurantStoriesTable.restaurantId, restaurantsTable.id))
+      .where(and(
+        eq(restaurantStoriesTable.userId, userId),
+        eq(restaurantStoriesTable.status, "approved")
+      ))
+      .orderBy(desc(restaurantStoriesTable.createdAt))
+      .limit(parseInt(limit as string))
+      .offset(parseInt(offset as string));
+    res.json({ stories });
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch user stories");
+    res.status(500).json({ error: "internal_error" });
   }
 });
 

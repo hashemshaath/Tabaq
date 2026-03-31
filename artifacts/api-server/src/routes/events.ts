@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { eventsTable, restaurantsTable } from "@workspace/db/schema";
 import { eq, and, gte, sql, type SQL } from "drizzle-orm";
+import { requireAuth } from "../middleware/requireAuth.js";
 
 const router: IRouter = Router();
 
@@ -78,7 +79,7 @@ router.get("/events/:eventId", async (req, res) => {
   }
 });
 
-router.post("/events", async (req, res) => {
+router.post("/events", requireAuth, async (req, res) => {
   try {
     const { restaurantId, titleEn, titleAr, eventDate, ...rest } = req.body;
     if (!restaurantId || !titleEn || !titleAr || !eventDate) {

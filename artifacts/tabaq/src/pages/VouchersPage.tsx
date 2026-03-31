@@ -434,37 +434,6 @@ function VoucherCard({ voucher, lang, t }: {
   );
 }
 
-const MOCK_VOUCHERS: Voucher[] = [
-  {
-    id: 1, restaurantId: 2, restaurantNameEn: 'Sushi Sama', restaurantNameAr: 'سوشي ساما',
-    code: 'TABAQ-SUSHI-20', value: '150', currency: 'SAR',
-    status: 'active', validUntil: '2026-04-30T23:59:59Z',
-    purchasedAt: '2026-03-10T10:00:00Z', redeemedAt: null,
-    isGift: false, giftMessage: null, giftDeliveryStatus: null, role: 'owner',
-  } as unknown as Voucher,
-  {
-    id: 2, restaurantId: 3, restaurantNameEn: 'Nobu Riyadh', restaurantNameAr: 'نوبو الرياض',
-    code: 'NOBU-VIP-500', value: '500', currency: 'SAR',
-    status: 'active', validUntil: '2026-05-15T23:59:59Z',
-    purchasedAt: '2026-03-01T09:00:00Z', redeemedAt: null,
-    isGift: true, giftMessage: 'Happy Birthday! Enjoy an unforgettable dinner 🎂', giftDeliveryStatus: 'delivered', role: 'recipient',
-  } as unknown as Voucher,
-  {
-    id: 3, restaurantId: 1, restaurantNameEn: 'Qariyat Najd', restaurantNameAr: 'قرية نجد',
-    code: 'NAJD-15OFF', value: '100', currency: 'SAR',
-    status: 'redeemed', validUntil: '2026-03-20T23:59:59Z',
-    purchasedAt: '2026-02-20T11:00:00Z', redeemedAt: '2026-03-15T19:30:00Z',
-    isGift: false, giftMessage: null, giftDeliveryStatus: null, role: 'owner',
-  } as unknown as Voucher,
-  {
-    id: 4, restaurantId: 4, restaurantNameEn: 'Lucine', restaurantNameAr: 'لوسين',
-    code: 'LUCINE-XPRD', value: '200', currency: 'SAR',
-    status: 'expired', validUntil: '2026-02-28T23:59:59Z',
-    purchasedAt: '2026-01-15T08:00:00Z', redeemedAt: null,
-    isGift: false, giftMessage: null, giftDeliveryStatus: null, role: 'owner',
-  } as unknown as Voucher,
-];
-
 export function VouchersPage() {
   const { t, lang } = useLanguage();
   const { user, isLoading: authLoading } = useAuth();
@@ -482,7 +451,7 @@ export function VouchersPage() {
     );
   }
 
-  const allVouchers: Voucher[] = ((data as Voucher[] | undefined)?.length ? data as Voucher[] : MOCK_VOUCHERS);
+  const allVouchers: Voucher[] = (data as Voucher[] | undefined) ?? [];
 
   const tabCounts = Object.fromEntries(
     (Object.keys(TAB_CONFIG) as VoucherTab[]).map(key => [

@@ -105,7 +105,7 @@ Return this exact JSON structure (no markdown, no backticks):
 Select 3 restaurants that best match the preferences, have high ratings, and offer variety. Prioritize quality and user fit.`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-5-nano",
+      model: "gpt-4o-mini",
       messages: [{ role: "user", content: prompt }],
       max_completion_tokens: 512,
     });

@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { blogPostsTable, blogCategoriesTable, usersTable } from "@workspace/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
-import { requireAuth } from "../middleware/requireAuth.js";
+import { requireAuth, requireAdmin } from "../middleware/requireAuth.js";
 
 const router: IRouter = Router();
 
@@ -17,7 +17,7 @@ router.get("/blog/categories", async (_req, res) => {
 });
 
 // Create blog category (admin)
-router.post("/blog/categories", requireAuth, async (req, res) => {
+router.post("/blog/categories", requireAdmin, async (req, res) => {
   try {
     const { nameEn, nameAr, slug, descriptionEn, descriptionAr, color } = req.body;
     if (!nameEn || !nameAr || !slug) {
@@ -149,7 +149,7 @@ router.get("/blog/posts/:slug", async (req, res) => {
 });
 
 // Create blog post (admin)
-router.post("/blog/posts", requireAuth, async (req, res) => {
+router.post("/blog/posts", requireAdmin, async (req, res) => {
   try {
     const userId = req.auth!.userId;
     const { titleEn, titleAr, slug, excerptEn, excerptAr, contentEn, contentAr,
@@ -173,7 +173,7 @@ router.post("/blog/posts", requireAuth, async (req, res) => {
 });
 
 // Update blog post (admin)
-router.patch("/blog/posts/:id", requireAuth, async (req, res) => {
+router.patch("/blog/posts/:id", requireAdmin, async (req, res) => {
   try {
     const postId = parseInt(req.params["id"] as string, 10);
     const allowedFields = [
@@ -197,7 +197,7 @@ router.patch("/blog/posts/:id", requireAuth, async (req, res) => {
 });
 
 // Delete blog post (admin)
-router.delete("/blog/posts/:id", requireAuth, async (req, res) => {
+router.delete("/blog/posts/:id", requireAdmin, async (req, res) => {
   try {
     const postId = parseInt(req.params["id"] as string, 10);
     await db.delete(blogPostsTable).where(eq(blogPostsTable.id, postId));
@@ -208,7 +208,7 @@ router.delete("/blog/posts/:id", requireAuth, async (req, res) => {
 });
 
 // Admin: list all posts (including drafts)
-router.get("/admin/blog/posts", requireAuth, async (req, res) => {
+router.get("/admin/blog/posts", requireAdmin, async (req, res) => {
   try {
     const { limit = "50", offset = "0" } = req.query;
     const posts = await db.select({
