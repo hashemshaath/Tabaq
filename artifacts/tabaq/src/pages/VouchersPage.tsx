@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useLanguage } from '@/hooks/use-language';
 import { useAuth } from '@/context/AuthContext';
 import { useListVouchers, type Voucher } from '@workspace/api-client-react';
+import { getAuthHeaders } from '@/lib/api';
 import {
   Tag, Clock, CheckCircle2, XCircle, Gift, Copy, Check, ScanLine,
   ChevronDown, ChevronUp, QrCode, RotateCcw, ExternalLink, AlertTriangle,
@@ -122,6 +123,9 @@ function RefundModal({ voucher, onClose, lang, t }: {
   const [reason, setReason] = useState('');
   const [details, setDetails] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const apiBase = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
 
   const REASONS = [
     { en: 'Changed my mind', ar: 'غيّرت رأيي' },
@@ -132,9 +136,26 @@ function RefundModal({ voucher, onClose, lang, t }: {
     { en: 'Other', ar: 'أخرى' },
   ];
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!reason) return;
-    setTimeout(() => setSubmitted(true), 400);
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch(`${apiBase}/api/vouchers/${voucher.id}/refund-request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({ reason, details }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.error ?? 'Request failed');
+      }
+      setSubmitted(true);
+    } catch (err: any) {
+      setError(err.message ?? t('Something went wrong. Please try again.', 'حدث خطأ. يرجى المحاولة مرة أخرى.'));
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -205,12 +226,15 @@ function RefundModal({ voucher, onClose, lang, t }: {
                 />
               </div>
 
+              {error && (
+                <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-2">{error}</p>
+              )}
               <Button
                 onClick={handleSubmit}
-                disabled={!reason}
+                disabled={!reason || loading}
                 className="w-full"
               >
-                {t('Submit Refund Request', 'تقديم طلب الاسترداد')}
+                {loading ? t('Submitting…', 'جارٍ الإرسال…') : t('Submit Refund Request', 'تقديم طلب الاسترداد')}
               </Button>
             </div>
           </>

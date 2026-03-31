@@ -112,10 +112,15 @@ export function BlogPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
+  const apiBase = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
+  const selectedCategoryId = SAMPLE_CATEGORIES.find(c => c.slug === selectedCategory)?.id ?? 0;
+
   const { data: apiPosts } = useQuery({
-    queryKey: ['blog-posts'],
+    queryKey: ['blog-posts', selectedCategoryId],
     queryFn: async () => {
-      const res = await fetch(`/api/blog/posts?limit=20`);
+      const params = new URLSearchParams({ limit: '20' });
+      if (selectedCategoryId > 0) params.set('categoryId', String(selectedCategoryId));
+      const res = await fetch(`${apiBase}/api/blog/posts?${params}`);
       if (!res.ok) return null;
       return res.json();
     },
@@ -144,13 +149,12 @@ export function BlogPage() {
   const posts = normalizedApiPosts.length > 0 ? normalizedApiPosts : SAMPLE_POSTS;
 
   const filtered = posts.filter((p: typeof SAMPLE_POSTS[0]) => {
-    const matchesCat = selectedCategory === 'all' || p.categorySlug === selectedCategory;
     const query = searchQuery.toLowerCase();
     const matchesSearch = !query ||
       (p.titleEn?.toLowerCase().includes(query)) ||
       (p.titleAr?.includes(query)) ||
       (p.excerptEn?.toLowerCase().includes(query));
-    return matchesCat && matchesSearch;
+    return matchesSearch;
   });
 
   const featured = filtered.filter((p: typeof SAMPLE_POSTS[0]) => p.featured);
@@ -396,7 +400,7 @@ export function BlogPage() {
               </div>
               <div className="space-y-2">
                 {SAMPLE_CATEGORIES.filter(c => c.id > 0).map(cat => {
-                  const count = SAMPLE_POSTS.filter(p => p.categorySlug === cat.slug).length;
+                  const count = posts.filter((p: any) => p.categorySlug === cat.slug).length;
                   return (
                     <button
                       key={cat.slug}

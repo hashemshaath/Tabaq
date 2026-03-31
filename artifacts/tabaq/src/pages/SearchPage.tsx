@@ -320,6 +320,22 @@ export function SearchPage() {
                 </div>
               </div>
 
+              {/* Cuisine type */}
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t('Cuisine', 'المطبخ')}</p>
+                <div className="flex flex-wrap gap-2">
+                  {(['', 'Saudi', 'Japanese', 'Mediterranean', 'Levantine', 'Indian', 'Cafe & Bakery'] as string[]).map(c => (
+                    <button
+                      key={c || 'any'}
+                      onClick={() => setFilterCuisine(c)}
+                      className={`px-3 py-1.5 rounded-xl text-sm font-medium border transition-all ${filterCuisine === c ? 'bg-primary text-white border-primary' : 'bg-secondary text-foreground border-border hover:border-primary'}`}
+                    >
+                      {c === '' ? t('Any', 'الكل') : c}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Open Now toggle */}
               <div className="flex items-center justify-between">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t('Open Now', 'مفتوح الآن')}</p>

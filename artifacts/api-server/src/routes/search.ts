@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { restaurantsTable, dishesTable, citiesTable, venuesTable, categoriesTable, restaurantCategoriesTable } from "@workspace/db/schema";
-import { eq, ilike, or, and, inArray, type SQL } from "drizzle-orm";
+import { restaurantsTable, dishesTable, citiesTable, venuesTable, categoriesTable, restaurantCategoriesTable, openingHoursTable } from "@workspace/db/schema";
+import { eq, ilike, or, and, inArray, sql, type SQL } from "drizzle-orm";
 
 const router: IRouter = Router();
 
@@ -83,28 +83,43 @@ router.get("/search", async (req, res) => {
         : Promise.resolve([]),
     ]);
 
-    // Attach cuisine types to search results
+    // Attach cuisine types and isOpen to search results
     const restaurantIds = restaurants.map(r => r.id);
     let cuisineMapEn: Record<number, string[]> = {};
     let cuisineMapAr: Record<number, string[]> = {};
+    const openSet = new Set<number>();
     if (restaurantIds.length > 0) {
-      const catJoins = await db.select({
-        restaurantId: restaurantCategoriesTable.restaurantId,
-        nameEn: categoriesTable.nameEn,
-        nameAr: categoriesTable.nameAr,
-      }).from(restaurantCategoriesTable)
-        .innerJoin(categoriesTable, eq(restaurantCategoriesTable.categoryId, categoriesTable.id))
-        .where(inArray(restaurantCategoriesTable.restaurantId, restaurantIds));
+      const [catJoins, openNowIds] = await Promise.all([
+        db.select({
+          restaurantId: restaurantCategoriesTable.restaurantId,
+          nameEn: categoriesTable.nameEn,
+          nameAr: categoriesTable.nameAr,
+        }).from(restaurantCategoriesTable)
+          .innerJoin(categoriesTable, eq(restaurantCategoriesTable.categoryId, categoriesTable.id))
+          .where(inArray(restaurantCategoriesTable.restaurantId, restaurantIds)),
+        db.select({ restaurantId: openingHoursTable.restaurantId })
+          .from(openingHoursTable)
+          .where(and(
+            inArray(openingHoursTable.restaurantId, restaurantIds),
+            eq(openingHoursTable.isClosed, false),
+            sql`${openingHoursTable.dayOfWeek} = EXTRACT(DOW FROM NOW() AT TIME ZONE 'Asia/Riyadh')::integer`,
+            sql`${openingHoursTable.openTime} IS NOT NULL`,
+            sql`${openingHoursTable.closeTime} IS NOT NULL`,
+            sql`${openingHoursTable.openTime} <= TO_CHAR(NOW() AT TIME ZONE 'Asia/Riyadh', 'HH24:MI')`,
+            sql`${openingHoursTable.closeTime} >= TO_CHAR(NOW() AT TIME ZONE 'Asia/Riyadh', 'HH24:MI')`,
+          )),
+      ]);
       catJoins.forEach(c => {
         if (!cuisineMapEn[c.restaurantId]) cuisineMapEn[c.restaurantId] = [];
         if (!cuisineMapAr[c.restaurantId]) cuisineMapAr[c.restaurantId] = [];
         cuisineMapEn[c.restaurantId].push(c.nameEn);
         cuisineMapAr[c.restaurantId].push(c.nameAr);
       });
+      openNowIds.forEach(r => openSet.add(r.restaurantId));
     }
 
     res.json({
-      restaurants: restaurants.map(r => ({ ...r, cuisineTypes: cuisineMapEn[r.id] || [], cuisineTypesAr: cuisineMapAr[r.id] || [] })),
+      restaurants: restaurants.map(r => ({ ...r, cuisineTypes: cuisineMapEn[r.id] || [], cuisineTypesAr: cuisineMapAr[r.id] || [], isOpen: openSet.has(r.id) })),
       dishes,
       venues,
       totalRestaurants: restaurants.length,

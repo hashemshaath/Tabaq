@@ -401,31 +401,36 @@ export function UserDashboardPage() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<DashTab>('overview');
 
-  const userId = (user as any)?.id ?? 1;
+  const userId = (user as any)?.id as number | undefined;
+  const apiBase = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
 
   const { data: userData } = useQuery({
     queryKey: ['user-profile', userId],
-    queryFn: () => fetch(`/api/users/${userId}`).then(r => r.ok ? r.json() : null),
+    queryFn: () => fetch(`${apiBase}/api/users/${userId}`).then(r => r.ok ? r.json() : null),
+    enabled: !!userId,
     retry: false,
   });
   const { data: bookingsData } = useQuery({
     queryKey: ['user-bookings', userId],
-    queryFn: () => fetch(`/api/users/${userId}/bookings`).then(r => r.ok ? r.json() : null),
+    queryFn: () => fetch(`${apiBase}/api/users/${userId}/bookings`).then(r => r.ok ? r.json() : null),
+    enabled: !!userId,
     retry: false,
   });
   const { data: reviewsData } = useQuery({
     queryKey: ['user-reviews', userId],
-    queryFn: () => fetch(`/api/users/${userId}/reviews`).then(r => r.ok ? r.json() : null),
+    queryFn: () => fetch(`${apiBase}/api/users/${userId}/reviews`).then(r => r.ok ? r.json() : null),
+    enabled: !!userId,
     retry: false,
   });
   const { data: vouchersData } = useQuery({
     queryKey: ['vouchers'],
-    queryFn: () => fetch('/api/vouchers', { headers: getAuthHeaders() }).then(r => r.ok ? r.json() : null),
+    queryFn: () => fetch(`${apiBase}/api/vouchers`, { headers: getAuthHeaders() }).then(r => r.ok ? r.json() : null),
+    enabled: !!user,
     retry: false,
   });
   const { data: savedData, isLoading: savedLoading, refetch: refetchSaved } = useQuery({
     queryKey: ['saved-restaurants'],
-    queryFn: () => fetch('/api/me/saved-restaurants', { headers: getAuthHeaders() }).then(r => r.ok ? r.json() : { saved: [] }),
+    queryFn: () => fetch(`${apiBase}/api/me/saved-restaurants`, { headers: getAuthHeaders() }).then(r => r.ok ? r.json() : { saved: [] }),
     retry: false,
     enabled: !!user,
   });

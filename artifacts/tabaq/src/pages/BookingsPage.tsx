@@ -924,8 +924,8 @@ export function BookingsPage() {
   };
 
   const handleModify = async (bookingId: number, data: { date: string; time: string }) => {
-    const headers = await getAuthHeaders();
-    await fetch(`/api/bookings/${bookingId}`, {
+    const headers = getAuthHeaders();
+    await fetch(`${apiBase}/api/bookings/${bookingId}`, {
       method: 'PATCH',
       headers: { ...headers, 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -943,7 +943,7 @@ export function BookingsPage() {
 
   const today = new Date().toISOString().split('T')[0];
   const rawBookings = (data?.bookings ?? []) as Booking[];
-  const allBookings: Booking[] = rawBookings.length ? rawBookings : MOCK_BOOKINGS;
+  const allBookings: Booking[] = rawBookings;
   const upcoming = allBookings.filter(b => b.status !== 'cancelled' && b.status !== 'completed' && b.date >= today);
   const past = allBookings.filter(b => b.status === 'cancelled' || b.status === 'completed' || b.date < today);
 

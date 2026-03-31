@@ -291,6 +291,7 @@ router.get("/vouchers", requireAuth, async (req, res) => {
       giftDeliveryStatus: vouchersTable.giftDeliveryStatus,
       redeemedAt: vouchersTable.redeemedAt,
       createdAt: vouchersTable.createdAt,
+      purchasePrice: vouchersTable.purchasePrice,
       restaurantNameEn: restaurantsTable.nameEn,
       restaurantNameAr: restaurantsTable.nameAr,
       restaurantCoverImageUrl: restaurantsTable.coverImageUrl,
