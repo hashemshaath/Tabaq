@@ -616,28 +616,30 @@ Rich mock data for all 6 new sections: MOCK_CHECK_INS (5 visits), MOCK_REVIEWS (
 
 ## Session — Comprehensive Account Settings System
 
-### New: AccountPage (`/account`)
+### AccountPage (`/account`)
 - Unified account hub at `/account` replacing fragmented `/edit-profile` and `/account-settings` pages
 - Both old routes now render AccountPage for backward compatibility
-- Header user menu now links to `/account` with updated description
-- File: `artifacts/tabaq/src/pages/AccountPage.tsx` (~1300 lines)
+- Header user menu links to `/account`
+- File: `artifacts/tabaq/src/pages/AccountPage.tsx` (~1640 lines)
 
-**9 sections with real API integrations:**
+**10 sections with real API integrations:**
 
-1. **Personal Info** — name (EN/AR), bio, email, location, avatar upload (FileReader → data URL), social links (Instagram, X, TikTok, Snapchat, Website). Profile completion indicator. PATCH `/api/me/profile`
-2. **Security** — Change password (PATCH `/api/me/password`), OTP auth status badge, active session display, sign-out button
-3. **Preferences** — Language toggle (EN/AR via `useLanguage`), theme (light/dark/system via localStorage + `document.documentElement.classList`), currency preference (localStorage)
+1. **Personal Info** — name (EN/AR), bio, email, location, avatar upload (FileReader → data URL), social links. PATCH `/api/me/profile`
+2. **Security** — Change password (PATCH `/api/me/password`), OTP auth status badge, active session display, sign-out
+3. **Preferences** — Language toggle (EN/AR via `useLanguage`), theme (light/dark/system via localStorage), currency preference
 4. **Notifications** — 8 notification toggles in 3 groups (Social, Bookings, Rewards). PATCH `/api/me/privacy-settings` with `notificationPrefs`
-5. **Privacy** — Profile visibility (public/followers/private), content visibility per section (visits, reviews, favorites, plans), discovery toggles (leaderboard, suggested). PATCH `/api/me/privacy-settings` with `privacySettings`
-6. **Social (Followers)** — Tab: Followers | Following. Real lists from `/api/users/:id/followers` and `/api/users/:id/following`. Unfollow button per user
-7. **Membership** — Points + level gradient card, next-level progress bar, referral code copy button, Tabaq Gold teaser, points history (GET `/api/me/points/history`)
-8. **Support** — Quick links (FAQ, Contact, About, Privacy, Terms), feedback form with confirmation state
-9. **Delete Account** — 3-step flow (warning → type "DELETE" → scheduling confirmation)
+5. **Privacy** — Profile visibility (public/followers/private), content visibility per section, discovery toggles. PATCH `/api/me/privacy-settings`
+6. **Addresses** — Full CRUD for delivery addresses. GET/POST/PUT/PATCH/DELETE `/api/me/addresses`. Fields: label (EN+AR), addressLine1/2, district, city, region, postalCode, contactName, contactPhone. Set-as-default, inline edit/delete. Empty state prompt.
+7. **Social (Followers)** — Tab: Followers | Following. Real lists from `/api/users/:id/followers` and `/api/users/:id/following`. Unfollow per user
+8. **Membership** — Points + level gradient card, next-level progress bar, referral code copy, Tabaq Gold teaser, points history
+9. **Support** — Quick links (FAQ, Contact, About, Privacy, Terms), feedback form with confirmation state
+10. **Delete Account** — 3-step flow (warning → type "DELETE" → scheduling confirmation)
 
 **UI Architecture:**
-- Desktop: sticky sidebar navigation (264px wide) + content area
-- Mobile: collapsible dropdown section selector
+- **Page header**: Avatar, display name, username + profile completion indicator (circular SVG on desktop, progress bar on mobile). RTL-aware back arrow.
+- **Desktop sidebar**: Sticky panel with user identity card (avatar + name + email + completion bar + "Complete your profile" CTA) above nav links
+- **Mobile**: Collapsible dropdown section selector
 - Section headers with icon + description
-- Reusable components: `SectionCard`, `ToggleRow`, `FormField`, `Input`, `Textarea`, `SaveBar`
+- Reusable components: `SectionCard`, `ToggleRow`, `FormField`, `Input`, `Textarea`, `SaveBar`, `AddressForm`
 - Loading spinners, success states, error messages per section
 - Full RTL/LTR support via `lang` prop and `dir` attribute

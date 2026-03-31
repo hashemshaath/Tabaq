@@ -25,6 +25,7 @@ type Section =
   | "preferences"
   | "notifications"
   | "privacy"
+  | "addresses"
   | "social"
   | "membership"
   | "support"
@@ -36,6 +37,7 @@ const SECTIONS: { id: Section; icon: React.ElementType; en: string; ar: string; 
   { id: "preferences",   icon: Palette,      en: "Preferences",         ar: "التفضيلات",           desc: "Language, theme & display",       descAr: "اللغة والمظهر والعرض" },
   { id: "notifications", icon: Bell,         en: "Notifications",       ar: "الإشعارات",           desc: "What you get notified about",     descAr: "ما تتلقى إشعارات حوله" },
   { id: "privacy",       icon: Shield,       en: "Privacy",             ar: "الخصوصية",            desc: "Who can see your profile",        descAr: "من يمكنه رؤية ملفك" },
+  { id: "addresses",     icon: MapPin,       en: "Addresses",           ar: "العناوين",            desc: "Manage delivery addresses",       descAr: "إدارة عناوين التوصيل" },
   { id: "social",        icon: Users,        en: "Followers",           ar: "المتابعون",            desc: "Manage your followers & following",descAr: "إدارة متابعيك ومن تتابع" },
   { id: "membership",    icon: Award,        en: "Membership",          ar: "العضوية",             desc: "Points, level & referrals",       descAr: "النقاط والمستوى والإحالات" },
   { id: "support",       icon: HelpCircle,   en: "Support",             ar: "الدعم",               desc: "Help, FAQ & contact us",          descAr: "المساعدة والأسئلة الشائعة" },
@@ -1135,6 +1137,258 @@ function DeleteAccountSection({ lang, t, logout }: { lang: string; t: (en: strin
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ADDRESSES SECTION
+// ─────────────────────────────────────────────────────────────────────────────
+type Address = {
+  id: number; label?: string; labelAr?: string; isDefault?: boolean;
+  addressLine1: string; addressLine2?: string; district?: string;
+  city: string; region?: string; postalCode?: string; countryCode?: string;
+  contactName?: string; contactPhone?: string;
+};
+
+const EMPTY_ADDR = { label: "", labelAr: "", addressLine1: "", addressLine2: "", district: "", city: "", region: "", postalCode: "", contactName: "", contactPhone: "" };
+
+function AddressForm({ initial, onSave, onCancel, lang, t }: {
+  initial?: Partial<Address>; onSave: (data: Partial<Address>) => Promise<void>;
+  onCancel: () => void; lang: string; t: (en: string, ar: string) => string;
+}) {
+  const [form, setForm] = useState({ ...EMPTY_ADDR, ...initial });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const set = (k: string) => (v: string) => setForm(f => ({ ...f, [k]: v }));
+
+  const handleSave = async () => {
+    if (!form.addressLine1 || !form.city) { setError(t("Address and city are required.", "العنوان والمدينة مطلوبان.")); return; }
+    setSaving(true); setError("");
+    try { await onSave(form); }
+    catch { setError(t("Failed to save address.", "فشل حفظ العنوان.")); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <div className="space-y-4 p-4 bg-muted/30 rounded-2xl border border-border">
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t("Label (e.g. Home)", "التسمية (مثلاً: البيت)")}</label>
+          <input value={form.label} onChange={e => set("label")(e.target.value)} placeholder={t("Home", "البيت")}
+            className="w-full px-3 py-2.5 text-sm bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary transition-colors" />
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t("Label (Arabic)", "التسمية بالعربي")}</label>
+          <input value={form.labelAr} onChange={e => set("labelAr")(e.target.value)} placeholder="البيت" dir="rtl"
+            className="w-full px-3 py-2.5 text-sm bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary transition-colors" />
+        </div>
+      </div>
+      <div className="space-y-1.5">
+        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t("Street / Address Line 1 *", "الشارع / السطر الأول *")}</label>
+        <input value={form.addressLine1} onChange={e => set("addressLine1")(e.target.value)} placeholder={t("123 King Fahd Road", "شارع الملك فهد 123")}
+          className="w-full px-3 py-2.5 text-sm bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary transition-colors" />
+      </div>
+      <div className="space-y-1.5">
+        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t("Apartment / Suite", "الشقة / الجناح")}</label>
+        <input value={form.addressLine2} onChange={e => set("addressLine2")(e.target.value)} placeholder={t("Apt 4B", "شقة 4B")}
+          className="w-full px-3 py-2.5 text-sm bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary transition-colors" />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t("District / Neighborhood", "الحي")}</label>
+          <input value={form.district} onChange={e => set("district")(e.target.value)} placeholder={t("Al-Olaya", "العليا")}
+            className="w-full px-3 py-2.5 text-sm bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary transition-colors" />
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t("City *", "المدينة *")}</label>
+          <input value={form.city} onChange={e => set("city")(e.target.value)} placeholder={t("Riyadh", "الرياض")}
+            className="w-full px-3 py-2.5 text-sm bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary transition-colors" />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t("Region", "المنطقة")}</label>
+          <input value={form.region} onChange={e => set("region")(e.target.value)} placeholder={t("Riyadh Region", "منطقة الرياض")}
+            className="w-full px-3 py-2.5 text-sm bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary transition-colors" />
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t("Postal Code", "الرمز البريدي")}</label>
+          <input value={form.postalCode} onChange={e => set("postalCode")(e.target.value)} placeholder="12345"
+            className="w-full px-3 py-2.5 text-sm bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary transition-colors" />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t("Contact Name", "اسم المستلم")}</label>
+          <input value={form.contactName} onChange={e => set("contactName")(e.target.value)} placeholder={t("Full name", "الاسم الكامل")}
+            className="w-full px-3 py-2.5 text-sm bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary transition-colors" />
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t("Contact Phone", "رقم هاتف المستلم")}</label>
+          <input value={form.contactPhone} onChange={e => set("contactPhone")(e.target.value)} placeholder="+966 5X XXX XXXX" type="tel"
+            className="w-full px-3 py-2.5 text-sm bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary transition-colors" />
+        </div>
+      </div>
+      {error && <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" />{error}</p>}
+      <div className="flex gap-3 pt-1">
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="flex items-center gap-2 px-5 py-2.5 bg-primary text-white font-semibold text-sm rounded-xl hover:bg-primary/90 disabled:opacity-60 transition-colors"
+        >
+          {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save className="w-4 h-4" />}
+          {saving ? t("Saving…", "جارٍ الحفظ…") : t("Save Address", "حفظ العنوان")}
+        </button>
+        <button onClick={onCancel} className="px-5 py-2.5 border border-border text-muted-foreground font-semibold text-sm rounded-xl hover:bg-muted transition-colors">
+          {t("Cancel", "إلغاء")}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function AddressesSection({ lang, t }: { lang: string; t: (en: string, ar: string) => string }) {
+  const qc = useQueryClient();
+  const [adding, setAdding] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  const { data: addresses, refetch } = useQuery<Address[]>({
+    queryKey: ["me-addresses"],
+    queryFn: async () => {
+      const r = await fetch(`${API_BASE}/api/me/addresses`, { headers: getAuthHeaders() });
+      return r.ok ? r.json() : [];
+    },
+  });
+
+  const handleAdd = async (data: Partial<Address>) => {
+    await fetch(`${API_BASE}/api/me/addresses`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+      body: JSON.stringify(data),
+    });
+    setAdding(false);
+    refetch();
+  };
+
+  const handleEdit = async (id: number, data: Partial<Address>) => {
+    await fetch(`${API_BASE}/api/me/addresses/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+      body: JSON.stringify(data),
+    });
+    setEditingId(null);
+    refetch();
+  };
+
+  const handleSetDefault = async (id: number) => {
+    await fetch(`${API_BASE}/api/me/addresses/${id}/default`, { method: "PATCH", headers: getAuthHeaders() });
+    refetch();
+  };
+
+  const handleDelete = async (id: number) => {
+    setDeletingId(id);
+    try {
+      await fetch(`${API_BASE}/api/me/addresses/${id}`, { method: "DELETE", headers: getAuthHeaders() });
+      refetch();
+    } finally { setDeletingId(null); }
+  };
+
+  const list = addresses ?? [];
+
+  return (
+    <div className="space-y-4">
+      {/* Address list */}
+      {list.length === 0 && !adding && (
+        <div className="bg-muted/30 border border-dashed border-border rounded-2xl p-8 text-center space-y-3">
+          <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto">
+            <MapPin className="w-6 h-6 text-primary" />
+          </div>
+          <p className="font-semibold text-foreground">{t("No addresses saved", "لا توجد عناوين محفوظة")}</p>
+          <p className="text-sm text-muted-foreground">{t("Add your delivery addresses for faster checkout.", "أضف عناوين التوصيل للدفع بشكل أسرع.")}</p>
+        </div>
+      )}
+
+      {list.map(addr => (
+        <div key={addr.id} className="bg-card border border-border rounded-2xl overflow-hidden">
+          {editingId === addr.id ? (
+            <div className="p-4">
+              <AddressForm
+                initial={addr}
+                onSave={data => handleEdit(addr.id, data)}
+                onCancel={() => setEditingId(null)}
+                lang={lang}
+                t={t}
+              />
+            </div>
+          ) : (
+            <div className="p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3 min-w-0">
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${addr.isDefault ? "bg-primary text-white" : "bg-muted text-muted-foreground"}`}>
+                    <MapPin className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-bold text-foreground text-sm">
+                        {lang === "ar" ? (addr.labelAr || addr.label) : (addr.label || addr.labelAr) || t("Address", "عنوان")}
+                      </p>
+                      {addr.isDefault && (
+                        <span className="text-[10px] font-black bg-primary/10 text-primary px-2 py-0.5 rounded-full">{t("Default", "الافتراضي")}</span>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+                      {[addr.addressLine1, addr.addressLine2, addr.district, addr.city, addr.region].filter(Boolean).join(", ")}
+                    </p>
+                    {addr.contactName && (
+                      <p className="text-xs text-muted-foreground mt-1">{addr.contactName}{addr.contactPhone && ` · ${addr.contactPhone}`}</p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  {!addr.isDefault && (
+                    <button
+                      onClick={() => handleSetDefault(addr.id)}
+                      className="text-xs px-2.5 py-1.5 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:border-primary transition-colors"
+                    >
+                      {t("Set default", "تعيين كافتراضي")}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setEditingId(addr.id)}
+                    className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <Settings className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(addr.id)}
+                    disabled={deletingId === addr.id}
+                    className="p-2 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors disabled:opacity-40"
+                  >
+                    {deletingId === addr.id
+                      ? <div className="w-3.5 h-3.5 border-2 border-destructive/30 border-t-destructive rounded-full animate-spin" />
+                      : <Trash2 className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+
+      {/* Add address form */}
+      {adding ? (
+        <AddressForm onSave={handleAdd} onCancel={() => setAdding(false)} lang={lang} t={t} />
+      ) : (
+        <button
+          onClick={() => setAdding(true)}
+          className="w-full flex items-center justify-center gap-2 py-3 border border-dashed border-primary/40 rounded-2xl text-sm font-semibold text-primary hover:bg-primary/5 transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          {t("Add New Address", "إضافة عنوان جديد")}
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // MAIN ACCOUNT PAGE
 // ─────────────────────────────────────────────────────────────────────────────
 export function AccountPage() {
@@ -1174,6 +1428,7 @@ export function AccountPage() {
       case "preferences":   return <PreferencesSection lang={lang} t={t} />;
       case "notifications": return <NotificationsSection userId={authUser.id} lang={lang} t={t} />;
       case "privacy":       return <PrivacySection userId={authUser.id} lang={lang} t={t} />;
+      case "addresses":     return <AddressesSection lang={lang} t={t} />;
       case "social":        return <SocialSection userId={authUser.id} lang={lang} t={t} />;
       case "membership":    return <MembershipSection user={user} lang={lang} t={t} />;
       case "support":       return <SupportSection lang={lang} t={t} />;
@@ -1195,6 +1450,13 @@ export function AccountPage() {
 
   const displayName = lang === "ar" ? (user?.nameAr || user?.nameEn) : (user?.nameEn || user?.nameAr);
 
+  // Profile completion calculation
+  const completionFields = [user?.nameEn, user?.bio, user?.email, user?.location, user?.avatarUrl];
+  const completionPct = Math.round((completionFields.filter(Boolean).length / completionFields.length) * 100);
+  const completionColor = completionPct === 100 ? "bg-green-500" : completionPct >= 60 ? "bg-primary" : "bg-amber-500";
+
+  const BackIcon = lang === "ar" ? ChevronRight : ArrowLeft;
+
   return (
     <div className="min-h-screen bg-background" dir={lang === "ar" ? "rtl" : "ltr"}>
       {/* Page header */}
@@ -1203,18 +1465,45 @@ export function AccountPage() {
           <div className="flex items-center gap-3">
             <Link href="/profile">
               <button className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted transition-colors">
-                <ArrowLeft className="w-5 h-5 text-muted-foreground" />
+                <BackIcon className="w-5 h-5 text-muted-foreground" />
               </button>
             </Link>
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
               {user?.avatarUrl
-                ? <img src={user.avatarUrl} alt="" className="w-8 h-8 rounded-full object-cover" />
-                : <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center"><User className="w-4 h-4 text-primary" /></div>
+                ? <img src={user.avatarUrl} alt="" className="w-10 h-10 rounded-full object-cover shrink-0 ring-2 ring-primary/20" />
+                : <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0"><User className="w-5 h-5 text-primary" /></div>
               }
-              <div>
-                <h1 className="text-base font-bold text-foreground leading-tight">{displayName || t("Account Settings", "إعدادات الحساب")}</h1>
+              <div className="flex-1 min-w-0">
+                <h1 className="text-base font-bold text-foreground leading-tight truncate">{displayName || t("Account Settings", "إعدادات الحساب")}</h1>
                 {user?.username && <p className="text-xs text-muted-foreground">@{user.username}</p>}
               </div>
+            </div>
+            {/* Completion badge */}
+            <div className="hidden sm:flex items-center gap-2 shrink-0">
+              <div className="text-end">
+                <p className="text-xs text-muted-foreground">{t("Profile completion", "اكتمال الملف")}</p>
+                <p className={`text-sm font-black ${completionPct === 100 ? "text-green-600" : completionPct >= 60 ? "text-primary" : "text-amber-600"}`}>{completionPct}%</p>
+              </div>
+              <div className="w-9 h-9 relative">
+                <svg viewBox="0 0 36 36" className="w-9 h-9 -rotate-90">
+                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="currentColor" strokeWidth="3" className="text-muted/30" />
+                  <circle cx="18" cy="18" r="15.9" fill="none" strokeWidth="3"
+                    strokeDasharray={`${completionPct} 100`} strokeLinecap="round"
+                    className={completionPct === 100 ? "text-green-500" : completionPct >= 60 ? "text-primary" : "text-amber-500"}
+                    stroke="currentColor"
+                  />
+                </svg>
+              </div>
+            </div>
+          </div>
+          {/* Mobile progress bar */}
+          <div className="sm:hidden mt-3">
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="text-xs text-muted-foreground">{t("Profile completion", "اكتمال الملف")}</p>
+              <p className={`text-xs font-black ${completionPct === 100 ? "text-green-600" : completionPct >= 60 ? "text-primary" : "text-amber-600"}`}>{completionPct}%</p>
+            </div>
+            <div className="w-full h-1.5 bg-muted/40 rounded-full overflow-hidden">
+              <div className={`h-full rounded-full transition-all duration-500 ${completionColor}`} style={{ width: `${completionPct}%` }} />
             </div>
           </div>
         </div>
@@ -1261,7 +1550,39 @@ export function AccountPage() {
         <div className="flex gap-8">
           {/* Sidebar — desktop only */}
           <aside className="hidden lg:block w-64 shrink-0">
-            <div className="sticky top-6 space-y-1">
+            <div className="sticky top-6 space-y-4">
+              {/* Profile identity card */}
+              <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
+                <div className="flex items-center gap-3">
+                  {user?.avatarUrl
+                    ? <img src={user.avatarUrl} alt="" className="w-12 h-12 rounded-full object-cover shrink-0 ring-2 ring-primary/20" />
+                    : <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0"><User className="w-6 h-6 text-primary" /></div>
+                  }
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-foreground text-sm leading-tight truncate">{displayName || t("Your Account", "حسابك")}</p>
+                    {user?.username && <p className="text-xs text-muted-foreground truncate">@{user.username}</p>}
+                    {user?.email && <p className="text-xs text-muted-foreground truncate">{user.email}</p>}
+                  </div>
+                </div>
+                {/* Completion bar */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <p className="text-xs text-muted-foreground">{t("Profile completion", "اكتمال الملف")}</p>
+                    <p className={`text-xs font-black ${completionPct === 100 ? "text-green-600" : completionPct >= 60 ? "text-primary" : "text-amber-600"}`}>{completionPct}%</p>
+                  </div>
+                  <div className="w-full h-1.5 bg-muted/40 rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full transition-all duration-700 ${completionColor}`} style={{ width: `${completionPct}%` }} />
+                  </div>
+                  {completionPct < 100 && (
+                    <button onClick={() => setSection("personal")} className="text-[10px] text-primary font-semibold mt-1.5 hover:underline text-start">
+                      {t("Complete your profile →", "أكمل ملفك ←")}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Navigation */}
+              <div className="space-y-0.5">
               {SECTIONS.map(sec => {
                 const Icon = sec.icon;
                 const isActive = section === sec.id;
@@ -1287,6 +1608,7 @@ export function AccountPage() {
                   </button>
                 );
               })}
+              </div>
             </div>
           </aside>
 

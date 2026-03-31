@@ -50,8 +50,6 @@ import { JoinPage } from "@/pages/JoinPage";
 import { ChefsPage } from "@/pages/ChefsPage";
 import { ChefDetailPage } from "@/pages/ChefDetailPage";
 import { PublicProfilePage } from "@/pages/PublicProfilePage";
-import { EditProfilePage } from "@/pages/EditProfilePage";
-import { AccountSettingsPage } from "@/pages/AccountSettingsPage";
 import { AccountPage } from "@/pages/AccountPage";
 import { BlogPage } from "@/pages/BlogPage";
 import { BlogDetailPage } from "@/pages/BlogDetailPage";
@@ -122,7 +120,7 @@ function Router() {
                 <ProtectedRoute requireAdmin><AdminPanelPage /></ProtectedRoute>
               </Route>
               <Route path="/settings">
-                <ProtectedRoute><SettingsPage /></ProtectedRoute>
+                <ProtectedRoute requireAdmin><SettingsPage /></ProtectedRoute>
               </Route>
               <Route path="/checkout">
                 <ProtectedRoute><CheckoutPage /></ProtectedRoute>

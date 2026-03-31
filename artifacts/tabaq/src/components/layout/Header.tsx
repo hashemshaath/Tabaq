@@ -4,7 +4,7 @@ import {
   Search, MapPin, Globe, User, LogOut, ChevronDown, Tag,
   CalendarDays, LayoutDashboard, Trophy, Shield, Utensils,
   Bell, Menu, X, Home, Sparkles, BarChart3, ChefHat, Check,
-  Settings, Award, ShoppingBag, Crown
+  Settings, Award, ShoppingBag, Crown, Star, Zap,
 } from "lucide-react";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/context/AuthContext";
@@ -15,30 +15,22 @@ import { useListCitiesByCountry, useListCountries, type City } from "@workspace/
 import { useLocalization } from "@/context/LocalizationContext";
 import { cn } from "@/lib/utils";
 
+// ─── Unread count hook ────────────────────────────────────────────────────────
 function useUnreadCount(token: string | null, user: unknown) {
   const [count, setCount] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const apiBase = typeof window !== "undefined"
-    ? (import.meta.env.BASE_URL?.replace(/\/$/, "") || "")
-    : "";
+  const apiBase = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
 
   useEffect(() => {
     if (!user || !token) { setCount(0); return; }
-
     const fetch_ = async () => {
       try {
         const res = await fetch(`${apiBase}/api/notifications/unread-count`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        if (res.ok) {
-          const data = await res.json();
-          setCount(data.count ?? 0);
-        }
-      } catch {
-        setCount(0);
-      }
+        if (res.ok) { const d = await res.json(); setCount(d.count ?? 0); }
+      } catch { setCount(0); }
     };
-
     fetch_();
     intervalRef.current = setInterval(fetch_, 60_000);
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
@@ -47,6 +39,434 @@ function useUnreadCount(token: string | null, user: unknown) {
   return count;
 }
 
+// ─── City selector dropdown ───────────────────────────────────────────────────
+function CitySelector() {
+  const { lang } = useLanguage();
+  const t = (en: string, ar: string) => lang === "ar" ? ar : en;
+  const { country } = useLocalization();
+  const {
+    selectedCityId, selectedCityName, selectedCityNameAr,
+    selectedNeighborhoodId, selectedNeighborhoodName, selectedNeighborhoodNameAr,
+    setCity, setNeighborhood, clearCity, clearNeighborhood, getNeighborhoods,
+  } = useCity();
+  const [open, setOpen] = useState(false);
+  const [step, setStep] = useState<"city" | "neighborhood">("city");
+  const { data: countries } = useListCountries();
+  const countryId = countries?.find((c) => c.code === country.code)?.id ?? null;
+  const { data: cities } = useListCitiesByCountry(countryId ?? 0, { query: { queryKey: ["cities-by-country", countryId], enabled: countryId !== null } });
+  const neighborhoods = getNeighborhoods();
+
+  const cityLabel = (() => {
+    if (!selectedCityId) return t("All Cities", "كل المدن");
+    const cName = lang === "ar" ? selectedCityNameAr : selectedCityName;
+    if (selectedNeighborhoodId) {
+      const nName = lang === "ar" ? selectedNeighborhoodNameAr : selectedNeighborhoodName;
+      return `${cName} · ${nName}`;
+    }
+    return cName ?? t("Select City", "اختر مدينة");
+  })();
+
+  return (
+    <div className="relative hidden sm:block">
+      <button
+        onClick={() => { setOpen(v => !v); setStep("city"); }}
+        className={cn(
+          "flex items-center gap-2 text-sm font-medium transition-colors py-2 px-3 rounded-lg hover:bg-accent",
+          selectedCityId ? "text-primary" : "text-muted-foreground hover:text-foreground"
+        )}
+      >
+        <MapPin className="w-4 h-4 text-primary shrink-0" />
+        <span className="max-w-[120px] truncate">{cityLabel}</span>
+        <ChevronDown className={cn("w-3.5 h-3.5 text-muted-foreground transition-transform", open && "rotate-180")} />
+      </button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => { setOpen(false); setStep("city"); }} />
+          <div className="absolute start-0 top-12 z-50 bg-popover border border-border rounded-2xl shadow-xl py-2 w-64 animate-in fade-in zoom-in-95 duration-150">
+            {step === "city" ? (
+              <>
+                <div className="px-4 py-2 border-b border-border mb-1">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("Select City", "اختر مدينة")}</p>
+                </div>
+                <button
+                  onClick={() => { clearCity(); setOpen(false); }}
+                  className={cn("flex items-center justify-between gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors w-full text-start", !selectedCityId && "text-primary font-semibold")}
+                >
+                  <span>{t("All Cities", "كل المدن")}</span>
+                  {!selectedCityId && <Check className="w-3.5 h-3.5 text-primary shrink-0" />}
+                </button>
+                <div className="max-h-64 overflow-y-auto">
+                  {cities?.map((city: City) => (
+                    <button
+                      key={city.id}
+                      onClick={() => { setCity(city.id, city.nameEn, city.nameAr); setStep("neighborhood"); }}
+                      className={cn("flex items-center justify-between gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors w-full text-start", selectedCityId === city.id && "text-primary font-semibold")}
+                    >
+                      <span>{lang === "ar" ? city.nameAr : city.nameEn}</span>
+                      {selectedCityId === city.id && <Check className="w-3.5 h-3.5 text-primary shrink-0" />}
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="px-4 py-2 border-b border-border mb-1 flex items-center gap-2">
+                  <button onClick={() => setStep("city")} className="text-muted-foreground hover:text-foreground text-xs transition-colors">
+                    ← {t("Back", "رجوع")}
+                  </button>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider ms-auto">{t("Neighborhood", "الحي")}</p>
+                </div>
+                <div className="px-3 py-1.5 text-xs font-semibold text-primary border-b border-border/50 mb-1">
+                  {lang === "ar" ? selectedCityNameAr : selectedCityName}
+                </div>
+                <button
+                  onClick={() => { clearNeighborhood(); setOpen(false); setStep("city"); }}
+                  className={cn("flex items-center justify-between gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors w-full text-start", !selectedNeighborhoodId && "text-primary font-semibold")}
+                >
+                  <span>{t("All Neighborhoods", "كل الأحياء")}</span>
+                  {!selectedNeighborhoodId && <Check className="w-3.5 h-3.5 text-primary shrink-0" />}
+                </button>
+                {neighborhoods.length > 0 ? (
+                  <div className="max-h-56 overflow-y-auto">
+                    {neighborhoods.map((nb) => (
+                      <button
+                        key={nb.id}
+                        onClick={() => { setNeighborhood(nb.id, nb.nameEn, nb.nameAr); setOpen(false); setStep("city"); }}
+                        className={cn("flex items-center justify-between gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors w-full text-start", selectedNeighborhoodId === nb.id && "text-primary font-semibold")}
+                      >
+                        <span>{lang === "ar" ? nb.nameAr : nb.nameEn}</span>
+                        {selectedNeighborhoodId === nb.id && <Check className="w-3.5 h-3.5 text-primary shrink-0" />}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="px-4 py-3 text-xs text-muted-foreground italic">{t("No neighborhoods available", "لا توجد أحياء متاحة")}</div>
+                )}
+              </>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─── Account dropdown (desktop) ───────────────────────────────────────────────
+function AccountMenu({ user, token, logout }: { user: any; token: string | null; logout: () => void }) {
+  const { lang } = useLanguage();
+  const t = (en: string, ar: string) => lang === "ar" ? ar : en;
+  const [open, setOpen] = useState(false);
+  const unreadCount = useUnreadCount(token, user);
+
+  const close = () => setOpen(false);
+  const displayName = lang === "ar" ? (user.nameAr || user.nameEn) : (user.nameEn || user.nameAr);
+  const isAdmin = user?.isAdmin === true;
+  const isOwner = user?.isOwner === true;
+
+  const MenuItem = ({ href, icon: Icon, iconBg, label, labelAr, desc, descAr, badge }: {
+    href: string; icon: React.ElementType; iconBg: string;
+    label: string; labelAr: string; desc?: string; descAr?: string; badge?: React.ReactNode;
+  }) => (
+    <Link href={href} onClick={close}
+      className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors"
+    >
+      <div className={`w-7 h-7 ${iconBg} rounded-lg flex items-center justify-center shrink-0`}>
+        <Icon className="w-3.5 h-3.5" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="font-semibold text-foreground leading-none">{t(label, labelAr)}</p>
+        {(desc || descAr) && <p className="text-xs text-muted-foreground mt-0.5">{t(desc!, descAr ?? desc!)}</p>}
+      </div>
+      {badge}
+    </Link>
+  );
+
+  return (
+    <div className="relative hidden sm:block">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="flex items-center gap-2 rounded-full border border-border hover:border-primary transition-colors px-2 py-1 bg-secondary"
+      >
+        <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden">
+          {user.avatarUrl
+            ? <img src={user.avatarUrl} alt={displayName || ""} className="w-full h-full object-cover" />
+            : <User className="w-4 h-4 text-primary" />}
+        </div>
+        <span className="hidden sm:block text-sm font-medium text-foreground max-w-24 truncate">{displayName}</span>
+        <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform", open && "rotate-180")} />
+      </button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={close} />
+          <div className="absolute end-0 top-12 z-50 bg-popover border border-border rounded-2xl shadow-xl py-2 w-72 animate-in fade-in zoom-in-95 duration-150">
+
+            {/* Profile mini-card */}
+            <Link
+              href={user.username ? `/${user.username}` : "/dashboard"}
+              onClick={close}
+              className="flex items-center gap-3 px-4 py-3 hover:bg-accent transition-colors border-b border-border mb-1"
+            >
+              <div className="w-11 h-11 rounded-full bg-primary/20 shrink-0 overflow-hidden ring-2 ring-primary/20">
+                {user.avatarUrl
+                  ? <img src={user.avatarUrl} alt={displayName || ""} className="w-full h-full object-cover" />
+                  : <div className="w-full h-full flex items-center justify-center"><User className="w-5 h-5 text-primary" /></div>}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-foreground text-sm leading-tight truncate">{displayName}</p>
+                {user.username && <p className="text-xs text-muted-foreground truncate">@{user.username}</p>}
+                <p className="text-[10px] text-primary font-semibold mt-0.5">{t("View public profile →", "عرض الملف العام ←")}</p>
+              </div>
+            </Link>
+
+            {/* My Activity */}
+            <div className="px-4 py-1.5">
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{t("My Activity", "نشاطي")}</p>
+            </div>
+
+            <MenuItem href="/dashboard" icon={LayoutDashboard} iconBg="bg-primary/10 text-primary" label="Dashboard" labelAr="لوحتي" desc="Points & history" descAr="النقاط والتاريخ" />
+            <MenuItem href="/notifications" icon={Bell} iconBg="bg-primary/10 text-primary" label="Notifications" labelAr="الإشعارات"
+              desc={unreadCount > 0 ? `${unreadCount} unread` : "Bookings, offers & more"}
+              descAr={unreadCount > 0 ? `${unreadCount} غير مقروء` : "الحجوزات والعروض وأكثر"}
+              badge={unreadCount > 0 ? <span className="text-xs font-bold text-white bg-primary px-1.5 py-0.5 rounded-full shrink-0">{unreadCount}</span> : undefined}
+            />
+            <MenuItem href="/orders" icon={ShoppingBag} iconBg="bg-primary/10 text-primary" label="My Orders" labelAr="طلباتي" desc="Track & reorder" descAr="تتبع وإعادة الطلب" />
+            <MenuItem href="/bookings" icon={CalendarDays} iconBg="bg-blue-100 text-blue-600" label="My Bookings" labelAr="حجوزاتي" desc="Upcoming & past" descAr="القادمة والسابقة" />
+            <MenuItem href="/vouchers" icon={Tag} iconBg="bg-purple-100 text-purple-600" label="My Vouchers" labelAr="قسائمي" desc="Offers & promotions" descAr="العروض والترقيات" />
+            <MenuItem href="/gold" icon={Crown} iconBg="bg-gradient-to-br from-amber-400 to-yellow-500 text-white" label="Tabaq Gold" labelAr="طبق الذهبي" desc="Membership & perks" descAr="العضوية والمزايا" />
+
+            {/* Account */}
+            <div className="px-4 py-1.5 mt-1 border-t border-border">
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{t("Account", "الحساب")}</p>
+            </div>
+            <MenuItem href="/account" icon={Settings} iconBg="bg-primary/10 text-primary" label="Account & Settings" labelAr="الحساب والإعدادات" desc="Profile, privacy, security & more" descAr="الملف الشخصي والخصوصية والأمان" />
+
+            {/* Business (conditional) */}
+            {(isOwner || isAdmin) && (
+              <>
+                <div className="px-4 py-1.5 mt-1 border-t border-border">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{t("Business", "الأعمال")}</p>
+                </div>
+                {isOwner && <MenuItem href="/console" icon={BarChart3} iconBg="bg-green-100 text-green-600" label="Business Console" labelAr="لوحة الأعمال" desc="Manage your restaurant" descAr="إدارة مطعمك" />}
+                {isOwner && <MenuItem href="/console/experiences" icon={ChefHat} iconBg="bg-orange-100 text-orange-600" label="Experiences Console" labelAr="لوحة التجارب" desc="Host food experiences" descAr="استضف تجارب طعام" />}
+                {isAdmin && <MenuItem href="/admin" icon={Shield} iconBg="bg-red-100 text-red-600" label="Admin Panel" labelAr="لوحة الإدارة" desc="Platform management" descAr="إدارة المنصة" />}
+                {isAdmin && <MenuItem href="/settings" icon={Settings} iconBg="bg-slate-100 text-slate-600" label="Platform Settings" labelAr="إعدادات المنصة" desc="Analytics & integrations" descAr="التحليلات والتكاملات" />}
+              </>
+            )}
+
+            <div className="border-t border-border mt-1 pt-1">
+              <button
+                onClick={() => { logout(); close(); }}
+                className="flex items-center gap-3 px-4 py-2.5 text-sm text-destructive hover:bg-destructive/10 transition-colors w-full"
+              >
+                <LogOut className="w-4 h-4" />
+                {t("Sign Out", "تسجيل الخروج")}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─── Mobile Menu ──────────────────────────────────────────────────────────────
+function MobileMenu({ open, onClose, navLinks, user, logout, unreadCount, cities, selectedCityId, selectedCityNameAr, selectedCityName, setCity, clearCity, neighborhoods, selectedNeighborhoodId, setNeighborhood, clearNeighborhood }: {
+  open: boolean; onClose: () => void; navLinks: any[];
+  user: any; logout: () => void; unreadCount: number;
+  cities: City[] | undefined; selectedCityId: number | null;
+  selectedCityName: string | null; selectedCityNameAr: string | null;
+  setCity: (id: number, en: string, ar: string) => void; clearCity: () => void;
+  neighborhoods: { id: number; nameEn: string; nameAr: string }[];
+  selectedNeighborhoodId: number | null;
+  setNeighborhood: (id: number, en: string, ar: string) => void;
+  clearNeighborhood: () => void;
+}) {
+  const { lang, toggleLanguage } = useLanguage();
+  const t = (en: string, ar: string) => lang === "ar" ? ar : en;
+  const [location] = useLocation();
+  const isActive = (href: string) => href === "/" ? location === "/" : location.startsWith(href);
+  const displayName = user ? (lang === "ar" ? (user.nameAr || user.nameEn) : (user.nameEn || user.nameAr)) : null;
+  const isAdmin = user?.isAdmin === true;
+  const isOwner = user?.isOwner === true;
+
+  if (!open) return null;
+
+  return (
+    <>
+      <div className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute top-full start-0 end-0 z-50 bg-popover border-b border-border shadow-xl animate-in slide-in-from-top-2 duration-200">
+        <div className="max-w-7xl mx-auto px-4 py-4 space-y-1">
+
+          {/* Nav links */}
+          {navLinks.map((link: any) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              onClick={onClose}
+              className={cn(
+                "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors",
+                isActive(link.href) ? "bg-primary/10 text-primary" : "text-foreground hover:bg-accent"
+              )}
+            >
+              <link.icon className="w-4 h-4" />
+              {t(link.en, link.ar)}
+            </Link>
+          ))}
+
+          <div className="h-px bg-border my-2" />
+
+          {/* City filter */}
+          {cities && cities.length > 0 && (
+            <div className="px-4 py-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                <MapPin className="w-3 h-3 inline me-1" />{t("City", "المدينة")}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => clearCity()}
+                  className={cn("px-3 py-1.5 rounded-full text-xs font-semibold border transition-all", !selectedCityId ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:border-primary/40")}
+                >
+                  {t("All", "الكل")}
+                </button>
+                {cities.slice(0, 8).map((city: City) => (
+                  <button key={city.id} onClick={() => setCity(city.id, city.nameEn, city.nameAr)}
+                    className={cn("px-3 py-1.5 rounded-full text-xs font-semibold border transition-all", selectedCityId === city.id ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:border-primary/40")}
+                  >
+                    {lang === "ar" ? city.nameAr : city.nameEn}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Neighborhood filter */}
+          {selectedCityId && neighborhoods.length > 0 && (
+            <div className="px-4 py-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t("Neighborhood", "الحي")}</p>
+              <div className="flex flex-wrap gap-2">
+                <button onClick={() => clearNeighborhood()}
+                  className={cn("px-3 py-1.5 rounded-full text-xs font-semibold border transition-all", !selectedNeighborhoodId ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:border-primary/40")}
+                >
+                  {t("All", "الكل")}
+                </button>
+                {neighborhoods.map((nb) => (
+                  <button key={nb.id} onClick={() => setNeighborhood(nb.id, nb.nameEn, nb.nameAr)}
+                    className={cn("px-3 py-1.5 rounded-full text-xs font-semibold border transition-all", selectedNeighborhoodId === nb.id ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:border-primary/40")}
+                  >
+                    {lang === "ar" ? nb.nameAr : nb.nameEn}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="h-px bg-border my-2" />
+
+          {/* Auth section */}
+          {user ? (
+            <>
+              {/* User identity */}
+              <Link href={user.username ? `/${user.username}` : "/dashboard"} onClick={onClose} className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-accent transition-colors">
+                <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden shrink-0">
+                  {user.avatarUrl
+                    ? <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
+                    : <User className="w-5 h-5 text-primary" />}
+                </div>
+                <div>
+                  <p className="font-semibold text-foreground text-sm">{displayName}</p>
+                  <p className="text-xs text-primary">{t("View profile →", "عرض الملف ←")}</p>
+                </div>
+              </Link>
+
+              {/* Activity links */}
+              {[
+                { href: "/dashboard", icon: LayoutDashboard, en: "Dashboard", ar: "لوحتي" },
+                { href: "/orders", icon: ShoppingBag, en: "My Orders", ar: "طلباتي" },
+                { href: "/bookings", icon: CalendarDays, en: "My Bookings", ar: "حجوزاتي" },
+                { href: "/notifications", icon: Bell, en: "Notifications", ar: "الإشعارات", badge: unreadCount > 0 ? unreadCount : undefined },
+                { href: "/gold", icon: Crown, en: "Tabaq Gold", ar: "طبق الذهبي", gold: true },
+                { href: "/account", icon: Settings, en: "Account & Settings", ar: "الحساب والإعدادات" },
+              ].map((item: any) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={onClose}
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors",
+                    item.gold ? "text-amber-700 hover:bg-amber-50" : "text-foreground hover:bg-accent"
+                  )}
+                >
+                  <item.icon className={cn("w-4 h-4", item.gold && "text-amber-500")} />
+                  <span className="flex-1">{t(item.en, item.ar)}</span>
+                  {item.badge && <span className="text-xs font-bold text-white bg-primary px-1.5 py-0.5 rounded-full">{item.badge}</span>}
+                  {item.gold && <span className="text-[10px] font-black bg-amber-500 text-white px-1.5 py-0.5 rounded-full">GOLD</span>}
+                </Link>
+              ))}
+
+              {/* Business links (owner/admin) */}
+              {(isOwner || isAdmin) && (
+                <>
+                  <div className="h-px bg-border my-1" />
+                  {isOwner && (
+                    <Link href="/console" onClick={onClose} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-foreground hover:bg-accent transition-colors">
+                      <BarChart3 className="w-4 h-4 text-green-600" />{t("Business Console", "لوحة الأعمال")}
+                    </Link>
+                  )}
+                  {isOwner && (
+                    <Link href="/console/experiences" onClick={onClose} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-foreground hover:bg-accent transition-colors">
+                      <ChefHat className="w-4 h-4 text-orange-500" />{t("Experiences Console", "لوحة التجارب")}
+                    </Link>
+                  )}
+                  {isAdmin && (
+                    <Link href="/admin" onClick={onClose} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-foreground hover:bg-accent transition-colors">
+                      <Shield className="w-4 h-4 text-red-500" />{t("Admin Panel", "لوحة الإدارة")}
+                    </Link>
+                  )}
+                </>
+              )}
+
+              <div className="h-px bg-border my-1" />
+              <button
+                onClick={() => { logout(); onClose(); }}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors w-full"
+              >
+                <LogOut className="w-4 h-4" />{t("Sign Out", "تسجيل الخروج")}
+              </button>
+            </>
+          ) : (
+            <>
+              <Link href="/signin" onClick={onClose}
+                className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
+              >
+                <User className="w-4 h-4" />{t("Sign In", "دخول")}
+              </Link>
+              <Link href="/partners" onClick={onClose}
+                className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-border text-sm font-semibold hover:border-primary hover:text-primary transition-colors"
+              >
+                <Utensils className="w-4 h-4" />{t("Register Your Restaurant", "سجّل مطعمك")}
+              </Link>
+            </>
+          )}
+
+          <div className="h-px bg-border my-2" />
+          <div className="px-4 pb-2 flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">{t("Language", "اللغة")}</span>
+            <button
+              onClick={toggleLanguage}
+              className="px-3 py-1.5 rounded-lg border border-border text-xs font-semibold hover:border-primary hover:text-primary transition-colors"
+            >
+              {lang === "en" ? "العربية" : "English"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ─── Main Header ──────────────────────────────────────────────────────────────
 export function Header() {
   const { lang, toggleLanguage, t } = useLanguage();
   const { country } = useLocalization();
@@ -57,686 +477,171 @@ export function Header() {
     selectedNeighborhoodId, selectedNeighborhoodName, selectedNeighborhoodNameAr,
     setCity, setNeighborhood, clearCity, clearNeighborhood, getNeighborhoods,
   } = useCity();
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [cityMenuOpen, setCityMenuOpen] = useState(false);
-  const [neighborhoodStep, setNeighborhoodStep] = useState(false);
   const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
   const unreadCount = useUnreadCount(token, user);
   const { totalItems } = useCart();
   const { data: countries } = useListCountries();
   const countryId = countries?.find((c) => c.code === country.code)?.id ?? null;
-  const { data: cities } = useListCitiesByCountry(countryId ?? 0, { query: { queryKey: ['cities-by-country', countryId], enabled: countryId !== null } });
-
+  const { data: cities } = useListCitiesByCountry(countryId ?? 0, { query: { queryKey: ["cities-by-country", countryId], enabled: countryId !== null } });
   const neighborhoods = getNeighborhoods();
 
-  const cityLabel = (() => {
-    const cName = lang === 'ar' ? selectedCityNameAr : selectedCityName;
-    if (!selectedCityId) return t('All Cities', 'كل المدن');
-    if (selectedNeighborhoodId) {
-      const nName = lang === 'ar' ? selectedNeighborhoodNameAr : selectedNeighborhoodName;
-      return `${cName} · ${nName}`;
-    }
-    return cName ?? t('Select City', 'اختر مدينة');
-  })();
-
-  const isAdmin = (user as any)?.isAdmin === true;
-  const isOwner = (user as any)?.isOwner === true;
-
   const navLinks = [
-    { href: "/", en: "Home", ar: "الرئيسية", icon: Home },
-    { href: "/restaurants", en: "Discovery", ar: "استكشف", icon: Search },
-    { href: "/michelin", en: "Michelin Guide", ar: "دليل ميشلان", icon: Award },
-    { href: "/chefs", en: "Chefs", ar: "الطهاة", icon: ChefHat },
-    { href: "/experiences", en: "Experiences", ar: "التجارب", icon: Utensils },
-    { href: "/catering", en: "Catering", ar: "التموين", icon: ShoppingBag },
-    { href: "/offers", en: "Offers", ar: "العروض", icon: Sparkles },
-    { href: "/leaderboard", en: "Leaderboard", ar: "المتصدرين", icon: Trophy },
+    { href: "/",            en: "Home",           ar: "الرئيسية",      icon: Home },
+    { href: "/restaurants", en: "Explore",         ar: "استكشف",        icon: Search },
+    { href: "/experiences", en: "Experiences",     ar: "التجارب",       icon: Utensils },
+    { href: "/offers",      en: "Offers",          ar: "العروض",        icon: Sparkles },
+    { href: "/michelin",    en: "Michelin",        ar: "ميشلان",        icon: Award },
+    { href: "/leaderboard", en: "Leaderboard",     ar: "المتصدرون",     icon: Trophy },
   ];
 
-  const displayName = user
-    ? lang === "ar"
-      ? (user as any).nameAr || (user as any).nameEn
-      : (user as any).nameEn || (user as any).nameAr
-    : null;
-
-  const isActive = (href: string) =>
-    href === "/" ? location === "/" : location.startsWith(href);
+  const isActive = (href: string) => href === "/" ? location === "/" : location.startsWith(href);
 
   return (
     <>
-    <header className="sticky top-0 z-50 w-full glass-panel border-b border-border/50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <header className="sticky top-0 z-50 w-full glass-panel border-b border-border/50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
 
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-2 transition-transform hover:scale-105 active:scale-95 shrink-0">
-          <img
-            src={`${import.meta.env.BASE_URL}images/tabaq-logo.png`}
-            alt="Tabaq"
-            className="h-9 w-auto object-contain"
-          />
-        </Link>
+          {/* Logo */}
+          <Link href="/" className="flex items-center gap-2 transition-transform hover:scale-105 active:scale-95 shrink-0">
+            <img
+              src={`${import.meta.env.BASE_URL}images/tabaq-logo.png`}
+              alt="Tabaq"
+              className="h-9 w-auto object-contain"
+            />
+          </Link>
 
-        {/* Desktop Nav */}
-        <nav className="hidden lg:flex items-center gap-6">
-          {navLinks.map((link) => (
+          {/* Desktop Nav */}
+          <nav className="hidden lg:flex items-center gap-5">
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={cn(
+                  "text-sm font-medium transition-colors hover:text-foreground relative py-2 tracking-[-0.01em]",
+                  isActive(link.href) ? "text-foreground" : "text-muted-foreground"
+                )}
+              >
+                {t(link.en, link.ar)}
+                {isActive(link.href) && (
+                  <span className="absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-full" />
+                )}
+              </Link>
+            ))}
             <Link
-              key={link.href}
-              href={link.href}
+              href="/partners"
               className={cn(
-                "text-sm font-medium transition-colors hover:text-foreground relative py-2 tracking-[-0.01em]",
-                isActive(link.href) ? "text-foreground" : "text-muted-foreground"
+                "text-sm font-medium transition-colors hover:text-foreground relative py-2 flex items-center gap-1 tracking-[-0.01em]",
+                isActive("/partners") ? "text-foreground" : "text-muted-foreground"
               )}
             >
-              {t(link.en, link.ar)}
-              {isActive(link.href) && (
+              <Utensils className="w-3.5 h-3.5" />
+              {t("For Partners", "للشركاء")}
+              {isActive("/partners") && (
                 <span className="absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-full" />
               )}
             </Link>
-          ))}
-          <Link
-            href="/partners"
-            className={cn(
-              "text-sm font-medium transition-colors hover:text-foreground relative py-2 flex items-center gap-1 tracking-[-0.01em]",
-              isActive("/partners") ? "text-foreground" : "text-muted-foreground"
-            )}
-          >
-            <Utensils className="w-3.5 h-3.5" />
-            {t("For Partners", "للشركاء")}
-            {isActive("/partners") && (
-              <span className="absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-full" />
-            )}
-          </Link>
-        </nav>
+          </nav>
 
-        {/* Actions */}
-        <div className="flex items-center gap-2 sm:gap-3">
-          {/* City Selector */}
-          <div className="relative hidden sm:block">
+          {/* Actions */}
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* City Selector */}
+            <CitySelector />
+
+            {/* Search */}
+            <Link href="/search" className="p-2.5 rounded-full hover:bg-accent text-foreground transition-colors">
+              <Search className="w-5 h-5" />
+            </Link>
+
+            {/* Notifications (logged in) */}
+            {user && (
+              <Link href="/notifications" className="relative p-2.5 rounded-full hover:bg-accent text-foreground transition-colors">
+                <Bell className="w-5 h-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1.5 end-1.5 min-w-[10px] h-[10px] bg-primary rounded-full border-2 border-background" />
+                )}
+              </Link>
+            )}
+
+            {/* Cart */}
             <button
-              onClick={() => setCityMenuOpen(v => !v)}
-              className={cn(
-                "flex items-center gap-2 text-sm font-medium transition-colors py-2 px-3 rounded-lg hover:bg-accent",
-                selectedCityId ? "text-primary" : "text-muted-foreground hover:text-foreground"
-              )}
+              onClick={() => setCartDrawerOpen(true)}
+              className="relative p-2.5 rounded-full hover:bg-accent text-foreground transition-colors"
+              aria-label={t("Cart", "السلة")}
             >
-              <MapPin className="w-4 h-4 text-primary shrink-0" />
-              <span className="max-w-[120px] truncate">{cityLabel}</span>
-              <ChevronDown className={cn("w-3.5 h-3.5 text-muted-foreground transition-transform", cityMenuOpen && "rotate-180")} />
+              <ShoppingBag className="w-5 h-5" />
+              {totalItems > 0 && (
+                <span className="absolute top-1 end-1 min-w-[18px] h-[18px] bg-primary text-primary-foreground text-[10px] font-black rounded-full flex items-center justify-center px-0.5 border-2 border-background leading-none">
+                  {totalItems > 99 ? "99+" : totalItems}
+                </span>
+              )}
             </button>
 
-            {cityMenuOpen && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => { setCityMenuOpen(false); setNeighborhoodStep(false); }} />
-                <div className="absolute start-0 top-12 z-50 bg-popover border border-border rounded-2xl shadow-xl py-2 w-64 animate-in fade-in zoom-in-95 duration-150">
-                  {!neighborhoodStep ? (
-                    <>
-                      <div className="px-4 py-2 border-b border-border mb-1">
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t('Select City', 'اختر مدينة')}</p>
-                      </div>
+            {/* Language toggle */}
+            <button
+              onClick={toggleLanguage}
+              className="p-2.5 rounded-full hover:bg-accent text-foreground transition-colors flex items-center justify-center font-bold text-xs relative"
+              title={t("Switch to Arabic", "التبديل للإنجليزية")}
+            >
+              <Globe className="w-5 h-5 absolute opacity-20" />
+              <span className="z-10">{lang === "en" ? "ع" : "EN"}</span>
+            </button>
 
-                      <button
-                        onClick={() => { clearCity(); setCityMenuOpen(false); setNeighborhoodStep(false); }}
-                        className={cn(
-                          "flex items-center justify-between gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors w-full text-start",
-                          !selectedCityId && "text-primary font-semibold"
-                        )}
-                      >
-                        <span>{t('All Cities', 'كل المدن')}</span>
-                        {!selectedCityId && <Check className="w-3.5 h-3.5 text-primary shrink-0" />}
-                      </button>
-
-                      {cities && cities.length > 0 && (
-                        <div className="max-h-64 overflow-y-auto">
-                          {cities.map((city: City) => (
-                            <button
-                              key={city.id}
-                              onClick={() => {
-                                setCity(city.id, city.nameEn, city.nameAr);
-                                setNeighborhoodStep(true);
-                              }}
-                              className={cn(
-                                "flex items-center justify-between gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors w-full text-start",
-                                selectedCityId === city.id && "text-primary font-semibold"
-                              )}
-                            >
-                              <span>{lang === 'ar' ? city.nameAr : city.nameEn}</span>
-                              {selectedCityId === city.id && <Check className="w-3.5 h-3.5 text-primary shrink-0" />}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      <div className="px-4 py-2 border-b border-border mb-1 flex items-center gap-2">
-                        <button
-                          onClick={() => setNeighborhoodStep(false)}
-                          className="text-muted-foreground hover:text-foreground transition-colors text-xs"
-                        >
-                          ← {t('Back', 'رجوع')}
-                        </button>
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider ms-auto">{t('Neighborhood', 'الحي')}</p>
-                      </div>
-
-                      <div className="px-3 py-1.5 text-xs font-semibold text-primary border-b border-border/50 mb-1">
-                        {lang === 'ar' ? selectedCityNameAr : selectedCityName}
-                      </div>
-
-                      <button
-                        onClick={() => { clearNeighborhood(); setCityMenuOpen(false); setNeighborhoodStep(false); }}
-                        className={cn(
-                          "flex items-center justify-between gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors w-full text-start",
-                          !selectedNeighborhoodId && "text-primary font-semibold"
-                        )}
-                      >
-                        <span>{t('All Neighborhoods', 'كل الأحياء')}</span>
-                        {!selectedNeighborhoodId && <Check className="w-3.5 h-3.5 text-primary shrink-0" />}
-                      </button>
-
-                      {neighborhoods.length > 0 ? (
-                        <div className="max-h-56 overflow-y-auto">
-                          {neighborhoods.map((nb) => (
-                            <button
-                              key={nb.id}
-                              onClick={() => { setNeighborhood(nb.id, nb.nameEn, nb.nameAr); setCityMenuOpen(false); setNeighborhoodStep(false); }}
-                              className={cn(
-                                "flex items-center justify-between gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors w-full text-start",
-                                selectedNeighborhoodId === nb.id && "text-primary font-semibold"
-                              )}
-                            >
-                              <span>{lang === 'ar' ? nb.nameAr : nb.nameEn}</span>
-                              {selectedNeighborhoodId === nb.id && <Check className="w-3.5 h-3.5 text-primary shrink-0" />}
-                            </button>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="px-4 py-3 text-xs text-muted-foreground italic">
-                          {t('No neighborhoods available', 'لا توجد أحياء متاحة')}
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-
-          <Link href="/search" className="p-2.5 rounded-full hover:bg-accent text-foreground transition-colors">
-            <Search className="w-5 h-5" />
-          </Link>
-
-          {user && (
-            <Link href="/notifications" className="relative p-2.5 rounded-full hover:bg-accent text-foreground transition-colors">
-              <Bell className="w-5 h-5" />
-              {unreadCount > 0 && (
-                <span className="absolute top-1.5 end-1.5 min-w-[10px] h-[10px] bg-primary rounded-full border-2 border-background flex items-center justify-center">
-                  {unreadCount > 9 ? null : null}
-                </span>
-              )}
-            </Link>
-          )}
-
-          {/* Cart icon */}
-          <button
-            onClick={() => setCartDrawerOpen(true)}
-            className="relative p-2.5 rounded-full hover:bg-accent text-foreground transition-colors"
-            aria-label={t('Cart', 'السلة')}
-          >
-            <ShoppingBag className="w-5 h-5" />
-            {totalItems > 0 && (
-              <span className="absolute top-1 end-1 min-w-[18px] h-[18px] bg-primary text-primary-foreground text-[10px] font-black rounded-full flex items-center justify-center px-0.5 border-2 border-background leading-none">
-                {totalItems > 99 ? '99+' : totalItems}
-              </span>
-            )}
-          </button>
-
-          <button
-            onClick={toggleLanguage}
-            className="p-2.5 rounded-full hover:bg-accent text-foreground transition-colors flex items-center justify-center font-bold text-xs relative"
-            title={t("Switch to Arabic", "التبديل للإنجليزية")}
-          >
-            <Globe className="w-5 h-5 absolute opacity-20" />
-            <span className="z-10">{lang === "en" ? "ع" : "EN"}</span>
-          </button>
-
-          {/* Auth area — desktop */}
-          {user ? (
-            <div className="relative hidden sm:block">
-              <button
-                onClick={() => setUserMenuOpen((v) => !v)}
-                className="flex items-center gap-2 rounded-full border border-border hover:border-primary transition-colors px-2 py-1 bg-secondary"
-              >
-                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden">
-                  {(user as any).avatarUrl ? (
-                    <img src={(user as any).avatarUrl} alt={displayName || ""} className="w-full h-full object-cover" />
-                  ) : (
-                    <User className="w-4 h-4 text-primary" />
-                  )}
-                </div>
-                <span className="hidden sm:block text-sm font-medium text-foreground max-w-24 truncate">
-                  {displayName}
-                </span>
-                <ChevronDown className="w-4 h-4 text-muted-foreground" />
-              </button>
-
-              {userMenuOpen && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setUserMenuOpen(false)} />
-                  <div className="absolute end-0 top-12 z-50 bg-popover border border-border rounded-2xl shadow-xl py-2 w-64 animate-in fade-in zoom-in-95 duration-150">
-
-                    {/* Profile mini-card */}
-                    <div className="px-4 py-3 border-b border-border mb-1">
-                      <Link href={(user as any).username ? `/${(user as any).username}` : '/dashboard'} onClick={() => setUserMenuOpen(false)}>
-                        <div className="flex items-center gap-3 hover:opacity-80 transition-opacity cursor-pointer">
-                          <div className="w-11 h-11 rounded-full bg-primary/20 shrink-0 overflow-hidden ring-2 ring-primary/20">
-                            {(user as any).avatarUrl ? (
-                              <img src={(user as any).avatarUrl} alt={displayName || ""} className="w-full h-full object-cover" />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center">
-                                <User className="w-5 h-5 text-primary" />
-                              </div>
-                            )}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="font-bold text-foreground text-sm leading-tight truncate">{displayName}</p>
-                            {(user as any).username && (
-                              <p className="text-xs text-muted-foreground truncate">@{(user as any).username}</p>
-                            )}
-                            <p className="text-[10px] text-primary font-semibold mt-0.5">{t("View Profile →", "عرض الملف ←")}</p>
-                          </div>
-                        </div>
-                      </Link>
-                    </div>
-
-                    <Link href="/dashboard" className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors" onClick={() => setUserMenuOpen(false)}>
-                      <div className="w-7 h-7 bg-primary/10 rounded-lg flex items-center justify-center">
-                        <BarChart3 className="w-3.5 h-3.5 text-primary" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-foreground leading-none">{t("My Dashboard", "لوحتي")}</p>
-                        <p className="text-xs text-muted-foreground">{t("Points & history", "النقاط والتاريخ")}</p>
-                      </div>
-                    </Link>
-
-                    <Link href="/notifications" className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors" onClick={() => setUserMenuOpen(false)}>
-                      <div className="w-7 h-7 bg-primary/10 rounded-lg flex items-center justify-center relative">
-                        <Bell className="w-3.5 h-3.5 text-primary" />
-                        {unreadCount > 0 && (
-                          <span className="absolute -top-0.5 -end-0.5 w-2 h-2 bg-primary rounded-full" />
-                        )}
-                      </div>
-                      <div>
-                        <p className="font-semibold text-foreground leading-none">{t("Notifications", "الإشعارات")}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {unreadCount > 0 ? t(`${unreadCount} unread`, `${unreadCount} غير مقروء`) : t("Bookings, offers & more", "الحجوزات والعروض وأكثر")}
-                        </p>
-                      </div>
-                    </Link>
-
-                    <Link href="/orders" className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors" onClick={() => setUserMenuOpen(false)}>
-                      <div className="w-7 h-7 bg-primary/10 rounded-lg flex items-center justify-center">
-                        <ShoppingBag className="w-3.5 h-3.5 text-primary" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-foreground leading-none">{t("My Orders", "طلباتي")}</p>
-                        <p className="text-xs text-muted-foreground">{t("Track & reorder", "تتبع وإعادة الطلب")}</p>
-                      </div>
-                    </Link>
-
-                    <Link href="/gold" className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-amber-50 transition-colors" onClick={() => setUserMenuOpen(false)}>
-                      <div className="w-7 h-7 bg-gradient-to-br from-amber-400 to-yellow-500 rounded-lg flex items-center justify-center shadow-sm">
-                        <Crown className="w-3.5 h-3.5 text-white" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-amber-700 leading-none">{t("Tabaq Gold", "طبق الذهبي")}</p>
-                        <p className="text-xs text-amber-600/70">{t("Membership & perks", "العضوية والمزايا")}</p>
-                      </div>
-                    </Link>
-
-                    <Link href="/bookings" className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors" onClick={() => setUserMenuOpen(false)}>
-                      <div className="w-7 h-7 bg-blue-50 rounded-lg flex items-center justify-center">
-                        <CalendarDays className="w-3.5 h-3.5 text-blue-600" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-foreground leading-none">{t("My Bookings", "حجوزاتي")}</p>
-                        <p className="text-xs text-muted-foreground">{t("Upcoming & past", "القادمة والسابقة")}</p>
-                      </div>
-                    </Link>
-
-                    <Link href="/vouchers" className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors" onClick={() => setUserMenuOpen(false)}>
-                      <div className="w-7 h-7 bg-purple-50 rounded-lg flex items-center justify-center">
-                        <Tag className="w-3.5 h-3.5 text-purple-600" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-foreground leading-none">{t("My Vouchers", "قسائمي")}</p>
-                        <p className="text-xs text-muted-foreground">{t("Offers & promotions", "العروض والترقيات")}</p>
-                      </div>
-                    </Link>
-
-                    <Link href="/leaderboard" className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors" onClick={() => setUserMenuOpen(false)}>
-                      <div className="w-7 h-7 bg-amber-50 rounded-lg flex items-center justify-center">
-                        <Trophy className="w-3.5 h-3.5 text-amber-600" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-foreground leading-none">{t("Leaderboard", "المتصدرون")}</p>
-                        <p className="text-xs text-muted-foreground">{t("Rank & rewards", "الترتيب والمكافآت")}</p>
-                      </div>
-                    </Link>
-
-                    {/* Business/Admin section */}
-                    <div className="px-4 py-2 border-t border-b border-border mt-1 mb-1">
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("Business", "الأعمال")}</p>
-                    </div>
-
-                    {isOwner && (
-                      <Link href="/console" className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors" onClick={() => setUserMenuOpen(false)}>
-                        <div className="w-7 h-7 bg-green-50 rounded-lg flex items-center justify-center">
-                          <LayoutDashboard className="w-3.5 h-3.5 text-green-600" />
-                        </div>
-                        <div>
-                          <p className="font-semibold text-foreground leading-none">{t("Business Console", "لوحة الأعمال")}</p>
-                          <p className="text-xs text-muted-foreground">{t("Manage your restaurant", "إدارة مطعمك")}</p>
-                        </div>
-                      </Link>
-                    )}
-
-                    <Link href="/console/experiences" className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors" onClick={() => setUserMenuOpen(false)}>
-                      <div className="w-7 h-7 bg-orange-50 rounded-lg flex items-center justify-center">
-                        <ChefHat className="w-3.5 h-3.5 text-orange-600" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-foreground leading-none">{t("Experiences Console", "لوحة التجارب")}</p>
-                        <p className="text-xs text-muted-foreground">{t("Host food experiences", "استضف تجارب طعام")}</p>
-                      </div>
-                    </Link>
-
-                    {isAdmin && (
-                      <Link href="/admin" className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors" onClick={() => setUserMenuOpen(false)}>
-                        <div className="w-7 h-7 bg-red-50 rounded-lg flex items-center justify-center">
-                          <Shield className="w-3.5 h-3.5 text-red-600" />
-                        </div>
-                        <div>
-                          <p className="font-semibold text-foreground leading-none">{t("Admin Panel", "لوحة الإدارة")}</p>
-                          <p className="text-xs text-muted-foreground">{t("Platform management", "إدارة المنصة")}</p>
-                        </div>
-                      </Link>
-                    )}
-
-                    <Link href="/account" className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors" onClick={() => setUserMenuOpen(false)}>
-                      <div className="w-7 h-7 bg-primary/10 rounded-lg flex items-center justify-center">
-                        <Settings className="w-3.5 h-3.5 text-primary" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-foreground leading-none">{t("Account Settings", "إعدادات الحساب")}</p>
-                        <p className="text-xs text-muted-foreground">{t("Privacy, notifications, security & more", "الخصوصية والإشعارات والأمان والمزيد")}</p>
-                      </div>
-                    </Link>
-
-                    <Link href="/settings" className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors" onClick={() => setUserMenuOpen(false)}>
-                      <div className="w-7 h-7 bg-slate-100 rounded-lg flex items-center justify-center">
-                        <Settings className="w-3.5 h-3.5 text-slate-600" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-foreground leading-none">{t("Platform Settings", "إعدادات المنصة")}</p>
-                        <p className="text-xs text-muted-foreground">{t("Analytics, SEO & integrations", "التحليلات وتحسين البحث")}</p>
-                      </div>
-                    </Link>
-
-                    <hr className="border-border my-1" />
-                    <button
-                      onClick={() => { logout(); setUserMenuOpen(false); }}
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-destructive hover:bg-destructive/10 transition-colors w-full"
-                    >
-                      <LogOut className="w-4 h-4" />
-                      {t("Sign Out", "تسجيل الخروج")}
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          ) : (
-            <div className="hidden sm:flex items-center gap-2">
-              <Link
-                href="/partners"
-                className="flex items-center gap-1.5 px-4 py-2 rounded-full border border-border text-sm font-semibold hover:border-primary hover:text-primary transition-colors"
-              >
-                <Utensils className="w-3.5 h-3.5" />
-                {t("For Restaurants", "للمطاعم")}
-              </Link>
-              <Link
-                href="/signin"
-                className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
-              >
-                <User className="w-4 h-4" />
-                {t("Sign In", "دخول")}
-              </Link>
-            </div>
-          )}
-
-          {/* Mobile hamburger */}
-          <button
-            onClick={() => setMobileMenuOpen((v) => !v)}
-            className="lg:hidden p-2.5 rounded-full hover:bg-accent text-foreground transition-colors"
-            aria-label="Toggle menu"
-          >
-            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
-        </div>
-      </div>
-
-      {/* Mobile Menu */}
-      {mobileMenuOpen && (
-        <>
-          <div className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)} />
-          <div className="absolute top-full start-0 end-0 z-50 bg-popover border-b border-border shadow-xl animate-in slide-in-from-top-2 duration-200">
-            <div className="max-w-7xl mx-auto px-4 py-4 space-y-1">
-
-              {/* Nav links */}
-              {navLinks.map((link) => (
+            {/* Account menu (desktop) or Sign In */}
+            {user ? (
+              <AccountMenu user={user} token={token} logout={logout} />
+            ) : (
+              <div className="hidden sm:flex items-center gap-2">
                 <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={cn(
-                    "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors",
-                    isActive(link.href)
-                      ? "bg-primary/10 text-primary"
-                      : "text-foreground hover:bg-accent"
-                  )}
+                  href="/partners"
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-full border border-border text-sm font-semibold hover:border-primary hover:text-primary transition-colors"
                 >
-                  <link.icon className="w-4 h-4" />
-                  {t(link.en, link.ar)}
+                  <Utensils className="w-3.5 h-3.5" />
+                  {t("For Restaurants", "للمطاعم")}
                 </Link>
-              ))}
-
-              <Link
-                href="/partners"
-                onClick={() => setMobileMenuOpen(false)}
-                className={cn(
-                  "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors",
-                  isActive("/partners") ? "bg-primary/10 text-primary" : "text-foreground hover:bg-accent"
-                )}
-              >
-                <Utensils className="w-4 h-4" />
-                {t("For Partners", "للشركاء")}
-              </Link>
-
-              <div className="h-px bg-border my-2" />
-
-              {/* Mobile City Selector */}
-              {cities && cities.length > 0 && (
-                <div className="px-4 py-2">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                    <MapPin className="w-3 h-3 inline me-1" />
-                    {t('City', 'المدينة')}
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      onClick={() => clearCity()}
-                      className={cn(
-                        "px-3 py-1.5 rounded-full text-xs font-semibold border transition-all",
-                        !selectedCityId
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "border-border text-muted-foreground hover:border-primary/40"
-                      )}
-                    >
-                      {t('All', 'الكل')}
-                    </button>
-                    {cities.slice(0, 8).map((city: City) => (
-                      <button
-                        key={city.id}
-                        onClick={() => setCity(city.id, city.nameEn, city.nameAr)}
-                        className={cn(
-                          "px-3 py-1.5 rounded-full text-xs font-semibold border transition-all",
-                          selectedCityId === city.id
-                            ? "bg-primary text-primary-foreground border-primary"
-                            : "border-border text-muted-foreground hover:border-primary/40"
-                        )}
-                      >
-                        {lang === 'ar' ? city.nameAr : city.nameEn}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Mobile Neighborhood Selector — shown only after a city is selected */}
-              {selectedCityId && neighborhoods.length > 0 && (
-                <div className="px-4 py-2">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                    {t('Neighborhood', 'الحي')}
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      onClick={() => clearNeighborhood()}
-                      className={cn(
-                        "px-3 py-1.5 rounded-full text-xs font-semibold border transition-all",
-                        !selectedNeighborhoodId
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "border-border text-muted-foreground hover:border-primary/40"
-                      )}
-                    >
-                      {t('All', 'الكل')}
-                    </button>
-                    {neighborhoods.map((nb) => (
-                      <button
-                        key={nb.id}
-                        onClick={() => setNeighborhood(nb.id, nb.nameEn, nb.nameAr)}
-                        className={cn(
-                          "px-3 py-1.5 rounded-full text-xs font-semibold border transition-all",
-                          selectedNeighborhoodId === nb.id
-                            ? "bg-primary text-primary-foreground border-primary"
-                            : "border-border text-muted-foreground hover:border-primary/40"
-                        )}
-                      >
-                        {lang === 'ar' ? nb.nameAr : nb.nameEn}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="h-px bg-border my-2" />
-
-              {/* Auth section */}
-              {user ? (
-                <>
-                  <div className="px-4 py-2">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden shrink-0">
-                        {(user as any).avatarUrl ? (
-                          <img src={(user as any).avatarUrl} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          <User className="w-5 h-5 text-primary" />
-                        )}
-                      </div>
-                      <div>
-                        <p className="font-semibold text-foreground">{displayName}</p>
-                        <p className="text-xs text-muted-foreground">{t("Diner Account", "حساب متذوق")}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-foreground hover:bg-accent transition-colors">
-                    <LayoutDashboard className="w-4 h-4" />
-                    {t("My Dashboard", "لوحتي")}
-                  </Link>
-                  <Link href="/bookings" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-foreground hover:bg-accent transition-colors">
-                    <CalendarDays className="w-4 h-4" />
-                    {t("My Bookings", "حجوزاتي")}
-                  </Link>
-                  <Link href="/gold" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-amber-700 hover:bg-amber-50 transition-colors">
-                    <Crown className="w-4 h-4 text-amber-500" />
-                    {t("Tabaq Gold", "طبق الذهبي")}
-                    <span className="ms-auto text-[10px] font-black bg-amber-500 text-white px-1.5 py-0.5 rounded-full">GOLD</span>
-                  </Link>
-                  <Link href="/notifications" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-foreground hover:bg-accent transition-colors">
-                    <div className="relative">
-                      <Bell className="w-4 h-4" />
-                      {unreadCount > 0 && <span className="absolute -top-1 -end-1 w-2 h-2 bg-primary rounded-full" />}
-                    </div>
-                    <span>{t("Notifications", "الإشعارات")}</span>
-                    {unreadCount > 0 && <span className="ms-auto text-xs font-bold text-primary">{unreadCount}</span>}
-                  </Link>
-
-                  <div className="h-px bg-border my-1" />
-                  {isOwner && (
-                    <Link href="/console" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-foreground hover:bg-accent transition-colors">
-                      <BarChart3 className="w-4 h-4 text-green-600" />
-                      {t("Business Console", "لوحة الأعمال")}
-                    </Link>
-                  )}
-                  <Link href="/console/experiences" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-foreground hover:bg-accent transition-colors">
-                    <ChefHat className="w-4 h-4 text-orange-500" />
-                    {t("Experiences Console", "لوحة التجارب")}
-                  </Link>
-                  {isAdmin && (
-                    <Link href="/admin" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-foreground hover:bg-accent transition-colors">
-                      <Shield className="w-4 h-4 text-red-500" />
-                      {t("Admin Panel", "لوحة الإدارة")}
-                    </Link>
-                  )}
-
-                  <div className="h-px bg-border my-1" />
-                  <button
-                    onClick={() => { logout(); setMobileMenuOpen(false); }}
-                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors w-full"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    {t("Sign Out", "تسجيل الخروج")}
-                  </button>
-                </>
-              ) : (
-                <>
-                  <Link href="/signin" onClick={() => setMobileMenuOpen(false)} className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors">
-                    <User className="w-4 h-4" />
-                    {t("Sign In", "دخول")}
-                  </Link>
-                  <Link href="/partners" onClick={() => setMobileMenuOpen(false)} className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-border text-sm font-semibold hover:border-primary hover:text-primary transition-colors">
-                    <Utensils className="w-4 h-4" />
-                    {t("Register Your Restaurant", "سجّل مطعمك")}
-                  </Link>
-                </>
-              )}
-
-              <div className="h-px bg-border my-2" />
-              <div className="px-4 pb-2 flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">{t("Language", "اللغة")}</span>
-                <button
-                  onClick={() => { toggleLanguage(); }}
-                  className="px-3 py-1.5 rounded-lg border border-border text-xs font-semibold hover:border-primary hover:text-primary transition-colors"
+                <Link
+                  href="/signin"
+                  className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
                 >
-                  {lang === "en" ? "العربية" : "English"}
-                </button>
+                  <User className="w-4 h-4" />
+                  {t("Sign In", "دخول")}
+                </Link>
               </div>
-            </div>
-          </div>
-        </>
-      )}
-    </header>
+            )}
 
-    <CartDrawer open={cartDrawerOpen} onClose={() => setCartDrawerOpen(false)} />
+            {/* Mobile hamburger */}
+            <button
+              onClick={() => setMobileMenuOpen(v => !v)}
+              className="lg:hidden p-2.5 rounded-full hover:bg-accent text-foreground transition-colors"
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Mobile menu */}
+      <MobileMenu
+        open={mobileMenuOpen}
+        onClose={() => setMobileMenuOpen(false)}
+        navLinks={navLinks}
+        user={user}
+        logout={logout}
+        unreadCount={unreadCount}
+        cities={cities}
+        selectedCityId={selectedCityId}
+        selectedCityName={selectedCityName}
+        selectedCityNameAr={selectedCityNameAr}
+        setCity={setCity}
+        clearCity={clearCity}
+        neighborhoods={neighborhoods}
+        selectedNeighborhoodId={selectedNeighborhoodId}
+        setNeighborhood={setNeighborhood}
+        clearNeighborhood={clearNeighborhood}
+      />
+
+      <CartDrawer open={cartDrawerOpen} onClose={() => setCartDrawerOpen(false)} />
     </>
   );
 }
