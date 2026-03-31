@@ -25,6 +25,7 @@ router.get("/restaurants", async (req, res) => {
       nameEn: restaurantsTable.nameEn,
       nameAr: restaurantsTable.nameAr,
       coverImageUrl: restaurantsTable.coverImageUrl,
+      logoUrl: restaurantsTable.logoUrl,
       priceTier: restaurantsTable.priceTier,
       avgRating: restaurantsTable.avgRating,
       reviewCount: restaurantsTable.reviewCount,
