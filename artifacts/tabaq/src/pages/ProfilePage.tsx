@@ -18,6 +18,7 @@ import {
   BarChart2, Globe, Ban, PlusCircle, Flame, Award, TrendingUp,
   Utensils, Camera, Trash2, Edit2, Share2, Bell, ChevronDown,
   Target, Plus, AlertCircle, MapPinOff, ArrowRight, Eye,
+  Copy, Instagram, Link2, ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -490,6 +491,95 @@ function PrivacyCard({ isPrivate, onToggle, t }: { isPrivate: boolean; onToggle:
   );
 }
 
+// ─── Social Links Card (Settings) ─────────────────────────────────────────────
+
+interface SocialLinksCardProps {
+  user: any;
+  onSave: (links: Record<string, string>) => Promise<void>;
+  t: (en: string, ar: string) => string;
+  lang: string;
+}
+
+function SocialLinksCard({ user, onSave, t }: SocialLinksCardProps) {
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [vals, setVals] = useState({
+    instagramUrl: user?.instagramUrl ?? "",
+    xUrl: user?.xUrl ?? "",
+    tiktokUrl: user?.tiktokUrl ?? "",
+    snapchatUrl: user?.snapchatUrl ?? "",
+    websiteUrl: user?.websiteUrl ?? "",
+    location: user?.location ?? "",
+    coverPhotoUrl: user?.coverPhotoUrl ?? "",
+  });
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await onSave(vals);
+      setSaved(true);
+      setTimeout(() => { setSaved(false); setOpen(false); }, 1500);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="bg-card border border-border rounded-2xl overflow-hidden">
+      <button
+        className="w-full p-5 flex items-center gap-4 hover:bg-secondary/30 transition-colors"
+        onClick={() => setOpen(o => !o)}
+      >
+        <div className="w-9 h-9 bg-violet-100 dark:bg-violet-900/30 rounded-xl flex items-center justify-center shrink-0">
+          <Globe className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+        </div>
+        <div className="flex-grow text-start">
+          <h3 className="font-bold text-foreground text-sm">{t("Social Links & Info", "الروابط الاجتماعية والمعلومات")}</h3>
+          <p className="text-xs text-muted-foreground">{t("Instagram, X, TikTok, Snapchat, website, location", "انستقرام، إكس، تيك توك، سناب شات، الموقع والمدينة")}</p>
+        </div>
+        <ChevronDown className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open && (
+        <div className="px-5 pb-5 border-t border-border space-y-3 pt-4">
+          {[
+            { key: "location", label: t("Location / City", "المدينة / الموقع"), placeholder: t("Riyadh, KSA", "الرياض، المملكة"), icon: <MapPin className="w-4 h-4 text-muted-foreground" /> },
+            { key: "coverPhotoUrl", label: t("Cover Photo URL", "رابط صورة الغلاف"), placeholder: "https://...", icon: <Camera className="w-4 h-4 text-muted-foreground" /> },
+            { key: "instagramUrl", label: "Instagram", placeholder: "@username", icon: <Instagram className="w-4 h-4 text-muted-foreground" /> },
+            { key: "xUrl", label: "X (Twitter)", placeholder: "@username", icon: <span className="text-xs font-black text-muted-foreground">𝕏</span> },
+            { key: "tiktokUrl", label: "TikTok", placeholder: "@username", icon: <span className="text-xs font-black text-muted-foreground">♪</span> },
+            { key: "snapchatUrl", label: "Snapchat", placeholder: "@username", icon: <span className="text-base">👻</span> },
+            { key: "websiteUrl", label: t("Website", "الموقع الإلكتروني"), placeholder: "https://...", icon: <Link2 className="w-4 h-4 text-muted-foreground" /> },
+          ].map(field => (
+            <div key={field.key} className="flex items-center gap-3">
+              <div className="w-8 flex justify-center shrink-0">{field.icon}</div>
+              <div className="flex-1">
+                <label className="block text-xs text-muted-foreground mb-1">{field.label}</label>
+                <input
+                  type="text"
+                  value={vals[field.key as keyof typeof vals]}
+                  onChange={e => setVals(v => ({ ...v, [field.key]: e.target.value }))}
+                  placeholder={field.placeholder}
+                  className="w-full bg-secondary rounded-xl px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 border border-border/50 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+              </div>
+            </div>
+          ))}
+          <Button
+            className="w-full mt-2 rounded-xl gap-2"
+            onClick={handleSave}
+            disabled={saving}
+          >
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : saved ? <Check className="w-4 h-4" /> : null}
+            {saved ? t("Saved!", "تم الحفظ!") : t("Save Changes", "حفظ التغييرات")}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function ProfilePage() {
@@ -510,6 +600,10 @@ export function ProfilePage() {
   });
   const [privacySaving, setPrivacySaving] = useState(false);
   const [privacySaved, setPrivacySaved] = useState(false);
+
+  // Social sharing
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [profileLinkCopied, setProfileLinkCopied] = useState(false);
 
   // Username state
   const [usernameInput, setUsernameInput] = useState("");
@@ -780,10 +874,62 @@ export function ProfilePage() {
       {showCheckInDialog && <CheckInDialog onClose={() => setShowCheckInDialog(false)} onSave={handleAddCheckIn} t={t} lang={lang} />}
       {showPlanDialog && <PlanDialog onClose={() => setShowPlanDialog(false)} onSave={handleAddPlan} t={t} lang={lang} />}
       {showEditProfile && <EditProfileDialog user={user} onClose={() => setShowEditProfile(false)} onSave={async (d) => { if (authUser) { await fetch("/api/me/profile", { method: "PATCH", headers: getAuthHeaders(), body: JSON.stringify(d) }); refetchUser(); } }} t={t} lang={lang} />}
+      {/* Share modal */}
+      {showShareModal && currentUsername && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowShareModal(false)} />
+          <div className="relative bg-card border border-border rounded-3xl p-6 w-full max-w-md mx-4 mb-4 sm:mb-0 shadow-2xl">
+            <h3 className="font-extrabold text-lg text-foreground mb-1">{t("Share Your Profile", "شارك ملفك الشخصي")}</h3>
+            <p className="text-sm text-muted-foreground mb-5">{t("Let others discover your food journey", "دع الآخرين يكتشفون رحلتك الطهوية")}</p>
+            <div className="flex items-center gap-3 bg-secondary rounded-2xl px-4 py-3 mb-5">
+              <Globe className="w-4 h-4 text-muted-foreground shrink-0" />
+              <span className="text-sm text-foreground flex-1 truncate font-mono">{`${window.location.origin}/user/${currentUsername}`}</span>
+              <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/user/${currentUsername}`); setProfileLinkCopied(true); setTimeout(() => setProfileLinkCopied(false), 2000); }}>
+                {profileLinkCopied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4 text-muted-foreground hover:text-foreground" />}
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-3 mb-5">
+              <a href={`https://wa.me/?text=Check out my food profile on Tabaq: ${window.location.origin}/user/${currentUsername}`} target="_blank" rel="noopener noreferrer" className="bg-green-500 rounded-2xl py-3 flex flex-col items-center gap-1.5 text-white hover:opacity-90 transition-opacity">
+                <span className="text-xl">📱</span><span className="text-xs font-medium">WhatsApp</span>
+              </a>
+              <a href={`https://twitter.com/intent/tweet?text=My food journey on Tabaq&url=${window.location.origin}/user/${currentUsername}`} target="_blank" rel="noopener noreferrer" className="bg-black rounded-2xl py-3 flex flex-col items-center gap-1.5 text-white hover:opacity-90 transition-opacity">
+                <span className="text-xl font-black">𝕏</span><span className="text-xs font-medium">X</span>
+              </a>
+            </div>
+            <Button variant="outline" className="w-full rounded-2xl" onClick={() => setShowShareModal(false)}>{t("Close", "إغلاق")}</Button>
+          </div>
+        </div>
+      )}
 
       {/* Cover */}
-      <div className="h-48 md:h-64 bg-gradient-to-br from-primary via-primary/80 to-rose-700 w-full relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")" }} />
+      <div className="h-48 md:h-64 w-full relative overflow-hidden bg-gradient-to-br from-primary via-primary/80 to-rose-700">
+        {(user as any).coverPhotoUrl && (
+          <img src={(user as any).coverPhotoUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+        )}
+        {!(user as any).coverPhotoUrl && (
+          <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")" }} />
+        )}
+        {/* Cover edit + share buttons */}
+        <div className="absolute top-4 end-4 flex gap-2">
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(`${window.location.origin}/user/${currentUsername ?? ""}`);
+              setProfileLinkCopied(true);
+              setTimeout(() => setProfileLinkCopied(false), 2000);
+            }}
+            className="flex items-center gap-1.5 bg-black/30 backdrop-blur border border-white/20 text-white text-xs font-semibold px-3 py-1.5 rounded-xl hover:bg-black/50 transition-colors"
+          >
+            {profileLinkCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+            {profileLinkCopied ? t("Copied!", "تم النسخ!") : t("Copy Link", "نسخ الرابط")}
+          </button>
+          <button
+            onClick={() => setShowShareModal(true)}
+            className="flex items-center gap-1.5 bg-black/30 backdrop-blur border border-white/20 text-white text-xs font-semibold px-3 py-1.5 rounded-xl hover:bg-black/50 transition-colors"
+          >
+            <Share2 className="w-3.5 h-3.5" />
+            {t("Share", "مشاركة")}
+          </button>
+        </div>
       </div>
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -828,9 +974,15 @@ export function ProfilePage() {
                   {user.bio || t("No bio provided.", "لم تتم كتابة نبذة بعد.")}
                 </p>
                 <div className="flex items-center justify-center md:justify-start gap-4 mt-3 text-sm font-medium text-muted-foreground flex-wrap">
-                  <span className="flex items-center gap-1.5">
-                    <MapPin className="w-4 h-4" />{t("Riyadh, KSA", "الرياض، المملكة")}
-                  </span>
+                  {(user as any).location ? (
+                    <span className="flex items-center gap-1.5">
+                      <MapPin className="w-4 h-4" />{(user as any).location}
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1.5">
+                      <MapPin className="w-4 h-4" />{t("Riyadh, KSA", "الرياض، المملكة")}
+                    </span>
+                  )}
                   {joinYear && (
                     <span className="flex items-center gap-1.5">
                       <Calendar className="w-4 h-4" />{t(`Joined ${joinYear}`, `انضم ${joinYear}`)}
@@ -840,7 +992,48 @@ export function ProfilePage() {
                     <Flame className="w-4 h-4 text-orange-500" />
                     {effectiveCheckIns.length} {t("visits", "زيارة")}
                   </span>
+                  {currentUsername && (
+                    <Link href={`/user/${currentUsername}`} className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity">
+                      <Globe className="w-4 h-4" />{t("Public profile", "الملف العام")}
+                    </Link>
+                  )}
                 </div>
+
+                {/* Social media links */}
+                {((user as any).instagramUrl || (user as any).xUrl || (user as any).tiktokUrl || (user as any).snapchatUrl || (user as any).websiteUrl) && (
+                  <div className="flex items-center justify-center md:justify-start gap-2 mt-3">
+                    {(user as any).instagramUrl && (
+                      <a href={`https://instagram.com/${String((user as any).instagramUrl).replace("@", "")}`} target="_blank" rel="noopener noreferrer"
+                        className="w-8 h-8 bg-secondary rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-colors">
+                        <Instagram className="w-4 h-4" />
+                      </a>
+                    )}
+                    {(user as any).xUrl && (
+                      <a href={`https://x.com/${String((user as any).xUrl).replace("@", "")}`} target="_blank" rel="noopener noreferrer"
+                        className="w-8 h-8 bg-secondary rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-colors">
+                        <span className="text-sm font-black">𝕏</span>
+                      </a>
+                    )}
+                    {(user as any).tiktokUrl && (
+                      <a href={`https://tiktok.com/@${String((user as any).tiktokUrl).replace("@", "")}`} target="_blank" rel="noopener noreferrer"
+                        className="w-8 h-8 bg-secondary rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-colors">
+                        <span className="text-sm font-black">♪</span>
+                      </a>
+                    )}
+                    {(user as any).snapchatUrl && (
+                      <a href={`https://snapchat.com/add/${String((user as any).snapchatUrl).replace("@", "")}`} target="_blank" rel="noopener noreferrer"
+                        className="w-8 h-8 bg-secondary rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-colors">
+                        <span className="text-base">👻</span>
+                      </a>
+                    )}
+                    {(user as any).websiteUrl && (
+                      <a href={(user as any).websiteUrl} target="_blank" rel="noopener noreferrer"
+                        className="w-8 h-8 bg-secondary rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-colors">
+                        <Link2 className="w-4 h-4" />
+                      </a>
+                    )}
+                  </div>
+                )}
               </div>
               <button
                 onClick={() => setShowEditProfile(true)}
@@ -1762,6 +1955,43 @@ export function ProfilePage() {
                   )}
                 </div>
               </div>
+
+              {/* Social Media Links */}
+              <SocialLinksCard user={user} onSave={async (links) => {
+                if (!authUser) return;
+                await fetch(`/api/users/${userId}`, {
+                  method: "PUT",
+                  headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+                  body: JSON.stringify(links),
+                });
+                refetchUser();
+              }} t={t} lang={lang} />
+
+              {/* Profile URL */}
+              {currentUsername && (
+                <div className="bg-card border border-border rounded-2xl p-5 flex items-center gap-4">
+                  <div className="w-9 h-9 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
+                    <Globe className="w-4 h-4 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-foreground text-sm">{t("Your Public Profile", "ملفك العام")}</p>
+                    <p className="text-xs text-muted-foreground truncate">{`${window.location.origin}/user/${currentUsername}`}</p>
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <button
+                      onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/user/${currentUsername}`); setProfileLinkCopied(true); setTimeout(() => setProfileLinkCopied(false), 2000); }}
+                      className="w-9 h-9 bg-secondary rounded-xl flex items-center justify-center hover:bg-secondary/80 transition-colors"
+                    >
+                      {profileLinkCopied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4 text-muted-foreground" />}
+                    </button>
+                    <Link href={`/user/${currentUsername}`}>
+                      <button className="w-9 h-9 bg-secondary rounded-xl flex items-center justify-center hover:bg-secondary/80 transition-colors">
+                        <ExternalLink className="w-4 h-4 text-muted-foreground" />
+                      </button>
+                    </Link>
+                  </div>
+                </div>
+              )}
 
               {/* Notification Preferences Link */}
               <div className="bg-card border border-border rounded-2xl overflow-hidden">

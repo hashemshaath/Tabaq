@@ -67,6 +67,47 @@ router.get("/users/suggested", optionalAuth, async (req, res) => {
   }
 });
 
+router.get("/users/by-username/:username", optionalAuth, async (req, res) => {
+  try {
+    const username = req.params["username"] as string;
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.username, username));
+    if (!user) {
+      res.status(404).json({ error: "not_found", message: "User not found" });
+      return;
+    }
+
+    const userId = user.id;
+    const [reviewCount, bookingCount, followerCount, followingCount] = await Promise.all([
+      db.select({ count: sql<number>`count(*)` }).from(reviewsTable).where(eq(reviewsTable.userId, userId)),
+      db.select({ count: sql<number>`count(*)` }).from(bookingsTable).where(eq(bookingsTable.userId, userId)),
+      db.select({ count: sql<number>`count(*)` }).from(userFollowsTable).where(and(eq(userFollowsTable.followingId, userId), eq(userFollowsTable.status, 'accepted'))),
+      db.select({ count: sql<number>`count(*)` }).from(userFollowsTable).where(and(eq(userFollowsTable.followerId, userId), eq(userFollowsTable.status, 'accepted'))),
+    ]);
+
+    let followStatus: 'none' | 'following' | 'pending' = 'none';
+    const viewerId = req.auth?.userId;
+    if (viewerId && viewerId !== userId) {
+      const [follow] = await db.select({ id: userFollowsTable.id, status: userFollowsTable.status })
+        .from(userFollowsTable)
+        .where(and(eq(userFollowsTable.followerId, viewerId), eq(userFollowsTable.followingId, userId)));
+      if (follow) followStatus = follow.status === 'pending' ? 'pending' : 'following';
+    }
+
+    res.json({
+      user,
+      reviewCount: Number(reviewCount[0]?.count ?? 0),
+      bookingCount: Number(bookingCount[0]?.count ?? 0),
+      followerCount: Number(followerCount[0]?.count ?? 0),
+      followingCount: Number(followingCount[0]?.count ?? 0),
+      isFollowing: followStatus === 'following',
+      followStatus,
+    });
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch user by username");
+    res.status(500).json({ error: "internal_error", message: "Failed to fetch user" });
+  }
+});
+
 router.get("/users/:userId", optionalAuth, async (req, res) => {
   try {
     const userId = parseInt(req.params["userId"] as string, 10);
@@ -116,9 +157,12 @@ router.put("/users/:userId", requireAuth, async (req, res) => {
       res.status(403).json({ error: "forbidden", message: "Cannot update another user's profile" });
       return;
     }
-    const { nameEn, nameAr, bio, avatarUrl, preferredLanguage, cityId } = req.body;
+    const { nameEn, nameAr, bio, avatarUrl, preferredLanguage, cityId,
+            coverPhotoUrl, location, instagramUrl, xUrl, tiktokUrl, snapchatUrl, websiteUrl } = req.body;
     const [user] = await db.update(usersTable)
-      .set({ nameEn, nameAr, bio, avatarUrl, preferredLanguage, cityId, updatedAt: new Date() })
+      .set({ nameEn, nameAr, bio, avatarUrl, preferredLanguage, cityId,
+             coverPhotoUrl, location, instagramUrl, xUrl, tiktokUrl, snapchatUrl, websiteUrl,
+             updatedAt: new Date() })
       .where(eq(usersTable.id, userId))
       .returning();
     if (!user) {
