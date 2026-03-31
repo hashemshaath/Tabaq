@@ -31,80 +31,6 @@ const HERO_IMGS = [
   'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=1920&h=1080&fit=crop',
 ];
 
-const NEW_OPENINGS = [
-  {
-    id: 10,
-    nameEn: 'Bab Al Qasr',
-    nameAr: 'باب القصر',
-    cuisineEn: 'Saudi Fine Dining',
-    cuisineAr: 'مطبخ سعودي فاخر',
-    img: 'https://images.unsplash.com/photo-1578474846511-04ba529f0b88?w=600&h=400&fit=crop',
-    rating: 4.7,
-    locationEn: 'Al Nakheel, Riyadh',
-    locationAr: 'النخيل، الرياض',
-    daysOpen: 3,
-  },
-  {
-    id: 11,
-    nameEn: 'Ōkami Ramen',
-    nameAr: 'أوكامي رامن',
-    cuisineEn: 'Japanese Ramen',
-    cuisineAr: 'رامن ياباني',
-    img: 'https://images.unsplash.com/photo-1569050467447-ce54b3bbc37d?w=600&h=400&fit=crop',
-    rating: 4.9,
-    locationEn: 'Hittin, Riyadh',
-    locationAr: 'حطين، الرياض',
-    daysOpen: 7,
-  },
-  {
-    id: 12,
-    nameEn: 'Saffron House',
-    nameAr: 'بيت الزعفران',
-    cuisineEn: 'Modern Persian',
-    cuisineAr: 'فارسي معاصر',
-    img: 'https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=600&h=400&fit=crop',
-    rating: 4.6,
-    locationEn: 'Al Malqa, Riyadh',
-    locationAr: 'الملقا، الرياض',
-    daysOpen: 12,
-  },
-  {
-    id: 13,
-    nameEn: 'Cielo Terrace',
-    nameAr: 'تراس سييلو',
-    cuisineEn: 'Modern Italian',
-    cuisineAr: 'إيطالي معاصر',
-    img: 'https://images.unsplash.com/photo-1514190051997-0f6f39ca5cde?w=600&h=400&fit=crop',
-    rating: 4.8,
-    locationEn: 'King Road, Jeddah',
-    locationAr: 'طريق الملك، جدة',
-    daysOpen: 18,
-  },
-  {
-    id: 14,
-    nameEn: 'Terroir Garden',
-    nameAr: 'حديقة تيروار',
-    cuisineEn: 'Farm-to-Table',
-    cuisineAr: 'من المزرعة للمائدة',
-    img: 'https://images.unsplash.com/photo-1600891964092-4316c288032e?w=600&h=400&fit=crop',
-    rating: 4.5,
-    locationEn: 'Sulaymaniyah, Riyadh',
-    locationAr: 'السليمانية، الرياض',
-    daysOpen: 22,
-  },
-  {
-    id: 15,
-    nameEn: 'The Black Pearl',
-    nameAr: 'اللؤلؤة السوداء',
-    cuisineEn: 'Seafood & Grill',
-    cuisineAr: 'مأكولات بحرية ومشويات',
-    img: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=600&h=400&fit=crop',
-    rating: 4.7,
-    locationEn: 'Corniche, Jeddah',
-    locationAr: 'الكورنيش، جدة',
-    daysOpen: 28,
-  },
-];
 
 const OCCASION_META: Record<string, { img: string }> = {
   'Birthday Celebration': { img: 'https://images.unsplash.com/photo-1464349095431-e9a21285b5f3?w=300&h=200&fit=crop' },
@@ -761,7 +687,7 @@ export function HomePage() {
   const occasions  = useQuery<any[]>({ queryKey: ['hp-occasions'], queryFn: () => fetch('/api/occasions').then(r => r.json()), staleTime: STALE_10M });
   const categories = useQuery<any[]>({ queryKey: ['hp-categories'], queryFn: () => fetch('/api/categories').then(r => r.json()), staleTime: STALE_10M });
   const topRated   = useQuery<{ restaurants: any[] }>({ queryKey: ['hp-top-rated', cityKey], queryFn: () => fetch(`/api/restaurants?minRating=4.5&limit=6${cityQuery}`).then(r => r.json()), staleTime: STALE_5M });
-  const newest     = useQuery<{ restaurants: any[] }>({ queryKey: ['hp-newest', cityKey], queryFn: () => fetch(`/api/restaurants?limit=4&sortBy=newest${cityQuery}`).then(r => r.json()), staleTime: STALE_5M });
+  const newest     = useQuery<{ restaurants: any[] }>({ queryKey: ['hp-newest', cityKey], queryFn: () => fetch(`/api/restaurants?limit=6&sortBy=newest${cityQuery}`).then(r => r.json()), staleTime: STALE_5M });
   const offersApi  = useQuery<any>({ queryKey: ['hp-offers', cityKey], queryFn: () => fetch(`/api/offers?limit=4${cityQuery}`).then(r => r.json()), staleTime: STALE_5M });
 
   const handleSearch = (e: React.FormEvent) => {
@@ -1362,56 +1288,6 @@ export function HomePage() {
         )}
       </section>
 
-      {/* ══ NEW OPENINGS ═════════════════════════════════════════ */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-14">
-        <SectionHeader
-          badge={t('Just Arrived', 'وصل حديثاً')}
-          badgeIcon={Sparkles}
-          title={t('New Openings', 'افتتاحات جديدة')}
-          subtitle={t('Fresh tables, bold flavors — just launched in your city', 'طاولات جديدة ونكهات جريئة — افتُتحت للتو في مدينتك')}
-          viewAllHref="/restaurants"
-          viewAllLabel={t('Explore all', 'استعرض الكل')}
-        />
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-          {NEW_OPENINGS.map(venue => (
-            <Link key={venue.id} href={`/restaurants/${venue.id}`}>
-              <div className="group bg-card border border-border/50 rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 cursor-pointer h-full flex flex-col">
-                <div className="relative aspect-square overflow-hidden">
-                  <img
-                    src={venue.img}
-                    alt={lang === 'ar' ? venue.nameAr : venue.nameEn}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-                  <span className="absolute top-2 start-2 text-[10px] font-black bg-emerald-500 text-white px-2 py-0.5 rounded-full flex items-center gap-1 uppercase tracking-wide">
-                    <span className="w-1.5 h-1.5 rounded-full bg-white/90 animate-pulse inline-block" />
-                    {t('New', 'جديد')}
-                  </span>
-                </div>
-                <div className="p-3 flex-1 flex flex-col">
-                  <h3 className="font-bold text-foreground text-sm line-clamp-1 group-hover:text-primary transition-colors">
-                    {lang === 'ar' ? venue.nameAr : venue.nameEn}
-                  </h3>
-                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
-                    {lang === 'ar' ? venue.cuisineAr : venue.cuisineEn}
-                  </p>
-                  <div className="flex items-center justify-between mt-auto pt-2">
-                    <div className="flex items-center gap-0.5">
-                      <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                      <span className="text-xs font-bold text-foreground">{venue.rating}</span>
-                    </div>
-                    <span className="text-[10px] text-emerald-600 font-semibold">
-                      {lang === 'ar'
-                        ? `منذ ${venue.daysOpen} يوم`
-                        : `${venue.daysOpen}d ago`}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
 
       {/* ══ RESTAURANT OF THE WEEK ════════════════════════════════ */}
       <section className="mb-16">
@@ -1606,21 +1482,35 @@ export function HomePage() {
       </section>
 
       {/* ══ NEW OPENINGS ═════════════════════════════════════════ */}
-      {!newest.isLoading && (newest.data?.restaurants || []).length > 0 && (
+      {(newest.isLoading || (newest.data?.restaurants || []).length > 0) && (
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-14">
           <SectionHeader
-            badge={t('Just Opened', 'افتتح حديثاً')}
+            badge={t('Just Arrived', 'وصل حديثاً')}
             badgeIcon={Sparkles}
             title={t('New Openings', 'افتتاحات جديدة')}
-            subtitle={t('Fresh new places to explore this season', 'أماكن جديدة رائعة لاكتشافها هذا الموسم')}
-            viewAllHref="/collections/new-openings"
-            viewAllLabel={t('View all', 'عرض الكل')}
+            subtitle={t('Fresh tables, bold flavors — just launched in your city', 'طاولات جديدة ونكهات جريئة — افتُتحت للتو في مدينتك')}
+            viewAllHref="/restaurants"
+            viewAllLabel={t('Explore all', 'استعرض الكل')}
           />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {(newest.data?.restaurants || []).map((r: any) => (
-              <RestaurantCard key={r.id} restaurant={{ ...r, isNew: true }} />
-            ))}
-          </div>
+          {newest.isLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="bg-card border border-border/50 rounded-2xl overflow-hidden animate-pulse">
+                  <div className="aspect-[4/3] bg-muted" />
+                  <div className="p-4 space-y-2">
+                    <div className="h-4 bg-muted rounded w-3/4" />
+                    <div className="h-3 bg-muted rounded w-1/2" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {(newest.data?.restaurants || []).map((r: any) => (
+                <RestaurantCard key={r.id} restaurant={{ ...r, isNew: true }} />
+              ))}
+            </div>
+          )}
         </section>
       )}
 
@@ -1650,37 +1540,7 @@ export function HomePage() {
           {/* Deal cards grid */}
           {(() => {
             const rawOffers = offersApi.data?.offers ?? offersApi.data ?? [];
-            const HOME_FALLBACK = [
-              {
-                id: 9001, titleEn: 'Voucher Worth SAR 100–500 to Spend on Anything Off Menu', titleAr: 'قسيمة بقيمة 100–500 ريال لإنفاقها على أي شيء من القائمة',
-                restaurantNameEn: 'Najd Village', restaurantNameAr: 'قرية نجد', locationsCount: 3,
-                imageUrl: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&h=450&fit=crop',
-                originalPrice: 100, discountedPrice: 60, discountPercent: 40, promoPrice: 54, currency: 'SAR',
-                rating: 4.8, reviews: 342, address: 'Al Hamra District', distanceKm: 3.9,
-              },
-              {
-                id: 9002, titleEn: 'Premium Omakase Dinner — 12 Chef-Curated Courses', titleAr: 'عشاء أوماكاسي فاخر — 12 طبقاً من اختيار الشيف',
-                restaurantNameEn: 'Sushi Sama', restaurantNameAr: 'سوشي ساما', locationsCount: 2,
-                imageUrl: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=600&h=450&fit=crop',
-                originalPrice: 650, discountedPrice: 390, discountPercent: 40, promoPrice: 351, currency: 'SAR',
-                rating: 4.9, reviews: 187, address: 'Olaya Street', distanceKm: 5.2,
-              },
-              {
-                id: 9003, titleEn: 'Luxury Afternoon Tea for Two — 3-Tier Pastry Stand', titleAr: 'شاي ما بعد الظهر الفاخر لشخصين — 3 طبقات معجنات',
-                restaurantNameEn: 'The Terrace', restaurantNameAr: 'التيراس', locationsCount: 1,
-                imageUrl: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=600&h=450&fit=crop',
-                originalPrice: 280, discountedPrice: 182, discountPercent: 35, promoPrice: 164, currency: 'SAR',
-                rating: 4.6, reviews: 94, address: 'Kingdom Tower', distanceKm: 2.1,
-              },
-              {
-                id: 9004, titleEn: 'Friday BBQ Brunch Buffet — Unlimited Grills', titleAr: 'بوفيه شواء الجمعة — مشويات لا محدودة',
-                restaurantNameEn: 'Reem Al Bawadi', restaurantNameAr: 'ريم البوادي', locationsCount: 4,
-                imageUrl: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600&h=450&fit=crop',
-                originalPrice: 240, discountedPrice: 168, discountPercent: 30, promoPrice: 151, currency: 'SAR',
-                rating: 4.5, reviews: 218, address: 'Al Aqiq District', distanceKm: 7.3,
-              },
-            ];
-            const mappedOffers = rawOffers.slice(0, 4).map((o: any) => ({
+            const deals = rawOffers.slice(0, 4).map((o: any) => ({
               id: o.id,
               titleEn: o.titleEn, titleAr: o.titleAr,
               restaurantNameEn: o.restaurantNameEn ?? 'Restaurant', restaurantNameAr: o.restaurantNameAr ?? 'مطعم',
@@ -1690,9 +1550,6 @@ export function HomePage() {
               discountPercent: Number(o.discountPercent), promoPrice: Math.round(Number(o.discountedPrice) * 0.9),
               currency: o.currency ?? 'SAR', rating: 4.7, reviews: 50, address: '', distanceKm: undefined,
             }));
-            const deals = mappedOffers.length > 0
-              ? mappedOffers
-              : (!selectedCityId ? HOME_FALLBACK : []);
 
             if (deals.length === 0) {
               return (
