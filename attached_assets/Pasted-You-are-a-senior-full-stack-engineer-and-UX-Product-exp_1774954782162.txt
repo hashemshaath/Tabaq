@@ -1,0 +1,144 @@
+You are a senior full-stack engineer and UX/Product expert (ex-Facebook / Instagram level).
+
+Your task is to **REBUILD the user profile system** with a professional and modern approach, unifying URLs and enhancing all profile features.
+
+========================
+
+1. UNIFIED PROFILE URL SYSTEM
+   ========================
+
+* Every user (basic or professional/chef) has **one unique username**.
+* Profile URL format:
+  https://tabaq.co/:username
+* No additional slugs like `/chefs/` or `/user/`
+* Routing should automatically detect account type and display appropriate profile
+* Clicking any username anywhere opens `/username`
+
+========================
+2. ACCOUNT TYPES (DISPLAY DIFFERENCE)
+=====================================
+
+* Basic user:
+
+  * Profile photo, username, bio, visits, reviews, favorites
+  * Account type label: “Basic User”
+* Professional user / Chef:
+
+  * All basic features PLUS:
+
+    * Extended bio & experience
+    * Dishes showcase
+    * Orders/request dishes UI
+    * Professional dashboard with stats (followers, ratings, reviews)
+  * Account type label: “Professional / Chef”
+* Upgrade system: Allow users to upgrade from Basic → Professional with account type change reflected on profile
+
+========================
+3. PROFILE UI & FEATURES
+========================
+
+* **Header**: Cover image, profile photo, username, account type label, bio, social links
+* **Stats section**: Followers, Following, Visits, Reviews
+* **Tabs/Sections**:
+
+  * Overview
+  * Visits
+  * Reviews
+  * Favorites
+  * Dishes (for professionals)
+  * Plans
+  * Recommendations
+* **Buttons**:
+
+  * Follow / Unfollow
+  * Share profile
+  * Quick actions (Message, Order dish if chef)
+* **Stories section**:
+
+  * Show user-uploaded stories (images/videos)
+  * Auto-expire after 24h
+  * View in carousel style
+* **Enhanced menu**:
+
+  * Organized dropdown for settings, editing, logout
+
+========================
+4. PRIVACY & VISIBILITY
+=======================
+
+* Full control over:
+
+  * Who can view profile (Public / Followers / Private)
+  * Who can see visits, reviews, favorites, plans
+* Editable in **Profile Settings**
+* Account-level differentiation: Professional accounts can enable “public showcase” mode
+
+========================
+5. PROFESSIONAL DASHBOARD (CHEFS/CREATORS)
+==========================================
+
+* Orders / Requests overview
+* Dish portfolio management
+* Stats and analytics (visits, ratings, engagement)
+* Manage recommendations and featured dishes
+* Insights for promotion & marketing
+
+========================
+6. FOLLOW & INTERACTION
+=======================
+
+* Follow / Unfollow functionality
+* Suggested users / chefs based on interests
+* Mutual followers indicators
+* Notifications integration for follows, reviews, new dishes
+
+========================
+7. SOCIAL INTEGRATION
+=====================
+
+* Link to Instagram, X (Twitter), TikTok, Snapchat, Website
+* Share profile externally
+* Social badges for professional recognition
+
+========================
+8. UX & DESIGN
+==============
+
+* Premium, modern layout (Zomato + Instagram hybrid)
+* Smooth animations & transitions
+* Consistent spacing & cards
+* Reduced border radius (6–8px)
+* IBM Plex Sans Arabic font
+* RTL & LTR support
+* Mobile-friendly responsive design
+
+========================
+9. PERFORMANCE
+==============
+
+* Lazy-load lists & media
+* Optimized images
+* Fast navigation between profiles
+* Prefetch profile data when hovering over usernames
+
+========================
+10. OUTPUT
+==========
+
+* Fully working, modular code
+* Clean architecture
+* All features integrated
+* Profiles accessible directly via `/username`
+* Ready for production deployment
+
+========================
+FINAL GOAL
+==========
+
+Build a **world-class, scalable user profile system** where:
+
+* URLs are unified under `/username`
+* Profiles clearly show account type differences
+* Professional users have advanced dashboard & showcase features
+* Privacy and social controls are robust
+* Experience feels modern, premium, and highly interactive
