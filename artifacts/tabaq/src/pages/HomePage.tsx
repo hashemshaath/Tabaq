@@ -29,6 +29,81 @@ const HERO_IMGS = [
   'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=1920&h=1080&fit=crop',
 ];
 
+const NEW_OPENINGS = [
+  {
+    id: 10,
+    nameEn: 'Bab Al Qasr',
+    nameAr: 'باب القصر',
+    cuisineEn: 'Saudi Fine Dining',
+    cuisineAr: 'مطبخ سعودي فاخر',
+    img: 'https://images.unsplash.com/photo-1578474846511-04ba529f0b88?w=600&h=400&fit=crop',
+    rating: 4.7,
+    locationEn: 'Al Nakheel, Riyadh',
+    locationAr: 'النخيل، الرياض',
+    daysOpen: 3,
+  },
+  {
+    id: 11,
+    nameEn: 'Ōkami Ramen',
+    nameAr: 'أوكامي رامن',
+    cuisineEn: 'Japanese Ramen',
+    cuisineAr: 'رامن ياباني',
+    img: 'https://images.unsplash.com/photo-1569050467447-ce54b3bbc37d?w=600&h=400&fit=crop',
+    rating: 4.9,
+    locationEn: 'Hittin, Riyadh',
+    locationAr: 'حطين، الرياض',
+    daysOpen: 7,
+  },
+  {
+    id: 12,
+    nameEn: 'Saffron House',
+    nameAr: 'بيت الزعفران',
+    cuisineEn: 'Modern Persian',
+    cuisineAr: 'فارسي معاصر',
+    img: 'https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=600&h=400&fit=crop',
+    rating: 4.6,
+    locationEn: 'Al Malqa, Riyadh',
+    locationAr: 'الملقا، الرياض',
+    daysOpen: 12,
+  },
+  {
+    id: 13,
+    nameEn: 'Cielo Terrace',
+    nameAr: 'تراس سييلو',
+    cuisineEn: 'Modern Italian',
+    cuisineAr: 'إيطالي معاصر',
+    img: 'https://images.unsplash.com/photo-1514190051997-0f6f39ca5cde?w=600&h=400&fit=crop',
+    rating: 4.8,
+    locationEn: 'King Road, Jeddah',
+    locationAr: 'طريق الملك، جدة',
+    daysOpen: 18,
+  },
+  {
+    id: 14,
+    nameEn: 'Terroir Garden',
+    nameAr: 'حديقة تيروار',
+    cuisineEn: 'Farm-to-Table',
+    cuisineAr: 'من المزرعة للمائدة',
+    img: 'https://images.unsplash.com/photo-1600891964092-4316c288032e?w=600&h=400&fit=crop',
+    rating: 4.5,
+    locationEn: 'Sulaymaniyah, Riyadh',
+    locationAr: 'السليمانية، الرياض',
+    daysOpen: 22,
+  },
+  {
+    id: 15,
+    nameEn: 'The Black Pearl',
+    nameAr: 'اللؤلؤة السوداء',
+    cuisineEn: 'Seafood & Grill',
+    cuisineAr: 'مأكولات بحرية ومشويات',
+    img: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=600&h=400&fit=crop',
+    rating: 4.7,
+    locationEn: 'Corniche, Jeddah',
+    locationAr: 'الكورنيش، جدة',
+    daysOpen: 28,
+  },
+];
+
 const OCCASION_META: Record<string, { img: string; gradient: string }> = {
   'Birthday Celebration': { img: 'https://images.unsplash.com/photo-1464349095431-e9a21285b5f3?w=300&h=200&fit=crop', gradient: 'from-rose-400 to-pink-600' },
   'Breakfast':            { img: 'https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?w=300&h=200&fit=crop', gradient: 'from-amber-300 to-orange-400' },
@@ -1026,6 +1101,57 @@ export function HomePage() {
             <p>{t('No featured restaurants yet.', 'لا توجد مطاعم مميزة بعد.')}</p>
           </div>
         )}
+      </section>
+
+      {/* ══ NEW OPENINGS ═════════════════════════════════════════ */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-14">
+        <SectionHeader
+          badge={t('Just Arrived', 'وصل حديثاً')}
+          badgeIcon={Sparkles}
+          title={t('New Openings', 'افتتاحات جديدة')}
+          subtitle={t('Fresh tables, bold flavors — just launched in your city', 'طاولات جديدة ونكهات جريئة — افتُتحت للتو في مدينتك')}
+          viewAllHref="/restaurants"
+          viewAllLabel={t('Explore all', 'استعرض الكل')}
+        />
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+          {NEW_OPENINGS.map(venue => (
+            <Link key={venue.id} href={`/restaurants/${venue.id}`}>
+              <div className="group bg-card border border-border/50 rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 cursor-pointer h-full flex flex-col">
+                <div className="relative aspect-square overflow-hidden">
+                  <img
+                    src={venue.img}
+                    alt={lang === 'ar' ? venue.nameAr : venue.nameEn}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+                  <span className="absolute top-2 start-2 text-[10px] font-black bg-emerald-500 text-white px-2 py-0.5 rounded-full flex items-center gap-1 uppercase tracking-wide">
+                    <span className="w-1.5 h-1.5 rounded-full bg-white/90 animate-pulse inline-block" />
+                    {t('New', 'جديد')}
+                  </span>
+                </div>
+                <div className="p-3 flex-1 flex flex-col">
+                  <h3 className="font-bold text-foreground text-sm line-clamp-1 group-hover:text-primary transition-colors">
+                    {lang === 'ar' ? venue.nameAr : venue.nameEn}
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                    {lang === 'ar' ? venue.cuisineAr : venue.cuisineEn}
+                  </p>
+                  <div className="flex items-center justify-between mt-auto pt-2">
+                    <div className="flex items-center gap-0.5">
+                      <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                      <span className="text-xs font-bold text-foreground">{venue.rating}</span>
+                    </div>
+                    <span className="text-[10px] text-emerald-600 font-semibold">
+                      {lang === 'ar'
+                        ? `منذ ${venue.daysOpen} يوم`
+                        : `${venue.daysOpen}d ago`}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
       </section>
 
       {/* ══ TOP-RATED RANKINGS ═══════════════════════════════════ */}

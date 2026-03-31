@@ -10,7 +10,7 @@ import { ReviewCard } from '@/components/ReviewCard';
 import {
   Star, MapPin, Leaf, Wheat, Flame, CheckCircle2, ChevronRight,
   TrendingUp, MessageSquare, ArrowLeft, CalendarDays, Clock,
-  AlertCircle, Award, Zap, Shield, Plus, Minus, ShoppingBag, ArrowRight,
+  AlertCircle, Award, Zap, Shield, Plus, Minus, ShoppingBag, ArrowRight, Sparkles,
 } from 'lucide-react';
 import { formatPrice } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -63,6 +63,24 @@ function SpiceMeter({ level }: { level: number }) {
     </div>
   );
 }
+
+const DISH_PAIRING_SETS = [
+  [
+    { nameEn: 'Saudi Coffee', nameAr: 'قهوة سعودية', descEn: 'Cardamom-spiced, lightly roasted', descAr: 'بالهيل، تحميص خفيف', price: 15, img: 'https://images.unsplash.com/photo-1514190051997-0f6f39ca5cde?w=200&h=200&fit=crop', tagEn: 'Drink', tagAr: 'مشروب' },
+    { nameEn: 'Hummus & Pita', nameAr: 'حمص مع خبز', descEn: 'Creamy, topped with olive oil', descAr: 'كريمي مع زيت الزيتون', price: 22, img: 'https://images.unsplash.com/photo-1612929633738-8fe44f7ec841?w=200&h=200&fit=crop', tagEn: 'Side', tagAr: 'مرافق' },
+    { nameEn: 'Umm Ali', nameAr: 'أم علي', descEn: 'Traditional bread pudding', descAr: 'بودينج الخبز التقليدي', price: 28, img: 'https://images.unsplash.com/photo-1481833761820-0509d3217039?w=200&h=200&fit=crop', tagEn: 'Dessert', tagAr: 'حلوى' },
+  ],
+  [
+    { nameEn: 'Mint Lemonade', nameAr: 'ليمون بالنعناع', descEn: 'Fresh-squeezed, crushed mint', descAr: 'عصر طازج مع نعناع', price: 18, img: 'https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=200&h=200&fit=crop', tagEn: 'Drink', tagAr: 'مشروب' },
+    { nameEn: 'Mixed Salad', nameAr: 'سلطة خضراء', descEn: 'Garden greens with citrus dressing', descAr: 'خضروات طازجة بتتبيلة الحامض', price: 25, img: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=200&h=200&fit=crop', tagEn: 'Side', tagAr: 'مرافق' },
+    { nameEn: 'Baklava Trio', nameAr: 'بقلاوة ثلاثية', descEn: 'Pistachio, walnut, cashew', descAr: 'فستق، جوز، كاجو', price: 32, img: 'https://images.unsplash.com/photo-1619751089970-ddf3cfb2a6d3?w=200&h=200&fit=crop', tagEn: 'Dessert', tagAr: 'حلوى' },
+  ],
+  [
+    { nameEn: 'Rose Jallab', nameAr: 'جلاب بالورد', descEn: 'Rosewater, grape, pine nuts', descAr: 'ماء الورد والعنب والصنوبر', price: 16, img: 'https://images.unsplash.com/photo-1497534446932-c925b458314e?w=200&h=200&fit=crop', tagEn: 'Drink', tagAr: 'مشروب' },
+    { nameEn: 'Stuffed Grape Leaves', nameAr: 'ورق عنب', descEn: 'Rice & herbs, slow-cooked', descAr: 'أرز وأعشاب، طهي بطيء', price: 29, img: 'https://images.unsplash.com/photo-1473093295043-cdd812d0e601?w=200&h=200&fit=crop', tagEn: 'Side', tagAr: 'مرافق' },
+    { nameEn: 'Maamoul Date Cookies', nameAr: 'معمول التمر', descEn: 'Buttery shortbread, Medjool dates', descAr: 'بسكويت مقرمش بتمر مجدول', price: 24, img: 'https://images.unsplash.com/photo-1548477761-fd80acfaa0b7?w=200&h=200&fit=crop', tagEn: 'Dessert', tagAr: 'حلوى' },
+  ],
+];
 
 export function DishDetailPage() {
   const { id } = useParams();
@@ -468,6 +486,50 @@ export function DishDetailPage() {
             </div>
           </section>
         )}
+
+        {/* Pairs Well With */}
+        {(() => {
+          const pairings = DISH_PAIRING_SETS[numericId % DISH_PAIRING_SETS.length] ?? DISH_PAIRING_SETS[0];
+          return (
+            <section className="mb-10">
+              <h2 className="text-2xl font-bold text-foreground mb-5 flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-primary" />
+                {t('Pairs Well With', 'يتناسب مع')}
+              </h2>
+              <div className="grid grid-cols-3 gap-4">
+                {pairings.map((item, i) => (
+                  <div key={i} className="bg-card border border-border/50 rounded-2xl overflow-hidden hover:shadow-md transition-all group">
+                    <div className="relative aspect-square overflow-hidden">
+                      <img
+                        src={item.img}
+                        alt={lang === 'ar' ? item.nameAr : item.nameEn}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-400"
+                      />
+                      <span className={`absolute top-2 start-2 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full ${
+                        item.tagEn === 'Drink' ? 'bg-blue-500 text-white' :
+                        item.tagEn === 'Side' ? 'bg-emerald-500 text-white' :
+                        'bg-amber-500 text-white'
+                      }`}>
+                        {lang === 'ar' ? item.tagAr : item.tagEn}
+                      </span>
+                    </div>
+                    <div className="p-3">
+                      <h3 className="font-bold text-foreground text-sm line-clamp-1">
+                        {lang === 'ar' ? item.nameAr : item.nameEn}
+                      </h3>
+                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                        {lang === 'ar' ? item.descAr : item.descEn}
+                      </p>
+                      <p className="text-sm font-black text-primary mt-1.5">
+                        {lang === 'ar' ? `${item.price} ر.س.` : `SAR ${item.price}`}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          );
+        })()}
 
         {/* Reviews */}
         <section className="mb-12">
