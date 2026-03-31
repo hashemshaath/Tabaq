@@ -65,53 +65,6 @@ interface MockOrder {
   rated?: boolean;
 }
 
-const MOCK_ORDERS: MockOrder[] = [
-  {
-    id: 'TBQ-384921', restaurantId: 2,
-    restaurantNameEn: 'Lusin', restaurantNameAr: 'لوسين',
-    restaurantImage: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=200&h=200&fit=crop',
-    restaurantAddress: 'Al Olaya, Riyadh',
-    items: [
-      { id: 1, nameEn: 'Lamb Ouzi', nameAr: 'خروف أوزي', qty: 1, price: 185, imageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=80&h=80&fit=crop' },
-      { id: 2, nameEn: 'Fattoush Salad', nameAr: 'سلطة فتوش', qty: 2, price: 38, imageUrl: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=80&h=80&fit=crop' },
-    ],
-    total: 261, currency: 'SAR', status: 'out_for_delivery', mode: 'delivery',
-    placedAt: '2026-03-30T19:45:00', estimatedTime: '15–25 min',
-  },
-  {
-    id: 'TBQ-291047', restaurantId: 1,
-    restaurantNameEn: 'Nobu Riyadh', restaurantNameAr: 'نوبو الرياض',
-    restaurantImage: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=200&h=200&fit=crop',
-    restaurantAddress: 'Four Seasons Hotel, Riyadh',
-    items: [
-      { id: 4, nameEn: 'Black Cod Miso', nameAr: 'سمك القد الأسود', qty: 2, price: 280, imageUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=80&h=80&fit=crop' },
-    ],
-    total: 560, currency: 'SAR', status: 'delivered', mode: 'dine_in',
-    placedAt: '2026-03-28T20:15:00', deliveredAt: '2026-03-28T22:30:00', rated: true,
-  },
-  {
-    id: 'TBQ-183650', restaurantId: 3,
-    restaurantNameEn: 'Najd Village', restaurantNameAr: 'قرية نجد',
-    restaurantImage: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=200&h=200&fit=crop',
-    restaurantAddress: 'Al Nakheel, Riyadh',
-    items: [
-      { id: 6, nameEn: 'Kabsa', nameAr: 'كبسة', qty: 2, price: 65, imageUrl: 'https://images.unsplash.com/photo-1516714435131-44d6b64dc6a2?w=80&h=80&fit=crop' },
-    ],
-    total: 130, currency: 'SAR', status: 'delivered', mode: 'pickup',
-    placedAt: '2026-03-25T12:30:00', deliveredAt: '2026-03-25T13:15:00', rated: false,
-  },
-  {
-    id: 'TBQ-092847', restaurantId: 4,
-    restaurantNameEn: 'Sushi Sama', restaurantNameAr: 'سوشي ساما',
-    restaurantImage: 'https://images.unsplash.com/photo-1611143669185-af224c5e3252?w=200&h=200&fit=crop',
-    restaurantAddress: 'Corniche, Jeddah',
-    items: [
-      { id: 9, nameEn: 'Salmon Sashimi', nameAr: 'ساشيمي السلمون', qty: 2, price: 95, imageUrl: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=80&h=80&fit=crop' },
-    ],
-    total: 190, currency: 'SAR', status: 'cancelled', mode: 'delivery',
-    placedAt: '2026-03-22T18:00:00',
-  },
-];
 
 const BOOKING_STATUS_CONFIG: Record<BookingStatus, { labelEn: string; labelAr: string; color: string; bg: string; icon: React.FC<any> }> = {
   pending:   { labelEn: 'Pending',   labelAr: 'في الانتظار', color: 'text-amber-700',  bg: 'bg-amber-50 border-amber-200',   icon: Clock },

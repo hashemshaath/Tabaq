@@ -37,57 +37,6 @@ interface NotifPref {
   availableChannels: string[];
 }
 
-const MOCK_NOTIFICATIONS: Notification[] = [
-  {
-    id: 1, type: 'booking', read: false, time: '2026-03-29T09:00:00', timeAgo: '15 دقيقة',
-    titleEn: 'Booking Confirmed', titleAr: 'تم تأكيد الحجز',
-    bodyEn: 'Your table at Reem Al-Bawadi for 4 guests on March 29 at 7:30 PM is confirmed.',
-    bodyAr: 'تم تأكيد طاولتك في ريم البوادي لـ 4 أشخاص في 29 مارس الساعة 7:30 م.',
-    link: '/bookings', meta: { image: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=80&h=80&fit=crop' },
-  },
-  {
-    id: 2, type: 'points', read: false, time: '2026-03-29T08:30:00', timeAgo: '45 دقيقة',
-    titleEn: '+10 Points Earned!', titleAr: 'ربحت 10 نقاط!',
-    bodyEn: 'You earned 10 points for confirming your booking at Reem Al-Bawadi.',
-    bodyAr: 'ربحت 10 نقاط لتأكيدك الحجز في ريم البوادي.',
-    link: '/dashboard',
-  },
-  {
-    id: 3, type: 'offer', read: false, time: '2026-03-29T07:00:00', timeAgo: '2 ساعة',
-    titleEn: 'New Offer: 20% off at Sushi Sama', titleAr: 'عرض جديد: خصم 20% في سوشي ساما',
-    bodyEn: "Exclusive offer for Tabaq members — valid until end of March. Grab it before it's gone!",
-    bodyAr: 'عرض حصري لأعضاء طبق — صالح حتى نهاية مارس. لا تفوته!',
-    link: '/offers', meta: { image: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=80&h=80&fit=crop' },
-  },
-  {
-    id: 4, type: 'review_response', read: false, time: '2026-03-28T18:00:00', timeAgo: 'أمس',
-    titleEn: 'Reem Al-Bawadi replied to your review', titleAr: 'ريم البوادي ردّ على تقييمك',
-    bodyEn: '"Thank you for your kind words! We look forward to hosting you again." — The Management',
-    bodyAr: '"شكراً لكلماتك الطيبة! نتطلع إلى استضافتك مرة أخرى." — الإدارة',
-    link: '/restaurants/2', meta: { image: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=80&h=80&fit=crop' },
-  },
-  {
-    id: 5, type: 'new_follower', read: true, time: '2026-03-28T15:30:00', timeAgo: 'أمس',
-    titleEn: 'Noura Al-Rashid is following you', titleAr: 'نورة الراشد بدأت متابعتك',
-    bodyEn: 'Top critic Noura Al-Rashid is now following your food journey.',
-    bodyAr: 'الناقدة الكبرى نورة الراشد تتابع رحلتك الغذائية الآن.',
-    link: '/leaderboard', meta: { avatar: 'https://i.pravatar.cc/80?img=47', badge: '👑' },
-  },
-  {
-    id: 6, type: 'achievement', read: true, time: '2026-03-27T12:00:00', timeAgo: 'يومان',
-    titleEn: '🏅 Achievement Unlocked: Taste Explorer!', titleAr: '🏅 إنجاز جديد: مستكشف الطعام!',
-    bodyEn: "You've visited 10 different restaurant categories. Your palate knows no limits!",
-    bodyAr: 'زرت 10 فئات مختلفة من المطاعم. ذوقك لا حدود له!',
-    link: '/dashboard',
-  },
-  {
-    id: 7, type: 'system', read: true, time: '2026-03-24T08:00:00', timeAgo: '5 أيام',
-    titleEn: 'Welcome to Tabaq! 🎉', titleAr: 'مرحباً بك في طبق! 🎉',
-    bodyEn: 'Start your food journey — explore restaurants, earn points, and share your dining experiences.',
-    bodyAr: 'ابدأ رحلتك الغذائية — استكشف المطاعم واجمع النقاط وشارك تجاربك.',
-    link: '/restaurants',
-  },
-];
 
 const TYPE_CONFIG: Record<string, { icon: React.ReactNode; color: string; bg: string }> = {
   booking: { icon: <CalendarDays className="w-5 h-5" />, color: 'text-primary', bg: 'bg-primary/10' },
@@ -481,9 +430,7 @@ export default function NotificationsPage() {
     staleTime: 30000,
   });
 
-  const rawNotifications: Notification[] = liveData?.notifications?.length
-    ? (liveData.notifications as Notification[])
-    : MOCK_NOTIFICATIONS;
+  const rawNotifications: Notification[] = liveData?.notifications ?? [];
 
   const notifications = rawNotifications.map(n => ({ ...n, ...(overrides[n.id] ?? {}) }));
   const unreadCount = notifications.filter(n => !n.read && !dismissed.has(n.id)).length;

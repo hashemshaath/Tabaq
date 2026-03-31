@@ -35,29 +35,6 @@ interface PointsTransaction {
   createdAt: string;
 }
 
-// ─── Mock data for unauthenticated preview ─────────────────────────
-const MOCK_REFERRAL = {
-  referralCode: 'TABAQAHMED',
-  referralLink: `${window.location.origin}/join?ref=TABAQAHMED`,
-  stats: { invitesSent: 12, converted: 7, totalPointsEarned: 700, pendingPoints: 100 } as ReferralStats,
-  conversions: [
-    { id: 1, status: 'converted' as const, createdAt: new Date(Date.now() - 2 * 86400000).toISOString(), convertedAt: new Date(Date.now() - 86400000).toISOString(), referrerPointsEarned: 100 },
-    { id: 2, status: 'converted' as const, createdAt: new Date(Date.now() - 5 * 86400000).toISOString(), convertedAt: new Date(Date.now() - 4 * 86400000).toISOString(), referrerPointsEarned: 100 },
-    { id: 3, status: 'signed_up' as const, createdAt: new Date(Date.now() - 1 * 86400000).toISOString(), convertedAt: null, referrerPointsEarned: 0 },
-    { id: 4, status: 'pending' as const, createdAt: new Date(Date.now() - 3600000).toISOString(), convertedAt: null, referrerPointsEarned: 0 },
-  ] as Conversion[],
-  pointsPerReferral: 100,
-  pointsForReferred: 50,
-};
-
-const MOCK_HISTORY: PointsTransaction[] = [
-  { id: 1, action: 'referral_converted', points: 100, balanceAfter: 700, description: 'Referral bonus: friend joined', createdAt: new Date(Date.now() - 86400000).toISOString() },
-  { id: 2, action: 'review_written', points: 20, balanceAfter: 600, description: 'Review for Najd Village', createdAt: new Date(Date.now() - 2 * 86400000).toISOString() },
-  { id: 3, action: 'booking_made', points: 10, balanceAfter: 580, description: 'Table reservation confirmed', createdAt: new Date(Date.now() - 3 * 86400000).toISOString() },
-  { id: 4, action: 'referral_converted', points: 100, balanceAfter: 570, description: 'Referral bonus: friend joined', createdAt: new Date(Date.now() - 5 * 86400000).toISOString() },
-  { id: 5, action: 'voucher_purchased', points: 50, balanceAfter: 470, description: 'Voucher purchase reward', createdAt: new Date(Date.now() - 6 * 86400000).toISOString() },
-];
-
 // ─── Action icons & labels ─────────────────────────────────────────
 function getActionMeta(action: string): { label: string; labelAr: string; color: string; icon: React.ReactNode } {
   const map: Record<string, { label: string; labelAr: string; color: string; icon: React.ReactNode }> = {
@@ -154,7 +131,28 @@ export function ReferralPage() {
     },
   });
 
-  const rawData = user ? (referralData ?? null) : MOCK_REFERRAL;
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-4" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+        <div className="text-center max-w-sm">
+          <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Gift className="w-8 h-8 text-primary" />
+          </div>
+          <h2 className="text-xl font-bold text-foreground mb-2">
+            {t('Sign in to view your referrals', 'سجّل الدخول لعرض إحالاتك')}
+          </h2>
+          <p className="text-muted-foreground text-sm mb-6">
+            {t('Invite friends, earn points, and track your rewards — all in one place.', 'ادعُ أصدقاءك واكسب نقاطاً وتابع مكافآتك — كل شيء في مكان واحد.')}
+          </p>
+          <Link href="/signin" className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-6 py-2.5 rounded-xl font-semibold text-sm hover:bg-primary/90 transition-colors">
+            {t('Sign In', 'تسجيل الدخول')}
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const rawData = referralData ?? null;
   const data = rawData ?? {
     referralCode: (user as any)?.referralCode ?? '',
     referralLink: `${window.location.origin}/join?ref=${(user as any)?.referralCode ?? ''}`,
@@ -163,7 +161,7 @@ export function ReferralPage() {
     pointsPerReferral: 100,
     pointsForReferred: 50,
   };
-  const history: PointsTransaction[] = user ? (pointsData?.transactions ?? []) : MOCK_HISTORY;
+  const history: PointsTransaction[] = pointsData?.transactions ?? [];
 
   const copy = (type: 'code' | 'link') => {
     const text = type === 'code' ? data.referralCode : data.referralLink;

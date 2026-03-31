@@ -842,43 +842,6 @@ function QuickBookPanel({
   );
 }
 
-const MOCK_BOOKINGS: Booking[] = [
-  {
-    id: 101, restaurantId: 3, restaurantNameEn: 'Nobu Riyadh', restaurantNameAr: 'نوبو الرياض',
-    restaurantCoverImageUrl: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=600&h=160&fit=crop',
-    date: '2026-05-10', time: '20:00', partySize: 4,
-    status: 'confirmed', referenceCode: 'TBQ-BKG-2026-00009',
-    specialRequests: 'Window seat preferred. Anniversary dinner — please arrange flowers.',
-  },
-  {
-    id: 102, restaurantId: 2, restaurantNameEn: 'Sushi Sama', restaurantNameAr: 'سوشي ساما',
-    restaurantCoverImageUrl: 'https://images.unsplash.com/photo-1553621042-f6e147245754?w=600&h=160&fit=crop',
-    date: '2026-04-12', time: '20:00', partySize: 2,
-    status: 'confirmed', referenceCode: 'TBQ-BKG-2026-00002',
-    specialRequests: undefined,
-  },
-  {
-    id: 103, restaurantId: 1, restaurantNameEn: 'Qariyat Najd', restaurantNameAr: 'قرية نجد',
-    restaurantCoverImageUrl: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&h=160&fit=crop',
-    date: '2026-04-05', time: '19:30', partySize: 4,
-    status: 'confirmed', referenceCode: 'TBQ-BKG-2026-00001',
-    specialRequests: 'High chair needed for toddler.',
-  },
-  {
-    id: 104, restaurantId: 4, restaurantNameEn: 'Lucine', restaurantNameAr: 'لوسين',
-    restaurantCoverImageUrl: 'https://images.unsplash.com/photo-1559339352-11d035aa65de?w=600&h=160&fit=crop',
-    date: '2026-03-15', time: '21:00', partySize: 6,
-    status: 'completed', referenceCode: 'TBQ-BKG-2026-00008',
-    specialRequests: undefined,
-  },
-  {
-    id: 105, restaurantId: 5, restaurantNameEn: 'Reem Al-Bawadi', restaurantNameAr: 'ريم البوادي',
-    restaurantCoverImageUrl: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600&h=160&fit=crop',
-    date: '2026-03-01', time: '13:00', partySize: 3,
-    status: 'completed', referenceCode: 'TBQ-BKG-2026-00005',
-    specialRequests: 'Vegetarian menu please.',
-  },
-];
 
 export function BookingsPage() {
   const { t, lang } = useLanguage();

@@ -49,86 +49,6 @@ const VISIBILITY_OPTIONS: Array<{ value: VisibilityOption; labelEn: string; labe
   { value: "only_me",   labelEn: "Only Me",        labelAr: "أنا فقط",             icon: Lock },
 ];
 
-// ─── Mock Data ────────────────────────────────────────────────────────────────
-
-const MOCK_PROFILE_DATA = {
-  user: {
-    id: 0, nameEn: "Layla Al-Rashidi", nameAr: "ليلى الراشدي",
-    avatarUrl: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=300&h=300&fit=crop&crop=face",
-    isVerified: true, isEmailVerified: true,
-    bio: "Food explorer & home chef documenting Saudi Arabia's finest dining scene — one meal at a time.",
-    createdAt: "2023-09-15T00:00:00Z", points: 1850, level: 4,
-    levelTitle: "Gourmand", credibilityScore: "9.2", username: "layla.rashidi",
-    isPrivate: false,
-  },
-  reviewCount: 47, bookingCount: 12, followerCount: 284, followingCount: 91,
-};
-
-const MOCK_CHECK_INS = [
-  { id: 1, restaurantId: 7,  restaurantNameEn: "Nobu Riyadh",        restaurantNameAr: "نوبو الرياض",        restaurantCoverImage: "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=400&h=300&fit=crop", restaurantCuisineEn: "Japanese", visitDate: "2026-03-28", visitTime: "20:00", partySize: 2, notes: "Black cod miso was absolutely divine.", companionNames: "Ahmad" },
-  { id: 2, restaurantId: 8,  restaurantNameEn: "Nusr-Et Riyadh",     restaurantNameAr: "نصرت الرياض",        restaurantCoverImage: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&h=300&fit=crop", restaurantCuisineEn: "Steakhouse", visitDate: "2026-03-14", visitTime: "21:00", partySize: 4, notes: "Best wagyu in the city.", companionNames: "Sara, Khalid, Noura" },
-  { id: 3, restaurantId: 9,  restaurantNameEn: "La Petite Maison",   restaurantNameAr: "لا بيتيت ميزون",    restaurantCoverImage: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400&h=300&fit=crop", restaurantCuisineEn: "French",   visitDate: "2026-02-20", visitTime: "19:30", partySize: 2, notes: "Truffle risotto was perfectly balanced.", companionNames: "" },
-  { id: 4, restaurantId: 1,  restaurantNameEn: "Najd Village",       restaurantNameAr: "قرية نجد",          restaurantCoverImage: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&h=300&fit=crop", restaurantCuisineEn: "Saudi",    visitDate: "2026-01-31", visitTime: "19:00", partySize: 6, notes: "Authentic Saudi hospitality at its finest.", companionNames: "Family" },
-  { id: 5, restaurantId: 3,  restaurantNameEn: "Sushi Sama",         restaurantNameAr: "سوشي ساما",         restaurantCoverImage: "https://images.unsplash.com/photo-1617196034183-421b4040ed20?w=400&h=300&fit=crop", restaurantCuisineEn: "Japanese", visitDate: "2026-01-10", visitTime: "20:30", partySize: 2, notes: "Omakase experience exceeded all expectations.", companionNames: "Ahmad" },
-];
-
-const MOCK_REVIEWS = [
-  { id: 1, restaurantId: 7,  restaurantNameEn: "Nobu Riyadh",      restaurantNameAr: "نوبو الرياض",      restaurantCoverImage: "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=400&h=300&fit=crop", dishId: null, dishNameEn: null, ratingOverall: 5, ratingFood: 5, ratingService: 5, ratingAmbiance: 4, textEn: "Absolutely divine black cod miso — the best I've had outside of Tokyo. Chef Marcus has perfectly balanced flavours with subtle Saudi-inspired touches.", visitDate: "2026-03-28", createdAt: "2026-03-29T10:00:00Z", likeCount: 24 },
-  { id: 2, restaurantId: 1,  restaurantNameEn: "Najd Village",     restaurantNameAr: "قرية نجد",         restaurantCoverImage: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&h=300&fit=crop", dishId: null, dishNameEn: null, ratingOverall: 4, ratingFood: 5, ratingService: 4, ratingAmbiance: 5, textEn: "Authentic Saudi cuisine in a beautiful heritage setting. The jareesh and kabsa were cooked to perfection. Service was a bit slow but the atmosphere was worth it.", visitDate: "2026-01-31", createdAt: "2026-02-01T09:00:00Z", likeCount: 18 },
-  { id: 3, restaurantId: 2,  restaurantNameEn: "Lucine",           restaurantNameAr: "لوسين",            restaurantCoverImage: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400&h=300&fit=crop", dishId: null, dishNameEn: null, ratingOverall: 5, ratingFood: 5, ratingService: 5, ratingAmbiance: 5, textEn: "Impeccable service and creative Armenian fusion dishes. The mante dumplings with sumac yogurt were revelatory. One of Riyadh's hidden gems.", visitDate: "2026-01-15", createdAt: "2026-01-16T20:00:00Z", likeCount: 31 },
-  { id: 4, restaurantId: 3,  restaurantNameEn: "Sushi Sama",       restaurantNameAr: "سوشي ساما",        restaurantCoverImage: "https://images.unsplash.com/photo-1617196034183-421b4040ed20?w=400&h=300&fit=crop", dishId: 12, dishNameEn: "Toro Nigiri", ratingOverall: 5, ratingFood: 5, ratingService: 4, ratingAmbiance: 4, textEn: "This Toro Nigiri is in a league of its own. Perfectly marbled bluefin tuna, hand-pressed rice, and a delicate brush of soy. Unmissable.", visitDate: "2026-01-10", createdAt: "2026-01-11T18:00:00Z", likeCount: 42 },
-];
-
-const MOCK_SAVED_RESTAURANTS = [
-  { id: 7,  nameEn: "Nobu Riyadh",       nameAr: "نوبو الرياض",       coverImageUrl: "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=400&h=300&fit=crop", cuisineEn: "Japanese",  cityEn: "Riyadh", avgRating: "4.9", savedAt: "2026-03-01" },
-  { id: 3,  nameEn: "Sushi Sama",         nameAr: "سوشي ساما",         coverImageUrl: "https://images.unsplash.com/photo-1617196034183-421b4040ed20?w=400&h=300&fit=crop", cuisineEn: "Japanese",  cityEn: "Riyadh", avgRating: "4.8", savedAt: "2026-02-15" },
-  { id: 9,  nameEn: "La Petite Maison",   nameAr: "لا بيتيت ميزون",   coverImageUrl: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400&h=300&fit=crop", cuisineEn: "French",    cityEn: "Riyadh", avgRating: "4.7", savedAt: "2026-01-20" },
-  { id: 8,  nameEn: "Nusr-Et Riyadh",     nameAr: "نصرت الرياض",       coverImageUrl: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&h=300&fit=crop", cuisineEn: "Steakhouse",cityEn: "Riyadh", avgRating: "4.6", savedAt: "2026-01-05" },
-];
-
-const MOCK_SAVED_DISHES = [
-  { dishId: 12, dishNameEn: "Toro Nigiri",          dishNameAr: "توروه نيجيري",     dishImageUrl: "https://images.unsplash.com/photo-1617196034183-421b4040ed20?w=200&h=200&fit=crop", dishPriceMin: "85", restaurantId: 3,  restaurantNameEn: "Sushi Sama",        savedAt: "2026-02-20" },
-  { dishId: 31, dishNameEn: "Black Cod Miso",        dishNameAr: "سمك القد الأسود بالميسو", dishImageUrl: "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=200&h=200&fit=crop", dishPriceMin: "145", restaurantId: 7, restaurantNameEn: "Nobu Riyadh",       savedAt: "2026-03-28" },
-  { dishId: 8,  dishNameEn: "Truffle Risotto",       dishNameAr: "ريزوتو الكمأة",    dishImageUrl: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=200&h=200&fit=crop", dishPriceMin: "120", restaurantId: 9, restaurantNameEn: "La Petite Maison",  savedAt: "2026-01-22" },
-  { dishId: 5,  dishNameEn: "Mante Dumplings",       dishNameAr: "مانتي",            dishImageUrl: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=200&h=200&fit=crop", dishPriceMin: "65",  restaurantId: 2, restaurantNameEn: "Lucine",            savedAt: "2026-01-17" },
-];
-
-const MOCK_PLANS = [
-  { id: 1, restaurantId: 7,  restaurantNameEn: "Nobu Riyadh",         restaurantNameAr: "نوبو الرياض",      restaurantCoverImage: "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=400&h=300&fit=crop", title: "Black Truffle Season Dinner",  plannedDate: "2026-04-20", notes: "Ask for the chef's truffle tasting menu.", priority: "high",   status: "active", themeLabel: "Special Occasion", reminderEnabled: true },
-  { id: 2, restaurantId: 11, restaurantNameEn: "Zuma Riyadh",         restaurantNameAr: "زوما الرياض",      restaurantCoverImage: "https://images.unsplash.com/photo-1617196034083-421b4040ed20?w=400&h=300&fit=crop", title: "Rooftop Brunch",               plannedDate: "2026-04-05", notes: "Make a reservation at least 2 weeks in advance.", priority: "medium", status: "active", themeLabel: "Weekend Brunch",  reminderEnabled: false },
-  { id: 3, restaurantId: null, restaurantNameEn: null,                 restaurantNameAr: null,               restaurantCoverImage: null, title: "Dessert Week Tour",            plannedDate: "2026-05-01", notes: "Try the best desserts across Riyadh — patisseries, chocolate labs, and ice cream.", priority: "low", status: "active", themeLabel: "Food Theme Week", reminderEnabled: false },
-  { id: 4, restaurantId: 3,  restaurantNameEn: "Sushi Sama",           restaurantNameAr: "سوشي ساما",        restaurantCoverImage: "https://images.unsplash.com/photo-1617196034183-421b4040ed20?w=400&h=300&fit=crop", title: "Omakase Experience",           plannedDate: "2026-01-10", notes: "Done! Best meal of the year.", priority: "high", status: "completed", themeLabel: null, reminderEnabled: false },
-];
-
-const MOCK_RECOMMENDATIONS = [
-  { id: 1, restaurantId: 7,  restaurantNameEn: "Nobu Riyadh",       restaurantNameAr: "نوبو الرياض",      restaurantCoverImage: "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=400&h=300&fit=crop", restaurantCuisineEn: "Japanese", dishId: 31, dishNameEn: "Black Cod Miso", dishNameAr: "سمك القد الأسود بالميسو", noteEn: "This dish will change your perception of fish forever. Silky, rich, perfectly glazed. Book at least 2 weeks ahead.", noteAr: "هذا الطبق سيغيّر نظرتك للأسماك إلى الأبد.", createdAt: "2026-03-29" },
-  { id: 2, restaurantId: 2,  restaurantNameEn: "Lucine",             restaurantNameAr: "لوسين",            restaurantCoverImage: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400&h=300&fit=crop", restaurantCuisineEn: "Armenian",  dishId: null, dishNameEn: null, dishNameAr: null, noteEn: "Riyadh's best-kept secret. Exceptional Armenian-Lebanese cuisine with impeccable service. Go for the mante and stay for the baklava.",  noteAr: "الجوهرة المخفية في الرياض. مطبخ أرمني لبناني استثنائي.", createdAt: "2026-01-16" },
-  { id: 3, restaurantId: 3,  restaurantNameEn: "Sushi Sama",         restaurantNameAr: "سوشي ساما",        restaurantCoverImage: "https://images.unsplash.com/photo-1617196034183-421b4040ed20?w=400&h=300&fit=crop", restaurantCuisineEn: "Japanese",  dishId: 12, dishNameEn: "Toro Nigiri", dishNameAr: "توروه نيجيري", noteEn: "The Toro Nigiri here is flown in from Tokyo twice weekly. Pure luxury in two bites. Order the omakase if you can.", noteAr: "تونة التورو تُستورد من طوكيو مرتين أسبوعياً.", createdAt: "2026-01-11" },
-];
-
-const MOCK_ACTIVITY = {
-  events: [
-    { type: "check_in", createdAt: "2026-03-28T20:00:00Z", data: { restaurantNameEn: "Nobu Riyadh", restaurantNameAr: "نوبو الرياض", restaurantId: 7, partySize: 2 } },
-    { type: "review",   createdAt: "2026-03-29T10:00:00Z", data: { restaurantNameEn: "Nobu Riyadh", restaurantNameAr: "نوبو الرياض", restaurantId: 7, ratingOverall: 5, textEn: "Absolutely divine black cod miso..." } },
-    { type: "bookmark", createdAt: "2026-03-01T09:00:00Z", data: { restaurantNameEn: "Nobu Riyadh", restaurantNameAr: "نوبو الرياض", restaurantId: 7 } },
-    { type: "review",   createdAt: "2026-02-01T09:00:00Z", data: { restaurantNameEn: "Najd Village", restaurantNameAr: "قرية نجد",  restaurantId: 1, ratingOverall: 4, textEn: "Authentic Saudi cuisine in a beautiful heritage setting..." } },
-    { type: "review",   createdAt: "2026-01-16T20:00:00Z", data: { restaurantNameEn: "Lucine",      restaurantNameAr: "لوسين",       restaurantId: 2, ratingOverall: 5, textEn: "Impeccable service and creative Armenian fusion dishes..." } },
-    { type: "follow",   createdAt: "2026-01-10T08:00:00Z", data: { nameEn: "Faisal Al-Otaibi", nameAr: "فيصل العتيبي" } },
-  ],
-};
-
-const MOCK_FOLLOWERS_LIST = [
-  { id: 11, nameEn: "Faisal Al-Otaibi",     nameAr: "فيصل العتيبي",     avatarUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop&crop=face",  levelTitle: "Food Critic", isVerified: true },
-  { id: 12, nameEn: "Sara Mahmoud",          nameAr: "سارة محمود",        avatarUrl: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=80&h=80&fit=crop&crop=face", levelTitle: "Gourmet Explorer", isVerified: false },
-  { id: 13, nameEn: "Mohammed Al-Zahrani",   nameAr: "محمد الزهراني",    avatarUrl: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=80&h=80&fit=crop&crop=face",  levelTitle: "Food Adventurer", isVerified: false },
-  { id: 14, nameEn: "Noura Al-Ghamdi",       nameAr: "نورا الغامدي",     avatarUrl: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=80&h=80&fit=crop&crop=face",     levelTitle: "Michelin Enthusiast", isVerified: true },
-];
-
-const MOCK_FOLLOWING_LIST = [
-  { id: 15, nameEn: "Khalid Bin Mansour",    nameAr: "خالد بن منصور",    avatarUrl: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=80&h=80&fit=crop&crop=face",  levelTitle: "Saudi Cuisine Expert", isVerified: true },
-  { id: 16, nameEn: "Hessa Al-Salmani",      nameAr: "حصة السلماني",     avatarUrl: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=80&h=80&fit=crop&crop=face",  levelTitle: "Michelin Tracker", isVerified: true },
-  { id: 17, nameEn: "Turki Al-Anzi",         nameAr: "تركي العنزي",      avatarUrl: "https://images.unsplash.com/photo-1463453091185-61582044d556?w=80&h=80&fit=crop&crop=face",   levelTitle: "Street Food Lover", isVerified: false },
-];
 
 type FollowRequest = { followerId: number; followerName?: string; followerAvatar?: string; followerUsername?: string; createdAt: string; };
 
@@ -589,8 +509,8 @@ export function ProfilePage() {
   const [showCheckInDialog, setShowCheckInDialog] = useState(false);
   const [showPlanDialog, setShowPlanDialog] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
-  const [localCheckIns, setLocalCheckIns] = useState<typeof MOCK_CHECK_INS>(MOCK_CHECK_INS);
-  const [localPlans, setLocalPlans] = useState<typeof MOCK_PLANS>(MOCK_PLANS);
+  const [localCheckIns, setLocalCheckIns] = useState<any[]>([]);
+  const [localPlans, setLocalPlans] = useState<any[]>([]);
   const [favFilter, setFavFilter] = useState<"restaurants" | "dishes">("restaurants");
   const [reviewFilter, setReviewFilter] = useState<"all" | "restaurant" | "dish">("all");
   const [isPrivate, setIsPrivate] = useState(false);
@@ -812,25 +732,44 @@ export function ProfilePage() {
     </div>
   );
 
-  const effectiveData = authUser ? data : MOCK_PROFILE_DATA;
-  const effectiveFollowers: any[] = authUser ? (followersData ?? []) : MOCK_FOLLOWERS_LIST;
-  const effectiveFollowing: any[] = authUser ? (followingData ?? []) : MOCK_FOLLOWING_LIST;
-  const effectiveActivity = authUser ? activityData : MOCK_ACTIVITY;
-  const effectiveCheckIns: any[] = authUser ? (checkInsData ?? []) : localCheckIns;
-  const effectivePlans: any[] = authUser ? (plansData ?? []) : localPlans;
-  const effectiveSavedRestaurants: any[] = authUser ? (savedRestaurantsData ?? []) : MOCK_SAVED_RESTAURANTS;
-  const effectiveSavedDishes: any[] = authUser ? (savedDishesData ?? []) : MOCK_SAVED_DISHES;
-  const effectiveReviews: any[] = authUser ? (reviewsData ?? []) : MOCK_REVIEWS;
-  const effectiveRecommendations: any[] = authUser ? (recommendationsData ?? []) : MOCK_RECOMMENDATIONS;
-  const effectiveBlockedUsers: any[] = authUser ? (blockedUsersData ?? []) : [];
+  if (!authUser) return (
+    <div className="min-h-screen bg-background flex items-center justify-center px-4" dir={lang === "ar" ? "rtl" : "ltr"}>
+      <div className="text-center max-w-sm">
+        <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+          <User className="w-8 h-8 text-primary" />
+        </div>
+        <h2 className="text-xl font-bold text-foreground mb-2">
+          {t("Sign in to view your profile", "سجّل الدخول لعرض ملفك الشخصي")}
+        </h2>
+        <p className="text-muted-foreground text-sm mb-6">
+          {t("Track your visits, reviews, bookings, and food journey all in one place.", "تابع زياراتك وتقييماتك وحجوزاتك ورحلتك الغذائية في مكان واحد.")}
+        </p>
+        <Link href="/signin" className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-6 py-2.5 rounded-xl font-semibold text-sm hover:bg-primary/90 transition-colors">
+          {t("Sign In", "تسجيل الدخول")}
+        </Link>
+      </div>
+    </div>
+  );
 
-  if (authUser && (isLoading || !data?.user)) return (
+  const effectiveData = data;
+  const effectiveFollowers: any[] = followersData ?? [];
+  const effectiveFollowing: any[] = followingData ?? [];
+  const effectiveActivity = activityData;
+  const effectiveCheckIns: any[] = checkInsData ?? [];
+  const effectivePlans: any[] = plansData ?? [];
+  const effectiveSavedRestaurants: any[] = savedRestaurantsData ?? [];
+  const effectiveSavedDishes: any[] = savedDishesData ?? [];
+  const effectiveReviews: any[] = reviewsData ?? [];
+  const effectiveRecommendations: any[] = recommendationsData ?? [];
+  const effectiveBlockedUsers: any[] = blockedUsersData ?? [];
+
+  if (isLoading || !data?.user) return (
     <div className="min-h-screen p-20 flex justify-center">
       <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
     </div>
   );
 
-  const { user, reviewCount, bookingCount, followerCount, followingCount } = effectiveData ?? MOCK_PROFILE_DATA;
+  const { user, reviewCount, bookingCount, followerCount, followingCount } = effectiveData!;
   const name = lang === "ar" ? user.nameAr || user.nameEn : user.nameEn || user.nameAr;
   const joinYear = user.createdAt ? new Date(user.createdAt).getFullYear() : null;
   const levelMax = user.level === 5 ? 10000 : user.level === 4 ? 5000 : user.level === 3 ? 1500 : user.level === 2 ? 500 : 100;
