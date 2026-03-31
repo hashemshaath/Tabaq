@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { StarRating } from '@/components/StarRating';
 import { useLanguage } from '@/hooks/use-language';
-import { usePageMeta } from '@/hooks/use-page-meta';
+import { usePageMeta, buildRestaurantSchema, buildMenuSchema, buildBreadcrumbSchema } from '@/hooks/use-page-meta';
 import {
   useGetRestaurant,
   useGetRestaurantMenus,
@@ -721,11 +721,53 @@ export function RestaurantDetailPage() {
   const restaurantNameAr = (data?.restaurant as any)?.nameAr ?? 'مطعم';
   const restaurantDescEn = (data?.restaurant as any)?.descriptionEn ?? '';
   const restaurantDescAr = (data?.restaurant as any)?.descriptionAr ?? '';
+  const seoRestaurant = data?.restaurant as any;
+  const seoMenuData = (data as any)?.menus as any[] | undefined;
+  const restaurantJsonLd = seoRestaurant ? buildRestaurantSchema({
+    id: seoRestaurant.id,
+    name: restaurantNameEn,
+    nameAr: restaurantNameAr,
+    description: restaurantDescEn,
+    image: seoRestaurant.coverImageUrl,
+    address: seoRestaurant.address,
+    city: seoRestaurant.cityNameEn ?? seoRestaurant.cityNameAr,
+    phone: seoRestaurant.phone,
+    cuisine: seoRestaurant.categories?.map((c: any) => c.nameEn).filter(Boolean),
+    rating: seoRestaurant.averageRating ? Number(seoRestaurant.averageRating) : undefined,
+    reviewCount: seoRestaurant.reviewCount ?? undefined,
+    priceRange: seoRestaurant.priceRange,
+    hasMenu: true,
+  }) : undefined;
+
+  const menuJsonLd = (seoMenuData && seoMenuData.length > 0) ? buildMenuSchema({
+    restaurantId: seoRestaurant?.id ?? numericId,
+    restaurantName: restaurantNameEn,
+    sections: seoMenuData.flatMap((m: any) => m.sections ?? []).map((s: any) => ({
+      name: s.nameEn ?? s.nameAr ?? 'Section',
+      items: (s.items ?? []).slice(0, 20).map((d: any) => ({
+        name: d.nameEn ?? d.nameAr ?? '',
+        description: d.descriptionEn,
+        price: d.price ? Number(d.price) : undefined,
+        currency: d.currency ?? 'SAR',
+      })),
+    })),
+  }) : undefined;
+
+  const breadcrumbJsonLd = buildBreadcrumbSchema([
+    { name: 'Home', url: 'https://tabaq.sa/' },
+    { name: 'Restaurants', url: 'https://tabaq.sa/restaurants' },
+    { name: restaurantNameEn },
+  ]);
+
   usePageMeta({
-    titleEn: data?.restaurant ? `${restaurantNameEn} | Tabaq` : 'Restaurant | Tabaq',
-    titleAr: data?.restaurant ? `${restaurantNameAr} | طبق` : 'مطعم | طبق',
-    descriptionEn: restaurantDescEn || `Discover ${restaurantNameEn} on Tabaq — book a table, view the menu, and read reviews.`,
-    descriptionAr: restaurantDescAr || `اكتشف ${restaurantNameAr} على طبق — احجز طاولة، اطّلع على القائمة، واقرأ التقييمات.`,
+    titleEn: data?.restaurant ? `${restaurantNameEn} — Menu, Reviews & Booking | Tabaq` : 'Restaurant | Tabaq',
+    titleAr: data?.restaurant ? `${restaurantNameAr} — القائمة والتقييمات والحجز | طبق` : 'مطعم | طبق',
+    descriptionEn: restaurantDescEn || `Book a table at ${restaurantNameEn} on Tabaq. View the full menu, read verified reviews, and reserve online in seconds.`,
+    descriptionAr: restaurantDescAr || `احجز طاولة في ${restaurantNameAr} على طبق. استعرض القائمة الكاملة، اقرأ التقييمات الموثقة، واحجز بثوانٍ.`,
+    imageUrl: seoRestaurant?.coverImageUrl,
+    keywords: [restaurantNameEn, restaurantNameAr, 'restaurant booking', 'Saudi Arabia', 'Tabaq', seoRestaurant?.cityNameEn].filter(Boolean).join(', '),
+    type: 'restaurant',
+    structuredData: [restaurantJsonLd, menuJsonLd, breadcrumbJsonLd].filter(Boolean) as any,
   }, lang);
 
   if (!idIsValid) {

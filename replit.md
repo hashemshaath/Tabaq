@@ -29,9 +29,45 @@ Settings are persisted in `localStorage` key `tabaq_platform_settings` via `Sett
 - **GTM**: Injects GTM snippet + noscript when `googleTagManagerId` is set  
 - **Meta Pixel**: Injects Facebook pixel init when `metaPixelId` is set
 
-## Enhanced SEO (`use-page-meta.ts`)
+## SEO Infrastructure (Comprehensive Upgrade)
 
-Now supports: `keywords`, `imageUrl`, `type` (website/article/restaurant), and `structuredData` for JSON-LD schema.org injection. Also exports `buildRestaurantSchema()` helper.
+### `use-page-meta.ts` (fully rewritten)
+Supports: `titleEn/Ar`, `descriptionEn/Ar`, `keywords`, `imageUrl`, `type`, `canonical`, `noIndex`, `structuredData[]`.
+Injects: canonical `<link>`, hreflang EN/AR/x-default alternates, og:locale, multiple JSON-LD `<script>` tags.
+
+**Named schema builder exports:**
+- `buildWebSiteSchema()` — WebSite + SearchAction (SitelinksSearchBox)
+- `buildOrganizationSchema()` — Organization + ContactPoint + SameAs
+- `buildRestaurantSchema(opts)` — LocalBusiness + AggregateRating + Menu + ReserveAction
+- `buildMenuSchema(opts)` — Menu + MenuSection + MenuItem
+- `buildArticleSchema(opts)` — Article + Author + Publisher
+- `buildBreadcrumbSchema(items)` — BreadcrumbList
+- `buildEventSchema(opts)` — FoodEvent
+- `buildReviewSchema(opts)` — Review
+
+**Wired to pages:**
+- `HomePage` → WebSite + Organization JSON-LD
+- `RestaurantDetailPage` → Restaurant + Menu + BreadcrumbList JSON-LD
+- `BlogDetailPage` → Article + BreadcrumbList JSON-LD
+
+### SEO API Routes (`artifacts/api-server/src/routes/seo.ts`)
+- `GET /api/robots.txt` — dynamic robots.txt with crawl rules and sitemap reference
+- `GET /api/sitemap.xml` — dynamic XML sitemap with restaurants, blog, profiles, hreflang
+- `GET /api/admin/seo/overview` — stats (total indexed pages, restaurant/blog/profile counts)
+- `GET/PUT/DELETE /api/admin/seo/settings` — per-page meta override CRUD
+
+### `seoSettingsTable` (DB schema)
+Path-keyed per-page SEO overrides: `metaTitleEn`, `metaTitleAr`, `metaDescriptionEn`, `metaDescriptionAr`, `keywords`, `isIndexed`, `isFollowed`, `sitemapPriority`, `sitemapChangefreq`.
+
+### Admin SEO Dashboard (`AdminSeoTab` in `AdminPanelPage.tsx`)
+4-sub-tab panel (Overview / Page Settings / Keywords / Sitemap & Robots):
+- **Overview**: SEO score (12-item checklist), 4 stat cards, structured data coverage table
+- **Page Settings**: 10 managed pages with per-page meta editor, SERP preview, indexability controls
+- **Keywords**: Add/remove/track target keywords with volume + difficulty, AI suggestion chips
+- **Sitemap & Robots**: Live view/regenerate sitemap, robots.txt viewer/editor, multilingual SEO status
+
+### `index.html`
+Added `<link rel="sitemap" href="/api/sitemap.xml">` for crawler discovery.
 
 ## Database Status
 

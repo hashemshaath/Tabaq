@@ -31,7 +31,7 @@ import { recommendationsRouter } from "./recommendations.js";
 import analyticsRouter from "./analytics.js";
 import profileRouter from "./profile.js";
 import blogRouter from "./blog.js";
-import sitemapRouter from "./sitemap.js";
+import seoRouter from "./seo.js";
 
 const router: IRouter = Router();
 
@@ -67,6 +67,6 @@ router.use(recommendationsRouter);
 router.use(analyticsRouter);
 router.use(profileRouter);
 router.use(blogRouter);
-router.use(sitemapRouter);
+router.use(seoRouter);
 
 export default router;

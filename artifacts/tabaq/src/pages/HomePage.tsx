@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLanguage } from '@/hooks/use-language';
-import { usePageMeta } from '@/hooks/use-page-meta';
+import { usePageMeta, buildWebSiteSchema, buildOrganizationSchema } from '@/hooks/use-page-meta';
 import { useCity } from '@/context/CityContext';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
@@ -719,8 +719,10 @@ export function HomePage() {
   usePageMeta({
     titleEn: 'Tabaq | طبق — Discover Saudi Arabia\'s Best Restaurants',
     titleAr: 'طبق | اكتشف أفضل مطاعم المملكة العربية السعودية',
-    descriptionEn: 'Discover and book top restaurants, exclusive food experiences, and special deals across Saudi Arabia.',
-    descriptionAr: 'اكتشف وأحجز أفضل المطاعم والتجارب الغذائية الحصرية والعروض المميزة في المملكة العربية السعودية.',
+    descriptionEn: 'Discover and book top restaurants, exclusive food experiences, and special deals across Saudi Arabia. The #1 dining platform in the Kingdom.',
+    descriptionAr: 'اكتشف وأحجز أفضل المطاعم والتجارب الغذائية الحصرية والعروض المميزة في المملكة العربية السعودية. منصة الطعام الأولى في المملكة.',
+    keywords: 'restaurants Saudi Arabia, مطاعم السعودية, restaurant booking Riyadh, حجز مطعم, fine dining Riyadh, مطاعم الرياض, food experiences KSA, Tabaq, طبق',
+    structuredData: [buildWebSiteSchema(), buildOrganizationSchema()] as any,
   }, lang);
   const { selectedCityId, selectedCityName, selectedCityNameAr, selectedNeighborhoodId, selectedNeighborhoodName, selectedNeighborhoodNameAr, clearCity } = useCity();
   const [, setLocation] = useLocation();

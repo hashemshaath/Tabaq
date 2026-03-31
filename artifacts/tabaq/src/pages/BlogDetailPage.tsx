@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useRoute } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { useLanguage } from '@/hooks/use-language';
+import { usePageMeta, buildArticleSchema, buildBreadcrumbSchema } from '@/hooks/use-page-meta';
 import { Clock, User, Tag, ArrowLeft, ArrowRight, ChevronRight, Share2, Bookmark, ThumbsUp, MessageCircle, Facebook, Twitter, Link2 } from 'lucide-react';
 
 const SAMPLE_POSTS: Record<string, {
@@ -131,6 +132,35 @@ export function BlogDetailPage() {
   } : null;
 
   const post = apiPost ?? SAMPLE_POSTS[slug] ?? SAMPLE_POSTS['best-restaurants-riyadh-2025'];
+
+  const articleJsonLd = post ? buildArticleSchema({
+    slug: post.slug,
+    titleEn: post.titleEn,
+    titleAr: post.titleAr,
+    excerpt: lang === 'ar' ? post.excerptAr : post.excerptEn,
+    coverImage: post.coverImage,
+    authorName: lang === 'ar' ? post.authorAr : post.authorName,
+    publishedAt: post.publishedAt,
+    categoryName: lang === 'ar' ? post.categoryAr : post.categoryEn,
+    tags: post.tags,
+  }) : undefined;
+
+  const breadcrumbJsonLd = post ? buildBreadcrumbSchema([
+    { name: 'Home', url: 'https://tabaq.sa/' },
+    { name: 'Blog', url: 'https://tabaq.sa/blog' },
+    { name: lang === 'ar' ? post.titleAr : post.titleEn },
+  ]) : undefined;
+
+  usePageMeta({
+    titleEn: post ? `${post.titleEn} | Tabaq Blog` : 'Blog | Tabaq',
+    titleAr: post ? `${post.titleAr} | مدونة طبق` : 'المدونة | طبق',
+    descriptionEn: post ? (post.excerptEn ?? '') : '',
+    descriptionAr: post ? (post.excerptAr ?? '') : '',
+    imageUrl: post?.coverImage,
+    type: 'article',
+    keywords: post?.tags?.join(', '),
+    structuredData: [articleJsonLd, breadcrumbJsonLd].filter(Boolean) as any,
+  }, lang);
 
   if (!post) {
     return (

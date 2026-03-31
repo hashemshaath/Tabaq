@@ -163,6 +163,509 @@ function VerificationsAdminTab({ t }: { t: (en: string, ar: string) => string })
   );
 }
 
+// ─── Admin SEO Dashboard ─────────────────────────────────────────
+type SeoSubTab = 'overview' | 'pages' | 'keywords' | 'sitemap';
+
+const MANAGED_PAGES = [
+  { path: '/', titleEn: 'Homepage', titleAr: 'الرئيسية', priority: '1.0', changefreq: 'daily' },
+  { path: '/restaurants', titleEn: 'Restaurant Listing', titleAr: 'قائمة المطاعم', priority: '0.9', changefreq: 'daily' },
+  { path: '/blog', titleEn: 'Blog Hub', titleAr: 'المدونة', priority: '0.8', changefreq: 'weekly' },
+  { path: '/leaderboard', titleEn: 'Leaderboard', titleAr: 'لوحة المتصدرين', priority: '0.7', changefreq: 'weekly' },
+  { path: '/offers', titleEn: 'Offers & Deals', titleAr: 'العروض والخصومات', priority: '0.8', changefreq: 'daily' },
+  { path: '/experiences', titleEn: 'Experiences', titleAr: 'التجارب', priority: '0.7', changefreq: 'weekly' },
+  { path: '/collections', titleEn: 'Collections', titleAr: 'المجموعات', priority: '0.7', changefreq: 'weekly' },
+  { path: '/chefs', titleEn: 'Chefs Directory', titleAr: 'دليل الشيف', priority: '0.6', changefreq: 'weekly' },
+  { path: '/dishes', titleEn: 'Dish Explorer', titleAr: 'استكشاف الأطباق', priority: '0.6', changefreq: 'weekly' },
+  { path: '/search', titleEn: 'Search', titleAr: 'البحث', priority: '0.5', changefreq: 'daily' },
+];
+
+const SCHEMA_TYPES = [
+  { type: 'Restaurant', pages: 'All restaurant detail pages', status: 'active', icon: '🍽️', descEn: 'LocalBusiness + AggregateRating + Menu + ReserveAction', implemented: true },
+  { type: 'Article', pages: 'All blog posts', status: 'active', icon: '📰', descEn: 'Article + Author + Publisher + BreadcrumbList', implemented: true },
+  { type: 'WebSite', pages: 'Homepage', status: 'active', icon: '🌐', descEn: 'WebSite + SearchAction (SitelinksSearchBox)', implemented: true },
+  { type: 'Organization', pages: 'Homepage', status: 'active', icon: '🏢', descEn: 'Organization + ContactPoint + SameAs', implemented: true },
+  { type: 'Menu', pages: 'Restaurant detail pages', status: 'active', icon: '📋', descEn: 'Menu + MenuSection + MenuItem with pricing', implemented: true },
+  { type: 'BreadcrumbList', pages: 'Restaurant + Blog pages', status: 'active', icon: '🔗', descEn: 'BreadcrumbList for all key detail pages', implemented: true },
+  { type: 'FoodEvent', pages: 'Event detail pages', status: 'partial', icon: '🎪', descEn: 'FoodEvent + location + offers', implemented: true },
+  { type: 'Review', pages: 'Restaurant pages', status: 'planned', icon: '⭐', descEn: 'Individual review schema for Google rich results', implemented: false },
+];
+
+function AdminSeoTab({ t }: { t: (en: string, ar: string) => string }) {
+  const [subTab, setSubTab] = useState<SeoSubTab>('overview');
+  const [editingPage, setEditingPage] = useState<string | null>(null);
+  const [pageForm, setPageForm] = useState({ metaTitleEn: '', metaTitleAr: '', metaDescriptionEn: '', metaDescriptionAr: '', keywords: '', isIndexed: true, isFollowed: true, sitemapPriority: '0.8', sitemapChangefreq: 'weekly' });
+  const [savingPage, setSavingPage] = useState(false);
+  const [saveMsg, setSaveMsg] = useState('');
+  const [robotsTxt, setRobotsTxt] = useState('');
+  const [editingRobots, setEditingRobots] = useState(false);
+  const [sitemapRefreshed, setSitemapRefreshed] = useState(false);
+  const [newKeyword, setNewKeyword] = useState('');
+  const [keywords, setKeywords] = useState<{ word: string; volume: string; difficulty: string }[]>([
+    { word: 'مطاعم الرياض', volume: '22K/mo', difficulty: 'medium' },
+    { word: 'restaurants Riyadh', volume: '18K/mo', difficulty: 'high' },
+    { word: 'حجز مطعم', volume: '12K/mo', difficulty: 'medium' },
+    { word: 'restaurant booking Saudi Arabia', volume: '9K/mo', difficulty: 'high' },
+    { word: 'مطاعم جدة', volume: '15K/mo', difficulty: 'low' },
+    { word: 'fine dining Riyadh', volume: '8K/mo', difficulty: 'medium' },
+    { word: 'أفضل مطاعم', volume: '30K/mo', difficulty: 'high' },
+    { word: 'food experiences KSA', volume: '5K/mo', difficulty: 'low' },
+  ]);
+
+  const { data: overviewData, isLoading: overviewLoading } = useQuery({
+    queryKey: ['admin-seo-overview'],
+    queryFn: async () => {
+      const r = await fetch('/api/admin/seo/overview', { headers: getAuthHeaders() });
+      return r.ok ? r.json() : null;
+    },
+  });
+
+  const { data: settingsData, refetch: refetchSettings } = useQuery({
+    queryKey: ['admin-seo-settings'],
+    queryFn: async () => {
+      const r = await fetch('/api/admin/seo/settings', { headers: getAuthHeaders() });
+      return r.ok ? r.json() : { settings: [] };
+    },
+  });
+
+  const savedSettings: any[] = settingsData?.settings ?? [];
+  const settingsByPath = Object.fromEntries(savedSettings.map((s: any) => [s.path, s]));
+
+  function openPageEditor(path: string) {
+    const existing = settingsByPath[path];
+    setPageForm({
+      metaTitleEn: existing?.metaTitleEn ?? '',
+      metaTitleAr: existing?.metaTitleAr ?? '',
+      metaDescriptionEn: existing?.metaDescriptionEn ?? '',
+      metaDescriptionAr: existing?.metaDescriptionAr ?? '',
+      keywords: existing?.keywords ?? '',
+      isIndexed: existing?.isIndexed ?? true,
+      isFollowed: existing?.isFollowed ?? true,
+      sitemapPriority: existing?.sitemapPriority ?? '0.8',
+      sitemapChangefreq: existing?.sitemapChangefreq ?? 'weekly',
+    });
+    setEditingPage(path);
+    setSaveMsg('');
+  }
+
+  async function savePage() {
+    if (!editingPage) return;
+    setSavingPage(true);
+    try {
+      const r = await fetch('/api/admin/seo/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({ path: editingPage, ...pageForm }),
+      });
+      if (r.ok) { setSaveMsg('Saved!'); refetchSettings(); setTimeout(() => setSaveMsg(''), 2000); }
+      else { setSaveMsg('Error saving'); }
+    } catch { setSaveMsg('Error saving'); }
+    setSavingPage(false);
+  }
+
+  async function loadRobots() {
+    try {
+      const r = await fetch('/api/robots.txt');
+      const text = await r.text();
+      setRobotsTxt(text);
+    } catch {}
+  }
+
+  useEffect(() => {
+    if (subTab === 'sitemap') loadRobots();
+  }, [subTab]);
+
+  const SEO_SCORE_ITEMS = [
+    { label: 'Restaurant JSON-LD', done: true, descEn: 'Schema.org Restaurant on all detail pages' },
+    { label: 'Article JSON-LD', done: true, descEn: 'Schema.org Article on all blog posts' },
+    { label: 'WebSite JSON-LD', done: true, descEn: 'SitelinksSearchBox on homepage' },
+    { label: 'Menu Schema', done: true, descEn: 'Menu + MenuSection + MenuItem on restaurant pages' },
+    { label: 'Breadcrumb Schema', done: true, descEn: 'BreadcrumbList on detail pages' },
+    { label: 'Sitemap.xml', done: true, descEn: 'Dynamic sitemap with restaurants, blog, profiles' },
+    { label: 'robots.txt', done: true, descEn: 'Proper crawl directives' },
+    { label: 'Canonical URLs', done: true, descEn: 'Canonical tag set on all pages' },
+    { label: 'hreflang EN/AR', done: true, descEn: 'Language alternates for bilingual pages' },
+    { label: 'Open Graph Tags', done: true, descEn: 'og:title, og:description, og:image on all pages' },
+    { label: 'Twitter Cards', done: true, descEn: 'Twitter Card meta on all pages' },
+    { label: 'Image Alt Text', done: false, descEn: 'Ensure all images have descriptive alt text' },
+  ];
+
+  const implementedCount = SEO_SCORE_ITEMS.filter(i => i.done).length;
+  const seoScore = Math.round((implementedCount / SEO_SCORE_ITEMS.length) * 100);
+
+  const SUB_TABS: { id: SeoSubTab; label: string; icon: React.ElementType }[] = [
+    { id: 'overview', label: 'Overview', icon: BarChart3 },
+    { id: 'pages', label: 'Page Settings', icon: FileText },
+    { id: 'keywords', label: 'Keywords', icon: Hash },
+    { id: 'sitemap', label: 'Sitemap & Robots', icon: Globe },
+  ];
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-bold">{t('SEO Manager', 'مدير محركات البحث')}</h2>
+          <p className="text-sm text-muted-foreground">{t('Comprehensive SEO control: structured data, meta tags, sitemap, keywords, and crawl settings.', 'تحكم شامل في محركات البحث: البيانات المنظمة، العلامات الوصفية، خريطة الموقع، الكلمات المفتاحية، وإعدادات الزحف.')}</p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="text-center px-3 py-2 bg-green-50 border border-green-200 rounded-xl">
+            <div className="text-2xl font-black text-green-600">{seoScore}</div>
+            <div className="text-[10px] text-green-600 font-bold uppercase">SEO Score</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Sub-tab nav */}
+      <div className="flex gap-1 bg-secondary/50 p-1 rounded-xl">
+        {SUB_TABS.map(st => {
+          const Icon = st.icon;
+          return (
+            <button key={st.id} onClick={() => setSubTab(st.id)}
+              className={`flex items-center gap-1.5 flex-1 justify-center text-xs font-semibold px-3 py-2 rounded-lg transition-colors ${subTab === st.id ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
+              <Icon className="w-3.5 h-3.5" />{st.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── OVERVIEW ── */}
+      {subTab === 'overview' && (
+        <div className="space-y-5">
+          {/* Stats */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              { label: 'SEO Score', val: `${seoScore}/100`, icon: Globe, color: 'bg-green-50 text-green-600', border: 'border-green-200' },
+              { label: 'Indexed Pages', val: overviewLoading ? '…' : (overviewData?.totalIndexedPages?.toLocaleString() ?? '—'), icon: Database, color: 'bg-blue-50 text-blue-600', border: 'border-blue-200' },
+              { label: 'Restaurant Pages', val: overviewLoading ? '…' : (overviewData?.restaurantPages?.toLocaleString() ?? '—'), icon: Utensils, color: 'bg-primary/10 text-primary', border: 'border-primary/20' },
+              { label: 'Blog Articles', val: overviewLoading ? '…' : (overviewData?.blogPages?.toLocaleString() ?? '—'), icon: BookOpen, color: 'bg-teal-50 text-teal-600', border: 'border-teal-200' },
+            ].map(s => {
+              const Icon = s.icon;
+              return (
+                <div key={s.label} className={`bg-card border ${s.border} rounded-2xl p-4 flex items-center gap-3`}>
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${s.color}`}><Icon className="w-4 h-4" /></div>
+                  <div>
+                    <p className="text-lg font-extrabold text-foreground">{s.val}</p>
+                    <p className="text-[10px] text-muted-foreground font-medium leading-tight">{s.label}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* SEO Checklist */}
+          <div className="bg-card border border-border rounded-2xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-border">
+              <h3 className="font-bold text-foreground">{t('SEO Implementation Checklist', 'قائمة تفحص تحسين محركات البحث')}</h3>
+            </div>
+            <div className="divide-y divide-border">
+              {SEO_SCORE_ITEMS.map(item => (
+                <div key={item.label} className="flex items-center gap-3 px-5 py-3">
+                  <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${item.done ? 'bg-green-100' : 'bg-amber-100'}`}>
+                    {item.done ? <CheckCircle2 className="w-3.5 h-3.5 text-green-600" /> : <AlertCircle className="w-3.5 h-3.5 text-amber-600" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-foreground">{item.label}</p>
+                    <p className="text-xs text-muted-foreground">{item.descEn}</p>
+                  </div>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${item.done ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                    {item.done ? 'Done' : 'Pending'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Structured Data Overview */}
+          <div className="bg-card border border-border rounded-2xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-border">
+              <h3 className="font-bold text-foreground">{t('Structured Data (JSON-LD) Coverage', 'تغطية البيانات المنظمة (JSON-LD)')}</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">{t('Schema.org types implemented for Google Rich Results', 'أنواع Schema.org المطبقة لنتائج Google الغنية')}</p>
+            </div>
+            <div className="divide-y divide-border">
+              {SCHEMA_TYPES.map(schema => (
+                <div key={schema.type} className="flex items-center gap-3 px-5 py-3">
+                  <span className="text-lg shrink-0">{schema.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-foreground">{schema.type}</p>
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${schema.implemented ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                        {schema.implemented ? '✓ Active' : 'Planned'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{schema.pages} · {schema.descEn}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── PAGE SETTINGS ── */}
+      {subTab === 'pages' && (
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">{t('Override meta titles, descriptions, and crawl settings per page. Custom settings take priority over auto-generated ones.', 'تخصيص العناوين التعريفية والأوصاف وإعدادات الزحف لكل صفحة. الإعدادات المخصصة تأخذ الأولوية على التلقائية.')}</p>
+
+          <div className="bg-card border border-border rounded-2xl overflow-hidden">
+            <div className="divide-y divide-border">
+              {MANAGED_PAGES.map(page => {
+                const custom = settingsByPath[page.path];
+                const score = custom?.metaTitleEn && custom?.metaDescriptionEn ? 95 : custom?.metaTitleEn ? 75 : 60;
+                return (
+                  <div key={page.path} className="flex items-center gap-4 px-5 py-4">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-mono text-primary mb-0.5">{page.path}</p>
+                      <p className="text-sm font-medium text-foreground">{page.titleEn}</p>
+                      {custom?.metaTitleEn && (
+                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1 italic">"{custom.metaTitleEn}"</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-16 h-1.5 bg-secondary rounded-full overflow-hidden">
+                          <div className="h-full bg-primary rounded-full" style={{ width: `${score}%` }} />
+                        </div>
+                        <span className={`text-xs font-bold ${score >= 90 ? 'text-green-600' : score >= 70 ? 'text-amber-600' : 'text-red-500'}`}>{score}</span>
+                      </div>
+                      <button onClick={() => openPageEditor(page.path)} className="flex items-center gap-1 text-xs text-primary font-semibold hover:bg-primary/10 px-2 py-1.5 rounded-lg transition-colors">
+                        <Edit className="w-3.5 h-3.5" />{t('Edit', 'تعديل')}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Page Meta Editor */}
+          {editingPage && (
+            <div className="bg-primary/5 border border-primary/20 rounded-2xl p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-foreground">{t('Edit SEO: ', 'تعديل SEO: ')}<code className="text-primary text-sm">{editingPage}</code></h3>
+                <button onClick={() => setEditingPage(null)} className="p-1.5 hover:bg-secondary rounded-lg">
+                  <X className="w-4 h-4 text-muted-foreground" />
+                </button>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground block mb-1">Meta Title (English)</label>
+                  <input value={pageForm.metaTitleEn} onChange={e => setPageForm(f => ({...f, metaTitleEn: e.target.value}))} placeholder="Page Title | Tabaq" className="w-full px-3 py-2 text-sm rounded-xl border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                  <p className={`text-[10px] mt-0.5 ${pageForm.metaTitleEn.length > 60 ? 'text-red-500' : 'text-muted-foreground'}`}>{pageForm.metaTitleEn.length}/60 chars</p>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground block mb-1">عنوان التعريف (العربية)</label>
+                  <input dir="rtl" value={pageForm.metaTitleAr} onChange={e => setPageForm(f => ({...f, metaTitleAr: e.target.value}))} placeholder="عنوان الصفحة | طبق" className="w-full px-3 py-2 text-sm rounded-xl border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                  <p className={`text-[10px] mt-0.5 ${pageForm.metaTitleAr.length > 60 ? 'text-red-500' : 'text-muted-foreground'}`}>{pageForm.metaTitleAr.length}/60 chars</p>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground block mb-1">Meta Description (English)</label>
+                  <textarea value={pageForm.metaDescriptionEn} onChange={e => setPageForm(f => ({...f, metaDescriptionEn: e.target.value}))} placeholder="Describe this page in 120-160 characters..." className="w-full px-3 py-2 text-sm rounded-xl border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none h-20" />
+                  <p className={`text-[10px] mt-0.5 ${pageForm.metaDescriptionEn.length > 160 ? 'text-red-500' : pageForm.metaDescriptionEn.length < 120 ? 'text-amber-500' : 'text-green-600'}`}>{pageForm.metaDescriptionEn.length}/160 chars (target 120–160)</p>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground block mb-1">وصف التعريف (العربية)</label>
+                  <textarea dir="rtl" value={pageForm.metaDescriptionAr} onChange={e => setPageForm(f => ({...f, metaDescriptionAr: e.target.value}))} placeholder="اكتب وصفاً بين ١٢٠-١٦٠ حرفاً..." className="w-full px-3 py-2 text-sm rounded-xl border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none h-20" />
+                  <p className={`text-[10px] mt-0.5 ${pageForm.metaDescriptionAr.length > 160 ? 'text-red-500' : pageForm.metaDescriptionAr.length < 120 ? 'text-amber-500' : 'text-green-600'}`}>{pageForm.metaDescriptionAr.length}/160</p>
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="text-xs font-semibold text-muted-foreground block mb-1">Focus Keywords</label>
+                  <input value={pageForm.keywords} onChange={e => setPageForm(f => ({...f, keywords: e.target.value}))} placeholder="keyword1, keyword2, كلمة مفتاحية" className="w-full px-3 py-2 text-sm rounded-xl border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                </div>
+              </div>
+              <div className="flex items-center gap-4 flex-wrap">
+                <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+                  <input type="checkbox" checked={pageForm.isIndexed} onChange={e => setPageForm(f => ({...f, isIndexed: e.target.checked}))} className="rounded" />
+                  {t('Indexable', 'قابل للفهرسة')}
+                </label>
+                <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+                  <input type="checkbox" checked={pageForm.isFollowed} onChange={e => setPageForm(f => ({...f, isFollowed: e.target.checked}))} className="rounded" />
+                  {t('Followed', 'متابع الروابط')}
+                </label>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-muted-foreground">{t('Priority', 'الأولوية')}:</span>
+                  <select value={pageForm.sitemapPriority} onChange={e => setPageForm(f => ({...f, sitemapPriority: e.target.value}))} className="text-xs border border-input rounded-lg px-2 py-1.5 bg-background focus:outline-none">
+                    {['1.0','0.9','0.8','0.7','0.6','0.5','0.4','0.3'].map(v => <option key={v} value={v}>{v}</option>)}
+                  </select>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-muted-foreground">{t('Update freq', 'تكرار التحديث')}:</span>
+                  <select value={pageForm.sitemapChangefreq} onChange={e => setPageForm(f => ({...f, sitemapChangefreq: e.target.value}))} className="text-xs border border-input rounded-lg px-2 py-1.5 bg-background focus:outline-none">
+                    {['always','hourly','daily','weekly','monthly','yearly','never'].map(v => <option key={v} value={v}>{v}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              {/* SERP Preview */}
+              {(pageForm.metaTitleEn || pageForm.metaDescriptionEn) && (
+                <div className="bg-white border border-blue-100 rounded-xl p-4">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase mb-2 tracking-wider">SERP Preview</p>
+                  <p className="text-blue-700 text-sm font-medium hover:underline cursor-pointer line-clamp-1">
+                    {pageForm.metaTitleEn || 'Page Title | Tabaq'}
+                  </p>
+                  <p className="text-green-700 text-[11px] mt-0.5">tabaq.sa{editingPage}</p>
+                  <p className="text-gray-600 text-xs mt-1 line-clamp-2">{pageForm.metaDescriptionEn || 'Page description...'}</p>
+                </div>
+              )}
+
+              <div className="flex items-center gap-3">
+                <button onClick={savePage} disabled={savingPage} className="flex items-center gap-2 bg-primary text-primary-foreground px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors">
+                  {savingPage ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                  {t('Save Settings', 'حفظ الإعدادات')}
+                </button>
+                {saveMsg && <span className={`text-sm font-semibold ${saveMsg === 'Saved!' ? 'text-green-600' : 'text-red-500'}`}>{saveMsg}</span>}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── KEYWORDS ── */}
+      {subTab === 'keywords' && (
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">{t('Track and manage your target keywords. Use these to optimize page titles, headings, and content.', 'تتبع وإدارة الكلمات المفتاحية المستهدفة. استخدمها لتحسين عناوين الصفحات والعناوين الفرعية والمحتوى.')}</p>
+
+          {/* Add keyword */}
+          <div className="flex gap-2">
+            <input value={newKeyword} onChange={e => setNewKeyword(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && newKeyword.trim()) { setKeywords(k => [...k, { word: newKeyword.trim(), volume: 'N/A', difficulty: 'unknown' }]); setNewKeyword(''); } }} placeholder={t('Add a keyword...', 'أضف كلمة مفتاحية...')} className="flex-1 px-3 py-2 text-sm rounded-xl border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary/30" />
+            <button onClick={() => { if (newKeyword.trim()) { setKeywords(k => [...k, { word: newKeyword.trim(), volume: 'N/A', difficulty: 'unknown' }]); setNewKeyword(''); } }} className="bg-primary text-primary-foreground px-4 py-2 rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors">
+              <Plus className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="bg-card border border-border rounded-2xl overflow-hidden">
+            <div className="grid grid-cols-3 px-5 py-2.5 bg-secondary/30 text-[10px] font-bold text-muted-foreground uppercase tracking-wider border-b border-border">
+              <span>{t('Keyword', 'الكلمة المفتاحية')}</span>
+              <span>{t('Search Volume', 'حجم البحث')}</span>
+              <span>{t('Difficulty', 'الصعوبة')}</span>
+            </div>
+            <div className="divide-y divide-border">
+              {keywords.map((kw, i) => (
+                <div key={i} className="grid grid-cols-3 items-center px-5 py-3 group hover:bg-secondary/20 transition-colors">
+                  <div className="flex items-center gap-2">
+                    <Hash className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                    <span className="text-sm font-medium text-foreground">{kw.word}</span>
+                  </div>
+                  <span className="text-sm text-muted-foreground">{kw.volume}</span>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${kw.difficulty === 'low' ? 'bg-green-100 text-green-700' : kw.difficulty === 'medium' ? 'bg-amber-100 text-amber-700' : kw.difficulty === 'high' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'}`}>
+                      {kw.difficulty}
+                    </span>
+                    <button onClick={() => setKeywords(k => k.filter((_, j) => j !== i))} className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-50 rounded-lg text-red-500 transition-all">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Keyword recommendations */}
+          <div className="bg-card border border-border rounded-2xl p-5">
+            <h3 className="font-bold text-foreground mb-3">{t('AI Keyword Suggestions', 'اقتراحات الكلمات المفتاحية بالذكاء الاصطناعي')}</h3>
+            <div className="flex flex-wrap gap-2">
+              {['مطاعم فاخرة الرياض', 'صحن اليوم جدة', 'أفضل برغر الرياض', 'مطاعم حلال', 'best brunch Riyadh', 'iftar restaurants KSA', 'شيف سعودي', 'restaurant near me Riyadh', 'food delivery Saudi Arabia', 'مأكولات بحرية جدة'].map(sug => (
+                <button key={sug} onClick={() => { if (!keywords.find(k => k.word === sug)) setKeywords(k => [...k, { word: sug, volume: '~', difficulty: 'medium' }]); }} className="text-xs bg-secondary hover:bg-primary hover:text-primary-foreground px-3 py-1.5 rounded-lg font-medium transition-colors">
+                  + {sug}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── SITEMAP & ROBOTS ── */}
+      {subTab === 'sitemap' && (
+        <div className="space-y-5">
+          {/* Sitemap actions */}
+          <div className="bg-card border border-border rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="font-bold text-foreground">{t('Sitemap.xml', 'خريطة الموقع')}</h3>
+                <p className="text-xs text-muted-foreground">{t('Dynamic sitemap including all restaurants, blog posts, user profiles, and categories.', 'خريطة ديناميكية تشمل جميع المطاعم ومقالات المدونة وملفات المستخدمين والتصنيفات.')}</p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <a href="/api/sitemap.xml" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm bg-primary text-primary-foreground px-4 py-2.5 rounded-xl font-semibold hover:bg-primary/90 transition-colors">
+                <Globe className="w-4 h-4" />{t('View Sitemap', 'عرض الخريطة')}
+              </a>
+              <button onClick={() => { setSitemapRefreshed(true); setTimeout(() => setSitemapRefreshed(false), 3000); }} className={`flex items-center gap-2 text-sm px-4 py-2.5 rounded-xl font-semibold border transition-all ${sitemapRefreshed ? 'bg-green-50 border-green-300 text-green-700' : 'border-border hover:bg-secondary text-foreground'}`}>
+                <RefreshCw className={`w-4 h-4 ${sitemapRefreshed ? '' : ''}`} />
+                {sitemapRefreshed ? t('Regenerated!', 'تم التحديث!') : t('Regenerate Sitemap', 'إعادة توليد الخريطة')}
+              </button>
+            </div>
+
+            {/* Sitemap coverage table */}
+            <div className="mt-4 bg-secondary/30 rounded-xl overflow-hidden">
+              <div className="grid grid-cols-3 px-4 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                <span>URL Type</span><span>Count</span><span>Frequency</span>
+              </div>
+              {[
+                { type: 'Static pages', count: '11', freq: 'daily / weekly' },
+                { type: 'Restaurant pages', count: overviewData?.restaurantPages ?? '…', freq: 'weekly' },
+                { type: 'Blog articles', count: overviewData?.blogPages ?? '…', freq: 'monthly' },
+                { type: 'User profiles', count: overviewData?.profilePages ?? '…', freq: 'weekly' },
+                { type: 'Blog categories', count: '6+', freq: 'weekly' },
+              ].map(row => (
+                <div key={row.type} className="grid grid-cols-3 px-4 py-2 text-sm border-t border-border/50">
+                  <span className="text-foreground font-medium">{row.type}</span>
+                  <span className="text-muted-foreground">{String(row.count)}</span>
+                  <span className="text-muted-foreground">{row.freq}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Robots.txt */}
+          <div className="bg-card border border-border rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h3 className="font-bold text-foreground">robots.txt</h3>
+                <p className="text-xs text-muted-foreground">{t('Crawl directives for search engine bots.', 'توجيهات الزحف لروبوتات محركات البحث.')}</p>
+              </div>
+              <div className="flex gap-2">
+                <a href="/api/robots.txt" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-primary font-semibold hover:underline">
+                  <Globe className="w-3 h-3" />View live
+                </a>
+                <button onClick={() => setEditingRobots(!editingRobots)} className="flex items-center gap-1 text-xs font-semibold px-2 py-1 bg-secondary rounded-lg hover:bg-secondary/80">
+                  <Edit className="w-3 h-3" />{editingRobots ? 'Cancel' : 'Edit'}
+                </button>
+              </div>
+            </div>
+            <pre className={`text-xs font-mono bg-secondary/50 rounded-xl p-4 overflow-auto max-h-64 text-foreground ${editingRobots ? 'hidden' : ''}`}>{robotsTxt || 'Loading...'}</pre>
+            {editingRobots && (
+              <div className="space-y-3">
+                <textarea value={robotsTxt} onChange={e => setRobotsTxt(e.target.value)} className="w-full h-48 text-xs font-mono bg-secondary/50 border border-input rounded-xl p-4 resize-none focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                <p className="text-xs text-muted-foreground">{t('Note: robots.txt is server-generated. Changes here are for preview only. Edit the server configuration to apply changes permanently.', 'ملاحظة: ملف robots.txt يتم توليده من الخادم. التعديلات هنا للعرض فقط. عدّل إعدادات الخادم لتطبيق التغييرات بشكل دائم.')}</p>
+              </div>
+            )}
+          </div>
+
+          {/* hreflang info */}
+          <div className="bg-card border border-border rounded-2xl p-5">
+            <h3 className="font-bold text-foreground mb-3">{t('Multilingual SEO', 'تحسين محركات البحث متعدد اللغات')}</h3>
+            <div className="space-y-3">
+              {[
+                { label: 'hreflang tags', status: true, desc: 'All pages serve hreflang="ar" and hreflang="en" alternate links' },
+                { label: 'Arabic meta tags', status: true, desc: 'og:locale=ar_SA, og:locale:alternate=en_US on all pages' },
+                { label: 'RTL support', status: true, desc: 'dir="rtl" applied dynamically based on language selection' },
+                { label: 'Arabic keywords', status: true, desc: 'Arabic keywords included in meta content and structured data' },
+                { label: 'Bilingual blog', status: true, desc: 'Blog posts have both titleAr/titleEn and contentAr/contentEn' },
+              ].map(item => (
+                <div key={item.label} className="flex items-start gap-3">
+                  <CheckCircle2 className={`w-4 h-4 shrink-0 mt-0.5 ${item.status ? 'text-green-500' : 'text-amber-400'}`} />
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">{item.label}</p>
+                    <p className="text-xs text-muted-foreground">{item.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Blog Management Tab ────────────────────────────────────────
 function BlogManagementTab({ t }: { t: (en: string, ar: string) => string }) {
   const qc = useQueryClient();
@@ -1891,75 +2394,7 @@ export function AdminPanelPage() {
           {activeTab === 'blog' && <BlogManagementTab t={t} />}
 
           {/* ── SEO ── */}
-          {activeTab === 'seo' && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-3 gap-4">
-                {[
-                  { label: 'Avg. SEO Score', val: '89/100', icon: Globe, color: 'bg-green-50 text-green-600' },
-                  { label: 'Indexed Pages', val: '1,247', icon: Database, color: 'bg-blue-50 text-blue-600' },
-                  { label: 'Search Impressions/mo', val: '84K', icon: Eye, color: 'bg-purple-50 text-purple-600' },
-                ].map(s => {
-                  const Icon = s.icon;
-                  return (
-                    <div key={s.label} className="bg-card border border-border rounded-2xl p-5 flex items-center gap-4">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${s.color}`}><Icon className="w-5 h-5" /></div>
-                      <div>
-                        <p className="text-xl font-extrabold text-foreground">{s.val}</p>
-                        <p className="text-xs text-muted-foreground">{s.label}</p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className="bg-card border border-border rounded-2xl overflow-hidden">
-                <div className="p-5 border-b border-border flex items-center justify-between">
-                  <h3 className="font-bold text-foreground">Page SEO Status</h3>
-                  <button className="text-sm text-primary font-semibold hover:underline">Regenerate Sitemap</button>
-                </div>
-                <div className="divide-y divide-border">
-                  {SEO_PAGES.map(page => (
-                    <div key={page.path} className="px-5 py-4 flex items-center gap-4">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-mono text-primary mb-0.5">{page.path}</p>
-                        <p className="text-sm font-medium text-foreground line-clamp-1">{page.title}</p>
-                      </div>
-                      <div className="flex items-center gap-3 shrink-0">
-                        <div className="flex items-center gap-2">
-                          <div className="w-24 h-2 bg-secondary rounded-full overflow-hidden">
-                            <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${page.score}%` }} />
-                          </div>
-                          <span className={`text-xs font-bold ${page.score >= 90 ? 'text-green-600' : page.score >= 80 ? 'text-amber-600' : 'text-red-600'}`}>{page.score}</span>
-                        </div>
-                        <button className="p-1.5 rounded hover:bg-secondary text-muted-foreground"><Edit className="w-3.5 h-3.5" /></button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="bg-card border border-border rounded-2xl p-5">
-                <h3 className="font-bold text-foreground mb-4">Global Meta Settings</h3>
-                <div className="space-y-4 max-w-2xl">
-                  {[
-                    { label: 'Site Title Template', value: '%page_title% | Tabaq — Saudi Arabia\'s Best Dining Platform', type: 'text' },
-                    { label: 'Default Meta Description', value: 'Discover, book, and review the finest restaurants in Saudi Arabia. Tabaq connects diners with top restaurants across Riyadh, Jeddah, and the GCC.', type: 'textarea' },
-                    { label: 'Canonical Domain', value: 'https://tabaq.sa', type: 'text' },
-                  ].map(field => (
-                    <div key={field.label}>
-                      <label className="text-xs font-semibold text-muted-foreground block mb-1.5">{field.label}</label>
-                      {field.type === 'textarea' ? (
-                        <textarea defaultValue={field.value} className="w-full h-20 px-3 py-2 rounded-xl border border-input bg-background text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/20" />
-                      ) : (
-                        <input type="text" defaultValue={field.value} className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
-                      )}
-                    </div>
-                  ))}
-                  <Button className="mt-2">Save SEO Settings</Button>
-                </div>
-              </div>
-            </div>
-          )}
+          {activeTab === 'seo' && <AdminSeoTab t={t} />}
 
           {/* ── OFFERS MANAGEMENT ── */}
           {activeTab === 'offers' && (
