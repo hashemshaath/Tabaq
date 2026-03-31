@@ -863,6 +863,111 @@ export function HomePage() {
         </div>
       </section>
 
+      {/* ══ LUXURY DINING ════════════════════════════════════════ */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-14">
+        <div className="flex items-end justify-between mb-6">
+          <div>
+            <div className="inline-flex items-center gap-1.5 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 text-xs font-bold uppercase tracking-widest px-3 py-1.5 rounded-full border border-amber-200 dark:border-amber-700/50 mb-3">
+              <ChefHat className="w-3.5 h-3.5" />
+              {t('Luxury Dining', 'تناول الطعام الفاخر')}
+            </div>
+            <h2 className="text-xl md:text-2xl font-extrabold text-foreground leading-tight">
+              {t('Saudi Arabia\'s Most Prestigious Tables', 'أرقى موائد المملكة العربية السعودية')}
+            </h2>
+            <p className="text-xs text-muted-foreground mt-1">{t('Extraordinary experiences for extraordinary occasions', 'تجارب استثنائية لمناسبات استثنائية')}</p>
+          </div>
+          <Link href="/restaurants?tier=fine_dining" className="text-sm font-semibold text-primary hover:underline flex items-center gap-1 shrink-0">
+            {t('See all', 'عرض الكل')} <ChevronRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {[
+            {
+              id: 1,
+              nameEn: 'Nobu Riyadh', nameAr: 'نوبو الرياض',
+              descEn: 'World-renowned Japanese-Peruvian fusion by Chef Nobu Matsuhisa — elevated omakase in the heart of Riyadh.',
+              descAr: 'مزيج ياباني-بيروفي عالمي الشهرة للشيف نوبو ماتسوهيسا — أوماكاسي راقٍ في قلب الرياض.',
+              img: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=800&h=400&fit=crop',
+              rating: 4.9, reviewCount: 1240, priceEn: 'SAR 650+', priceAr: '٦٥٠+ ريال',
+              tagEn: 'Japanese Fusion', tagAr: 'فيوجن ياباني',
+              badge: '⭐ Michelin Starred',
+            },
+            {
+              id: 2,
+              nameEn: 'Lusin', nameAr: 'لوسين',
+              descEn: 'Acclaimed modern Armenian cuisine with Saudi-inspired elements, in an intimate candlelit setting.',
+              descAr: 'مطبخ أرمني حديث حائز على إشادة واسعة مع عناصر مستوحاة من السعودية، في أجواء حميمية بالشموع.',
+              img: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&h=400&fit=crop',
+              rating: 4.8, reviewCount: 980, priceEn: 'SAR 450+', priceAr: '٤٥٠+ ريال',
+              tagEn: 'Modern Cuisine', tagAr: 'مطبخ حديث',
+              badge: '⭐ Michelin Starred',
+            },
+            {
+              id: 5,
+              nameEn: 'The Globe', nameAr: 'ذا غلوب',
+              descEn: 'Iconic 360° dining at 300m above sea level — Saudi Arabia\'s most dramatic fine dining venue.',
+              descAr: 'تناول طعام بزاوية ٣٦٠° على ارتفاع ٣٠٠ متر — أكثر مواقع تناول الطعام الفاخر إثارة في المملكة.',
+              img: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&h=400&fit=crop',
+              rating: 4.7, reviewCount: 1580, priceEn: 'SAR 550+', priceAr: '٥٥٠+ ريال',
+              tagEn: 'International', tagAr: 'دولي',
+              badge: '🏆 Top Rated',
+            },
+            {
+              id: 3,
+              nameEn: 'Najd Village', nameAr: 'قرية نجد',
+              descEn: 'The definitive Saudi heritage dining experience — traditional Najdi recipes in stunning mud-brick architecture.',
+              descAr: 'التجربة الغذائية التراثية السعودية الأكثر تميزاً — وصفات نجدية تقليدية في عمارة الطين الخلابة.',
+              img: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&h=400&fit=crop',
+              rating: 4.8, reviewCount: 2100, priceEn: 'SAR 250+', priceAr: '٢٥٠+ ريال',
+              tagEn: 'Saudi Heritage', tagAr: 'تراث سعودي',
+              badge: '🍽️ Local Favourite',
+            },
+          ].map(venue => (
+            <Link key={venue.id} href={`/restaurants/${venue.id}`} className="block group">
+              <div className="relative rounded-2xl overflow-hidden border border-border/60 hover:border-amber-200 hover:shadow-xl transition-all duration-300 bg-card">
+                <div className="relative h-44 overflow-hidden">
+                  <img
+                    src={venue.img}
+                    alt={lang === 'ar' ? venue.nameAr : venue.nameEn}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                  <span className="absolute top-3 start-3 text-xs font-bold bg-black/60 backdrop-blur-sm text-amber-300 px-2.5 py-1 rounded-full border border-amber-400/30">
+                    {venue.badge}
+                  </span>
+                  <span className="absolute top-3 end-3 text-xs font-semibold bg-white/90 text-gray-800 px-2.5 py-1 rounded-full">
+                    {lang === 'ar' ? venue.tagAr : venue.tagEn}
+                  </span>
+                </div>
+                <div className="p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <h3 className="font-bold text-foreground text-base line-clamp-1 group-hover:text-primary transition-colors">
+                        {lang === 'ar' ? venue.nameAr : venue.nameEn}
+                      </h3>
+                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2 leading-relaxed">
+                        {lang === 'ar' ? venue.descAr : venue.descEn}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/50">
+                    <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded-md">
+                        <Star className="w-3 h-3 fill-current" />
+                        <span className="text-xs font-bold">{venue.rating}</span>
+                      </div>
+                      <span className="text-xs text-muted-foreground">{venue.reviewCount.toLocaleString()} {t('reviews', 'تقييم')}</span>
+                    </div>
+                    <span className="text-sm font-black text-primary">{lang === 'ar' ? venue.priceAr : venue.priceEn}</span>
+                  </div>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
+
       {/* ══ FOOD EXPERIENCES ═════════════════════════════════════ */}
       <FoodExperiencesSection />
 

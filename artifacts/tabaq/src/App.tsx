@@ -42,7 +42,7 @@ import { TabaqGoldPage } from "@/pages/TabaqGoldPage";
 import FeedPage from "@/pages/FeedPage";
 import NotificationsPage from "@/pages/NotificationsPage";
 import NotFound from "@/pages/not-found";
-import { TermsPage, PrivacyPage } from "@/pages/StaticPage";
+import { TermsPage, PrivacyPage, AboutPage, FAQPage, ContactPage } from "@/pages/StaticPage";
 import { ExperiencesPage } from "@/pages/ExperiencesPage";
 import { ExperienceDetailPage } from "@/pages/ExperienceDetailPage";
 import { GiftRedeemPage } from "@/pages/GiftRedeemPage";
@@ -102,6 +102,9 @@ function Router() {
               <Route path="/gift-redeem/:code" component={GiftRedeemPage} />
               <Route path="/terms" component={TermsPage} />
               <Route path="/privacy" component={PrivacyPage} />
+              <Route path="/about" component={AboutPage} />
+              <Route path="/faq" component={FAQPage} />
+              <Route path="/contact" component={ContactPage} />
               <Route component={NotFound} />
             </Switch>
           </main>

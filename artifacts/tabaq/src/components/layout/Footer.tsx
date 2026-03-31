@@ -111,16 +111,16 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Business */}
+          {/* Company */}
           <div>
-            <h4 className="text-sm font-semibold text-white mb-4 uppercase tracking-wide">{t('Business', 'للأعمال')}</h4>
+            <h4 className="text-sm font-semibold text-white mb-4 uppercase tracking-wide">{t('Company', 'الشركة')}</h4>
             <ul className="space-y-2.5 text-sm text-white/55">
               {[
+                { href: '/about', en: 'About Tabaq', ar: 'عن طبق' },
+                { href: '/contact', en: 'Contact Us', ar: 'تواصل معنا' },
+                { href: '/faq', en: 'FAQ', ar: 'الأسئلة الشائعة' },
                 { href: '/partners', en: 'List Your Restaurant', ar: 'أضف مطعمك' },
-                { href: '/partners/register', en: 'Partner With Us', ar: 'شاركنا' },
-                { href: '/console', en: 'Business Console', ar: 'لوحة الأعمال' },
-                { href: '/settings', en: 'Platform Settings', ar: 'إعدادات المنصة' },
-                { href: '/admin', en: 'Admin Panel', ar: 'لوحة الإدارة' },
+                { href: '/gold', en: 'Tabaq Gold', ar: 'طبق جولد' },
               ].map(link => (
                 <li key={link.href}>
                   <Link href={link.href} className="hover:text-primary transition-colors">

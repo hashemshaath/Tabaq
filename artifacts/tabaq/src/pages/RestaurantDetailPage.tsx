@@ -26,7 +26,7 @@ import {
   ChevronLeft, ChevronRight, Tag, BookImage,
   X, ParkingSquare, Trees, DoorOpen, BadgeCheck, Wifi, CreditCard,
   Bookmark, BookmarkCheck, Share2, ArrowLeft, Navigation,
-  Package, TrendingUp, Bike,
+  Package, TrendingUp, Bike, ChefHat, Crown, Flame,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
@@ -701,6 +701,89 @@ export function RestaurantDetailPage() {
                         <span key={occ.id} className="px-3 py-1 rounded-full bg-gray-100 text-gray-700 text-xs font-medium">
                           {occ.icon} {lang === 'ar' ? occ.nameAr : occ.nameEn}
                         </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Chef's Highlights */}
+                {menuData && (() => {
+                  const allDishes = menuData.flatMap((m: any) => m.sections ?? []).flatMap((s: any) => (s.items ?? []) as any[]);
+                  const badges = [
+                    { key: 'isTabaqStar', labelEn: "Chef's Choice", labelAr: 'اختيار الشيف', icon: Crown, color: 'bg-amber-500 text-white' },
+                    { key: 'isMostOrdered', labelEn: 'Bestseller', labelAr: 'الأكثر طلباً', icon: Flame, color: 'bg-primary text-white' },
+                  ];
+                  const featured = allDishes.filter((d: any) => d.isTabaqStar || d.isMostOrdered).slice(0, 3);
+                  const fallback = allDishes.slice(0, 3);
+                  const highlights = featured.length > 0 ? featured : fallback;
+                  if (highlights.length === 0) return null;
+                  return (
+                    <div className="bg-white rounded-lg border border-gray-200 p-5">
+                      <h2 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <ChefHat className="w-4 h-4 text-primary" />
+                        {t("Chef's Highlights", 'أبرز أطباق الشيف')}
+                      </h2>
+                      <div className="space-y-3">
+                        {highlights.map((dish: any, idx: number) => {
+                          const dishName = lang === 'ar' ? dish.nameAr : dish.nameEn;
+                          const badge = badges.find(b => dish[b.key]) ?? (idx === 0 ? badges[0] : null);
+                          const BadgeIcon = badge?.icon;
+                          return (
+                            <Link key={dish.id} href={`/dishes/${dish.id}`}>
+                              <div className="flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 transition-colors group">
+                                <div className="w-16 h-16 rounded-xl overflow-hidden bg-gray-100 shrink-0 relative">
+                                  {dish.imageUrl ? (
+                                    <img src={dish.imageUrl} alt={dishName} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
+                                  ) : (
+                                    <div className="w-full h-full bg-primary/10 flex items-center justify-center">
+                                      <Utensils className="w-5 h-5 text-primary/40" />
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-0.5">
+                                    {badge && BadgeIcon && (
+                                      <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${badge.color}`}>
+                                        <BadgeIcon className="w-2.5 h-2.5" />
+                                        {t(badge.labelEn, badge.labelAr)}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="font-semibold text-gray-900 text-sm line-clamp-1">{dishName}</p>
+                                  {dish.price && (
+                                    <p className="text-primary font-bold text-xs mt-0.5">
+                                      {Number(dish.price).toLocaleString('en-SA', { style: 'currency', currency: dish.currency || 'SAR', minimumFractionDigits: 0 })}
+                                    </p>
+                                  )}
+                                </div>
+                                <ChevronRight className="w-4 h-4 text-gray-300 shrink-0" />
+                              </div>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                      <button onClick={() => setActiveTab('menu')} className="w-full mt-3 text-sm text-primary font-semibold hover:underline text-center">
+                        {t('See full menu →', 'عرض القائمة كاملة →')}
+                      </button>
+                    </div>
+                  );
+                })()}
+
+                {/* Dining Experience Tags */}
+                {occasions.length > 0 && (
+                  <div className="bg-white rounded-lg border border-gray-200 p-5">
+                    <h2 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
+                      <Utensils className="w-4 h-4 text-primary" />
+                      {t('Perfect For', 'مثالي لـ')}
+                    </h2>
+                    <div className="grid grid-cols-2 gap-2">
+                      {occasions.slice(0, 6).map((occ: any) => (
+                        <div key={occ.id} className="flex items-center gap-2.5 bg-secondary/40 rounded-xl px-3 py-2.5">
+                          <span className="text-lg leading-none">{occ.icon}</span>
+                          <span className="text-xs font-semibold text-foreground">
+                            {lang === 'ar' ? occ.nameAr : occ.nameEn}
+                          </span>
+                        </div>
                       ))}
                     </div>
                   </div>
