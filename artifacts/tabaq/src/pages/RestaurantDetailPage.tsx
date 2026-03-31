@@ -180,6 +180,7 @@ function BookingSection({ restaurantId, restaurantNameEn, restaurantNameAr, comp
   const [selectedDateIdx, setSelectedDateIdx] = useState(0);
   const [selectedTime, setSelectedTime] = useState('');
   const [partySize, setPartySize] = useState(2);
+  const [tableType, setTableType] = useState<string | undefined>();
   const [occasionId, setOccasionId] = useState<number | undefined>();
   const [specialRequests, setSpecialRequests] = useState('');
   const [step, setStep] = useState<'select' | 'confirm' | 'success'>('select');
@@ -264,6 +265,7 @@ function BookingSection({ restaurantId, restaurantNameEn, restaurantNameAr, comp
             { label: t('Date', 'التاريخ'), value: dateKey },
             { label: t('Time', 'الوقت'), value: selectedTime },
             { label: t('Guests', 'الأشخاص'), value: String(partySize) },
+            ...(tableType ? [{ label: t('Table', 'الطاولة'), value: { indoor: lang === 'ar' ? 'داخلي' : 'Indoor', window: lang === 'ar' ? 'طاولة نافذة' : 'Window Seat', outdoor: lang === 'ar' ? 'في الهواء الطلق' : 'Outdoor', vip: 'VIP Room' }[tableType] ?? tableType }] : []),
             ...(occasionId ? [{ label: t('Occasion', 'المناسبة'), value: lang === 'ar' ? occasions.find(o => o.id === occasionId)?.nameAr ?? '' : occasions.find(o => o.id === occasionId)?.nameEn ?? '' }] : []),
           ].map(({ label, value }) => (
             <div key={label} className="flex justify-between gap-4">
@@ -295,6 +297,28 @@ function BookingSection({ restaurantId, restaurantNameEn, restaurantNameAr, comp
           <span className="text-lg font-bold text-gray-900 w-8 text-center">{partySize}</span>
           <button onClick={() => setPartySize(p => Math.min(20, p + 1))} className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:border-primary hover:text-primary text-gray-700 transition-colors text-lg font-light">+</button>
           <span className="text-sm text-gray-500">{t('guests', 'أشخاص')}</span>
+        </div>
+      </div>
+
+      {/* Table Type */}
+      <div>
+        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t('Table Preference', 'تفضيل الطاولة')}</label>
+        <div className="grid grid-cols-2 gap-2">
+          {([
+            { id: 'indoor', icon: '🪑', labelEn: 'Indoor', labelAr: 'داخلي' },
+            { id: 'window', icon: '🪟', labelEn: 'Window Seat', labelAr: 'طاولة نافذة' },
+            { id: 'outdoor', icon: '🌿', labelEn: 'Outdoor', labelAr: 'في الهواء الطلق' },
+            { id: 'vip', icon: '⭐', labelEn: 'VIP Room', labelAr: 'غرفة VIP' },
+          ] as const).map(type => (
+            <button
+              key={type.id}
+              onClick={() => setTableType(tableType === type.id ? undefined : type.id)}
+              className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-medium transition-all ${tableType === type.id ? 'bg-primary/10 border-primary text-primary shadow-sm' : 'border-gray-200 text-gray-600 hover:border-primary/50 bg-white'}`}
+            >
+              <span className="text-base leading-none">{type.icon}</span>
+              <span>{lang === 'ar' ? type.labelAr : type.labelEn}</span>
+            </button>
+          ))}
         </div>
       </div>
 

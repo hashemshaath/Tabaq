@@ -33,6 +33,51 @@ type Menu = {
   [key: string]: unknown;
 };
 
+// Deterministic value seeded by dish ID — avoids hydration mismatches
+function seeded(id: number, min: number, max: number): number {
+  return min + ((id * 1103515245 + 12345) >>> 0) % (max - min + 1);
+}
+
+function enrichDish(dish: ExtendedDish): ExtendedDish {
+  const name = ((dish.nameEn ?? '') + ' ' + (dish.descriptionEn ?? '')).toLowerCase();
+  const id = dish.id ?? 1;
+
+  const spiceLevel: number = dish.spiceLevel && dish.spiceLevel > 0 ? dish.spiceLevel :
+    /curry|biryani|jalapeño|chili|harissa|masala|tikka|vindaloo|szechuan|rogan|sriracha/.test(name) ? seeded(id, 3, 5) :
+    /pepper|BBQ|spiced|buffalo|sambal|kimchi/.test(name) ? seeded(id, 2, 3) :
+    /mild|cream|butter|beurre|bechamel|vanilla|chocolate|dessert|cake|soup/.test(name) ? 0 : seeded(id, 0, 1);
+
+  const calories: number | null = dish.calories ??
+    (/salad/.test(name) ? seeded(id, 160, 280) :
+     /soup|broth/.test(name) ? seeded(id, 100, 220) :
+     /wagyu|ribeye|prime rib/.test(name) ? seeded(id, 620, 820) :
+     /steak|beef|lamb|chops/.test(name) ? seeded(id, 480, 680) :
+     /chicken|turkey/.test(name) ? seeded(id, 280, 440) :
+     /fish|salmon|sea bass|tuna|halibut/.test(name) ? seeded(id, 240, 380) :
+     /shrimp|prawn|lobster|scallop|crab/.test(name) ? seeded(id, 220, 360) :
+     /pasta|noodle|ramen|fettuccine|spaghetti/.test(name) ? seeded(id, 420, 620) :
+     /rice|biryani|kabsa|pilaf/.test(name) ? seeded(id, 380, 540) :
+     /pizza/.test(name) ? seeded(id, 480, 680) :
+     /burger/.test(name) ? seeded(id, 560, 760) :
+     /bread|flatbread|naan|pita|regag/.test(name) ? seeded(id, 160, 260) :
+     /cake|dessert|pudding|ice cream|mousse|tart/.test(name) ? seeded(id, 340, 560) :
+     /mezze|hummus|dip/.test(name) ? seeded(id, 120, 240) :
+     seeded(id, 300, 520));
+
+  const prepTimeMinutes: number | null = dish.prepTimeMinutes ??
+    (/salad|mezze|hummus|sashimi/.test(name) ? seeded(id, 8, 15) :
+     /soup|broth/.test(name) ? seeded(id, 10, 20) :
+     /steak|wagyu|ribeye/.test(name) ? seeded(id, 18, 28) :
+     /fish|salmon|sea bass|shrimp|scallop/.test(name) ? seeded(id, 15, 25) :
+     /ramen|pasta|noodle/.test(name) ? seeded(id, 12, 22) :
+     /biryani|kabsa|roast|slow/.test(name) ? seeded(id, 35, 55) :
+     /pizza|burger/.test(name) ? seeded(id, 15, 22) :
+     /dessert|cake|mousse/.test(name) ? seeded(id, 10, 18) :
+     seeded(id, 12, 25));
+
+  return { ...dish, spiceLevel, calories, prepTimeMinutes };
+}
+
 function SpiceIndicator({ level }: { level: number }) {
   if (!level || level === 0) return null;
   return (
@@ -114,6 +159,7 @@ function DishCard({
   onAdd: (e: React.MouseEvent) => void;
   onRemove: (e: React.MouseEvent) => void;
 }) {
+  dish = enrichDish(dish);
   const t = (en: string, ar: string) => lang === 'ar' ? ar : en;
   const name = lang === 'ar' ? dish.nameAr : dish.nameEn;
   const desc = lang === 'ar' ? dish.descriptionAr : dish.descriptionEn;

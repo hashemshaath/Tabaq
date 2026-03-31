@@ -114,6 +114,27 @@ const OCCASION_META: Record<string, { img: string; gradient: string }> = {
   'Ramadan Iftar':        { img: 'https://images.unsplash.com/photo-1510626176961-4b57d4fbad03?w=300&h=200&fit=crop', gradient: 'from-indigo-500 to-purple-700' },
   'Romantic Date':        { img: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=300&h=200&fit=crop', gradient: 'from-red-400 to-rose-600' },
 };
+const RESTAURANT_OF_THE_WEEK = {
+  id: 7,
+  nameEn: 'Nobu Riyadh',
+  nameAr: 'نوبو الرياض',
+  coverImg: 'https://images.unsplash.com/photo-1562802378-063ec186a863?w=1600&h=800&fit=crop',
+  cuisineEn: 'Japanese-Peruvian Fusion',
+  cuisineAr: 'مزيج ياباني بيروفي',
+  cityEn: 'Riyadh',
+  cityAr: 'الرياض',
+  rating: 4.85,
+  reviews: 734,
+  quoteEn: '"The black cod miso is the finest I\'ve encountered anywhere in the world — silky, perfectly lacquered, and absolutely unforgettable."',
+  quoteAr: '"القد الأسود بالميزو هو الأرقى الذي صادفته في أي مكان بالعالم — حريري، مطلي بشكل مثالي، ولا يُنسى تماماً."',
+  criticEn: '— Noura Al-Rashid, Top Food Critic',
+  criticAr: '— نورة الراشد، ناقدة طعام من الدرجة الأولى',
+  signatureDishesEn: ['Black Cod Miso', 'Yellowtail Jalapeño', 'Rock Shrimp Tempura'],
+  signatureDishesAr: ['قد أسود بالميزو', 'ذيل أصفر بالجلابينيو', 'روك شريمب تمبورا'],
+  tagEn: 'Michelin-Starred',
+  tagAr: 'حائز على نجمة ميشلان',
+};
+
 const OCCASION_FALLBACK_GRADIENTS = [
   'from-violet-400 to-purple-600',
   'from-rose-400 to-pink-600',
@@ -1151,6 +1172,67 @@ export function HomePage() {
               </div>
             </Link>
           ))}
+        </div>
+      </section>
+
+      {/* ══ RESTAURANT OF THE WEEK ════════════════════════════════ */}
+      <section className="mb-16">
+        <div className="relative overflow-hidden" style={{ minHeight: 420 }}>
+          <img
+            src={RESTAURANT_OF_THE_WEEK.coverImg}
+            alt={RESTAURANT_OF_THE_WEEK.nameEn}
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/60 to-transparent" />
+          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 flex flex-col justify-center" style={{ minHeight: 420 }}>
+            <div className="max-w-xl">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-[10px] font-bold tracking-[0.2em] uppercase bg-primary text-white px-2.5 py-1 rounded-full">
+                  {t('Restaurant of the Week', 'مطعم الأسبوع')}
+                </span>
+                <span className="text-[10px] font-bold tracking-[0.15em] uppercase bg-yellow-500/20 text-yellow-300 border border-yellow-500/40 px-2.5 py-1 rounded-full">
+                  {lang === 'ar' ? RESTAURANT_OF_THE_WEEK.tagAr : RESTAURANT_OF_THE_WEEK.tagEn}
+                </span>
+              </div>
+              <h2 className={`text-3xl sm:text-4xl font-black text-white mb-1 ${lang === 'ar' ? 'font-arabic' : ''}`}>
+                {lang === 'ar' ? RESTAURANT_OF_THE_WEEK.nameAr : RESTAURANT_OF_THE_WEEK.nameEn}
+              </h2>
+              <p className="text-sm text-white/60 mb-5">
+                {lang === 'ar' ? RESTAURANT_OF_THE_WEEK.cuisineAr : RESTAURANT_OF_THE_WEEK.cuisineEn}
+                <span className="mx-2 text-white/30">·</span>
+                <MapPin className="w-3 h-3 inline mb-0.5" />
+                {' '}{lang === 'ar' ? RESTAURANT_OF_THE_WEEK.cityAr : RESTAURANT_OF_THE_WEEK.cityEn}
+              </p>
+              <div className="flex items-center gap-2 mb-5">
+                <div className="flex">
+                  {[1,2,3,4,5].map(i => (
+                    <Star key={i} className={`w-4 h-4 ${i <= Math.round(RESTAURANT_OF_THE_WEEK.rating) ? 'text-yellow-400 fill-yellow-400' : 'text-white/20'}`} />
+                  ))}
+                </div>
+                <span className="text-white font-bold text-sm">{RESTAURANT_OF_THE_WEEK.rating}</span>
+                <span className="text-white/40 text-sm">({RESTAURANT_OF_THE_WEEK.reviews.toLocaleString()} {t('reviews', 'تقييم')})</span>
+              </div>
+              <blockquote className={`text-white/80 text-sm leading-relaxed italic mb-3 border-l-2 border-primary pl-4 ${lang === 'ar' ? 'border-l-0 border-r-2 pr-4 pl-0 text-right font-arabic' : ''}`}>
+                {lang === 'ar' ? RESTAURANT_OF_THE_WEEK.quoteAr : RESTAURANT_OF_THE_WEEK.quoteEn}
+              </blockquote>
+              <p className="text-white/50 text-xs mb-6">
+                {lang === 'ar' ? RESTAURANT_OF_THE_WEEK.criticAr : RESTAURANT_OF_THE_WEEK.criticEn}
+              </p>
+              <div className="flex flex-wrap gap-2 mb-7">
+                {(lang === 'ar' ? RESTAURANT_OF_THE_WEEK.signatureDishesAr : RESTAURANT_OF_THE_WEEK.signatureDishesEn).map(dish => (
+                  <span key={dish} className="text-xs text-white/70 bg-white/10 border border-white/20 px-3 py-1 rounded-full backdrop-blur-sm">
+                    {dish}
+                  </span>
+                ))}
+              </div>
+              <Link href={`/restaurants/${RESTAURANT_OF_THE_WEEK.id}`}>
+                <button className="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-white text-sm font-bold px-6 py-3 rounded-full transition-all shadow-lg shadow-primary/30 hover:shadow-primary/50 hover:scale-[1.02]">
+                  {t('Explore Restaurant', 'استكشف المطعم')}
+                  <ArrowRight className={`w-4 h-4 ${lang === 'ar' ? 'rotate-180' : ''}`} />
+                </button>
+              </Link>
+            </div>
+          </div>
         </div>
       </section>
 
