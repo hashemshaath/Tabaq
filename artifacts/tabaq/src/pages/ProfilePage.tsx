@@ -15,7 +15,7 @@ import {
 } from "@workspace/api-client-react";
 import { Link } from "wouter";
 import {
-  User, Settings, ShieldCheck, MapPin, Calendar, Star, LogIn,
+  User, Settings, ShieldCheck, MapPin, Calendar, Star,
   BookOpen, Clock, Users, AtSign, CheckCircle2, XCircle, Loader2,
   Gift, Copy, ChevronRight, Sparkles, Lock, UserPlus, UserMinus,
 } from "lucide-react";
@@ -24,6 +24,52 @@ import { Button } from "@/components/ui/button";
 type Tab = "activity" | "followers" | "following" | "settings";
 
 const RESERVED_USERNAMES = ["tabaq", "admin", "api", "support", "help", "www", "mail", "root", "system", "official"];
+
+const MOCK_PROFILE_DATA = {
+  user: {
+    id: 0,
+    nameEn: 'Layla Al-Rashidi',
+    nameAr: 'ليلى الراشدي',
+    avatarUrl: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=300&h=300&fit=crop&crop=face',
+    isVerified: true,
+    isEmailVerified: true,
+    bio: "Food explorer & home chef documenting Saudi Arabia's finest dining scene — one meal at a time.",
+    createdAt: '2023-09-15T00:00:00Z',
+    points: 1850,
+    level: 4,
+    levelTitle: 'Gourmand',
+    credibilityScore: '9.2',
+    username: 'layla.rashidi',
+  },
+  reviewCount: 47,
+  bookingCount: 12,
+  followerCount: 284,
+  followingCount: 91,
+};
+
+const MOCK_ACTIVITY_DATA = {
+  events: [
+    { type: 'review', createdAt: '2026-03-28T18:00:00Z', data: { restaurantNameEn: 'Nobu Riyadh', restaurantNameAr: 'نوبو الرياض', ratingOverall: 5, textEn: "Absolutely divine black cod miso — best I've had outside Tokyo.", textAr: 'سمك القد الأسود بالميسو رائع — الأفضل خارج طوكيو.' } },
+    { type: 'booking', createdAt: '2026-03-25T10:00:00Z', data: { restaurantNameEn: 'Sushi Sama', restaurantNameAr: 'سوشي ساما', date: '2026-04-12', partySize: 2, status: 'confirmed' } },
+    { type: 'review', createdAt: '2026-03-20T20:00:00Z', data: { restaurantNameEn: 'Qaryat Najd', restaurantNameAr: 'قرية نجد', ratingOverall: 4, textEn: 'Authentic Saudi cuisine in a beautiful heritage setting.', textAr: 'مطبخ سعودي أصيل في محيط تراثي جميل.' } },
+    { type: 'review', createdAt: '2026-03-10T19:00:00Z', data: { restaurantNameEn: 'Lucine', restaurantNameAr: 'لوسين', ratingOverall: 5, textEn: 'Impeccable service and creative Armenian fusion dishes.', textAr: 'خدمة لا تشوبها شائبة وأطباق أرمنية مبتكرة.' } },
+    { type: 'booking', createdAt: '2026-03-05T09:00:00Z', data: { restaurantNameEn: 'The Globe', restaurantNameAr: 'ذا غلوب', date: '2026-03-18', partySize: 4, status: 'completed' } },
+    { type: 'review', createdAt: '2026-02-28T21:00:00Z', data: { restaurantNameEn: 'Reem Al-Bawadi', restaurantNameAr: 'ريم البوادي', ratingOverall: 4, textEn: 'Great mezze spread and generous portions. Kids loved it!', textAr: 'مقبلات رائعة وحصص سخية. الأطفال أحبوها!' } },
+  ],
+};
+
+const MOCK_FOLLOWERS_LIST = [
+  { id: 11, nameEn: 'Faisal Al-Otaibi', nameAr: 'فيصل العتيبي', avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop&crop=face', levelTitle: 'Food Critic', isVerified: true },
+  { id: 12, nameEn: 'Sara Mahmoud', nameAr: 'سارة محمود', avatarUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=80&h=80&fit=crop&crop=face', levelTitle: 'Gourmet Explorer', isVerified: false },
+  { id: 13, nameEn: 'Mohammed Al-Zahrani', nameAr: 'محمد الزهراني', avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=80&h=80&fit=crop&crop=face', levelTitle: 'Food Adventurer', isVerified: false },
+  { id: 14, nameEn: 'Noura Al-Ghamdi', nameAr: 'نورا الغامدي', avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=80&h=80&fit=crop&crop=face', levelTitle: 'Michelin Enthusiast', isVerified: true },
+];
+
+const MOCK_FOLLOWING_LIST = [
+  { id: 15, nameEn: 'Khalid Bin Mansour', nameAr: 'خالد بن منصور', avatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=80&h=80&fit=crop&crop=face', levelTitle: 'Saudi Cuisine Expert', isVerified: true },
+  { id: 16, nameEn: 'Hessa Al-Salmani', nameAr: 'حصة السلماني', avatarUrl: 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=80&h=80&fit=crop&crop=face', levelTitle: 'Michelin Tracker', isVerified: true },
+  { id: 17, nameEn: 'Turki Al-Anzi', nameAr: 'تركي العنزي', avatarUrl: 'https://images.unsplash.com/photo-1463453091185-61582044d556?w=80&h=80&fit=crop&crop=face', levelTitle: 'Street Food Lover', isVerified: false },
+];
 const USERNAME_REGEX = /^[a-zA-Z0-9_\.]{3,30}$/;
 
 function validateUsername(value: string): string | null {
@@ -162,98 +208,12 @@ export function ProfilePage() {
     );
   }
 
-  if (!authUser) {
-    return (
-      <div className="min-h-screen bg-background pb-20" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
-        {/* Sample profile hero (blurred/locked) */}
-        <div className="h-44 md:h-56 bg-gradient-to-r from-primary/80 via-primary to-violet-600 relative overflow-hidden">
-          <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=1200&h=300&fit=crop')] bg-cover bg-center opacity-20" />
-          <div className="absolute inset-0 backdrop-blur-[1px]" />
-        </div>
+  const effectiveData = authUser ? data : MOCK_PROFILE_DATA;
+  const effectiveActivity = authUser ? activityData : MOCK_ACTIVITY_DATA;
+  const effectiveFollowers: any[] = authUser ? (followersData ?? []) : MOCK_FOLLOWERS_LIST;
+  const effectiveFollowing: any[] = authUser ? (followingData ?? []) : MOCK_FOLLOWING_LIST;
 
-        <div className="max-w-3xl mx-auto px-4 sm:px-6">
-          {/* Sample Profile Card */}
-          <div className="bg-card rounded-3xl p-6 md:p-8 shadow-xl border border-border -mt-16 relative z-10">
-            <div className="flex flex-col sm:flex-row gap-5 items-center sm:items-start text-center sm:text-start">
-              {/* Locked avatar */}
-              <div className="relative shrink-0">
-                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary/20 to-violet-200 border-4 border-card shadow-lg flex items-center justify-center">
-                  <User className="w-12 h-12 text-primary/40" />
-                </div>
-                <div className="absolute inset-0 rounded-full bg-white/30 backdrop-blur-sm flex items-center justify-center">
-                  <Lock className="w-7 h-7 text-primary" />
-                </div>
-              </div>
-              <div className="flex-1">
-                <div className="h-7 w-40 bg-muted rounded-xl mx-auto sm:mx-0 mb-2 animate-pulse" />
-                <div className="h-4 w-28 bg-muted/60 rounded-lg mx-auto sm:mx-0 mb-4 animate-pulse" />
-                <div className="flex flex-wrap justify-center sm:justify-start gap-6">
-                  {[t('Reviews','تقييمات'), t('Bookings','حجوزات'), t('Followers','متابعون'), t('Points','نقاط')].map(label => (
-                    <div key={label} className="text-center">
-                      <div className="h-6 w-8 bg-muted rounded-lg mx-auto mb-1 animate-pulse" />
-                      <p className="text-xs text-muted-foreground">{label}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Central CTA */}
-          <div className="mt-8 text-center">
-            <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-1.5 rounded-full text-sm font-semibold mb-4">
-              <Sparkles className="w-4 h-4" />
-              {t('Unlock your food profile', 'أطلق عنان ملفك الغذائي')}
-            </div>
-            <h2 className="text-3xl font-extrabold text-foreground mb-3">
-              {t('Your culinary identity awaits', 'هويتك الطهي في انتظارك')}
-            </h2>
-            <p className="text-muted-foreground max-w-md mx-auto mb-7 text-base">
-              {t(
-                'Sign in to track your dining adventures, earn points, climb the leaderboard, and share your food stories.',
-                'سجّل دخولك لتتبع مغامراتك الطعامية، وتجميع النقاط، والصعود في القائمة، ومشاركة قصصك الغذائية.'
-              )}
-            </p>
-            <div className="flex gap-3 justify-center flex-wrap">
-              <Link href="/signin">
-                <Button className="gap-2 rounded-xl px-8 h-12 text-base font-semibold shadow-lg shadow-primary/20">
-                  <LogIn className="w-5 h-5" />
-                  {t('Sign In', 'تسجيل الدخول')}
-                </Button>
-              </Link>
-              <Link href="/restaurants">
-                <Button variant="outline" className="rounded-xl px-6 h-12 text-base font-semibold">
-                  {t('Explore First', 'استكشف أولاً')}
-                </Button>
-              </Link>
-            </div>
-          </div>
-
-          {/* What you get */}
-          <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {[
-              { icon: Star, title: t('Earn & Track Points', 'اجمع وتتبع النقاط'), desc: t('Every review and booking earns you points toward rewards.', 'كل تقييم وحجز يمنحك نقاطاً نحو المكافآت.'), color: 'bg-amber-50 text-amber-600' },
-              { icon: Gift, title: t('Exclusive Vouchers', 'قسائم حصرية'), desc: t('Receive personalised discount vouchers from your favourite spots.', 'احصل على قسائم خصم مخصصة من أماكنك المفضلة.'), color: 'bg-rose-50 text-rose-600' },
-              { icon: Users, title: t('Follow Foodies', 'تابع عشاق الطعام'), desc: t('Build your own community of trusted food critics.', 'ابنِ مجتمعك الخاص من نقاد الطعام الموثوقين.'), color: 'bg-blue-50 text-blue-600' },
-              { icon: ChevronRight, title: t('Personalised Feed', 'تغذية مخصصة'), desc: t('Discover restaurants matched to your taste and history.', 'اكتشف مطاعم مناسبة لذوقك وتاريخك.'), color: 'bg-violet-50 text-violet-600' },
-            ].map(({ icon: Icon, title, desc, color }) => (
-              <div key={title} className="flex gap-4 p-5 bg-card border border-border rounded-2xl hover:shadow-sm transition-shadow">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${color}`}>
-                  <Icon className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="font-bold text-foreground text-sm mb-0.5">{title}</p>
-                  <p className="text-xs text-muted-foreground leading-relaxed">{desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (isLoading || !data?.user) {
+  if (authUser && (isLoading || !data?.user)) {
     return (
       <div className="min-h-screen p-20 flex justify-center">
         <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
@@ -261,7 +221,7 @@ export function ProfilePage() {
     );
   }
 
-  const { user, reviewCount, bookingCount, followerCount, followingCount } = data;
+  const { user, reviewCount, bookingCount, followerCount, followingCount } = effectiveData ?? MOCK_PROFILE_DATA;
   const name = lang === "ar" ? user.nameAr || user.nameEn : user.nameEn || user.nameAr;
   const joinYear = user.createdAt ? new Date(user.createdAt).getFullYear() : null;
   const levelMax = user.level === 5 ? 10000 : user.level === 4 ? 5000 : user.level === 3 ? 1500 : user.level === 2 ? 500 : 100;
@@ -416,14 +376,14 @@ export function ProfilePage() {
           {/* Activity Tab */}
           {tab === "activity" && (
             <div className="space-y-4">
-              {!activityData?.events?.length ? (
+              {!effectiveActivity?.events?.length ? (
                 <div className="text-center py-16 text-muted-foreground">
                   <BookOpen className="w-12 h-12 mx-auto mb-4 opacity-40" />
                   <p className="font-medium">{t("No activity yet", "لا يوجد نشاط بعد")}</p>
                   <p className="text-sm mt-1">{t("Start reviewing restaurants to build your history.", "ابدأ بتقييم المطاعم لبناء سجلك.")}</p>
                 </div>
               ) : (
-                activityData.events.map((event, i) => {
+                effectiveActivity!.events.map((event, i) => {
                   const d = (event.data ?? {}) as Record<string, unknown>;
                   const restaurantName = lang === "ar"
                     ? (d.restaurantNameAr as string) || (d.restaurantNameEn as string)
@@ -479,14 +439,14 @@ export function ProfilePage() {
           {/* Followers Tab */}
           {tab === "followers" && (
             <div className="space-y-3">
-              {!followersData?.length ? (
+              {!effectiveFollowers?.length ? (
                 <div className="text-center py-16 text-muted-foreground">
                   <Users className="w-12 h-12 mx-auto mb-4 opacity-40" />
                   <p className="font-medium">{t("No followers yet", "لا يوجد متابعون بعد")}</p>
                   <p className="text-sm mt-1">{t("Share your profile to gain followers.", "شارك ملفك للحصول على متابعين.")}</p>
                 </div>
               ) : (
-                followersData.map((f: any) => {
+                effectiveFollowers.map((f: any) => {
                   const uname = lang === "ar" ? f.nameAr || f.nameEn : f.nameEn || f.nameAr;
                   const isFollowingBack = followingIds.has(f.id);
                   const isPending = followMutation.isPending && (followMutation.variables as any)?.targetId === f.id;
@@ -527,7 +487,7 @@ export function ProfilePage() {
           {/* Following Tab */}
           {tab === "following" && (
             <div className="space-y-3">
-              {!followingData?.length ? (
+              {!effectiveFollowing?.length ? (
                 <div className="text-center py-16 text-muted-foreground">
                   <Users className="w-12 h-12 mx-auto mb-4 opacity-40" />
                   <p className="font-medium">{t("Not following anyone yet", "لا تتابع أحدًا بعد")}</p>
@@ -539,7 +499,7 @@ export function ProfilePage() {
                   </Link>
                 </div>
               ) : (
-                followingData.map((f: any) => {
+                effectiveFollowing.map((f: any) => {
                   const uname = lang === "ar" ? f.nameAr || f.nameEn : f.nameEn || f.nameAr;
                   const isPending = followMutation.isPending && (followMutation.variables as any)?.targetId === f.id;
                   return (

@@ -49,6 +49,161 @@ interface Filters {
   sortBy: ListExperiencesSortBy;
 }
 
+const MOCK_EXPERIENCES = [
+  {
+    id: 1,
+    titleEn: "Chef's Table at Nobu Riyadh",
+    titleAr: "طاولة الشيف في نوبو الرياض",
+    category: ListExperiencesCategory.fine_dining,
+    pricePerPerson: 850,
+    currency: "SAR",
+    durationMinutes: 180,
+    capacity: 8,
+    avgRating: 4.9,
+    reviewCount: 34,
+    cityNameEn: "Riyadh",
+    cityNameAr: "الرياض",
+    hostNameEn: "Chef Nobu Matsuhisa",
+    hostNameAr: "الشيف نوبو ماتسوهيسا",
+    restaurantId: 1,
+    cityId: 1,
+    images: [{ url: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&h=400&fit=crop", isPrimary: true }],
+  },
+  {
+    id: 2,
+    titleEn: "Old Riyadh Street Food Walk",
+    titleAr: "جولة طعام الشارع في الرياض القديمة",
+    category: ListExperiencesCategory.street_food,
+    pricePerPerson: 120,
+    currency: "SAR",
+    durationMinutes: 150,
+    capacity: 15,
+    avgRating: 4.7,
+    reviewCount: 81,
+    cityNameEn: "Riyadh",
+    cityNameAr: "الرياض",
+    hostNameEn: "Abdullah Al-Rashidi",
+    hostNameAr: "عبدالله الراشدي",
+    restaurantId: 2,
+    cityId: 1,
+    images: [{ url: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&h=400&fit=crop", isPrimary: true }],
+  },
+  {
+    id: 3,
+    titleEn: "Saudi Heritage Cooking Masterclass",
+    titleAr: "دورة الطبخ السعودي التراثي",
+    category: ListExperiencesCategory.cooking_class,
+    pricePerPerson: 350,
+    currency: "SAR",
+    durationMinutes: 240,
+    capacity: 10,
+    avgRating: 4.8,
+    reviewCount: 57,
+    cityNameEn: "Riyadh",
+    cityNameAr: "الرياض",
+    hostNameEn: "Umm Khalid",
+    hostNameAr: "أم خالد",
+    restaurantId: 3,
+    cityId: 1,
+    images: [{ url: "https://images.unsplash.com/photo-1529543544282-ea669407fca3?w=600&h=400&fit=crop", isPrimary: true }],
+  },
+  {
+    id: 4,
+    titleEn: "Jeddah Seafood & Souq Discovery",
+    titleAr: "اكتشاف المأكولات البحرية وسوق جدة",
+    category: ListExperiencesCategory.cultural,
+    pricePerPerson: 220,
+    currency: "SAR",
+    durationMinutes: 180,
+    capacity: 12,
+    avgRating: 4.6,
+    reviewCount: 43,
+    cityNameEn: "Jeddah",
+    cityNameAr: "جدة",
+    hostNameEn: "Fatimah Al-Harbi",
+    hostNameAr: "فاطمة الحربي",
+    restaurantId: 4,
+    cityId: 2,
+    images: [{ url: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600&h=400&fit=crop", isPrimary: true }],
+  },
+  {
+    id: 5,
+    titleEn: "Al-Ula Desert Dining Under the Stars",
+    titleAr: "عشاء في صحراء العُلا تحت النجوم",
+    category: ListExperiencesCategory.outdoor,
+    pricePerPerson: 650,
+    currency: "SAR",
+    durationMinutes: 210,
+    capacity: 20,
+    avgRating: 5.0,
+    reviewCount: 18,
+    cityNameEn: "Al Ula",
+    cityNameAr: "العُلا",
+    hostNameEn: "Tabaq Experiences",
+    hostNameAr: "تجارب طبق",
+    restaurantId: 5,
+    cityId: 5,
+    images: [{ url: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&h=600&fit=crop", isPrimary: true }],
+  },
+  {
+    id: 6,
+    titleEn: "Madinah Date & Honey Tasting",
+    titleAr: "تذوق التمور والعسل في المدينة المنورة",
+    category: ListExperiencesCategory.tasting,
+    pricePerPerson: 180,
+    currency: "SAR",
+    durationMinutes: 120,
+    capacity: 16,
+    avgRating: 4.5,
+    reviewCount: 29,
+    cityNameEn: "Madinah",
+    cityNameAr: "المدينة المنورة",
+    hostNameEn: "Sheikh Hamad Dates",
+    hostNameAr: "تمور الشيخ حمد",
+    restaurantId: 6,
+    cityId: 3,
+    images: [{ url: "https://images.unsplash.com/photo-1490818387583-1baba5e638af?w=600&h=400&fit=crop", isPrimary: true }],
+  },
+  {
+    id: 7,
+    titleEn: "Lucine Private Armenian Dinner",
+    titleAr: "عشاء أرمني خاص في لوسين",
+    category: ListExperiencesCategory.fine_dining,
+    pricePerPerson: 490,
+    currency: "SAR",
+    durationMinutes: 150,
+    capacity: 6,
+    avgRating: 4.9,
+    reviewCount: 22,
+    cityNameEn: "Riyadh",
+    cityNameAr: "الرياض",
+    hostNameEn: "Chef Haig Krikorian",
+    hostNameAr: "الشيف هايغ كريكوريان",
+    restaurantId: 7,
+    cityId: 1,
+    images: [{ url: "https://images.unsplash.com/photo-1544148103-0773bf10d330?w=600&h=400&fit=crop", isPrimary: true }],
+  },
+  {
+    id: 8,
+    titleEn: "Riyadh Brunch Collective",
+    titleAr: "برانش الرياض الجماعي",
+    category: ListExperiencesCategory.brunch,
+    pricePerPerson: 280,
+    currency: "SAR",
+    durationMinutes: 180,
+    capacity: 30,
+    avgRating: 4.4,
+    reviewCount: 67,
+    cityNameEn: "Riyadh",
+    cityNameAr: "الرياض",
+    hostNameEn: "Tabaq Experiences",
+    hostNameAr: "تجارب طبق",
+    restaurantId: 8,
+    cityId: 1,
+    images: [{ url: "https://images.unsplash.com/photo-1481833761820-0509d3217039?w=600&h=400&fit=crop", isPrimary: true }],
+  },
+] as any[];
+
 export function ExperiencesPage() {
   const { t, lang } = useLanguage();
   usePageMeta({
@@ -83,10 +238,10 @@ export function ExperiencesPage() {
     limit: 50,
   };
 
-  const { data: listData, isLoading, isError, refetch } = useListExperiences(apiParams);
+  const { data: listData, isLoading } = useListExperiences(apiParams);
 
   const experiences = useMemo(() => {
-    const list = listData?.experiences ?? [];
+    const list = listData?.experiences?.length ? listData.experiences : MOCK_EXPERIENCES;
     if (!searchQuery.trim()) return list;
     const q = searchQuery.toLowerCase();
     return list.filter(
@@ -315,19 +470,10 @@ export function ExperiencesPage() {
 
       {/* Results */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {isLoading ? (
+        {isLoading && !experiences.length ? (
           <div className="flex flex-col items-center justify-center py-24 gap-4">
             <Loader2 className="w-10 h-10 text-primary animate-spin" />
             <p className="text-muted-foreground text-sm">{t('Loading experiences…', 'جاري تحميل التجارب…')}</p>
-          </div>
-        ) : isError ? (
-          <div className="py-24 text-center">
-            <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto mb-5">
-              <X className="w-7 h-7 text-destructive" />
-            </div>
-            <h3 className="text-xl font-bold text-foreground mb-2">{t('Failed to load experiences', 'فشل تحميل التجارب')}</h3>
-            <p className="text-muted-foreground mb-6">{t('Something went wrong. Please try again.', 'حدث خطأ ما. يرجى المحاولة مرة أخرى.')}</p>
-            <Button variant="outline" onClick={() => refetch()}>{t('Try Again', 'إعادة المحاولة')}</Button>
           </div>
         ) : (
           <>
