@@ -129,6 +129,24 @@ async function main() {
   }
   console.log("  ✅ Restaurant ratings updated from real reviews");
 
+  // Boost review counts to reflect a mature platform with real user volume
+  const BOOSTED_REVIEW_COUNTS: Record<number, number> = {
+    1: 1284, // Najd Village — flagship, most reviewed
+    2: 2047, // Reem Al Bawadi — casual favourite, highest volume
+    3: 847,  // Sushi Sama — premium, loyal niche
+    4: 612,  // Lusin — upscale, selective crowd
+    5: 391,  // Spice Route — solid local following
+    6: 1853, // Al Tazaj — budget favourite, very high traffic
+    7: 734,  // Nobu — luxury, curated audience
+    8: 1102, // Karak House — neighbourhood staple
+  };
+  for (const [rId, count] of Object.entries(BOOSTED_REVIEW_COUNTS)) {
+    await db.update(restaurantsTable)
+      .set({ reviewCount: count })
+      .where(eq(restaurantsTable.id, parseInt(rId)));
+  }
+  console.log("  ✅ Review counts boosted to platform-realistic levels");
+
   // ─── 3. Seed bookings ─────────────────────────────────────────────────
   console.log("\n📅 Creating bookings...");
   const bookingData = [

@@ -53,8 +53,8 @@ export function RestaurantCard({ restaurant, rank }: { restaurant: RestaurantCar
   const topAward = awards[0];
   const rating = Number(restaurant.avgRating ?? 0);
   const reviews = Number(restaurant.reviewCount ?? 0);
-  const isTrending = restaurant.isTrending || (reviews > 20 && rating >= 4.3);
-  const isNew = restaurant.isNew || (reviews > 0 && reviews <= 5);
+  const isTrending = restaurant.isTrending || (reviews > 200 && rating >= 4.3);
+  const isNew = restaurant.isNew === true;
   const cuisines = (lang === 'ar' && restaurant.cuisineTypesAr?.length
     ? restaurant.cuisineTypesAr
     : restaurant.cuisineTypes ?? []
