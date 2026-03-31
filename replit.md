@@ -322,6 +322,67 @@ All core features COMPLETE and world-class:
 - **Dynamic SEO page titles** — Created `usePageMeta` hook (`src/hooks/use-page-meta.ts`) that sets `document.title`, `<meta name="description">`, and Open Graph tags dynamically per page. Applied to: HomePage, DiscoveryPage, ExperiencesPage, OffersPage, SearchPage, RestaurantDetailPage (uses actual restaurant name when data loads)
 - **index.html meta tags** — Added full static meta suite: `<meta name="description">`, keywords, robots, theme-color, Open Graph (og:title, og:description, og:image, og:locale with ar_SA + en_US), Twitter Card (summary_large_image)
 
+## Session 12 — Instagram-style Food Stories on FeedPage
+
+### Overview
+Added a complete Food Stories system to FeedPage — the premium social feature common to every top food platform (Zomato, TripAdvisor). This is the biggest visual upgrade to the feed since it was created.
+
+### `StoriesStrip` component (in FeedPage.tsx)
+- Horizontally scrollable row of story ring avatars — first item is always "Your Story" with a + icon overlay
+- Gradient ring (red→orange→yellow) for unseen stories; gray ring for already-seen stories
+- Restaurant stories have an "R" badge in the bottom corner
+- User stories show their emoji badge (👑, 🍽️, ⭐, 🌱, 🌿, 🔥)
+- Each ring is labeled with first name below the avatar
+- "Your Story" redirects to profile check-in flow on click
+- Clicking any other ring opens the StoryViewer full-screen overlay
+
+### `StoryViewer` component (in FeedPage.tsx)
+A production-quality full-screen story viewer:
+- **Progress bars** — one per story in the group, auto-fills over 6 seconds then advances
+- **Auto-advance** — timer pauses on mousedown, resumes on mouseup (hold to pause)
+- **Tap navigation** — tap left 35% to go back, right 65% to advance
+- **Keyboard** — Escape to close, ArrowLeft/ArrowRight to navigate
+- **Desktop side arrows** — ChevronLeft/ChevronRight buttons hidden on mobile
+- **Cross-group navigation** — advances to next story group automatically
+- **Story type badge** — colour-coded pill showing "Check-in / تسجيل وصول", "Dish Spotlight / طبق مميز", "Offer / عرض", "Event / حدث", "New Menu / قائمة جديدة", "Recommendation / توصية"
+- **Caption text** — bilingual, line-clamped to 4 lines
+- **Location pill** — shows location pin + restaurant name (if check-in)
+- **Dish/price pill** — shows dish name and SAR price (if dish_spotlight)
+- **Restaurant CTA button** — "View [Restaurant Name]" links to `/restaurants/:id` and closes viewer
+- **Reply input** — expands inline; pauses auto-advance while typing
+- **Heart button** — per-story like toggle (red fill when liked)
+- **Share button** — positioned alongside heart
+- Gradient overlays: dark-to-transparent from top (for progress bars), dark-to-transparent from bottom (for content)
+- Background: full-bleed cover image per story
+- "Seen" status: closing the viewer marks the opened group as seen (gray ring thereafter)
+
+### Story Data (`MOCK_STORY_GROUPS`)
+7 story groups covering all types:
+1. **Your Story** (me, "+" add prompt)
+2. **Noura** (👑) — 2 stories: Reem Al-Bawadi check-in + Mezze dish spotlight
+3. **Faisal** (🍽️) — 1 story: Sushi Sama recommendation
+4. **Nobu** (restaurant, R badge) — 2 stories: Spring Omakase new menu + Black Cod Miso dish spotlight
+5. **Lama** (⭐) — 1 story: Kunafa dish spotlight
+6. **Zuma** (restaurant, R badge, seen) — 1 story: Chef's Table event announcement
+7. **Sultan** (🌱, seen) — 1 story: Organic brunch check-in
+
+### Story Types & Colors
+| Type | Gradient | Icon |
+|---|---|---|
+| `checkin` | rose→orange | MapPin |
+| `dish_spotlight` | amber→yellow | Utensils |
+| `offer` | green→emerald | Tag |
+| `event` | violet→purple | Sparkles |
+| `new_menu` | blue→cyan | Eye |
+| `recommendation` | pink→fuchsia | Star |
+
+### Integration in FeedPage
+- StoriesStrip inserted at the very top of the main feed column, above QuickShareCTA and tabs
+- StoryViewer is rendered as a sibling of the main page div (full-screen fixed overlay)
+- Non-"me" story groups are passed to the viewer (me ring is excluded from viewer)
+- `viewerStartIndex` correctly maps from group list index to viewer array index
+- Fully bilingual: all captions, type badges, placeholders, CTAs in AR/EN
+
 ## Session 11 — Comprehensive Profile System
 
 ### New DB Schema (`lib/db/src/schema/profile.ts`)
