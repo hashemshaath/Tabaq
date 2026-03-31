@@ -42,25 +42,11 @@ const OCCASION_META: Record<string, { img: string }> = {
   'Ramadan Iftar':        { img: 'https://images.unsplash.com/photo-1510626176961-4b57d4fbad03?w=300&h=200&fit=crop' },
   'Romantic Date':        { img: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=300&h=200&fit=crop' },
 };
-const RESTAURANT_OF_THE_WEEK = {
-  id: 7,
-  nameEn: 'Nobu Riyadh',
-  nameAr: 'نوبو الرياض',
-  coverImg: 'https://images.unsplash.com/photo-1562802378-063ec186a863?w=1600&h=800&fit=crop',
-  cuisineEn: 'Japanese-Peruvian Fusion',
-  cuisineAr: 'مزيج ياباني بيروفي',
-  cityEn: 'Riyadh',
-  cityAr: 'الرياض',
-  rating: 4.85,
-  reviews: 734,
-  quoteEn: '"The black cod miso is the finest I\'ve encountered anywhere in the world — silky, perfectly lacquered, and absolutely unforgettable."',
-  quoteAr: '"القد الأسود بالميزو هو الأرقى الذي صادفته في أي مكان بالعالم — حريري، مطلي بشكل مثالي، ولا يُنسى تماماً."',
-  criticEn: '— Noura Al-Rashid, Top Food Critic',
-  criticAr: '— نورة الراشد، ناقدة طعام من الدرجة الأولى',
-  signatureDishesEn: ['Black Cod Miso', 'Yellowtail Jalapeño', 'Rock Shrimp Tempura'],
-  signatureDishesAr: ['قد أسود بالميزو', 'ذيل أصفر بالجلابينيو', 'روك شريمب تمبورا'],
-  tagEn: 'Michelin-Starred',
-  tagAr: 'حائز على نجمة ميشلان',
+const PRICE_TIER_LABEL: Record<string, { en: string; ar: string }> = {
+  budget:      { en: 'SAR 50+',  ar: '٥٠+ ريال'  },
+  casual:      { en: 'SAR 120+', ar: '١٢٠+ ريال' },
+  premium:     { en: 'SAR 280+', ar: '٢٨٠+ ريال' },
+  fine_dining: { en: 'SAR 450+', ar: '٤٥٠+ ريال' },
 };
 
 // All fallback chips use brand-consistent dark tones
@@ -1124,109 +1110,92 @@ export function HomePage() {
       </section>
 
       {/* ══ LUXURY DINING ════════════════════════════════════════ */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-14">
-        <div className="flex items-end justify-between mb-6">
-          <div>
-            <div className="inline-flex items-center gap-1.5 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 text-xs font-bold uppercase tracking-widest px-3 py-1.5 rounded-full border border-amber-200 dark:border-amber-700/50 mb-3">
-              <ChefHat className="w-3.5 h-3.5" />
-              {t('Luxury Dining', 'تناول الطعام الفاخر')}
-            </div>
-            <h2 className="text-xl md:text-2xl font-extrabold text-foreground leading-tight">
-              {t('Saudi Arabia\'s Most Prestigious Tables', 'أرقى موائد المملكة العربية السعودية')}
-            </h2>
-            <p className="text-xs text-muted-foreground mt-1">{t('Extraordinary experiences for extraordinary occasions', 'تجارب استثنائية لمناسبات استثنائية')}</p>
-          </div>
-          <Link href="/restaurants?tier=fine_dining" className="text-sm font-semibold text-primary hover:underline flex items-center gap-1 shrink-0">
-            {t('See all', 'عرض الكل')} <ChevronRight className="w-3.5 h-3.5" />
-          </Link>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {[
-            {
-              id: 1,
-              nameEn: 'Nobu Riyadh', nameAr: 'نوبو الرياض',
-              descEn: 'World-renowned Japanese-Peruvian fusion by Chef Nobu Matsuhisa — elevated omakase in the heart of Riyadh.',
-              descAr: 'مزيج ياباني-بيروفي عالمي الشهرة للشيف نوبو ماتسوهيسا — أوماكاسي راقٍ في قلب الرياض.',
-              img: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=800&h=400&fit=crop',
-              rating: 4.9, reviewCount: 1240, priceEn: 'SAR 650+', priceAr: '٦٥٠+ ريال',
-              tagEn: 'Japanese Fusion', tagAr: 'فيوجن ياباني',
-              badge: '⭐ Michelin Starred',
-            },
-            {
-              id: 2,
-              nameEn: 'Lusin', nameAr: 'لوسين',
-              descEn: 'Acclaimed modern Armenian cuisine with Saudi-inspired elements, in an intimate candlelit setting.',
-              descAr: 'مطبخ أرمني حديث حائز على إشادة واسعة مع عناصر مستوحاة من السعودية، في أجواء حميمية بالشموع.',
-              img: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&h=400&fit=crop',
-              rating: 4.8, reviewCount: 980, priceEn: 'SAR 450+', priceAr: '٤٥٠+ ريال',
-              tagEn: 'Modern Cuisine', tagAr: 'مطبخ حديث',
-              badge: '⭐ Michelin Starred',
-            },
-            {
-              id: 5,
-              nameEn: 'The Globe', nameAr: 'ذا غلوب',
-              descEn: 'Iconic 360° dining at 300m above sea level — Saudi Arabia\'s most dramatic fine dining venue.',
-              descAr: 'تناول طعام بزاوية ٣٦٠° على ارتفاع ٣٠٠ متر — أكثر مواقع تناول الطعام الفاخر إثارة في المملكة.',
-              img: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&h=400&fit=crop',
-              rating: 4.7, reviewCount: 1580, priceEn: 'SAR 550+', priceAr: '٥٥٠+ ريال',
-              tagEn: 'International', tagAr: 'دولي',
-              badge: '🏆 Top Rated',
-            },
-            {
-              id: 3,
-              nameEn: 'Najd Village', nameAr: 'قرية نجد',
-              descEn: 'The definitive Saudi heritage dining experience — traditional Najdi recipes in stunning mud-brick architecture.',
-              descAr: 'التجربة الغذائية التراثية السعودية الأكثر تميزاً — وصفات نجدية تقليدية في عمارة الطين الخلابة.',
-              img: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&h=400&fit=crop',
-              rating: 4.8, reviewCount: 2100, priceEn: 'SAR 250+', priceAr: '٢٥٠+ ريال',
-              tagEn: 'Saudi Heritage', tagAr: 'تراث سعودي',
-              badge: '🍽️ Local Favourite',
-            },
-          ].map(venue => (
-            <Link key={venue.id} href={`/restaurants/${venue.id}`} className="block group">
-              <div className="relative rounded-2xl overflow-hidden border border-border/60 hover:border-amber-200 hover:shadow-xl transition-all duration-300 bg-card">
-                <div className="relative h-44 overflow-hidden">
-                  <img
-                    src={venue.img}
-                    alt={lang === 'ar' ? venue.nameAr : venue.nameEn}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                  <span className="absolute top-3 start-3 text-xs font-bold bg-black/60 backdrop-blur-sm text-amber-300 px-2.5 py-1 rounded-full border border-amber-400/30">
-                    {venue.badge}
-                  </span>
-                  <span className="absolute top-3 end-3 text-xs font-semibold bg-white/90 text-gray-800 px-2.5 py-1 rounded-full">
-                    {lang === 'ar' ? venue.tagAr : venue.tagEn}
-                  </span>
-                </div>
-                <div className="p-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <h3 className="font-bold text-foreground text-base line-clamp-1 group-hover:text-primary transition-colors">
-                        {lang === 'ar' ? venue.nameAr : venue.nameEn}
-                      </h3>
-                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2 leading-relaxed">
-                        {lang === 'ar' ? venue.descAr : venue.descEn}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/50">
-                    <div className="flex items-center gap-1.5">
-                      <div className="flex items-center gap-1 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded-md">
-                        <Star className="w-3 h-3 fill-current" />
-                        <span className="text-xs font-bold">{venue.rating}</span>
-                      </div>
-                      <span className="text-xs text-muted-foreground">{venue.reviewCount.toLocaleString()} {t('reviews', 'تقييم')}</span>
-                    </div>
-                    <span className="text-sm font-black text-primary">{lang === 'ar' ? venue.priceAr : venue.priceEn}</span>
-                  </div>
-                </div>
+      {(topRated.isLoading || (topRated.data?.restaurants || []).length > 0) && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-14">
+          <div className="flex items-end justify-between mb-6">
+            <div>
+              <div className="inline-flex items-center gap-1.5 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 text-xs font-bold uppercase tracking-widest px-3 py-1.5 rounded-full border border-amber-200 dark:border-amber-700/50 mb-3">
+                <ChefHat className="w-3.5 h-3.5" />
+                {t('Luxury Dining', 'تناول الطعام الفاخر')}
               </div>
+              <h2 className="text-xl md:text-2xl font-extrabold text-foreground leading-tight">
+                {t('Saudi Arabia\'s Most Prestigious Tables', 'أرقى موائد المملكة العربية السعودية')}
+              </h2>
+              <p className="text-xs text-muted-foreground mt-1">{t('Extraordinary experiences for extraordinary occasions', 'تجارب استثنائية لمناسبات استثنائية')}</p>
+            </div>
+            <Link href="/restaurants?tier=fine_dining" className="text-sm font-semibold text-primary hover:underline flex items-center gap-1 shrink-0">
+              {t('See all', 'عرض الكل')} <ChevronRight className="w-3.5 h-3.5" />
             </Link>
-          ))}
-        </div>
-      </section>
+          </div>
+
+          {topRated.isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="rounded-2xl overflow-hidden border border-border/60 bg-card animate-pulse">
+                  <div className="h-44 bg-muted" />
+                  <div className="p-4 space-y-2">
+                    <div className="h-4 bg-muted rounded w-3/4" />
+                    <div className="h-3 bg-muted rounded w-1/2" />
+                    <div className="h-3 bg-muted rounded w-1/3 mt-4" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {(topRated.data?.restaurants || []).slice(0, 4).map((venue: any) => {
+                const badge = (venue.avgRating ?? 0) >= 4.8
+                  ? t('⭐ Top Rated', '⭐ الأعلى تقييماً')
+                  : t('🍽️ Popular', '🍽️ شائع');
+                const priceLabel = PRICE_TIER_LABEL[venue.priceTier] ?? PRICE_TIER_LABEL.casual;
+                const cuisine = (lang === 'ar' ? venue.cuisineTypesAr : venue.cuisineTypes)?.[0] ?? '';
+                return (
+                  <Link key={venue.id} href={`/restaurants/${venue.id}`} className="block group">
+                    <div className="relative rounded-2xl overflow-hidden border border-border/60 hover:border-amber-200 hover:shadow-xl transition-all duration-300 bg-card">
+                      <div className="relative h-44 overflow-hidden">
+                        <img
+                          src={venue.coverImageUrl ?? 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&h=400&fit=crop'}
+                          alt={lang === 'ar' ? venue.nameAr : venue.nameEn}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                        <span className="absolute top-3 start-3 text-xs font-bold bg-black/60 backdrop-blur-sm text-amber-300 px-2.5 py-1 rounded-full border border-amber-400/30">
+                          {badge}
+                        </span>
+                        {cuisine && (
+                          <span className="absolute top-3 end-3 text-xs font-semibold bg-white/90 text-gray-800 px-2.5 py-1 rounded-full">
+                            {cuisine}
+                          </span>
+                        )}
+                      </div>
+                      <div className="p-4">
+                        <h3 className="font-bold text-foreground text-base line-clamp-1 group-hover:text-primary transition-colors">
+                          {lang === 'ar' ? venue.nameAr : venue.nameEn}
+                        </h3>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {lang === 'ar' ? venue.cityNameAr : venue.cityNameEn}
+                        </p>
+                        <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/50">
+                          <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-1 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded-md">
+                              <Star className="w-3 h-3 fill-current" />
+                              <span className="text-xs font-bold">{venue.avgRating}</span>
+                            </div>
+                            <span className="text-xs text-muted-foreground">{(venue.reviewCount ?? 0).toLocaleString()} {t('reviews', 'تقييم')}</span>
+                          </div>
+                          <span className="text-sm font-black text-primary">
+                            {lang === 'ar' ? priceLabel.ar : priceLabel.en}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      )}
 
       {/* ══ FOOD EXPERIENCES ═════════════════════════════════════ */}
       <FoodExperiencesSection />
@@ -1290,65 +1259,71 @@ export function HomePage() {
 
 
       {/* ══ RESTAURANT OF THE WEEK ════════════════════════════════ */}
-      <section className="mb-16">
-        <div className="relative overflow-hidden" style={{ minHeight: 420 }}>
-          <img
-            src={RESTAURANT_OF_THE_WEEK.coverImg}
-            alt={RESTAURANT_OF_THE_WEEK.nameEn}
-            className="absolute inset-0 w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/60 to-transparent" />
-          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 flex flex-col justify-center" style={{ minHeight: 420 }}>
-            <div className="max-w-xl">
-              <div className="flex items-center gap-2 mb-4">
-                <span className="text-[10px] font-bold tracking-[0.2em] uppercase bg-primary text-white px-2.5 py-1 rounded-full">
-                  {t('Restaurant of the Week', 'مطعم الأسبوع')}
-                </span>
-                <span className="text-[10px] font-bold tracking-[0.15em] uppercase bg-yellow-500/20 text-yellow-300 border border-yellow-500/40 px-2.5 py-1 rounded-full">
-                  {lang === 'ar' ? RESTAURANT_OF_THE_WEEK.tagAr : RESTAURANT_OF_THE_WEEK.tagEn}
-                </span>
+      {(() => {
+        const rotw = (topRated.data?.restaurants || [])[0];
+        if (!rotw && !topRated.isLoading) return null;
+        const coverImg = rotw?.coverImageUrl ?? 'https://images.unsplash.com/photo-1562802378-063ec186a863?w=1600&h=800&fit=crop';
+        return (
+          <section className="mb-16">
+            <div className="relative overflow-hidden" style={{ minHeight: 420 }}>
+              <img
+                src={coverImg}
+                alt={rotw?.nameEn ?? ''}
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/60 to-transparent" />
+              <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 flex flex-col justify-center" style={{ minHeight: 420 }}>
+                {topRated.isLoading ? (
+                  <div className="max-w-xl space-y-4 animate-pulse">
+                    <div className="h-5 bg-white/20 rounded-full w-40" />
+                    <div className="h-10 bg-white/20 rounded w-72" />
+                    <div className="h-4 bg-white/20 rounded w-48" />
+                    <div className="h-4 bg-white/20 rounded w-32" />
+                    <div className="h-11 bg-white/20 rounded-full w-44 mt-6" />
+                  </div>
+                ) : (
+                  <div className="max-w-xl">
+                    <div className="flex items-center gap-2 mb-4">
+                      <span className="text-[10px] font-bold tracking-[0.2em] uppercase bg-primary text-white px-2.5 py-1 rounded-full">
+                        {t('Restaurant of the Week', 'مطعم الأسبوع')}
+                      </span>
+                      {rotw?.priceTier === 'fine_dining' && (
+                        <span className="text-[10px] font-bold tracking-[0.15em] uppercase bg-yellow-500/20 text-yellow-300 border border-yellow-500/40 px-2.5 py-1 rounded-full">
+                          {t('Fine Dining', 'مطعم فاخر')}
+                        </span>
+                      )}
+                    </div>
+                    <h2 className={`text-3xl sm:text-4xl font-black text-white mb-1 ${lang === 'ar' ? 'font-arabic' : ''}`}>
+                      {lang === 'ar' ? rotw?.nameAr : rotw?.nameEn}
+                    </h2>
+                    <p className="text-sm text-white/60 mb-5">
+                      {(lang === 'ar' ? rotw?.cuisineTypesAr : rotw?.cuisineTypes)?.[0]}
+                      <span className="mx-2 text-white/30">·</span>
+                      <MapPin className="w-3 h-3 inline mb-0.5" />
+                      {' '}{lang === 'ar' ? rotw?.cityNameAr : rotw?.cityNameEn}
+                    </p>
+                    <div className="flex items-center gap-2 mb-8">
+                      <div className="flex">
+                        {[1,2,3,4,5].map(i => (
+                          <Star key={i} className={`w-4 h-4 ${i <= Math.round(rotw?.avgRating ?? 0) ? 'text-yellow-400 fill-yellow-400' : 'text-white/20'}`} />
+                        ))}
+                      </div>
+                      <span className="text-white font-bold text-sm">{rotw?.avgRating}</span>
+                      <span className="text-white/40 text-sm">({(rotw?.reviewCount ?? 0).toLocaleString()} {t('reviews', 'تقييم')})</span>
+                    </div>
+                    <Link href={`/restaurants/${rotw?.id}`}>
+                      <button className="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-white text-sm font-bold px-6 py-3 rounded-full transition-all shadow-lg shadow-primary/30 hover:shadow-primary/50 hover:scale-[1.02]">
+                        {t('Explore Restaurant', 'استكشف المطعم')}
+                        <ArrowRight className={`w-4 h-4 ${lang === 'ar' ? 'rotate-180' : ''}`} />
+                      </button>
+                    </Link>
+                  </div>
+                )}
               </div>
-              <h2 className={`text-3xl sm:text-4xl font-black text-white mb-1 ${lang === 'ar' ? 'font-arabic' : ''}`}>
-                {lang === 'ar' ? RESTAURANT_OF_THE_WEEK.nameAr : RESTAURANT_OF_THE_WEEK.nameEn}
-              </h2>
-              <p className="text-sm text-white/60 mb-5">
-                {lang === 'ar' ? RESTAURANT_OF_THE_WEEK.cuisineAr : RESTAURANT_OF_THE_WEEK.cuisineEn}
-                <span className="mx-2 text-white/30">·</span>
-                <MapPin className="w-3 h-3 inline mb-0.5" />
-                {' '}{lang === 'ar' ? RESTAURANT_OF_THE_WEEK.cityAr : RESTAURANT_OF_THE_WEEK.cityEn}
-              </p>
-              <div className="flex items-center gap-2 mb-5">
-                <div className="flex">
-                  {[1,2,3,4,5].map(i => (
-                    <Star key={i} className={`w-4 h-4 ${i <= Math.round(RESTAURANT_OF_THE_WEEK.rating) ? 'text-yellow-400 fill-yellow-400' : 'text-white/20'}`} />
-                  ))}
-                </div>
-                <span className="text-white font-bold text-sm">{RESTAURANT_OF_THE_WEEK.rating}</span>
-                <span className="text-white/40 text-sm">({RESTAURANT_OF_THE_WEEK.reviews.toLocaleString()} {t('reviews', 'تقييم')})</span>
-              </div>
-              <blockquote className={`text-white/80 text-sm leading-relaxed italic mb-3 border-l-2 border-primary pl-4 ${lang === 'ar' ? 'border-l-0 border-r-2 pr-4 pl-0 text-right font-arabic' : ''}`}>
-                {lang === 'ar' ? RESTAURANT_OF_THE_WEEK.quoteAr : RESTAURANT_OF_THE_WEEK.quoteEn}
-              </blockquote>
-              <p className="text-white/50 text-xs mb-6">
-                {lang === 'ar' ? RESTAURANT_OF_THE_WEEK.criticAr : RESTAURANT_OF_THE_WEEK.criticEn}
-              </p>
-              <div className="flex flex-wrap gap-2 mb-7">
-                {(lang === 'ar' ? RESTAURANT_OF_THE_WEEK.signatureDishesAr : RESTAURANT_OF_THE_WEEK.signatureDishesEn).map(dish => (
-                  <span key={dish} className="text-xs text-white/70 bg-white/10 border border-white/20 px-3 py-1 rounded-full backdrop-blur-sm">
-                    {dish}
-                  </span>
-                ))}
-              </div>
-              <Link href={`/restaurants/${RESTAURANT_OF_THE_WEEK.id}`}>
-                <button className="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-white text-sm font-bold px-6 py-3 rounded-full transition-all shadow-lg shadow-primary/30 hover:shadow-primary/50 hover:scale-[1.02]">
-                  {t('Explore Restaurant', 'استكشف المطعم')}
-                  <ArrowRight className={`w-4 h-4 ${lang === 'ar' ? 'rotate-180' : ''}`} />
-                </button>
-              </Link>
             </div>
-          </div>
-        </div>
-      </section>
+          </section>
+        );
+      })()}
 
       {/* ══ TOP-RATED RANKINGS ═══════════════════════════════════ */}
       {!topRated.isLoading && (topRated.data?.restaurants || []).length > 0 && (
