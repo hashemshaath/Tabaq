@@ -32,6 +32,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { getAuthHeaders } from '@/lib/api';
+import { ShareModal } from '@/components/ShareModal';
 
 // ── Day labels ──────────────────────────────────────────────────────
 const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -710,14 +711,10 @@ export function RestaurantDetailPage() {
     }
   };
 
+  const [showShareModal, setShowShareModal] = useState(false);
+
   const handleShare = () => {
-    if (navigator.share) {
-      navigator.share({ title: name, url: window.location.href });
-    } else {
-      navigator.clipboard.writeText(window.location.href).then(() => {
-        // Could show a toast
-      });
-    }
+    setShowShareModal(true);
   };
 
   const restaurantNameEn = (data?.restaurant as any)?.nameEn ?? 'Restaurant';
@@ -1785,6 +1782,17 @@ export function RestaurantDetailPage() {
         )}
       </div>
 
+
+      <ShareModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        restaurant={{
+          nameEn: restaurant.nameEn,
+          nameAr: restaurant.nameAr,
+          coverImageUrl: restaurant.coverImageUrl,
+          avgRating: (restaurant as any).avgRating,
+        }}
+      />
       {/* ── SIMILAR RESTAURANTS ── */}
       <SimilarRestaurantsSection restaurantId={numericId} categoryId={categories[0]?.id} lang={lang} t={t} />
     </div>

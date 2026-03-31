@@ -4,6 +4,8 @@ import { useLanguage } from '@/hooks/use-language';
 import { usePageMeta } from '@/hooks/use-page-meta';
 import { useCity } from '@/context/CityContext';
 import { useCart } from '@/context/CartContext';
+import { useAuth } from '@/context/AuthContext';
+import { getAuthHeaders } from '@/lib/api';
 import { Link, useLocation } from 'wouter';
 import {
   Search, ChevronRight, Star, TrendingUp, Trophy, MapPin,
@@ -11,7 +13,7 @@ import {
   Utensils, Sparkles, BookOpen, Tag, Award, Clock, Zap,
   Heart, Navigation, Percent, BadgeCheck, ScanQrCode, CalendarCheck, BadgeDollarSign,
   ChefHat, RotateCcw, Plus, Minus, ShoppingBag, CheckCircle2,
-  X
+  X, Pencil, Users
 } from 'lucide-react';
 import { ExperienceCard } from '@/components/ExperienceCard';
 import { useListExperiences, type Experience } from '@workspace/api-client-react';
@@ -275,6 +277,233 @@ function OrderAgainSection() {
                     </div>
                   )}
                 </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+// ── RateLastVisitSection ────────────────────────────────────────────
+const RATE_DISMISS_KEY = 'tabaq_dismissed_rate';
+function getDismissed(): number[] {
+  try { return JSON.parse(localStorage.getItem(RATE_DISMISS_KEY) || '[]'); } catch { return []; }
+}
+function addDismissed(id: number) {
+  const prev = getDismissed().filter(d => d !== id);
+  localStorage.setItem(RATE_DISMISS_KEY, JSON.stringify([...prev, id]));
+}
+
+const MOCK_PAST_VISITS = [
+  {
+    id: 7,
+    nameEn: 'Nobu Riyadh',
+    nameAr: 'نوبو الرياض',
+    coverImageUrl: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=400&h=280&fit=crop',
+    cuisineEn: 'Japanese',
+    cuisineAr: 'ياباني',
+    visitDate: '2026-03-15',
+    partySize: 2,
+    bookingId: 101,
+  },
+  {
+    id: 8,
+    nameEn: 'Nusr-Et Riyadh',
+    nameAr: 'نصرت الرياض',
+    coverImageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=280&fit=crop',
+    cuisineEn: 'Steakhouse',
+    cuisineAr: 'مطعم لحوم',
+    visitDate: '2026-03-10',
+    partySize: 4,
+    bookingId: 102,
+  },
+  {
+    id: 9,
+    nameEn: 'La Petite Maison',
+    nameAr: 'لا بيتيت ميزون',
+    coverImageUrl: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400&h=280&fit=crop',
+    cuisineEn: 'French',
+    cuisineAr: 'فرنسي',
+    visitDate: '2026-02-28',
+    partySize: 3,
+    bookingId: 103,
+  },
+  {
+    id: 10,
+    nameEn: 'Zuma Riyadh',
+    nameAr: 'زوما الرياض',
+    coverImageUrl: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=400&h=280&fit=crop',
+    cuisineEn: 'Japanese',
+    cuisineAr: 'ياباني',
+    visitDate: '2026-02-18',
+    partySize: 2,
+    bookingId: 104,
+  },
+];
+
+function RateLastVisitSection() {
+  const { t, lang } = useLanguage();
+  const { user } = useAuth();
+  const [dismissed, setDismissed] = useState<number[]>(() => getDismissed());
+  const [ratings, setRatings] = useState<Record<number, number>>({});
+  const [hovered, setHovered] = useState<{ id: number; star: number } | null>(null);
+  const [submitted, setSubmitted] = useState<number[]>([]);
+
+  const { data: liveVisits } = useQuery<any[]>({
+    queryKey: ['rate-visits', user?.id],
+    queryFn: async () => {
+      const res = await fetch('/api/bookings?status=confirmed&limit=8', { headers: getAuthHeaders() });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return (data.bookings || data || [])
+        .filter((b: any) => b.status === 'confirmed' || b.status === 'completed')
+        .slice(0, 4);
+    },
+    enabled: !!user,
+    staleTime: 60_000,
+  });
+
+  const visits = (liveVisits && liveVisits.length > 0)
+    ? liveVisits.map((b: any) => ({
+        id: b.restaurantId,
+        nameEn: b.restaurantNameEn ?? 'Restaurant',
+        nameAr: b.restaurantNameAr ?? 'مطعم',
+        coverImageUrl: b.coverImageUrl,
+        cuisineEn: b.cuisineEn,
+        cuisineAr: b.cuisineAr,
+        visitDate: b.date ?? b.createdAt,
+        partySize: b.partySize ?? 2,
+        bookingId: b.id,
+      }))
+    : MOCK_PAST_VISITS;
+
+  const visible = visits.filter(v => !dismissed.includes(v.bookingId) && !submitted.includes(v.bookingId));
+  if (visible.length === 0) return null;
+
+  const handleDismiss = (bookingId: number) => {
+    addDismissed(bookingId);
+    setDismissed(prev => [...prev, bookingId]);
+  };
+
+  const handleRate = (id: number, bookingId: number, star: number) => {
+    setRatings(prev => ({ ...prev, [bookingId]: star }));
+    setTimeout(() => {
+      setSubmitted(prev => [...prev, bookingId]);
+    }, 600);
+  };
+
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return '';
+    try {
+      return new Date(dateStr).toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'en-US', { month: 'short', day: 'numeric' });
+    } catch { return dateStr; }
+  };
+
+  return (
+    <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-10 mb-10">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 bg-amber-50 rounded-xl flex items-center justify-center">
+            <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+          </div>
+          <div>
+            <h2 className="font-bold text-foreground text-base leading-none">
+              {t('Rate Your Last Visit', 'قيّم زيارتك الأخيرة')}
+            </h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {t('Share your dining experience', 'شارك تجربة طعامك')}
+            </p>
+          </div>
+        </div>
+        <Link href="/bookings" className="text-xs font-semibold text-primary hover:underline flex items-center gap-1">
+          {t('All bookings', 'جميع الحجوزات')} <ChevronRight className="w-3 h-3" />
+        </Link>
+      </div>
+
+      <div className="flex gap-3 overflow-x-auto pb-2 hide-scrollbar">
+        {visible.slice(0, 4).map(visit => {
+          const name = lang === 'ar' ? visit.nameAr : visit.nameEn;
+          const cuisine = lang === 'ar' ? (visit.cuisineAr || visit.cuisineEn) : (visit.cuisineEn || visit.cuisineAr);
+          const currentRating = ratings[visit.bookingId] ?? 0;
+          const isSubmitting = currentRating > 0 && !submitted.includes(visit.bookingId);
+          const fallback = 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400&h=280&fit=crop';
+
+          return (
+            <div
+              key={visit.bookingId}
+              className="flex-shrink-0 w-[200px] sm:w-[220px] rounded-2xl border border-border/60 overflow-hidden hover:border-amber-300/60 hover:shadow-md transition-all bg-card group relative"
+            >
+              {/* Dismiss */}
+              <button
+                onClick={() => handleDismiss(visit.bookingId)}
+                className="absolute top-2 end-2 z-10 w-6 h-6 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white/80 hover:text-white hover:bg-black/60 transition-colors"
+              >
+                <X className="w-3 h-3" />
+              </button>
+
+              {/* Photo */}
+              <Link href={`/restaurants/${visit.id}?tab=reviews`}>
+                <div className="w-full h-28 overflow-hidden relative">
+                  <img
+                    src={visit.coverImageUrl || fallback}
+                    alt={name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    onError={e => { (e.currentTarget as HTMLImageElement).src = fallback; }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                  <div className="absolute bottom-2 start-2 text-white text-[10px] font-medium flex items-center gap-1">
+                    <CalendarDays className="w-2.5 h-2.5" />
+                    {formatDate(visit.visitDate)}
+                    <span className="mx-0.5 opacity-50">·</span>
+                    <Users className="w-2.5 h-2.5" />
+                    {visit.partySize}
+                  </div>
+                </div>
+              </Link>
+
+              <div className="p-2.5">
+                <p className="text-xs font-semibold line-clamp-1 text-foreground mb-0.5">{name}</p>
+                {cuisine && <p className="text-[10px] text-muted-foreground mb-2">{cuisine}</p>}
+
+                {/* Quick star rating */}
+                <div className="flex items-center gap-0.5 mb-2">
+                  {[1, 2, 3, 4, 5].map(star => {
+                    const isActive = star <= (hovered?.id === visit.bookingId ? hovered.star : currentRating);
+                    return (
+                      <button
+                        key={star}
+                        onMouseEnter={() => setHovered({ id: visit.bookingId, star })}
+                        onMouseLeave={() => setHovered(null)}
+                        onClick={() => handleRate(visit.id, visit.bookingId, star)}
+                        className="transition-transform hover:scale-110 active:scale-95"
+                      >
+                        <Star
+                          className={`w-4.5 h-4.5 transition-colors ${
+                            isActive ? 'text-amber-400 fill-amber-400' : 'text-muted-foreground/40 fill-muted-foreground/10'
+                          }`}
+                        />
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <Link href={`/restaurants/${visit.id}?tab=reviews`}>
+                  <button
+                    className={`w-full py-1.5 rounded-xl text-[11px] font-semibold transition-all flex items-center justify-center gap-1 ${
+                      isSubmitting
+                        ? 'bg-amber-500 text-white'
+                        : 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200'
+                    }`}
+                  >
+                    {isSubmitting ? (
+                      <><CheckCircle2 className="w-3 h-3" /> {t('Submitting…', 'جارٍ الإرسال…')}</>
+                    ) : (
+                      <><Pencil className="w-3 h-3" /> {t('Write Review', 'اكتب تقييماً')}</>
+                    )}
+                  </button>
+                </Link>
               </div>
             </div>
           );
@@ -672,6 +901,9 @@ export function HomePage() {
 
       {/* ══ ORDER AGAIN ══════════════════════════════════════════ */}
       <OrderAgainSection />
+
+      {/* ══ RATE YOUR LAST VISIT ══════════════════════════════════ */}
+      <RateLastVisitSection />
 
       {/* ══ OCCASIONS ════════════════════════════════════════════ */}
       {!occasions.isLoading && (occasions.data || []).length > 0 && (

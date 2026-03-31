@@ -322,6 +322,23 @@ All core features COMPLETE and world-class:
 - **Dynamic SEO page titles** — Created `usePageMeta` hook (`src/hooks/use-page-meta.ts`) that sets `document.title`, `<meta name="description">`, and Open Graph tags dynamically per page. Applied to: HomePage, DiscoveryPage, ExperiencesPage, OffersPage, SearchPage, RestaurantDetailPage (uses actual restaurant name when data loads)
 - **index.html meta tags** — Added full static meta suite: `<meta name="description">`, keywords, robots, theme-color, Open Graph (og:title, og:description, og:image, og:locale with ar_SA + en_US), Twitter Card (summary_large_image)
 
+## Session 10 — Share Modal + Rate Your Last Visit
+
+### ShareModal (`src/components/ShareModal.tsx`)
+- Full-screen backdrop + bottom-sheet on mobile / centered modal on desktop
+- Shows a **restaurant card preview**: cover image + gradient overlay, name, cuisine, city, URL preview, star rating
+- Three share actions: (1) **Copy link** — clipboard API with green checkmark feedback; (2) **WhatsApp** — `wa.me/?text=` deep link with bilingual message; (3) **Native share** — wraps `navigator.share()` for mobile, only shows if supported
+- Keyboard accessible (Escape closes), body scroll locked while open, RTL/LTR aware
+- Wired into `RestaurantDetailPage.handleShare` — every restaurant's مشاركة button now opens this modal
+
+### RateLastVisitSection (`src/pages/HomePage.tsx`)
+- Inserted in `HomePage` between "Order Again" and "Occasions" sections
+- Fetches real completed bookings from `/api/bookings` when user is logged in; falls back to 4 mock visits (Nobu, Nusr-Et, La Petite Maison, Zuma) for anonymous visitors
+- Each card shows: cover photo, visit date + party size overlay, restaurant name, cuisine, **interactive 5-star inline rating** (hover effect, click to set), "Write Review" / "Submitting…" button
+- Cards auto-dismiss after rating is submitted (600ms delay)
+- Per-restaurant dismiss via ×, stored in `localStorage` key `tabaq_dismissed_rate`
+- Header links to `/bookings`; when all cards dismissed the section disappears
+
 ## Production Polish — Session 3
 
 - **"New Openings" section on HomePage** — 6-card grid between Featured Restaurants and Top-Rated rankings. Each card shows a pulsing "New / جديد" green badge, cuisine category, rating, and days since opening (e.g. "3d ago / منذ 3 يوم"). Mock data for: Bab Al Qasr (Riyadh), Ōkami Ramen (Riyadh), Saffron House (Riyadh), Cielo Terrace (Jeddah), Terroir Garden (Riyadh), The Black Pearl (Jeddah). Section uses `SectionHeader` with "Just Arrived / وصل حديثاً" badge. Data in `NEW_OPENINGS` const in `HomePage.tsx`.
