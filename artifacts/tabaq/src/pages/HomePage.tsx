@@ -663,18 +663,20 @@ export function HomePage() {
   }, [heroSlide]);
 
   const cityQuery = selectedCityId ? `&cityId=${selectedCityId}` : '';
-  const cityKey   = selectedCityId ?? null;
+  const nbQuery   = selectedNeighborhoodId ? `&neighborhoodId=${selectedNeighborhoodId}` : '';
+  const locQuery  = `${cityQuery}${nbQuery}`;
+  const locKey    = `${selectedCityId ?? '0'}-${selectedNeighborhoodId ?? '0'}`;
   const STALE_5M  = 5 * 60 * 1000;
   const STALE_10M = 10 * 60 * 1000;
 
-  const featured   = useQuery<any[]>({ queryKey: ['hp-featured', cityKey], queryFn: () => fetch(`/api/restaurants/featured?limit=8${cityQuery}`).then(r => r.json()), staleTime: STALE_5M });
-  const trending   = useQuery<any[]>({ queryKey: ['hp-trending', cityKey], queryFn: () => fetch(`/api/dishes/trending?limit=6${cityQuery}`).then(r => r.json()), staleTime: STALE_5M });
+  const featured   = useQuery<any[]>({ queryKey: ['hp-featured', locKey], queryFn: () => fetch(`/api/restaurants/featured?limit=8${locQuery}`).then(r => r.json()), staleTime: STALE_5M });
+  const trending   = useQuery<any[]>({ queryKey: ['hp-trending', locKey], queryFn: () => fetch(`/api/dishes/trending?limit=6${cityQuery}`).then(r => r.json()), staleTime: STALE_5M });
   const tabaqStars = useQuery<any[]>({ queryKey: ['hp-tabaq-stars'], queryFn: () => fetch('/api/dishes/tabaq-stars?limit=6').then(r => r.json()), staleTime: STALE_10M });
   const occasions  = useQuery<any[]>({ queryKey: ['hp-occasions'], queryFn: () => fetch('/api/occasions').then(r => r.json()), staleTime: STALE_10M });
   const categories = useQuery<any[]>({ queryKey: ['hp-categories'], queryFn: () => fetch('/api/categories').then(r => r.json()), staleTime: STALE_10M });
-  const topRated   = useQuery<{ restaurants: any[] }>({ queryKey: ['hp-top-rated', cityKey], queryFn: () => fetch(`/api/restaurants?minRating=4.5&limit=6${cityQuery}`).then(r => r.json()), staleTime: STALE_5M });
-  const newest     = useQuery<{ restaurants: any[] }>({ queryKey: ['hp-newest', cityKey], queryFn: () => fetch(`/api/restaurants?limit=6&sortBy=newest${cityQuery}`).then(r => r.json()), staleTime: STALE_5M });
-  const offersApi  = useQuery<any>({ queryKey: ['hp-offers', cityKey], queryFn: () => fetch(`/api/offers?limit=4${cityQuery}`).then(r => r.json()), staleTime: STALE_5M });
+  const topRated   = useQuery<{ restaurants: any[] }>({ queryKey: ['hp-top-rated', locKey], queryFn: () => fetch(`/api/restaurants?minRating=4.5&limit=6${locQuery}`).then(r => r.json()), staleTime: STALE_5M });
+  const newest     = useQuery<{ restaurants: any[] }>({ queryKey: ['hp-newest', locKey], queryFn: () => fetch(`/api/restaurants?limit=6&sortBy=newest${locQuery}`).then(r => r.json()), staleTime: STALE_5M });
+  const offersApi  = useQuery<any>({ queryKey: ['hp-offers', locKey], queryFn: () => fetch(`/api/offers?limit=4${cityQuery}`).then(r => r.json()), staleTime: STALE_5M });
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

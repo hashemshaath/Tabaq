@@ -15,7 +15,7 @@ const router: IRouter = Router();
 router.get("/restaurants", async (req, res) => {
   try {
     const {
-      cityId, countryId, categoryId, occasionId, priceTier,
+      cityId, neighborhoodId, countryId, categoryId, occasionId, priceTier,
       minRating, featured, hasParking, hasOutdoorSeating, openNow,
       sortBy, limit = "20", offset = "0"
     } = req.query;
@@ -30,6 +30,7 @@ router.get("/restaurants", async (req, res) => {
       reviewCount: restaurantsTable.reviewCount,
       isVerified: restaurantsTable.isVerified,
       cityId: restaurantsTable.cityId,
+      neighborhoodId: restaurantsTable.neighborhoodId,
       cityNameEn: citiesTable.nameEn,
       cityNameAr: citiesTable.nameAr,
     }).from(restaurantsTable)
@@ -38,6 +39,7 @@ router.get("/restaurants", async (req, res) => {
 
     const conditions: SQL[] = [eq(restaurantsTable.isActive, true)];
     if (cityId) conditions.push(eq(restaurantsTable.cityId, parseInt(cityId as string)));
+    if (neighborhoodId) conditions.push(eq(restaurantsTable.neighborhoodId, parseInt(neighborhoodId as string)));
     if (countryId) conditions.push(eq(restaurantsTable.countryId, parseInt(countryId as string)));
     if (priceTier) conditions.push(eq(restaurantsTable.priceTier, priceTier as 'budget' | 'mid' | 'upscale' | 'fine_dining'));
     if (minRating) conditions.push(gte(restaurantsTable.avgRating, parseFloat(minRating as string)));
@@ -160,9 +162,10 @@ router.get("/restaurants", async (req, res) => {
 // Featured restaurants
 router.get("/restaurants/featured", async (req, res) => {
   try {
-    const { cityId, limit = "8" } = req.query;
+    const { cityId, neighborhoodId, limit = "8" } = req.query;
     const conditions = [eq(restaurantsTable.isFeatured, true), eq(restaurantsTable.isActive, true)];
     if (cityId) conditions.push(eq(restaurantsTable.cityId, parseInt(cityId as string)));
+    if (neighborhoodId) conditions.push(eq(restaurantsTable.neighborhoodId, parseInt(neighborhoodId as string)));
 
     const restaurants = await db.select().from(restaurantsTable)
       .where(and(...conditions))

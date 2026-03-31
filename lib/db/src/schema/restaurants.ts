@@ -28,6 +28,7 @@ export const restaurantsTable = pgTable("restaurants", {
   isFeatured: boolean("is_featured").default(false).notNull(),
   isActive: boolean("is_active").default(true).notNull(),
   cityId: integer("city_id").notNull().references(() => citiesTable.id),
+  neighborhoodId: integer("neighborhood_id"),
   countryId: integer("country_id").notNull().references(() => countriesTable.id),
   address: text("address"),
   latitude: doublePrecision("latitude"),

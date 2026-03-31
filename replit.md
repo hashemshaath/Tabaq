@@ -354,7 +354,7 @@ All core features COMPLETE and world-class:
   - Schema corrected: `experience_bookings` uses `isDepositPaid: boolean("deposit_paid")` and `isFullPaid: boolean("full_paid")` matching actual DB columns; duplicate `ref_code` column removed
 - **Task #2** (Experiences consumer frontend) — COMPLETE: ExperiencesPage (/experiences), ExperienceDetailPage (/experiences/:id), GiftRedeemPage (/gift-redeem/:code), ExperienceCard component; Header nav updated with Experiences link; seed data added (4 experiences, 6 slots each); category labels fixed (outdoor/cooking_class); slots API fixed to return array (not `{ slots: [...] }`)
 - **Task #4** (Experiences admin controls) — IN PROGRESS
-- **Task #5** (City & neighborhood filter) — IN PROGRESS
+- **Task #5** (City & neighborhood filter) — COMPLETE: Added `neighborhood_id` int column to `restaurants` table (schema pushed); seeded neighborhood IDs for all 8 restaurants (Riyadh IDs 101-108, Jeddah 202); `/api/restaurants` and `/api/restaurants/featured` now accept `neighborhoodId` query param and filter by it; `HomePage` queries now pass `selectedNeighborhoodId` via `nbQuery`/`locQuery` alongside `cityId`, with a combined `locKey` cache key ensuring React Query refetches when neighborhood changes
 - **Task #9** (AI Features, SEO & Multilingual) — PENDING
 
 ## Recent Audit Fixes (Production Polish Session)

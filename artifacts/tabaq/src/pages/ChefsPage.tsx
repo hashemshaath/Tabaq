@@ -5,41 +5,7 @@ import {
   ChefHat, Award, Star, MapPin, Utensils, Filter, Search,
   ChevronRight, Globe, Flame, Sparkles, BadgeCheck, Clock, ArrowRight,
 } from 'lucide-react';
-
-// ── Types ──────────────────────────────────────────────────────────────────────
-
-interface Chef {
-  id: number;
-  nameEn: string;
-  nameAr: string;
-  titleEn: string;
-  titleAr: string;
-  nationalityEn: string;
-  nationalityAr: string;
-  restaurantEn: string;
-  restaurantAr: string;
-  restaurantId: number;
-  cityEn: string;
-  cityAr: string;
-  cuisineEn: string;
-  cuisineAr: string;
-  photo: string;
-  coverPhoto: string;
-  michelinStars: number;
-  awards: string[];
-  awardsAr: string[];
-  bioShortEn: string;
-  bioShortAr: string;
-  specialtyEn: string;
-  specialtyAr: string;
-  yearsExp: number;
-  featured?: boolean;
-  tabaqStars?: number;
-}
-
-// ── Chef Data (populated from API when available) ──────────────────────────────
-
-const CHEFS: Chef[] = [];
+import { CHEFS, type ChefData as Chef } from '@/lib/chefs';
 
 
 const CUISINE_FILTERS = [
