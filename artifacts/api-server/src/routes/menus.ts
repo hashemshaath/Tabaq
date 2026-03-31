@@ -130,6 +130,36 @@ router.delete("/menu-sections/:sectionId", requireAuth, async (req, res) => {
   }
 });
 
+// Create dish in a menu section
+router.post("/menu-sections/:sectionId/dishes", requireAuth, async (req, res) => {
+  try {
+    const sectionId = parseInt(req.params["sectionId"] as string, 10);
+    if (isNaN(sectionId)) return void res.status(400).json({ error: "invalid_id" });
+
+    const [section] = await db.select({ menuId: menuSectionsTable.menuId })
+      .from(menuSectionsTable).where(eq(menuSectionsTable.id, sectionId));
+    if (!section) return void res.status(404).json({ error: "not_found", message: "Section not found" });
+
+    const allowedFields = [
+      "nameEn", "nameAr", "descriptionEn", "descriptionAr", "price", "discountPercentage",
+      "imageUrl", "galleryImages", "videoUrl", "isAvailable", "isHalal", "isVegetarian",
+      "isVegan", "isGlutenFree", "isDairyFree", "isNutFree", "isHealthy",
+      "isBestseller", "isChefChoice", "isNewItem", "allergens",
+      "spiceLevel", "prepTimeMinutes", "calories",
+    ];
+    const dishData: Record<string, unknown> = { menuSectionId: sectionId };
+    for (const field of allowedFields) {
+      if (req.body[field] !== undefined) dishData[field] = req.body[field];
+    }
+
+    const [dish] = await db.insert(dishesTable).values(dishData as any).returning();
+    res.status(201).json(dish);
+  } catch (err) {
+    req.log.error({ err }, "Failed to create dish");
+    res.status(500).json({ error: "internal_error", message: "Failed to create dish" });
+  }
+});
+
 // Update dish (admin)
 router.patch("/dishes/:dishId", requireAuth, async (req, res) => {
   try {

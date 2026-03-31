@@ -3,7 +3,7 @@ import { db } from "@workspace/db";
 import {
   userCheckInsTable, visitPlansTable, userRecommendationsTable,
   savedDishesTable, contentPrivacyTable, userBlocksTable,
-  usersTable, restaurantsTable, dishesTable,
+  usersTable, restaurantsTable, dishesTable, verificationRequestsTable,
 } from "@workspace/db/schema";
 import { eq, and, desc, inArray } from "drizzle-orm";
 import { requireAuth } from "../middleware/requireAuth.js";
@@ -357,6 +357,109 @@ router.get("/me/blocked-users", requireAuth, async (req, res) => {
     res.json(rows);
   } catch (err) {
     req.log.error({ err }, "Failed to fetch blocked users");
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// ── VERIFICATION REQUESTS ─────────────────────────────────────────────────────
+
+router.get("/me/verification-request", requireAuth, async (req, res) => {
+  try {
+    const userId = req.auth!.userId;
+    const [req_] = await db
+      .select()
+      .from(verificationRequestsTable)
+      .where(eq(verificationRequestsTable.userId, userId))
+      .orderBy(desc(verificationRequestsTable.createdAt))
+      .limit(1);
+    res.json({ request: req_ ?? null });
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch verification request");
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+router.post("/me/verification-request", requireAuth, async (req, res) => {
+  try {
+    const userId = req.auth!.userId;
+    const { method, noteFromUser } = req.body as { method: string; noteFromUser?: string };
+    // Check if there's already a pending request
+    const [existing] = await db
+      .select({ id: verificationRequestsTable.id, status: verificationRequestsTable.status })
+      .from(verificationRequestsTable)
+      .where(eq(verificationRequestsTable.userId, userId))
+      .orderBy(desc(verificationRequestsTable.createdAt))
+      .limit(1);
+    if (existing && existing.status === "pending") {
+      return res.status(409).json({ error: "pending_request_exists", message: "You already have a pending verification request." });
+    }
+    const mockDocUrl = method === "document" ? `https://mock-docs.tabaq.sa/id-${userId}-${Date.now()}.pdf` : null;
+    const [newReq] = await db
+      .insert(verificationRequestsTable)
+      .values({ userId, method, noteFromUser: noteFromUser ?? null, documentUrl: mockDocUrl, status: "pending" })
+      .returning();
+    res.status(201).json({ request: newReq, message: "Verification request submitted successfully." });
+  } catch (err) {
+    req.log.error({ err }, "Failed to submit verification request");
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// ── ADMIN: Verification Requests ──────────────────────────────────────────────
+
+router.get("/admin/verification-requests", requireAuth, async (req, res) => {
+  try {
+    const { status } = req.query as { status?: string };
+    const baseQuery = db
+      .select({
+        id: verificationRequestsTable.id,
+        userId: verificationRequestsTable.userId,
+        method: verificationRequestsTable.method,
+        status: verificationRequestsTable.status,
+        noteFromUser: verificationRequestsTable.noteFromUser,
+        noteFromAdmin: verificationRequestsTable.noteFromAdmin,
+        documentUrl: verificationRequestsTable.documentUrl,
+        createdAt: verificationRequestsTable.createdAt,
+        reviewedAt: verificationRequestsTable.reviewedAt,
+        userName: usersTable.nameEn,
+        userNameAr: usersTable.nameAr,
+        userUsername: usersTable.username,
+        userAvatarUrl: usersTable.avatarUrl,
+        userIsVerified: usersTable.isVerified,
+      })
+      .from(verificationRequestsTable)
+      .leftJoin(usersTable, eq(verificationRequestsTable.userId, usersTable.id));
+    const rows = await (status
+      ? baseQuery.where(eq(verificationRequestsTable.status, status))
+      : baseQuery
+    ).orderBy(desc(verificationRequestsTable.createdAt));
+    res.json({ requests: rows, total: rows.length });
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch verification requests");
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+router.patch("/admin/verification-requests/:id", requireAuth, async (req, res) => {
+  try {
+    const id = parseInt(req.params["id"] as string, 10);
+    const { status, noteFromAdmin } = req.body as { status: "approved" | "rejected"; noteFromAdmin?: string };
+    if (!["approved", "rejected"].includes(status)) {
+      return res.status(400).json({ error: "invalid_status" });
+    }
+    const [updated] = await db
+      .update(verificationRequestsTable)
+      .set({ status, noteFromAdmin: noteFromAdmin ?? null, reviewedAt: new Date(), updatedAt: new Date() })
+      .where(eq(verificationRequestsTable.id, id))
+      .returning();
+    if (!updated) return res.status(404).json({ error: "not_found" });
+    // If approved, set user as verified
+    if (status === "approved") {
+      await db.update(usersTable).set({ isVerified: true }).where(eq(usersTable.id, updated.userId));
+    }
+    res.json({ request: updated, message: `Request ${status} successfully.` });
+  } catch (err) {
+    req.log.error({ err }, "Failed to review verification request");
     res.status(500).json({ error: "internal_error" });
   }
 });

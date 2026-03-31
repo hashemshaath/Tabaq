@@ -10,11 +10,158 @@ import {
   FileText, ArrowUpRight, ChevronRight, MoreHorizontal, Plus,
   MapPin, Clock, LogOut, Database, Activity, FileSignature,
   DollarSign, Receipt, Send, Percent, BadgeCheck, Ban, RefreshCw,
-  CheckSquare, X, Hash, ChefHat, Sparkles, Film, ThumbsUp, ThumbsDown, PlayCircle
+  CheckSquare, X, Hash, ChefHat, Sparkles, Film, ThumbsUp, ThumbsDown, PlayCircle,
+  ShieldCheck, User, ExternalLink, Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StarRating } from '@/components/StarRating';
 import { getAuthHeaders } from '@/lib/api';
+
+// ─── Verifications Admin Tab ──────────────────────────────────────
+function VerificationsAdminTab({ t }: { t: (en: string, ar: string) => string }) {
+  const qc = useQueryClient();
+  const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
+  const [reviewNote, setReviewNote] = useState<Record<number, string>>({});
+
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['admin-verifications', filter],
+    queryFn: async () => {
+      const params = filter !== 'all' ? `?status=${filter}` : '';
+      const r = await fetch(`/api/admin/verification-requests${params}`, { headers: getAuthHeaders() });
+      return r.ok ? r.json() : { requests: [] };
+    },
+  });
+
+  const requests: any[] = data?.requests ?? [];
+
+  const reviewMut = useMutation({
+    mutationFn: async ({ id, status }: { id: number; status: 'approved' | 'rejected' }) => {
+      const r = await fetch(`/api/admin/verification-requests/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({ status, noteFromAdmin: reviewNote[id] ?? '' }),
+      });
+      if (!r.ok) throw new Error('Failed');
+      return r.json();
+    },
+    onSuccess: () => { refetch(); qc.invalidateQueries({ queryKey: ['admin-verifications'] }); },
+  });
+
+  const METHOD_LABELS: Record<string, string> = { document: '🪪 ID Document', code: '🔐 Code', invite_link: '🔗 Invite Link' };
+  const STATUS_COLORS: Record<string, string> = { pending: 'bg-amber-100 text-amber-700', approved: 'bg-green-100 text-green-700', rejected: 'bg-red-100 text-red-700' };
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-bold">{t('Verification Requests', 'طلبات التحقق')}</h2>
+          <p className="text-sm text-muted-foreground">{t('Review and approve user identity verification requests', 'مراجعة وقبول طلبات التحقق من هوية المستخدمين')}</p>
+        </div>
+        <button onClick={() => refetch()} className="flex items-center gap-1.5 text-sm text-primary hover:underline">
+          <RefreshCw className="w-3.5 h-3.5" />{t('Refresh', 'تحديث')}
+        </button>
+      </div>
+
+      {/* Filter pills */}
+      <div className="flex gap-2">
+        {(['all', 'pending', 'approved', 'rejected'] as const).map(s => (
+          <button key={s} onClick={() => setFilter(s)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-colors ${filter === s ? 'bg-primary text-primary-foreground' : 'bg-secondary hover:bg-secondary/80'}`}>
+            {t(s === 'all' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1), s === 'all' ? 'الكل' : s === 'pending' ? 'معلق' : s === 'approved' ? 'مقبول' : 'مرفوض')}
+          </button>
+        ))}
+      </div>
+
+      {/* Table */}
+      {isLoading ? (
+        <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+      ) : requests.length === 0 ? (
+        <div className="text-center py-16 text-muted-foreground">
+          <ShieldCheck className="w-10 h-10 mx-auto mb-3 opacity-40" />
+          <p className="font-medium">{t('No verification requests', 'لا توجد طلبات تحقق')}</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {requests.map(req => (
+            <div key={req.id} className="bg-card border border-border rounded-xl p-4 space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-secondary overflow-hidden shrink-0">
+                    {req.userAvatarUrl
+                      ? <img src={req.userAvatarUrl} alt="" className="w-full h-full object-cover" />
+                      : <User className="w-5 h-5 text-muted-foreground m-auto" />
+                    }
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold">{req.userName}</p>
+                      {req.userIsVerified && <ShieldCheck className="w-3.5 h-3.5 text-blue-500" />}
+                    </div>
+                    <p className="text-xs text-muted-foreground">@{req.userUsername}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${STATUS_COLORS[req.status]}`}>
+                    {req.status}
+                  </span>
+                  <Link href={`/${req.userUsername}`}>
+                    <ExternalLink className="w-3.5 h-3.5 text-muted-foreground hover:text-primary cursor-pointer" />
+                  </Link>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                <span>{METHOD_LABELS[req.method] ?? req.method}</span>
+                <span>{new Date(req.createdAt).toLocaleDateString()}</span>
+                {req.documentUrl && (
+                  <a href={req.documentUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-primary hover:underline">
+                    <ExternalLink className="w-3 h-3" />{t('View Document', 'عرض الوثيقة')}
+                  </a>
+                )}
+              </div>
+
+              {req.noteFromUser && (
+                <div className="bg-secondary/50 rounded-lg px-3 py-2 text-xs text-foreground">
+                  <span className="font-semibold text-muted-foreground">{t('User note: ', 'ملاحظة المستخدم: ')}</span>{req.noteFromUser}
+                </div>
+              )}
+
+              {req.status === 'pending' && (
+                <div className="flex items-center gap-2 pt-1">
+                  <input
+                    placeholder={t('Admin note (optional)...', 'ملاحظة الإدارة (اختياري)...')}
+                    value={reviewNote[req.id] ?? ''}
+                    onChange={e => setReviewNote(p => ({ ...p, [req.id]: e.target.value }))}
+                    className="flex-1 text-xs bg-secondary/60 rounded-lg px-3 py-2 outline-none focus:ring-2 ring-primary/40"
+                  />
+                  <button
+                    onClick={() => reviewMut.mutate({ id: req.id, status: 'approved' })}
+                    disabled={reviewMut.isPending}
+                    className="flex items-center gap-1 text-xs px-3 py-2 rounded-lg bg-green-500 text-white hover:bg-green-600 font-semibold transition-colors"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />{t('Approve', 'قبول')}
+                  </button>
+                  <button
+                    onClick={() => reviewMut.mutate({ id: req.id, status: 'rejected' })}
+                    disabled={reviewMut.isPending}
+                    className="flex items-center gap-1 text-xs px-3 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 font-semibold transition-colors"
+                  >
+                    <XCircle className="w-3.5 h-3.5" />{t('Reject', 'رفض')}
+                  </button>
+                </div>
+              )}
+              {req.noteFromAdmin && (
+                <div className="text-xs text-muted-foreground">
+                  <span className="font-semibold">{t('Admin note: ', 'ملاحظة الإدارة: ')}</span>{req.noteFromAdmin}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ─── Blog Management Tab ────────────────────────────────────────
 function BlogManagementTab({ t }: { t: (en: string, ar: string) => string }) {
@@ -660,7 +807,7 @@ const INITIAL_MODULES: Module[] = [
 ];
 
 // ─── Types ──────────────────────────────────────────────────────
-type AdminTab = 'overview' | 'offers' | 'contracts' | 'finance' | 'messages' | 'referrals' | 'restaurants' | 'registrations' | 'users' | 'bookings' | 'reviews' | 'blog' | 'seo' | 'modules' | 'settings' | 'review-queue' | 'promo-codes' | 'settlement' | 'exp-providers' | 'exp-listings' | 'exp-bookings' | 'exp-settings' | 'menus' | 'stories';
+type AdminTab = 'overview' | 'offers' | 'contracts' | 'finance' | 'messages' | 'referrals' | 'restaurants' | 'registrations' | 'users' | 'bookings' | 'reviews' | 'blog' | 'seo' | 'modules' | 'settings' | 'review-queue' | 'promo-codes' | 'settlement' | 'exp-providers' | 'exp-listings' | 'exp-bookings' | 'exp-settings' | 'menus' | 'stories' | 'verifications';
 
 // ─── Component ──────────────────────────────────────────────────
 export function AdminPanelPage() {
@@ -1158,6 +1305,7 @@ export function AdminPanelPage() {
     { id: 'reviews', label: 'Reviews', icon: Star, badge: 1 },
     { id: 'stories', label: 'Stories', icon: Film },
     { id: 'menus', label: 'Menu Management', icon: Utensils },
+    { id: 'verifications', label: 'Verifications', icon: ShieldCheck },
     { id: 'blog', label: 'Blog & Content', icon: BookOpen },
     { id: 'seo', label: 'SEO Manager', icon: Globe },
     { id: 'modules', label: 'Modules', icon: Layers },
@@ -1735,6 +1883,9 @@ export function AdminPanelPage() {
 
           {/* ── STORIES ── */}
           {activeTab === 'stories' && <StoriesManagementTab t={t} />}
+
+          {/* ── VERIFICATIONS ── */}
+          {activeTab === 'verifications' && <VerificationsAdminTab t={t} />}
 
           {/* ── BLOG ── */}
           {activeTab === 'blog' && <BlogManagementTab t={t} />}

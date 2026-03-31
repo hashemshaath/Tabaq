@@ -1,0 +1,253 @@
+You are a senior full-stack engineer and product architect (ex-Facebook / X level).
+
+Your task is to FIX, REBUILD, and UPGRADE the follow system, privacy controls, verification system, analytics, and user experience into a production-level scalable system.
+
+========================
+
+1. FOLLOW SYSTEM (FULL FIX & UPGRADE)
+   ========================
+   Ensure the follow system works perfectly across:
+
+Entities:
+
+* Users (basic & professional)
+* Food bloggers / reviewers
+* Chefs
+* Restaurants
+* Service providers
+
+Features:
+
+* Follow / Unfollow (instant + optimistic UI)
+* Followers / Following lists
+* Follow categories:
+
+  * Restaurants
+  * Dishes
+  * Reviews
+  * Offers
+  * New openings
+
+Advanced:
+
+* Suggested follows (AI-based mock logic)
+* Re-follow suggestions
+* Mutual followers
+* Follow button states:
+
+  * Follow
+  * Following
+  * Requested
+
+========================
+2. PRIVACY SYSTEM (LIKE X & FACEBOOK)
+=====================================
+
+Implement full privacy control:
+
+* Account visibility:
+
+  * Public
+  * Followers only
+  * Private
+
+Content-level control:
+
+* Visits
+* Reviews
+* Favorites
+* Plans
+
+User can:
+
+* Block users
+* Remove followers
+* Mute users
+* Control who can follow or message
+
+========================
+3. VERIFICATION SYSTEM (OFFICIAL)
+=================================
+
+Allow users to request verification:
+
+Methods:
+
+* Upload identity documents (mock)
+* Enter verification code
+* Accept invite from trusted link
+
+Admin panel:
+
+* Review verification requests
+* Approve / reject
+* Assign verified badge
+
+UI:
+
+* Show verified badge on profile
+* Display verification status
+
+========================
+4. CONTENT SHARING SYSTEM
+=========================
+
+Allow users to share:
+
+* Reviews
+* Visited places
+* Favorite dishes
+* Plans (future visits)
+
+Features:
+
+* Share cards UI
+* Public / followers-only visibility
+* Social sharing (copy link)
+
+========================
+5. MAP SEARCH SYSTEM
+====================
+
+Build map-based discovery:
+
+* Search restaurants via map
+* Search dishes via map
+* Show:
+
+  * Ratings
+  * Popular dishes
+  * Distance
+
+Features:
+
+* Filters (rating, category, popularity)
+* Interactive map markers
+
+========================
+6. USER PROFILE (UPGRADE)
+=========================
+
+Enhance profile with:
+
+* Full activity sections
+* Smart insights:
+
+  * Profile views
+  * Followers growth
+  * Engagement rate
+
+Dashboard:
+
+* Analytics for:
+
+  * Visitors
+  * Followers
+  * Reviews
+  * Popular dishes
+
+========================
+7. PROVIDER / RESTAURANT ANALYTICS
+==================================
+
+Provide advanced dashboard:
+
+* Visits analytics
+* Customer interests
+* Popular dishes
+* Peak times
+* Conversion tracking
+
+Paid Membership:
+
+* Advanced analytics
+* Growth insights
+* Recommendations
+
+========================
+8. AI-DRIVEN INSIGHTS
+=====================
+
+Provide smart suggestions:
+
+* Improve profile completeness
+* Suggest best posting times
+* Recommend dishes to promote
+* Suggest marketing actions
+
+========================
+9. GAMIFICATION & GROWTH
+========================
+
+* Points system
+* Rewards for activity
+* Profile completion score
+* Upgrade suggestions to paid plans
+
+========================
+10. CRM & CUSTOMER MANAGEMENT
+=============================
+
+Integrate CRM:
+
+* Customer tracking
+* Interaction history
+* Messaging system (UI)
+* Campaign management
+
+========================
+11. NOTIFICATIONS
+=================
+
+* Follow activity
+* Verification updates
+* New reviews
+* Growth insights
+
+========================
+12. UX & DESIGN
+===============
+
+* Premium UI
+* Smooth animations
+* Clean layout
+* Consistent spacing
+* IBM Plex Sans Arabic font
+* RTL + LTR support
+
+========================
+13. PERFORMANCE
+===============
+
+* Fast follow/unfollow
+* Lazy loading
+* Optimized API calls
+* Background tasks simulation
+
+========================
+14. OUTPUT
+==========
+
+* Full working system
+* Clean architecture
+* All features connected
+* Ready to scale
+
+========================
+FINAL GOAL
+==========
+
+Build a powerful, scalable, and intelligent platform that combines:
+
+* Social networking (follow system)
+* Privacy & verification
+* Map-based discovery
+* Smart analytics & growth tools
+* CRM integration
+
+The system must feel like a mix of:
+
+* Facebook (profiles & privacy)
+* X (follow system)
+* Zomato (restaurant discovery)
+* SaaS analytics platform (for providers)

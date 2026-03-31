@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/hooks/use-language";
 import { getAuthHeaders } from "@/lib/api";
+import { toast } from "sonner";
 import {
   User, ShieldCheck, MapPin, Calendar, Star, Users, Globe,
   Heart, Bookmark, MessageCircle, Share2, Copy, Check, Lock,
@@ -12,7 +13,8 @@ import {
   Sparkles, Zap, Eye, Edit, AlertCircle, CheckCircle2, X,
   BadgeCheck, Play, Camera, TrendingUp, Award, Utensils,
   PlusCircle, Trash2, Target, ChevronRight, ThumbsUp, Bell,
-  UtensilsCrossed, ListChecks, Soup,
+  UtensilsCrossed, ListChecks, Soup, MoreHorizontal, UserX,
+  VolumeX, Flag, UserCheck, CheckCircle, XCircle, Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePageMeta } from "@/hooks/use-page-meta";
@@ -278,10 +280,343 @@ function UpgradeModal({ current, onUpgrade, onClose }: { current: AccountType; o
 // ── Stat pill ──────────────────────────────────────────────────────────────────
 function StatPill({ label, value, onClick }: { label: string; value: number; onClick?: () => void }) {
   return (
-    <button onClick={onClick} className="flex flex-col items-center py-3 px-4 hover:bg-secondary/60 rounded-xl transition-colors">
+    <button onClick={onClick} className={`flex flex-col items-center py-3 px-4 rounded-xl transition-colors ${onClick ? "hover:bg-secondary/60 cursor-pointer" : "cursor-default"}`}>
       <span className="text-xl font-bold">{fmtNum(value)}</span>
       <span className="text-xs text-muted-foreground mt-0.5">{label}</span>
     </button>
+  );
+}
+
+// ── Follow List Modal ──────────────────────────────────────────────────────────
+function FollowListModal({
+  userId, type, isOwn, lang, authUserId, onClose,
+}: {
+  userId: number; type: "followers" | "following"; isOwn: boolean;
+  lang: string; authUserId?: number; onClose: () => void;
+}) {
+  const t = (en: string, ar: string) => lang === "ar" ? ar : en;
+  const qc = useQueryClient();
+  const [search, setSearch] = useState("");
+
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: [`follow-list`, userId, type],
+    queryFn: async () => {
+      const r = await fetch(`/api/users/${userId}/${type}`, { headers: getAuthHeaders() });
+      return r.ok ? r.json() : [];
+    },
+  });
+
+  const users: any[] = Array.isArray(data) ? data : [];
+  const filtered = search.trim()
+    ? users.filter(u => (u.nameEn ?? "").toLowerCase().includes(search.toLowerCase()) || (u.nameAr ?? "").includes(search))
+    : users;
+
+  const removeFollowerMut = useMutation({
+    mutationFn: async (followerId: number) => {
+      await fetch(`/api/users/${followerId}/follow`, { method: "DELETE", headers: getAuthHeaders() });
+    },
+    onSuccess: () => { refetch(); qc.invalidateQueries({ queryKey: ["profile"] }); toast.success(t("Follower removed", "تمت إزالة المتابع")); },
+  });
+
+  const followToggleMut = useMutation({
+    mutationFn: async ({ targetId, isFollowing }: { targetId: number; isFollowing: boolean }) => {
+      await fetch(`/api/users/${targetId}/follow`, {
+        method: isFollowing ? "DELETE" : "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+      });
+    },
+    onSuccess: () => { refetch(); qc.invalidateQueries({ queryKey: ["profile"] }); },
+  });
+
+  const blockMut = useMutation({
+    mutationFn: async (targetId: number) => {
+      await fetch(`/api/users/${targetId}/block`, { method: "POST", headers: getAuthHeaders() });
+    },
+    onSuccess: () => { refetch(); toast.success(t("User blocked", "تم حظر المستخدم")); },
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-card rounded-2xl w-full max-w-md max-h-[80vh] flex flex-col shadow-2xl border border-border" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
+          <h2 className="text-base font-bold">
+            {type === "followers" ? t("Followers", "المتابعون") : t("Following", "يتابع")}
+          </h2>
+          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-secondary text-muted-foreground"><X className="w-4 h-4" /></button>
+        </div>
+        {/* Search */}
+        <div className="px-4 py-3 border-b border-border shrink-0">
+          <input
+            value={search} onChange={e => setSearch(e.target.value)}
+            placeholder={t("Search...", "بحث...")}
+            className="w-full bg-secondary/60 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 ring-primary/40"
+          />
+        </div>
+        {/* List */}
+        <div className="overflow-y-auto flex-1 py-2">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+          ) : filtered.length === 0 ? (
+            <div className="py-10 text-center text-sm text-muted-foreground">{t("No users found", "لا يوجد مستخدمون")}</div>
+          ) : filtered.map(u => {
+            const name = lang === "ar" ? (u.nameAr || u.nameEn) : (u.nameEn || u.nameAr);
+            const isMe = u.id === authUserId;
+            const isUserFollowingThem = false; // simplified
+            return (
+              <div key={u.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-secondary/40 transition-colors">
+                <Link href={`/${u.username ?? u.id}`} onClick={onClose}>
+                  <div className="w-10 h-10 rounded-full bg-secondary overflow-hidden shrink-0">
+                    {u.avatarUrl
+                      ? <img src={u.avatarUrl} alt={name} className="w-full h-full object-cover" />
+                      : <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5"><User className="w-5 h-5 text-primary/50" /></div>
+                    }
+                  </div>
+                </Link>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <Link href={`/${u.username ?? u.id}`} onClick={onClose}>
+                      <span className="text-sm font-semibold hover:text-primary transition-colors truncate">{name}</span>
+                    </Link>
+                    {u.isVerified && <ShieldCheck className="w-3.5 h-3.5 text-blue-500 shrink-0" />}
+                  </div>
+                  <p className="text-xs text-muted-foreground">@{u.username} · {t(`Lv.${u.level}`, `مستوى ${u.level}`)}</p>
+                </div>
+                {!isMe && (
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {isOwn && type === "followers" && (
+                      <button
+                        onClick={() => removeFollowerMut.mutate(u.id)}
+                        disabled={removeFollowerMut.isPending}
+                        className="text-xs px-2.5 py-1 rounded-lg bg-secondary hover:bg-destructive/10 hover:text-destructive transition-colors font-medium"
+                      >
+                        {t("Remove", "إزالة")}
+                      </button>
+                    )}
+                    {authUserId && !isOwn && (
+                      <button
+                        onClick={() => followToggleMut.mutate({ targetId: u.id, isFollowing: isUserFollowingThem })}
+                        disabled={followToggleMut.isPending}
+                        className="text-xs px-2.5 py-1 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-medium"
+                      >
+                        {t("Follow", "متابعة")}
+                      </button>
+                    )}
+                    {authUserId && (
+                      <button
+                        onClick={() => blockMut.mutate(u.id)}
+                        disabled={blockMut.isPending}
+                        title={t("Block user", "حظر المستخدم")}
+                        className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                      >
+                        <UserX className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <div className="px-4 py-3 border-t border-border shrink-0 text-center text-xs text-muted-foreground">
+          {filtered.length} {type === "followers" ? t("followers", "متابع") : t("following", "متابَع")}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Follow Requests Panel ──────────────────────────────────────────────────────
+function FollowRequestsPanel({ lang, onDone }: { lang: string; onDone: () => void }) {
+  const t = (en: string, ar: string) => lang === "ar" ? ar : en;
+  const qc = useQueryClient();
+
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ["follow-requests"],
+    queryFn: async () => {
+      const r = await fetch("/api/me/follow-requests", { headers: getAuthHeaders() });
+      return r.ok ? r.json() : { requests: [] };
+    },
+  });
+
+  const requests: any[] = data?.requests ?? [];
+
+  const respondMut = useMutation({
+    mutationFn: async ({ requesterId, action }: { requesterId: number; action: "accept" | "reject" }) => {
+      const url = action === "accept"
+        ? `/api/me/follow-requests/${requesterId}/accept`
+        : `/api/me/follow-requests/${requesterId}`;
+      await fetch(url, { method: action === "accept" ? "POST" : "DELETE", headers: getAuthHeaders() });
+    },
+    onSuccess: (_, vars) => {
+      refetch();
+      qc.invalidateQueries({ queryKey: ["profile"] });
+      toast.success(vars.action === "accept" ? t("Follow request accepted", "تم قبول طلب المتابعة") : t("Follow request declined", "تم رفض طلب المتابعة"));
+    },
+  });
+
+  if (isLoading) return null;
+  if (requests.length === 0) return (
+    <div className="bg-card border border-border rounded-2xl p-4 text-center text-sm text-muted-foreground mb-4">
+      {t("No pending follow requests", "لا توجد طلبات متابعة معلقة")}
+    </div>
+  );
+
+  return (
+    <div className="bg-card border border-border rounded-2xl overflow-hidden mb-4">
+      <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <UserCheck className="w-4 h-4 text-primary" />
+          <h3 className="text-sm font-bold">{t("Follow Requests", "طلبات المتابعة")}</h3>
+          <span className="text-xs bg-primary text-primary-foreground rounded-full px-2 py-0.5 font-semibold">{requests.length}</span>
+        </div>
+      </div>
+      <div className="divide-y divide-border">
+        {requests.map(req => {
+          const name = lang === "ar" ? (req.nameAr || req.nameEn) : (req.nameEn || req.nameAr);
+          return (
+            <div key={req.id} className="flex items-center gap-3 px-4 py-3">
+              <div className="w-10 h-10 rounded-full bg-secondary overflow-hidden shrink-0">
+                {req.avatarUrl
+                  ? <img src={req.avatarUrl} alt={name} className="w-full h-full object-cover" />
+                  : <User className="w-5 h-5 text-muted-foreground m-auto" />
+                }
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold truncate">{name}</p>
+                <p className="text-xs text-muted-foreground">@{req.username}</p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => respondMut.mutate({ requesterId: req.id, action: "accept" })}
+                  disabled={respondMut.isPending}
+                  className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 font-semibold transition-colors"
+                >
+                  <CheckCircle className="w-3.5 h-3.5" />{t("Accept", "قبول")}
+                </button>
+                <button
+                  onClick={() => respondMut.mutate({ requesterId: req.id, action: "reject" })}
+                  disabled={respondMut.isPending}
+                  className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-secondary hover:bg-destructive/10 hover:text-destructive font-medium transition-colors"
+                >
+                  <XCircle className="w-3.5 h-3.5" />{t("Decline", "رفض")}
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Verification Modal ─────────────────────────────────────────────────────────
+function VerificationModal({ lang, onClose }: { lang: string; onClose: () => void }) {
+  const t = (en: string, ar: string) => lang === "ar" ? ar : en;
+  const [method, setMethod] = useState<"document" | "code" | "invite_link">("document");
+  const [note, setNote] = useState("");
+
+  const { data: existingReqData } = useQuery({
+    queryKey: ["my-verification-request"],
+    queryFn: async () => {
+      const r = await fetch("/api/me/verification-request", { headers: getAuthHeaders() });
+      return r.ok ? r.json() : null;
+    },
+  });
+
+  const existing = existingReqData?.request;
+
+  const submitMut = useMutation({
+    mutationFn: async () => {
+      const r = await fetch("/api/me/verification-request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({ method, noteFromUser: note }),
+      });
+      if (!r.ok) {
+        const err = await r.json();
+        throw new Error(err.message ?? "Failed");
+      }
+      return r.json();
+    },
+    onSuccess: () => {
+      toast.success(t("Verification request submitted! We'll review it within 24-48 hours.", "تم إرسال طلب التحقق! سنراجعه خلال 24-48 ساعة."));
+      onClose();
+    },
+    onError: (err: any) => toast.error(err.message ?? t("Failed to submit request", "فشل إرسال الطلب")),
+  });
+
+  const METHODS = [
+    { key: "document" as const, icon: "🪪", en: "Upload ID Document", ar: "رفع وثيقة هوية", desc_en: "Upload a copy of your official ID (passport, national ID)", desc_ar: "ارفع نسخة من هويتك الرسمية (جواز سفر، بطاقة هوية)" },
+    { key: "code" as const, icon: "🔐", en: "Verification Code", ar: "رمز التحقق", desc_en: "Enter a special invitation code from Tabaq", desc_ar: "أدخل رمز الدعوة الخاص من طبق" },
+    { key: "invite_link" as const, icon: "🔗", en: "Invite Link", ar: "رابط الدعوة", desc_en: "Use a trusted invite link from Tabaq team or partner", desc_ar: "استخدم رابط دعوة موثوق من فريق طبق أو الشركاء" },
+  ];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-card rounded-2xl w-full max-w-md shadow-2xl border border-border flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+        <div className="px-5 py-4 border-b border-border flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-5 h-5 text-blue-500" />
+            <h2 className="text-base font-bold">{t("Request Verification", "طلب التحقق")}</h2>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-secondary text-muted-foreground"><X className="w-4 h-4" /></button>
+        </div>
+        <div className="overflow-y-auto flex-1 p-5 space-y-4">
+          {existing ? (
+            <div className={`rounded-xl p-4 border ${existing.status === "pending" ? "bg-amber-50 border-amber-200 dark:bg-amber-900/20" : existing.status === "approved" ? "bg-green-50 border-green-200 dark:bg-green-900/20" : "bg-red-50 border-red-200 dark:bg-red-900/20"}`}>
+              <div className="flex items-center gap-2 mb-1">
+                {existing.status === "pending" && <Clock className="w-4 h-4 text-amber-600" />}
+                {existing.status === "approved" && <CheckCircle className="w-4 h-4 text-green-600" />}
+                {existing.status === "rejected" && <XCircle className="w-4 h-4 text-red-600" />}
+                <span className="text-sm font-semibold capitalize">{existing.status === "pending" ? t("Under Review", "قيد المراجعة") : existing.status === "approved" ? t("Approved", "تمت الموافقة") : t("Rejected", "مرفوض")}</span>
+              </div>
+              <p className="text-xs text-muted-foreground">{t("Your verification request was submitted via", "طلب التحقق الخاص بك تم عبر")} {existing.method}.</p>
+              {existing.noteFromAdmin && <p className="text-xs mt-2 font-medium">{t("Admin note:", "ملاحظة الإدارة:")} {existing.noteFromAdmin}</p>}
+              {existing.status === "rejected" && (
+                <button className="mt-3 text-xs text-primary font-semibold hover:underline" onClick={() => submitMut.reset()}>
+                  {t("Submit new request", "إرسال طلب جديد")}
+                </button>
+              )}
+            </div>
+          ) : (
+            <>
+              <p className="text-sm text-muted-foreground">{t("A verification badge confirms your identity as a real person, public figure, or content creator on Tabaq.", "شارة التحقق تؤكد هويتك كشخص حقيقي أو شخصية عامة أو صانع محتوى على طبق.")}</p>
+              <div className="space-y-2">
+                <p className="text-xs font-bold text-foreground uppercase tracking-wide">{t("Choose verification method", "اختر طريقة التحقق")}</p>
+                {METHODS.map(m => (
+                  <button key={m.key} onClick={() => setMethod(m.key)}
+                    className={`w-full text-start flex items-start gap-3 p-3 rounded-xl border-2 transition-all ${method === m.key ? "border-primary bg-primary/5" : "border-border hover:border-border/80"}`}>
+                    <span className="text-2xl shrink-0 mt-0.5">{m.icon}</span>
+                    <div>
+                      <p className="text-sm font-semibold">{lang === "ar" ? m.ar : m.en}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{lang === "ar" ? m.desc_ar : m.desc_en}</p>
+                    </div>
+                    {method === m.key && <CheckCircle className="w-4 h-4 text-primary ms-auto shrink-0 mt-0.5" />}
+                  </button>
+                ))}
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold uppercase tracking-wide">{t("Additional note (optional)", "ملاحظة إضافية (اختياري)")}</label>
+                <textarea
+                  value={note} onChange={e => setNote(e.target.value)}
+                  rows={3} placeholder={t("Briefly describe your account and why you should be verified...", "صف حسابك باختصار وسبب استحقاقك للتحقق...")}
+                  className="w-full bg-secondary/60 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 ring-primary/40 resize-none"
+                />
+              </div>
+            </>
+          )}
+        </div>
+        {!existing && (
+          <div className="px-5 py-4 border-t border-border shrink-0">
+            <Button onClick={() => submitMut.mutate()} disabled={submitMut.isPending} className="w-full rounded-xl gap-2">
+              <ShieldCheck className="w-4 h-4" />
+              {submitMut.isPending ? t("Submitting...", "جارٍ الإرسال...") : t("Submit Verification Request", "إرسال طلب التحقق")}
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -998,10 +1333,18 @@ export function PublicProfilePage() {
   const [showMenu, setShowMenu] = useState(false);
   const [showCheckinModal, setShowCheckinModal] = useState(false);
   const [showPlanModal, setShowPlanModal] = useState(false);
+  const [followListType, setFollowListType] = useState<null | "followers" | "following">(null);
+  const [showOtherMenu, setShowOtherMenu] = useState(false);
+  const [showFollowRequests, setShowFollowRequests] = useState(false);
+  const [showVerifyModal, setShowVerifyModal] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const otherMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const fn = (e: MouseEvent) => { if (menuRef.current && !menuRef.current.contains(e.target as Node)) setShowMenu(false); };
+    const fn = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setShowMenu(false);
+      if (otherMenuRef.current && !otherMenuRef.current.contains(e.target as Node)) setShowOtherMenu(false);
+    };
     document.addEventListener("mousedown", fn);
     return () => document.removeEventListener("mousedown", fn);
   }, []);
@@ -1040,14 +1383,44 @@ export function PublicProfilePage() {
   const followMut = useMutation({
     mutationFn: async () => {
       if (!user) return;
+      const method = followStatus === "following" ? "DELETE" : "POST";
       const r = await fetch(`/api/users/${user.id}/follow`, {
-        method: "POST",
+        method,
         headers: { "Content-Type": "application/json", ...getAuthHeaders() },
       });
       if (!r.ok) throw new Error("Failed");
       return r.json();
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["profile", username] }),
+  });
+
+  // ── Block mutation ──────────────────────────────────────────────────────────
+  const blockMut = useMutation({
+    mutationFn: async () => {
+      if (!user) return;
+      const r = await fetch(`/api/users/${user.id}/block`, { method: "POST", headers: getAuthHeaders() });
+      if (!r.ok) throw new Error("Failed");
+      return r.json();
+    },
+    onSuccess: () => {
+      setShowOtherMenu(false);
+      toast.success(t("User blocked. You won't see their content.", "تم حظر المستخدم. لن ترى محتواه."));
+      qc.invalidateQueries({ queryKey: ["profile", username] });
+    },
+  });
+
+  // ── Mute mutation ──────────────────────────────────────────────────────────
+  const muteMut = useMutation({
+    mutationFn: async () => {
+      if (!user) return;
+      const r = await fetch(`/api/me/mutes/user/${user.id}`, { method: "POST", headers: getAuthHeaders() });
+      if (!r.ok) throw new Error("Failed");
+      return r.json();
+    },
+    onSuccess: () => {
+      setShowOtherMenu(false);
+      toast.success(t("User muted. Their activity won't appear in your feed.", "تم كتم المستخدم. لن يظهر نشاطه في خلاصتك."));
+    },
   });
 
   // ── Reviews fetch ─────────────────────────────────────────────────────────────
@@ -1351,6 +1724,12 @@ export function PublicProfilePage() {
                       <Zap className="w-3.5 h-3.5" />{t("Upgrade", "ترقية")}
                     </Button>
                   )}
+                  {!user.isVerified && (
+                    <Button variant="outline" size="sm" onClick={() => setShowVerifyModal(true)}
+                      className="rounded-xl gap-1.5 text-xs font-semibold h-9 border-blue-300 text-blue-600 hover:bg-blue-50">
+                      <ShieldCheck className="w-3.5 h-3.5" />{t("Get Verified", "احصل على التوثيق")}
+                    </Button>
+                  )}
                 </>
               ) : (
                 <>
@@ -1385,6 +1764,39 @@ export function PublicProfilePage() {
                   <Button variant="outline" size="sm" className="rounded-xl h-9 w-9 p-0" onClick={() => setShowMessage(true)}>
                     <MessageCircle className="w-4 h-4" />
                   </Button>
+                  {/* ··· More actions menu (Block / Mute / Report) */}
+                  {isAuthenticated && (
+                    <div className="relative" ref={otherMenuRef}>
+                      <Button variant="outline" size="sm" className="rounded-xl h-9 w-9 p-0" onClick={() => setShowOtherMenu(v => !v)}>
+                        <MoreHorizontal className="w-4 h-4" />
+                      </Button>
+                      {showOtherMenu && (
+                        <div className="absolute end-0 top-11 w-48 bg-card border border-border rounded-xl shadow-xl py-1 z-30">
+                          <button
+                            onClick={() => muteMut.mutate()}
+                            disabled={muteMut.isPending}
+                            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-secondary text-start"
+                          >
+                            <VolumeX className="w-4 h-4 text-muted-foreground" />{t("Mute User", "كتم المستخدم")}
+                          </button>
+                          <button
+                            onClick={() => blockMut.mutate()}
+                            disabled={blockMut.isPending}
+                            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-secondary text-destructive text-start"
+                          >
+                            <UserX className="w-4 h-4" />{t("Block User", "حظر المستخدم")}
+                          </button>
+                          <div className="border-t border-border my-1" />
+                          <button
+                            onClick={() => { setShowOtherMenu(false); toast.success(t("Report submitted. We'll review it shortly.", "تم إرسال البلاغ. سنراجعه قريباً.")); }}
+                            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-secondary text-muted-foreground text-start"
+                          >
+                            <Flag className="w-4 h-4" />{t("Report Profile", "الإبلاغ عن الملف")}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </>
               )}
               <Button variant="outline" size="sm" className="rounded-xl h-9 w-9 p-0" onClick={() => setShowShare(true)}>
@@ -1468,11 +1880,28 @@ export function PublicProfilePage() {
 
         {/* ── STATS BAR ────────────────────────────────────────────────────────── */}
         <div className="bg-card border border-border rounded-2xl mb-4 flex items-center divide-x divide-border rtl:divide-x-reverse">
-          <StatPill label={t("Followers", "المتابعون")} value={followerCount} />
-          <StatPill label={t("Following", "يتابع")}    value={followingCount} />
+          <StatPill label={t("Followers", "المتابعون")} value={followerCount} onClick={() => setFollowListType("followers")} />
+          <StatPill label={t("Following", "يتابع")}    value={followingCount} onClick={() => setFollowListType("following")} />
           <StatPill label={t("Reviews", "تقييمات")}    value={reviewCount}    onClick={() => setTab("reviews")} />
           <StatPill label={t("Visits", "زيارات")}      value={bookingCount}   onClick={() => setTab("visits")} />
         </div>
+
+        {/* ── FOLLOW REQUESTS (own private account) ──────────────────────────── */}
+        {isOwn && user.isPrivate && (
+          <div className="mb-2">
+            <button
+              onClick={() => setShowFollowRequests(v => !v)}
+              className="w-full flex items-center gap-2 text-sm font-semibold text-primary hover:underline mb-2"
+            >
+              <UserCheck className="w-4 h-4" />
+              {t("Manage Follow Requests", "إدارة طلبات المتابعة")}
+              <ChevronRight className={`w-4 h-4 ms-auto transition-transform ${showFollowRequests ? "rotate-90" : ""}`} />
+            </button>
+            {showFollowRequests && (
+              <FollowRequestsPanel lang={lang} onDone={() => setShowFollowRequests(false)} />
+            )}
+          </div>
+        )}
 
         {/* ── STORIES BAR ──────────────────────────────────────────────────────── */}
         {!isPrivateLocked && (
@@ -1842,6 +2271,17 @@ export function PublicProfilePage() {
       </div>
 
       {/* Modals */}
+      {followListType && (
+        <FollowListModal
+          userId={user.id}
+          type={followListType}
+          isOwn={isOwn}
+          lang={lang}
+          authUserId={authUser?.id}
+          onClose={() => setFollowListType(null)}
+        />
+      )}
+      {showVerifyModal && <VerificationModal lang={lang} onClose={() => setShowVerifyModal(false)} />}
       {showShare && <ShareModal username={user.username!} name={displayName} onClose={() => setShowShare(false)} />}
       {showMessage && !isOwn && <MessageModal user={user} lang={lang} onClose={() => setShowMessage(false)} />}
       {showUpgrade && (

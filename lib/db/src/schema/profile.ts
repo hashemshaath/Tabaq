@@ -88,3 +88,21 @@ export const contentPrivacyTable = pgTable("content_privacy", {
 export const insertContentPrivacySchema = createInsertSchema(contentPrivacyTable).omit({ id: true });
 export type ContentPrivacy = typeof contentPrivacyTable.$inferSelect;
 export type InsertContentPrivacy = z.infer<typeof insertContentPrivacySchema>;
+
+// ── Verification Requests ─────────────────────────────────────────────────────
+export const verificationRequestsTable = pgTable("verification_requests", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id),
+  method: text("method").notNull(), // 'document' | 'code' | 'invite_link'
+  status: text("status").default("pending").notNull(), // 'pending' | 'approved' | 'rejected'
+  noteFromUser: text("note_from_user"),
+  noteFromAdmin: text("note_from_admin"),
+  documentUrl: text("document_url"), // mock URL for uploaded ID
+  reviewedAt: timestamp("reviewed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertVerificationRequestSchema = createInsertSchema(verificationRequestsTable).omit({ id: true, createdAt: true, updatedAt: true, reviewedAt: true });
+export type VerificationRequest = typeof verificationRequestsTable.$inferSelect;
+export type InsertVerificationRequest = z.infer<typeof insertVerificationRequestSchema>;
