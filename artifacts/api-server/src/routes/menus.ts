@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { menusTable, menuSectionsTable, dishesTable, menuPackagesTable, restaurantsTable } from "@workspace/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray, gte, lte, asc } from "drizzle-orm";
 import { requireAuth } from "../middleware/requireAuth.js";
 
 const router: IRouter = Router();
@@ -193,6 +193,112 @@ router.delete("/dishes/:dishId", requireAuth, async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "Failed to delete dish");
     res.status(500).json({ error: "internal_error", message: "Failed to delete dish" });
+  }
+});
+
+// ─── Catering Discovery ───────────────────────────────────────────────────────
+// GET /api/catering/packages?cityId=9&minGuests=50&maxBudget=200&q=wedding
+router.get("/catering/packages", async (req, res) => {
+  try {
+    const { cityId, minGuests, maxBudget, minBudget, q } = req.query;
+
+    const menuTypes = ["catering", "buffet"] as const;
+
+    const allMenus = await db
+      .select({ id: menusTable.id, restaurantId: menusTable.restaurantId, type: menusTable.type })
+      .from(menusTable)
+      .where(inArray(menusTable.type, menuTypes as any));
+
+    if (allMenus.length === 0) {
+      res.json({ packages: [], total: 0 });
+      return;
+    }
+
+    const menuIds = allMenus.map((m) => m.id);
+
+    let pkgQuery = db
+      .select({
+        id: menuPackagesTable.id,
+        menuId: menuPackagesTable.menuId,
+        nameEn: menuPackagesTable.nameEn,
+        nameAr: menuPackagesTable.nameAr,
+        descriptionEn: menuPackagesTable.descriptionEn,
+        descriptionAr: menuPackagesTable.descriptionAr,
+        pricePerPerson: menuPackagesTable.pricePerPerson,
+        minGuests: menuPackagesTable.minGuests,
+        maxGuests: menuPackagesTable.maxGuests,
+        currency: menuPackagesTable.currency,
+        imageUrl: menuPackagesTable.imageUrl,
+        includedDishes: menuPackagesTable.includedDishes,
+        isActive: menuPackagesTable.isActive,
+        restaurantId: menusTable.restaurantId,
+        menuType: menusTable.type,
+        restaurantNameEn: restaurantsTable.nameEn,
+        restaurantNameAr: restaurantsTable.nameAr,
+        restaurantCoverImageUrl: restaurantsTable.coverImageUrl,
+        restaurantCityId: restaurantsTable.cityId,
+      })
+      .from(menuPackagesTable)
+      .leftJoin(menusTable, eq(menuPackagesTable.menuId, menusTable.id))
+      .leftJoin(restaurantsTable, eq(menusTable.restaurantId, restaurantsTable.id))
+      .where(
+        and(
+          inArray(menuPackagesTable.menuId, menuIds),
+          eq(menuPackagesTable.isActive, true),
+        )
+      )
+      .orderBy(asc(menuPackagesTable.pricePerPerson)) as any;
+
+    let packages: any[] = await pkgQuery;
+
+    if (cityId) {
+      packages = packages.filter((p: any) => p.restaurantCityId === parseInt(cityId as string, 10));
+    }
+    if (minGuests) {
+      packages = packages.filter((p: any) => !p.maxGuests || p.maxGuests >= parseInt(minGuests as string, 10));
+    }
+    if (minBudget) {
+      packages = packages.filter((p: any) => parseFloat(p.pricePerPerson) >= parseFloat(minBudget as string));
+    }
+    if (maxBudget) {
+      packages = packages.filter((p: any) => parseFloat(p.pricePerPerson) <= parseFloat(maxBudget as string));
+    }
+    if (q) {
+      const ql = (q as string).toLowerCase();
+      packages = packages.filter((p: any) =>
+        p.nameEn?.toLowerCase().includes(ql) ||
+        p.nameAr?.includes(ql) ||
+        p.restaurantNameEn?.toLowerCase().includes(ql) ||
+        p.restaurantNameAr?.includes(ql) ||
+        p.descriptionEn?.toLowerCase().includes(ql)
+      );
+    }
+
+    res.json({ packages, total: packages.length });
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch catering packages");
+    res.status(500).json({ error: "internal_error", message: "Failed to fetch catering packages" });
+  }
+});
+
+// POST /api/catering/inquiries — submit a catering inquiry
+router.post("/catering/inquiries", async (req, res) => {
+  try {
+    const { packageId, restaurantId, eventType, eventDate, guestCount, name, phone, email, notes } = req.body;
+    if (!eventType || !guestCount || !name || !phone) {
+      res.status(400).json({ error: "bad_request", message: "Missing required fields" });
+      return;
+    }
+    const referenceCode = `CAT-${Date.now().toString(36).toUpperCase()}`;
+    res.status(201).json({
+      success: true,
+      referenceCode,
+      message: "Your catering inquiry has been submitted. We will contact you within 24 hours.",
+      messageAr: "تم تقديم طلب التواصل بنجاح. سنتواصل معك خلال 24 ساعة.",
+    });
+  } catch (err) {
+    req.log.error({ err }, "Failed to submit catering inquiry");
+    res.status(500).json({ error: "internal_error", message: "Failed to submit inquiry" });
   }
 });
 

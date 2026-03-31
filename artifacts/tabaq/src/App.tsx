@@ -54,6 +54,7 @@ import { EditProfilePage } from "@/pages/EditProfilePage";
 import { AccountSettingsPage } from "@/pages/AccountSettingsPage";
 import { BlogPage } from "@/pages/BlogPage";
 import { BlogDetailPage } from "@/pages/BlogDetailPage";
+import { CateringPage } from "@/pages/CateringPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -111,6 +112,7 @@ function Router() {
               <Route path="/experiences/:id" component={ExperienceDetailPage} />
               <Route path="/edit-profile" component={EditProfilePage} />
               <Route path="/account-settings" component={AccountSettingsPage} />
+              <Route path="/catering" component={CateringPage} />
               <Route path="/blog/:slug" component={BlogDetailPage} />
               <Route path="/blog" component={BlogPage} />
               <Route path="/gift-redeem/:code" component={GiftRedeemPage} />

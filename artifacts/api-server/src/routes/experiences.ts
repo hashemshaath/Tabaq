@@ -608,32 +608,40 @@ router.patch("/experience-bookings/:bookingId/cancel", requireAuth, async (req, 
 router.get("/me/experience-bookings", requireAuth, async (req, res) => {
   try {
     const userId = req.auth!.userId;
-    const bookings = await db.select({
-      id: experienceBookingsTable.id,
-      referenceCode: experienceBookingsTable.referenceCode,
-      experienceId: experienceBookingsTable.experienceId,
-      slotId: experienceBookingsTable.slotId,
-      guestCount: experienceBookingsTable.guestCount,
-      totalAmount: experienceBookingsTable.totalAmount,
-      status: experienceBookingsTable.status,
-      depositPaid: experienceBookingsTable.depositPaid,
-      fullPaid: experienceBookingsTable.fullPaid,
-      specialRequests: experienceBookingsTable.specialRequests,
-      createdAt: experienceBookingsTable.createdAt,
-      cancelledAt: experienceBookingsTable.cancelledAt,
-      experienceTitleEn: experiencesTable.titleEn,
-      experienceTitleAr: experiencesTable.titleAr,
-      experienceCoverImage: experiencesTable.coverImage,
-      slotDate: experienceSlotsTable.date,
-      slotStartTime: experienceSlotsTable.startTime,
-      slotEndTime: experienceSlotsTable.endTime,
-    })
+
+    const rawBookings = await db
+      .select()
       .from(experienceBookingsTable)
-      .leftJoin(experiencesTable, eq(experienceBookingsTable.experienceId, experiencesTable.id))
-      .leftJoin(experienceSlotsTable, eq(experienceBookingsTable.slotId, experienceSlotsTable.id))
       .where(eq(experienceBookingsTable.userId, userId))
-      .orderBy(desc(experienceSlotsTable.date), desc(experienceBookingsTable.createdAt));
-    res.json({ bookings });
+      .orderBy(desc(experienceBookingsTable.createdAt));
+
+    const enriched = await Promise.all(rawBookings.map(async (b) => {
+      const [experience] = await db
+        .select({ titleEn: experiencesTable.titleEn, titleAr: experiencesTable.titleAr, coverImage: experiencesTable.coverImage })
+        .from(experiencesTable)
+        .where(eq(experiencesTable.id, b.experienceId));
+
+      let slot: { date: string; startTime: string; endTime: string } | null = null;
+      if (b.slotId) {
+        const [s] = await db
+          .select({ date: experienceSlotsTable.date, startTime: experienceSlotsTable.startTime, endTime: experienceSlotsTable.endTime })
+          .from(experienceSlotsTable)
+          .where(eq(experienceSlotsTable.id, b.slotId));
+        slot = s ?? null;
+      }
+
+      return {
+        ...b,
+        experienceTitleEn: experience?.titleEn ?? null,
+        experienceTitleAr: experience?.titleAr ?? null,
+        experienceCoverImage: experience?.coverImage ?? null,
+        slotDate: slot?.date ?? null,
+        slotStartTime: slot?.startTime ?? null,
+        slotEndTime: slot?.endTime ?? null,
+      };
+    }));
+
+    res.json({ bookings: enriched });
   } catch (err) {
     req.log.error({ err }, "Failed to fetch user experience bookings");
     res.status(500).json({ error: "internal_error", message: "Failed to fetch experience bookings" });
