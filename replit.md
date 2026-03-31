@@ -613,3 +613,31 @@ Rich mock data for all 6 new sections: MOCK_CHECK_INS (5 visits), MOCK_REVIEWS (
   - Clicking any thumbnail opens a full lightbox modal (fixed overlay, prev/next navigation, close button, counter)
 - Lightbox renders outside the `<Link>` wrapper using `<>` fragment to avoid navigation conflicts
 - Works with `e.preventDefault()` + `e.stopPropagation()` pattern consistent with existing CounterButton
+
+## Session — Comprehensive Account Settings System
+
+### New: AccountPage (`/account`)
+- Unified account hub at `/account` replacing fragmented `/edit-profile` and `/account-settings` pages
+- Both old routes now render AccountPage for backward compatibility
+- Header user menu now links to `/account` with updated description
+- File: `artifacts/tabaq/src/pages/AccountPage.tsx` (~1300 lines)
+
+**9 sections with real API integrations:**
+
+1. **Personal Info** — name (EN/AR), bio, email, location, avatar upload (FileReader → data URL), social links (Instagram, X, TikTok, Snapchat, Website). Profile completion indicator. PATCH `/api/me/profile`
+2. **Security** — Change password (PATCH `/api/me/password`), OTP auth status badge, active session display, sign-out button
+3. **Preferences** — Language toggle (EN/AR via `useLanguage`), theme (light/dark/system via localStorage + `document.documentElement.classList`), currency preference (localStorage)
+4. **Notifications** — 8 notification toggles in 3 groups (Social, Bookings, Rewards). PATCH `/api/me/privacy-settings` with `notificationPrefs`
+5. **Privacy** — Profile visibility (public/followers/private), content visibility per section (visits, reviews, favorites, plans), discovery toggles (leaderboard, suggested). PATCH `/api/me/privacy-settings` with `privacySettings`
+6. **Social (Followers)** — Tab: Followers | Following. Real lists from `/api/users/:id/followers` and `/api/users/:id/following`. Unfollow button per user
+7. **Membership** — Points + level gradient card, next-level progress bar, referral code copy button, Tabaq Gold teaser, points history (GET `/api/me/points/history`)
+8. **Support** — Quick links (FAQ, Contact, About, Privacy, Terms), feedback form with confirmation state
+9. **Delete Account** — 3-step flow (warning → type "DELETE" → scheduling confirmation)
+
+**UI Architecture:**
+- Desktop: sticky sidebar navigation (264px wide) + content area
+- Mobile: collapsible dropdown section selector
+- Section headers with icon + description
+- Reusable components: `SectionCard`, `ToggleRow`, `FormField`, `Input`, `Textarea`, `SaveBar`
+- Loading spinners, success states, error messages per section
+- Full RTL/LTR support via `lang` prop and `dir` attribute

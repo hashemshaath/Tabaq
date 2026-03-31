@@ -1,0 +1,142 @@
+Develop and fully restructure the User Profile system into a professional, scalable, and well-organized account management experience.
+
+GOAL:
+Redesign the profile/account area so it is clearly divided into logical sections, easy to use, secure, and complete. Ensure all missing pages, controls, states, and functions are implemented properly.
+
+---
+
+MAIN PROFILE STRUCTURE:
+
+1. Personal Information
+- Full name
+- Username
+- Profile photo
+- Bio / short description
+- Email
+- Mobile number
+- Date of birth
+- Gender
+- Country / city
+- Language preference
+- Save and edit profile details professionally
+- Real validation and proper success/error states
+
+2. Security
+- Change password
+- Re-login confirmation for sensitive actions
+- Set / change passcode
+- Enable / disable biometric options:
+  - Fingerprint
+  - Face ID
+- Active sessions management
+- Device/session history
+- Logout from all devices
+- Two-factor verification readiness if applicable
+
+3. Preferences
+- Language
+- Theme / appearance
+- Currency / country preferences
+- Content preferences
+- Recommendation preferences
+- Privacy-related defaults
+
+4. Notifications
+- In-app notifications
+- Email notifications
+- SMS / WhatsApp notifications if applicable
+- Booking alerts
+- Order/payment alerts
+- Marketing preferences
+- Membership / subscription alerts
+- Referral / points alerts
+
+5. Settings
+- General settings
+- Linked accounts
+- Social media links
+- Address book access
+- Payment preferences if applicable
+- Privacy settings
+- Visibility controls
+
+6. Support & Contact
+- Help center
+- Contact support
+- FAQ
+- Report a problem
+- Submit feedback
+- Request account verification support if applicable
+
+7. Privacy & Visibility
+- Profile visibility
+- Who can see followers/following
+- Who can message the user
+- Public / private profile controls
+- Show / hide activity
+- Show / hide social links
+- Show / hide stats if applicable
+
+8. Followers / Following
+- View followers
+- View following
+- Manage visibility
+- Follow / unfollow controls
+- Clean and professional UI
+- Proper pagination / loading / empty states
+
+9. Account Deletion
+- Delete account flow
+- Confirmation step
+- Warning and explanation
+- Require password/passcode/re-authentication
+- Explain what data will be deleted
+- Grace period if supported
+- Professional irreversible-action handling
+
+---
+
+UX / DESIGN REQUIREMENTS:
+
+- Redesign the profile area in a professional and complete way
+- Organize all sections with correct hierarchy and navigation
+- No confusing layout
+- No broken pages or incomplete controls
+- No popups unless absolutely necessary
+- Prefer in-page layouts, tabs, or side sections
+- Responsive design across desktop/mobile
+- Arabic RTL and English LTR support
+- Professional visual design with clear spacing, icons, and section grouping
+
+---
+
+FUNCTIONAL REQUIREMENTS:
+
+- Audit all existing profile/account pages and controls
+- Identify and complete all missing features
+- Ensure all data is connected to the database correctly
+- Ensure save/update/delete actions work properly
+- Add proper validation
+- Add loading, success, error, and empty states
+- Remove duplicate or obsolete code
+- Refactor the structure cleanly
+- Improve maintainability and consistency
+
+---
+
+ADDITIONAL FEATURES TO INCLUDE:
+
+- Profile completion indicator
+- Verification badge status if applicable
+- Referral code / invitations section if relevant
+- Points / wallet summary if relevant
+- Membership summary if relevant
+- Recent activity summary if relevant
+- Address book access if relevant
+- Linked social accounts if relevant
+
+---
+
+FINAL REQUIREMENT:
+
+Deliver a complete, production-ready User Profile and Account Settings system with professional UX, proper security, privacy controls, complete functionality, and clean architecture.

@@ -52,6 +52,7 @@ import { ChefDetailPage } from "@/pages/ChefDetailPage";
 import { PublicProfilePage } from "@/pages/PublicProfilePage";
 import { EditProfilePage } from "@/pages/EditProfilePage";
 import { AccountSettingsPage } from "@/pages/AccountSettingsPage";
+import { AccountPage } from "@/pages/AccountPage";
 import { BlogPage } from "@/pages/BlogPage";
 import { BlogDetailPage } from "@/pages/BlogDetailPage";
 import { CateringPage } from "@/pages/CateringPage";
@@ -140,11 +141,14 @@ function Router() {
               <Route path="/michelin" component={MichelinPage} />
               <Route path="/experiences" component={ExperiencesPage} />
               <Route path="/experiences/:id" component={ExperienceDetailPage} />
+              <Route path="/account">
+                <ProtectedRoute><AccountPage /></ProtectedRoute>
+              </Route>
               <Route path="/edit-profile">
-                <ProtectedRoute><EditProfilePage /></ProtectedRoute>
+                <ProtectedRoute><AccountPage /></ProtectedRoute>
               </Route>
               <Route path="/account-settings">
-                <ProtectedRoute><AccountSettingsPage /></ProtectedRoute>
+                <ProtectedRoute><AccountPage /></ProtectedRoute>
               </Route>
               <Route path="/catering" component={CateringPage} />
               <Route path="/blog/:slug" component={BlogDetailPage} />
