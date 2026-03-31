@@ -19,6 +19,7 @@ export const orderPaymentEnum = pgEnum("order_payment", [
 export const ordersTable = pgTable("orders", {
   id: serial("id").primaryKey(),
   orderNumber: text("order_number").notNull().unique(),
+  idempotencyKey: text("idempotency_key").unique(),
   userId: integer("user_id").references(() => usersTable.id),
   restaurantId: integer("restaurant_id").references(() => restaurantsTable.id),
   items: jsonb("items").$type<Array<{
@@ -34,17 +35,20 @@ export const ordersTable = pgTable("orders", {
     restaurantNameAr: string;
   }>>().default([]),
   subtotal: numeric("subtotal", { precision: 10, scale: 2 }).notNull(),
+  discountAmount: numeric("discount_amount", { precision: 10, scale: 2 }).default("0"),
   deliveryFee: numeric("delivery_fee", { precision: 10, scale: 2 }).default("0"),
   total: numeric("total", { precision: 10, scale: 2 }).notNull(),
   currency: text("currency").default("SAR").notNull(),
   status: orderStatusEnum("status").default("placed").notNull(),
   orderMode: orderModeEnum("order_mode").default("delivery").notNull(),
   paymentMethod: orderPaymentEnum("payment_method").default("card").notNull(),
+  promoCode: text("promo_code"),
   customerName: text("customer_name"),
   customerPhone: text("customer_phone"),
   deliveryAddress: text("delivery_address"),
   notes: text("notes"),
   estimatedMinutes: integer("estimated_minutes").default(35),
+  customerInvoiceRef: text("customer_invoice_ref"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

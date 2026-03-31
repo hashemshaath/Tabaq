@@ -6,7 +6,7 @@ import {
 } from "@workspace/db/schema";
 import { eq, and, sql, desc, type SQL } from "drizzle-orm";
 import { requireAuth, optionalAuth } from "../middleware/requireAuth.js";
-import { awardPoints, POINTS } from "../lib/points.js";
+import { awardAndLog, POINTS } from "../lib/points.js";
 
 const router: IRouter = Router();
 
@@ -165,7 +165,8 @@ router.post("/reviews", requireAuth, async (req, res) => {
     }
 
     // Award points to the reviewer
-    await awardPoints(userId, POINTS.REVIEW_WRITTEN);
+    await awardAndLog(userId, POINTS.REVIEW_WRITTEN, "review_written", review.id, "review",
+      `Earned ${POINTS.REVIEW_WRITTEN} pts for writing a review`);
 
     const enriched = await enrichReview(review, userId);
     res.status(201).json(enriched);

@@ -1,5 +1,5 @@
 import {
-  pgTable, serial, integer, text, timestamp, boolean, numeric, pgEnum
+  pgTable, serial, integer, text, timestamp, boolean, numeric, pgEnum, jsonb
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -135,6 +135,51 @@ export const invoicesTable = pgTable("invoices", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// ─── Customer Invoices ─────────────────────────────────────────────────────────
+// User-facing receipts generated for every paid transaction (orders, bookings, etc.)
+
+export const customerInvoiceStatusEnum = pgEnum("customer_invoice_status", [
+  "paid", "refunded", "void"
+]);
+
+export const customerInvoiceSourceEnum = pgEnum("customer_invoice_source", [
+  "order", "booking", "voucher_purchase", "experience_booking", "membership"
+]);
+
+export const customerInvoicesTable = pgTable("customer_invoices", {
+  id: serial("id").primaryKey(),
+  refCode: text("ref_code").notNull().unique(), // TBQ-CINV-2026-000001
+
+  userId: integer("user_id").references(() => usersTable.id),
+  restaurantId: integer("restaurant_id").references(() => restaurantsTable.id),
+
+  source: customerInvoiceSourceEnum("source").notNull(),
+  orderId: integer("order_id"),
+  bookingId: integer("booking_id"),
+
+  lineItems: jsonb("line_items").$type<Array<{
+    description: string;
+    descriptionAr: string;
+    qty: number;
+    unitPrice: number;
+    total: number;
+  }>>().notNull().default([]),
+
+  subtotal: numeric("subtotal", { precision: 12, scale: 2 }).notNull(),
+  discountAmount: numeric("discount_amount", { precision: 12, scale: 2 }).default("0").notNull(),
+  deliveryFee: numeric("delivery_fee", { precision: 12, scale: 2 }).default("0").notNull(),
+  total: numeric("total", { precision: 12, scale: 2 }).notNull(),
+  currency: text("currency").default("SAR").notNull(),
+
+  paymentMethod: text("payment_method"),
+  promoCode: text("promo_code"),
+
+  status: customerInvoiceStatusEnum("status").default("paid").notNull(),
+  paidAt: timestamp("paid_at").defaultNow(),
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // ─── Admin Messages ────────────────────────────────────────────────────────────
 // Communication from Tabaq admin to restaurant owners (offer feedback, compliance, etc.)
 
@@ -185,3 +230,8 @@ export type Invoice = typeof invoicesTable.$inferSelect;
 export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;
 export type AdminMessage = typeof adminMessagesTable.$inferSelect;
 export type InsertAdminMessage = z.infer<typeof insertAdminMessageSchema>;
+export const insertCustomerInvoiceSchema = createInsertSchema(customerInvoicesTable).omit({
+  id: true, refCode: true, createdAt: true, paidAt: true
+});
+export type CustomerInvoice = typeof customerInvoicesTable.$inferSelect;
+export type InsertCustomerInvoice = z.infer<typeof insertCustomerInvoiceSchema>;

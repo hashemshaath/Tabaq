@@ -17,14 +17,16 @@
  */
 
 export type RefCodeType =
-  | "USR" // User
-  | "RST" // Restaurant
-  | "OFR" // Offer
-  | "VCH" // Voucher
-  | "CTR" // Contract
-  | "TXN" // Transaction
-  | "INV" // Invoice
-  | "MSG" // Admin Message
+  | "USR"  // User
+  | "RST"  // Restaurant
+  | "OFR"  // Offer
+  | "VCH"  // Voucher
+  | "CTR"  // Contract
+  | "TXN"  // Transaction
+  | "INV"  // B2B Settlement Invoice
+  | "CINV" // Customer Invoice / Receipt
+  | "ORD"  // Order
+  | "MSG"  // Admin Message
   | "BKG"; // Booking
 
 /**

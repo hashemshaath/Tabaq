@@ -1,5 +1,41 @@
 # Tabaq | طبق — Workspace
 
+## Financial Architecture (Centralized Invoice System)
+
+### Central Invoice Service (`artifacts/api-server/src/services/invoiceService.ts`)
+Single service used by ALL financial flows. Never create invoice logic elsewhere.
+
+- `invoiceService.processOrder(params)` — creates customer invoice, logs financial transaction, awards loyalty points
+- `invoiceService.processBooking(params)` — creates booking receipt
+- `invoiceService.getByRef(refCode)` — fetch by ref code
+- `invoiceService.getForUser(userId)` — list user's invoices
+- `invoiceService.voidInvoice(refCode)` / `refundInvoice(refCode)` — lifecycle management
+
+### Customer Invoices (`customer_invoices` table)
+User-facing receipts for every paid transaction. Separate from B2B settlement invoices (`invoices` table).
+- Source types: `order`, `booking`, `voucher_purchase`, `experience_booking`, `membership`
+- Ref format: `TBQ-CINV-2026-000001`
+- API: `GET /api/orders/:orderNumber/invoice`, `GET /api/me/invoices`
+
+### B2B Settlement Invoices (`invoices` table)
+Periodic settlement statements from Tabaq to restaurant partners. Admin-managed via `/admin/invoices`.
+
+### Financial Transaction Ledger (`transactions` table)
+Full audit trail of every monetary event. Auto-populated by `invoiceService.processOrder()` using the restaurant's commission rate from the `contracts` table.
+
+### Idempotency (Orders)
+`POST /api/orders` accepts an optional `idempotencyKey`. If the same key is submitted twice, the original order is returned with `idempotent: true`. Prevents duplicate charges on network retries.
+
+### Points Audit Trail (Fixed)
+`awardPoints()` now correctly returns the new balance. New `logPointsTransaction()` writes to `points_transactions` table on every points event. New `awardAndLog()` convenience function does both atomically.
+- All flows now log: bookings (`booking_made`), reviews (`review_written`), orders (`order_placed`)
+- Points for orders: ~1 pt per 10 SAR spent
+
+### RefCode System
+Standardized format `TBQ-{TYPE}-{YEAR}-{PADDED_ID}` across all entities. New types added: `CINV` (customer invoice), `ORD` (order).
+
+
+
 ## Design System (Zomato-Level Upgrade)
 
 - **Font**: IBM Plex Sans Arabic (RTL) + IBM Plex Sans (LTR) — loaded via Google Fonts in `index.css`

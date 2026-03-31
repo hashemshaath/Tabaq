@@ -1,0 +1,207 @@
+You are a senior solution architect and microservices expert working on a production system called "Tabaq" (طبق), a platform for rating dishes and restaurants.
+
+Your task is to carefully analyze and ENHANCE the existing system WITHOUT rebuilding it from scratch.
+
+CRITICAL RULES:
+- DO NOT build a new system
+- DO NOT replace the current architecture
+- ONLY improve and extend the existing system
+- Maintain full backward compatibility
+- DO NOT break existing APIs, database, or flows
+- All changes must be incremental, safe, and production-ready
+
+---
+
+CORE REQUIREMENT (VERY IMPORTANT):
+
+There must be ONE centralized invoice system across the entire platform.
+
+- All modules must use the SAME invoice service
+- Do NOT create multiple invoice implementations
+- Do NOT duplicate invoice logic in other services
+- Any financial transaction must be linked to the central invoice system
+
+Applies to:
+- Orders
+- Memberships
+- Returns
+- Payments
+- Commissions
+- Coupons
+- Wallet / Points (if monetary)
+
+---
+
+PHASE 1: SYSTEM AUDIT (NO CHANGES YET)
+
+Analyze the current system:
+- Services structure
+- API communication
+- Database structure
+- Existing invoice handling
+- Payment flows
+- Any duplicated logic
+
+Identify:
+- Duplicate invoice logic (CRITICAL)
+- Tight coupling between services
+- Missing UID system
+- Missing idempotency
+- Unsafe operations
+
+---
+
+PHASE 2: CENTRALIZED INVOICE SYSTEM (MANDATORY)
+
+Refactor the system so that:
+
+1. A single Invoice Service is used across all modules
+
+2. All modules must:
+   - Reference invoice_uid
+   - Never create their own invoice logic
+
+3. Invoice service responsibilities:
+   - Create invoices
+   - Manage status lifecycle
+   - Store financial data
+   - Generate PDF (on demand)
+   - Provide barcode + QR (lazy generation)
+
+4. Update all services to integrate with invoice service:
+   - Returns → must generate CREDIT_NOTE invoice
+   - Membership → must generate invoices for subscriptions
+   - Payments → must attach to invoice_uid
+   - Coupons → must affect invoice calculation only
+   - Commission → must reference invoice_uid
+
+5. Remove duplication:
+   - Any financial calculation outside invoice service must be eliminated or redirected
+
+---
+
+PHASE 3: UID SYSTEM (SAFE ADDITION)
+
+Introduce UID system WITHOUT breaking current IDs:
+
+- Add UID alongside existing IDs
+- Use UID for inter-service communication only
+- Keep internal DB IDs unchanged
+
+Implement:
+- UID format: [PREFIX]-[ENTITY]-[TIMESTAMP]-[RANDOM8]
+- Registry system
+- Validation layer (format, checksum, expiry, duplication)
+
+---
+
+PHASE 4: EVENT-DRIVEN ARCHITECTURE
+
+Introduce message queue (RabbitMQ or equivalent)
+
+Convert ONLY secondary processes to async:
+- Points
+- Commissions
+- Notifications
+- Reporting
+
+Keep synchronous:
+- Payments
+- Invoice creation
+
+Use events:
+- ORDER_COMPLETED
+- PAYMENT_COMPLETED
+- INVOICE_ISSUED
+- RETURN_PROCESSED
+
+---
+
+PHASE 5: PAYMENT SAFETY
+
+Add:
+- Idempotency keys
+- Fraud detection
+- Webhook validation
+
+Ensure:
+- No duplicate payments
+- No race conditions
+
+---
+
+PHASE 6: COUPON & RETURNS SAFETY
+
+Coupons:
+- Atomic validation
+- Prevent concurrent usage abuse
+
+Returns:
+- Validate invoice is PAID
+- Prevent duplicate refunds
+- Generate CREDIT_NOTE via invoice service
+
+---
+
+PHASE 7: POINTS SYSTEM (ASYNC ONLY)
+
+- Points must NOT be calculated inside checkout
+- Only via events
+
+Example:
+- ORDER_COMPLETED → earn points
+- RETURN_PROCESSED → reverse points
+
+---
+
+PHASE 8: API GATEWAY & SECURITY
+
+Add:
+- Central routing
+- JWT validation
+- Rate limiting
+- Unified error handling
+
+Security:
+- Audit logs
+- Input validation
+- RBAC
+- UID checksum validation
+- Idempotency across financial operations
+
+---
+
+PHASE 9: PERFORMANCE & STABILITY
+
+- Use Redis for caching and idempotency
+- Avoid heavy synchronous operations
+- Use lazy generation for:
+  - PDF
+  - QR
+  - Barcode
+
+---
+
+FINAL REQUIREMENTS:
+
+- DO NOT break the existing system
+- DO NOT rebuild anything from scratch
+- ONLY enhance and refactor safely
+- Ensure:
+  - One centralized invoice system
+  - No duplicated financial logic
+  - Stable microservices architecture
+  - Event-driven scalability
+  - Production-level reliability
+
+---
+
+FINAL OUTPUT:
+
+Provide:
+1. What was improved
+2. What was refactored
+3. What duplicate logic was removed
+4. How invoice system is now centralized
+5. Any remaining risks
+6. Recommended next steps

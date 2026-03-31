@@ -4,7 +4,7 @@ import { bookingsTable, restaurantsTable, openingHoursTable, waitlistTable } fro
 import { eq, and, sql, gte, lte, type SQL, count } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { requireAuth } from "../middleware/requireAuth.js";
-import { awardPoints, POINTS } from "../lib/points.js";
+import { awardAndLog, POINTS } from "../lib/points.js";
 
 const router: IRouter = Router();
 
@@ -190,7 +190,8 @@ router.post("/bookings", requireAuth, async (req, res) => {
       .where(eq(restaurantsTable.id, restaurantId));
 
     // Award points for making a booking
-    await awardPoints(userId, POINTS.BOOKING_MADE);
+    await awardAndLog(userId, POINTS.BOOKING_MADE, "booking_made", booking.id, "booking",
+      `Earned ${POINTS.BOOKING_MADE} pts for booking at restaurant #${restaurantId}`);
 
     // Notification stubs: in production these trigger push/SMS/email events
     req.log.info({ bookingId: booking.id, userId, referenceCode }, "NOTIFY: booking confirmation — send to user");

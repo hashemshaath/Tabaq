@@ -14,6 +14,7 @@ export const pointsActionEnum = pgEnum("points_action", [
   "profile_completed",
   "admin_grant",
   "redemption",
+  "order_placed",
 ]);
 
 export const referralStatusEnum = pgEnum("referral_status", [
