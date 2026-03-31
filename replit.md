@@ -79,6 +79,7 @@ Database is seeded with real data:
 - 37 reviews total (16 original + 21 from community users; review_count + avg_rating updated on restaurants)
 - 10 bookings, 6 contracts, 8 transactions, 4 invoices
 - 8 food experiences with images (17) and time slots (33) — IDs 1-8, status=active
+- **7 catering packages** across 4 restaurants: Najd Village (Heritage Iftar Buffet + Najdi Feast), Lusin (Prestige Gala Dinner + Executive Business Lunch), Sushi Sama (Omakase Buffet), Spice Route/Jeddah (Red Sea Seafood Banquet + Corniche Wedding Package); menus IDs 3-6 (type=catering/buffet)
   - Categories used: fine_dining, street_food, heritage, cultural
   - Host users: user IDs 1, 2, 3, 4, 5, 6
   - Cities: Riyadh (city_id=1), Jeddah (city_id=2), Madinah (city_id=6)
