@@ -902,29 +902,32 @@ export function ProfilePage() {
       )}
 
       {/* Cover */}
-      <div className="h-48 md:h-64 w-full relative overflow-hidden bg-gradient-to-br from-primary via-primary/80 to-rose-700">
+      <div className="h-52 md:h-72 w-full relative overflow-hidden bg-gradient-to-br from-rose-900 via-primary to-rose-600">
         {(user as any).coverPhotoUrl && (
           <img src={(user as any).coverPhotoUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
         )}
+        {/* Subtle food pattern overlay */}
         {!(user as any).coverPhotoUrl && (
-          <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")" }} />
+          <>
+            <div className="absolute inset-0 opacity-[0.07]"
+              style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")" }} />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
+          </>
         )}
-        {/* Cover edit + share buttons */}
+        {/* Bottom fade */}
+        <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-background/20 to-transparent" />
+        {/* Action buttons */}
         <div className="absolute top-4 end-4 flex gap-2">
           <button
-            onClick={() => {
-              navigator.clipboard.writeText(`${window.location.origin}/user/${currentUsername ?? ""}`);
-              setProfileLinkCopied(true);
-              setTimeout(() => setProfileLinkCopied(false), 2000);
-            }}
-            className="flex items-center gap-1.5 bg-black/30 backdrop-blur border border-white/20 text-white text-xs font-semibold px-3 py-1.5 rounded-xl hover:bg-black/50 transition-colors"
+            onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/user/${currentUsername ?? ""}`); setProfileLinkCopied(true); setTimeout(() => setProfileLinkCopied(false), 2000); }}
+            className="flex items-center gap-1.5 bg-black/40 backdrop-blur-md border border-white/15 text-white text-xs font-semibold px-3 py-1.5 rounded-xl hover:bg-black/60 transition-all"
           >
-            {profileLinkCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+            {profileLinkCopied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
             {profileLinkCopied ? t("Copied!", "تم النسخ!") : t("Copy Link", "نسخ الرابط")}
           </button>
           <button
             onClick={() => setShowShareModal(true)}
-            className="flex items-center gap-1.5 bg-black/30 backdrop-blur border border-white/20 text-white text-xs font-semibold px-3 py-1.5 rounded-xl hover:bg-black/50 transition-colors"
+            className="flex items-center gap-1.5 bg-black/40 backdrop-blur-md border border-white/15 text-white text-xs font-semibold px-3 py-1.5 rounded-xl hover:bg-black/60 transition-all"
           >
             <Share2 className="w-3.5 h-3.5" />
             {t("Share", "مشاركة")}
@@ -934,18 +937,26 @@ export function ProfilePage() {
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Profile Card */}
-        <div className="bg-card rounded-3xl p-6 md:p-8 shadow-xl border border-border -mt-24 relative z-10 flex flex-col md:flex-row gap-8 items-center md:items-start text-center md:text-start">
-          <div className="relative shrink-0">
-            <div className="w-32 h-32 md:w-40 md:h-40 rounded-full bg-muted border-4 border-card shadow-lg overflow-hidden">
+        <div className="bg-card rounded-3xl p-6 md:p-8 shadow-2xl border border-border -mt-20 md:-mt-28 relative z-10 flex flex-col md:flex-row gap-6 md:gap-8 items-center md:items-start text-center md:text-start">
+          {/* Avatar */}
+          <div className="relative shrink-0 -mt-4 md:-mt-16">
+            <div className="w-28 h-28 md:w-36 md:h-36 rounded-full bg-muted border-[3px] border-card shadow-xl overflow-hidden ring-4 ring-primary/10">
               {user.avatarUrl ? (
                 <img src={user.avatarUrl} alt={name || ""} className="w-full h-full object-cover" />
               ) : (
-                <User className="w-full h-full p-6 text-muted-foreground" />
+                <div className="w-full h-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+                  <User className="w-12 h-12 md:w-16 md:h-16 text-primary/40" />
+                </div>
               )}
             </div>
-            <button className="absolute bottom-1 end-1 w-8 h-8 bg-primary rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 transition-colors">
-              <Camera className="w-4 h-4 text-white" />
-            </button>
+            {!!authUser && (
+              <button
+                onClick={() => setShowEditProfile(true)}
+                className="absolute bottom-1 end-1 w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 transition-colors ring-2 ring-card"
+              >
+                <Camera className="w-4 h-4" />
+              </button>
+            )}
           </div>
 
           <div className="flex-grow">
@@ -1035,12 +1046,20 @@ export function ProfilePage() {
                   </div>
                 )}
               </div>
-              <button
-                onClick={() => setShowEditProfile(true)}
-                className="shrink-0 flex items-center gap-2 px-4 py-2 border border-input rounded-xl text-sm font-medium hover:bg-secondary transition-colors"
-              >
-                <Edit2 className="w-4 h-4" />{t("Edit Profile", "تعديل الملف")}
-              </button>
+              <div className="shrink-0 flex items-center gap-2">
+                <button
+                  onClick={() => setShowEditProfile(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors shadow-sm"
+                >
+                  <Edit2 className="w-4 h-4" />{t("Edit Profile", "تعديل الملف")}
+                </button>
+                <Link href="/account">
+                  <button className="flex items-center gap-2 px-3.5 py-2 border border-input rounded-xl text-sm font-medium hover:bg-secondary transition-colors text-muted-foreground">
+                    <Settings className="w-4 h-4" />
+                    <span className="hidden sm:inline">{t("Settings", "الإعدادات")}</span>
+                  </button>
+                </Link>
+              </div>
             </div>
 
             {/* Stats bar */}
@@ -1067,47 +1086,54 @@ export function ProfilePage() {
         </div>
 
         {/* Level Banner */}
-        <div className="mt-6 bg-gradient-to-r from-accent to-background p-5 rounded-3xl border border-accent flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center">
-              <Star className="w-6 h-6 fill-primary" />
+        <div className="mt-5 relative overflow-hidden bg-gradient-to-r from-primary/8 via-primary/5 to-transparent border border-primary/20 rounded-2xl p-4 sm:p-5">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-2xl bg-primary/15 flex items-center justify-center shrink-0 shadow-inner">
+                <Star className="w-5 h-5 text-primary fill-primary/50" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-black uppercase tracking-widest text-primary/70">{t("Level", "المستوى")} {user.level}</span>
+                  <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold">{user.levelTitle}</span>
+                  {user.credibilityScore && parseFloat(String(user.credibilityScore)) > 0 && (
+                    <span className="text-xs text-muted-foreground">· {t("Credibility", "مصداقية")} {parseFloat(String(user.credibilityScore)).toFixed(1)}</span>
+                  )}
+                </div>
+                <p className="text-sm font-bold text-foreground mt-0.5">{user.points.toLocaleString()} {t("XP earned", "نقطة مكتسبة")}</p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-bold text-foreground">{t("Level", "المستوى")} {user.level}: {user.levelTitle}</h3>
-              <p className="text-sm text-muted-foreground">
-                {user.points} {t("points", "نقطة")}
-                {user.credibilityScore && parseFloat(String(user.credibilityScore)) > 0 && (
-                  <span className="ms-2 text-primary font-medium">· {t("Credibility:", "مصداقية:")} {parseFloat(String(user.credibilityScore)).toFixed(1)}</span>
-                )}
-              </p>
-            </div>
-          </div>
-          <div className="w-full sm:w-2/5">
-            <div className="flex justify-between text-xs font-medium mb-1.5 text-muted-foreground">
-              <span>{user.points} XP</span>
-              <span>{t(`Next: ${levelMax} XP`, `التالي: ${levelMax} نقطة`)}</span>
-            </div>
-            <div className="h-2.5 bg-secondary rounded-full overflow-hidden">
-              <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${progressPct}%` }} />
+            <div className="w-full sm:w-52">
+              <div className="flex justify-between text-xs font-medium mb-1.5">
+                <span className="text-primary font-bold">{progressPct}%</span>
+                <span className="text-muted-foreground">{t(`${levelMax} XP to next`, `${levelMax} للمستوى التالي`)}</span>
+              </div>
+              <div className="h-2 bg-primary/10 rounded-full overflow-hidden">
+                <div className="h-full bg-gradient-to-r from-primary to-rose-500 rounded-full transition-all duration-700" style={{ width: `${progressPct}%` }} />
+              </div>
             </div>
           </div>
         </div>
 
         {/* Tabs */}
         <div className="mt-6">
-          <div className="flex gap-1 bg-muted rounded-2xl p-1 mb-6 overflow-x-auto scrollbar-hide">
-            {TABS.map(({ id, labelEn, labelAr, icon: Icon }) => (
-              <button
-                key={id}
-                onClick={() => setTab(id)}
-                className={`flex-none flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium transition-all whitespace-nowrap px-3 ${
-                  tab === id ? "bg-card shadow text-foreground" : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <Icon className="w-3.5 h-3.5" />
-                {t(labelEn, labelAr)}
-              </button>
-            ))}
+          <div className="border-b border-border mb-6 overflow-x-auto scrollbar-hide">
+            <div className="flex gap-0 min-w-max">
+              {TABS.map(({ id, labelEn, labelAr, icon: Icon }) => (
+                <button
+                  key={id}
+                  onClick={() => setTab(id)}
+                  className={`flex items-center gap-1.5 px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 transition-all -mb-px ${
+                    tab === id
+                      ? "border-primary text-primary"
+                      : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  {t(labelEn, labelAr)}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* ── OVERVIEW TAB ────────────────────────────────────────────────── */}
@@ -1128,22 +1154,6 @@ export function ProfilePage() {
                     </div>
                     <span className="text-xs font-medium text-center text-foreground">{t(enLabel, arLabel)}</span>
                   </button>
-                ))}
-              </div>
-
-              {/* Food journey stats */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {[
-                  { val: effectiveCheckIns.length,           icon: MapPin,     enLabel: "Restaurants Visited", arLabel: "مطاعم زُرت",         color: "text-emerald-600" },
-                  { val: effectiveReviews.length,             icon: Star,       enLabel: "Reviews Written",     arLabel: "تقييمات كتبت",       color: "text-primary" },
-                  { val: effectiveSavedRestaurants.length,    icon: Heart,      enLabel: "Places Saved",        arLabel: "أماكن محفوظة",       color: "text-rose-500" },
-                  { val: effectiveRecommendations.length,     icon: ThumbsUp,   enLabel: "Recommendations",     arLabel: "توصيات",             color: "text-amber-600" },
-                ].map(({ val, icon: Icon, enLabel, arLabel, color }) => (
-                  <div key={enLabel} className="bg-card border border-border rounded-2xl p-4 text-center">
-                    <Icon className={`w-6 h-6 mx-auto mb-2 ${color}`} />
-                    <div className="text-2xl font-bold text-foreground">{val}</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">{t(enLabel, arLabel)}</div>
-                  </div>
                 ))}
               </div>
 
@@ -1810,51 +1820,19 @@ export function ProfilePage() {
           {tab === "settings" && (
             <div className="space-y-6">
 
-              {/* Account Privacy */}
-              <PrivacyCard isPrivate={isPrivate} onToggle={handlePrivacyToggle} t={t} />
-
-              {/* Per-content Privacy */}
-              <div className="bg-card border border-border rounded-2xl overflow-hidden">
-                <div className="p-5 border-b border-border flex items-center gap-3">
-                  <div className="w-9 h-9 bg-primary/10 rounded-xl flex items-center justify-center">
-                    <Eye className="w-4 h-4 text-primary" />
+              {/* Account Settings banner */}
+              <Link href="/account">
+                <div className="group bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/20 rounded-2xl p-5 flex items-center gap-4 hover:border-primary/40 hover:from-primary/10 hover:to-primary/15 transition-all cursor-pointer">
+                  <div className="w-11 h-11 bg-primary/10 rounded-2xl flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
+                    <Settings className="w-5 h-5 text-primary" />
                   </div>
-                  <div>
-                    <h3 className="font-bold text-foreground">{t("Content Visibility", "ظهور المحتوى")}</h3>
-                    <p className="text-xs text-muted-foreground">{t("Control who can see each type of your content", "تحكم في من يمكنه رؤية كل نوع من محتواك")}</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-foreground">{t("Full Account Settings", "إعدادات الحساب الكاملة")}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{t("Privacy, notifications, security, addresses, membership and more", "الخصوصية والإشعارات والأمان والعناوين والعضوية والمزيد")}</p>
                   </div>
+                  <ChevronRight className={`w-5 h-5 text-primary shrink-0 ${lang === "ar" ? "rotate-180" : ""}`} />
                 </div>
-                <div className="p-5 space-y-4">
-                  {CONTENT_TYPES.map(({ key, labelEn, labelAr }) => (
-                    <div key={key} className="flex items-center justify-between gap-4">
-                      <label className="text-sm font-medium text-foreground">{t(labelEn, labelAr)}</label>
-                      <div className="flex gap-1 bg-muted rounded-xl p-0.5">
-                        {VISIBILITY_OPTIONS.map(({ value, labelEn: vLabelEn, labelAr: vLabelAr, icon: VIcon }) => (
-                          <button
-                            key={value}
-                            onClick={() => setContentPrivacy(prev => ({ ...prev, [key]: value }))}
-                            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                              contentPrivacy[key] === value ? "bg-card shadow text-foreground" : "text-muted-foreground hover:text-foreground"
-                            }`}
-                          >
-                            <VIcon className="w-3 h-3" />
-                            <span className="hidden sm:inline">{t(vLabelEn, vLabelAr)}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                  <div className="pt-2 flex items-center justify-end gap-3">
-                    {privacySaved && (
-                      <span className="text-xs text-green-600 flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" />{t("Saved!", "تم الحفظ!")}</span>
-                    )}
-                    <Button size="sm" className="rounded-xl gap-1.5" disabled={privacySaving} onClick={handleSaveContentPrivacy}>
-                      {privacySaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                      {t("Save Privacy Settings", "حفظ إعدادات الخصوصية")}
-                    </Button>
-                  </div>
-                </div>
-              </div>
+              </Link>
 
               {/* Username */}
               <div className="bg-card border border-border rounded-2xl overflow-hidden">
@@ -1956,16 +1934,6 @@ export function ProfilePage() {
                 </div>
               </div>
 
-              {/* Social Media Links */}
-              <SocialLinksCard user={user} onSave={async (links) => {
-                if (!authUser) return;
-                await fetch(`/api/users/${userId}`, {
-                  method: "PUT",
-                  headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
-                  body: JSON.stringify(links),
-                });
-                refetchUser();
-              }} t={t} lang={lang} />
 
               {/* Profile URL */}
               {currentUsername && (

@@ -78,9 +78,10 @@ export function Footer() {
               {[
                 { href: '/restaurants', en: 'Restaurants', ar: 'المطاعم' },
                 { href: '/dishes', en: 'Trending Dishes', ar: 'الأطباق الشائعة' },
+                { href: '/experiences', en: 'Experiences', ar: 'التجارب الغذائية' },
+                { href: '/catering', en: 'Catering & Events', ar: 'التموين والفعاليات' },
                 { href: '/offers', en: 'Deals & Offers', ar: 'عروض وخصومات' },
-                { href: '/experiences', en: 'Food Experiences', ar: 'التجارب الغذائية' },
-                { href: '/collections', en: 'Curated Lists', ar: 'قوائم منتقاة' },
+                { href: '/michelin', en: 'Michelin Guide', ar: 'دليل ميشلان' },
                 { href: '/blog', en: 'Food Blog', ar: 'مدونة الطعام' },
               ].map(link => (
                 <li key={link.href}>
