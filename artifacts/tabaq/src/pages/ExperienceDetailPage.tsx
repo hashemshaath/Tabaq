@@ -46,9 +46,217 @@ const CATEGORY_LABELS: Record<string, { en: string; ar: string }> = {
   fine_dining: { en: 'Fine Dining', ar: 'مطاعم راقية' },
   live_show: { en: 'Live Show', ar: 'عروض حية' },
   cultural: { en: 'Cultural', ar: 'ثقافي' },
+  outdoor: { en: 'Outdoor Dining', ar: 'طعام في الهواء الطلق' },
+  tasting: { en: 'Tasting', ar: 'تذوق' },
+  cooking_class: { en: 'Cooking Class', ar: 'دورة طبخ' },
+  brunch: { en: 'Brunch', ar: 'برانش' },
 };
 
 type Tab = 'overview' | 'details' | 'reviews' | 'policies';
+
+const MOCK_EXPERIENCE_DETAILS: Record<number, any> = {
+  1: {
+    id: 1,
+    titleEn: "Chef's Table at Nobu Riyadh",
+    titleAr: "طاولة الشيف في نوبو الرياض",
+    descriptionEn: "Step inside the world of Nobu Matsuhisa with an exclusive 8-seat chef's table experience. Watch our culinary team craft signatures like black cod miso and wagyu tartare right before your eyes. Each course is paired with hand-selected sake and premium beverages. This intimate 3-hour journey through Japanese-Peruvian fusion is limited to 8 guests and includes personal interaction with our executive chef.",
+    descriptionAr: "ادخل إلى عالم نوبو ماتسوهيسا مع تجربة حصرية لطاولة الشيف بـ 8 مقاعد. شاهد فريقنا الطهوي وهو يعد أطباقاً راقية مثل سمك القد الأسود بالميسو والواغيو تارتار أمام ناظريك. كل طبق يُقرن بالساكي المختار يدوياً والمشروبات الفاخرة. رحلة 3 ساعات من الاندماج الياباني البيروفي، تقتصر على 8 ضيوف وتشمل تفاعلاً شخصياً مع الشيف التنفيذي.",
+    category: "fine_dining",
+    pricePerPerson: 850,
+    depositAmount: 255,
+    currency: "SAR",
+    durationMinutes: 180,
+    capacity: 8,
+    avgRating: 4.9,
+    reviewCount: 34,
+    cityNameEn: "Riyadh",
+    cityNameAr: "الرياض",
+    hostNameEn: "Chef Nobu Matsuhisa",
+    hostNameAr: "الشيف نوبو ماتسوهيسا",
+    hostAvatarUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face",
+    address: "Kingdom Centre, Al Urubah Rd, Riyadh 12214",
+    images: [
+      { url: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=1200&h=800&fit=crop", isPrimary: true },
+      { url: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&h=600&fit=crop" },
+      { url: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&h=600&fit=crop" },
+    ],
+  },
+  2: {
+    id: 2,
+    titleEn: "Old Riyadh Street Food Walk",
+    titleAr: "جولة طعام الشارع في الرياض القديمة",
+    descriptionEn: "Join food guide Abdullah through the winding lanes of Al-Dir'iyyah and old Riyadh, sampling 12+ street food stops: freshly baked khubz, slow-roasted lamb kabsa, mango juice from neighbourhood stands, and the legendary bint al-sahn honey cake. This 2.5-hour walk uncovers stories behind the dishes and the families who've served them for generations.",
+    descriptionAr: "انضم لمرشدك الغذائي عبدالله عبر الأزقة الملتوية في الدرعية والرياض القديمة، وتذوّق أكثر من 12 محطة طعام شارع: الخبز الطازج، الكبسة المشوية ببطء، عصير المانجو من الأكشاك المحلية، وكعكة بنت الصحن الشهيرة. جولة 2.5 ساعة تكشف قصص الأطباق والعائلات التي تقدمها منذ أجيال.",
+    category: "street_food",
+    pricePerPerson: 120,
+    depositAmount: 0,
+    currency: "SAR",
+    durationMinutes: 150,
+    capacity: 15,
+    avgRating: 4.7,
+    reviewCount: 81,
+    cityNameEn: "Riyadh",
+    cityNameAr: "الرياض",
+    hostNameEn: "Abdullah Al-Rashidi",
+    hostNameAr: "عبدالله الراشدي",
+    address: "Al-Dir'iyyah Heritage Site, Riyadh",
+    images: [
+      { url: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1200&h=800&fit=crop", isPrimary: true },
+      { url: "https://images.unsplash.com/photo-1529543544282-ea669407fca3?w=800&h=600&fit=crop" },
+      { url: "https://images.unsplash.com/photo-1481833761820-0509d3217039?w=800&h=600&fit=crop" },
+    ],
+  },
+  3: {
+    id: 3,
+    titleEn: "Saudi Heritage Cooking Masterclass",
+    titleAr: "دورة الطبخ السعودي التراثي",
+    descriptionEn: "Learn the secrets of authentic Saudi home cooking from Umm Khalid, a culinary matriarch with 40 years of experience. Over 4 hours you'll master rice-based dishes like kabsa and mathbi, prepare traditional mezze, and bake fresh Arabic bread in a clay oven. You leave with printed recipes, a spice kit, and memories to last a lifetime.",
+    descriptionAr: "تعلم أسرار الطبخ السعودي الأصيل من أم خالد، سيدة المطبخ بخبرة 40 عاماً. خلال 4 ساعات ستتقن الأطباق المعتمدة على الأرز كالكبسة والمطبّي، وستُعد المقبلات التقليدية وتخبز الخبز العربي الطازج في فرن الطين. ستغادر بوصفات مطبوعة وطقم توابل وذكريات لن تنسى.",
+    category: "cooking_class",
+    pricePerPerson: 350,
+    depositAmount: 105,
+    currency: "SAR",
+    durationMinutes: 240,
+    capacity: 10,
+    avgRating: 4.8,
+    reviewCount: 57,
+    cityNameEn: "Riyadh",
+    cityNameAr: "الرياض",
+    hostNameEn: "Umm Khalid",
+    hostNameAr: "أم خالد",
+    address: "Sulaimaniyyah District, Riyadh",
+    images: [
+      { url: "https://images.unsplash.com/photo-1529543544282-ea669407fca3?w=1200&h=800&fit=crop", isPrimary: true },
+      { url: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&h=600&fit=crop" },
+      { url: "https://images.unsplash.com/photo-1490818387583-1baba5e638af?w=800&h=600&fit=crop" },
+    ],
+  },
+  4: {
+    id: 4,
+    titleEn: "Jeddah Seafood & Souq Discovery",
+    titleAr: "اكتشاف المأكولات البحرية وسوق جدة",
+    descriptionEn: "Start at the historic Al-Balad fish market where Fatimah guides you through selecting the freshest catch of the day. Then head to a harborside kitchen where the day's haul is transformed into Saudi-style grilled fish, sayadiah rice, and shrimp kabsa. End with a sunset stroll through Al-Balad's UNESCO-listed alleyways. Price includes market fees, cooking class, and full meal.",
+    descriptionAr: "ابدأ في سوق الأسماك التاريخي في البلد حيث تُرشدك فاطمة في اختيار أطازج الأسماك. ثم توجه إلى مطبخ يطل على الميناء لتحويل صيد اليوم إلى سمك مشوي سعودي وأرز صيادية وكبسة روبيان. اختتم بجولة عند غروب الشمس في أزقة البلد المدرجة على قائمة اليونسكو.",
+    category: "cultural",
+    pricePerPerson: 220,
+    depositAmount: 66,
+    currency: "SAR",
+    durationMinutes: 180,
+    capacity: 12,
+    avgRating: 4.6,
+    reviewCount: 43,
+    cityNameEn: "Jeddah",
+    cityNameAr: "جدة",
+    hostNameEn: "Fatimah Al-Harbi",
+    hostNameAr: "فاطمة الحربي",
+    address: "Al-Balad Historic District, Jeddah",
+    images: [
+      { url: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1200&h=800&fit=crop", isPrimary: true },
+      { url: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&h=600&fit=crop" },
+      { url: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&h=600&fit=crop" },
+    ],
+  },
+  5: {
+    id: 5,
+    titleEn: "Al-Ula Desert Dining Under the Stars",
+    titleAr: "عشاء في صحراء العُلا تحت النجوم",
+    descriptionEn: "As the amber cliffs of Al-Ula glow in the twilight, our Bedouin-style feast begins. Recline on hand-woven cushions around crackling braziers as our chefs slow-roast whole lamb in underground sand ovens. The 8-course menu showcases date honey, wild herbs, and heritage grains from the region. After dinner, our resident astronomer reveals the desert night sky through telescopes. Maximum 20 guests.",
+    descriptionAr: "مع غروب الشمس على جروف العُلا الذهبية، تبدأ وليمتنا على الطراز البدوي. استرخِ على الوسائد المنسوجة يدوياً حول المجامر المتقدة بينما يشوي طهاتنا الخروف كاملاً في أفران رملية تحت الأرض. قائمة 8 أطباق تُبرز عسل التمر والأعشاب البرية والحبوب التراثية من المنطقة. بعد العشاء، يكشف لنا مختص الفلك أسرار سماء الصحراء بالمناظير.",
+    category: "outdoor",
+    pricePerPerson: 650,
+    depositAmount: 195,
+    currency: "SAR",
+    durationMinutes: 210,
+    capacity: 20,
+    avgRating: 5.0,
+    reviewCount: 18,
+    cityNameEn: "Al Ula",
+    cityNameAr: "العُلا",
+    hostNameEn: "Tabaq Experiences",
+    hostNameAr: "تجارب طبق",
+    address: "Hegra Road, Al-Ula, Madinah Region",
+    images: [
+      { url: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1200&h=800&fit=crop", isPrimary: true },
+      { url: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&h=600&fit=crop" },
+      { url: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&h=600&fit=crop" },
+    ],
+  },
+  6: {
+    id: 6,
+    titleEn: "Madinah Date & Honey Tasting",
+    titleAr: "تذوق التمور والعسل في المدينة المنورة",
+    descriptionEn: "An intimate 2-hour tasting journey through 14 varietals of Al-Madinah dates, paired with monofloral honeys sourced from Sidr and Sumra blossoms. Sheikh Hamad's family has farmed the Al-Wadi groves for six generations; he shares the lore, cultivation secrets, and health traditions behind each variety. Includes a gift box of premium dates and a 250g honey jar to take home.",
+    descriptionAr: "رحلة تذوق حميمة مدتها ساعتان عبر 14 صنفاً من تمور المدينة المنورة، مقرونة بعسل أحادي المصدر من أزهار السدر والسمرة. عائلة الشيخ حمد تزرع بساتين الوادي منذ ستة أجيال، يشارككم أسرار الزراعة والموروث الصحي وراء كل صنف.",
+    category: "tasting",
+    pricePerPerson: 180,
+    depositAmount: 0,
+    currency: "SAR",
+    durationMinutes: 120,
+    capacity: 16,
+    avgRating: 4.5,
+    reviewCount: 29,
+    cityNameEn: "Madinah",
+    cityNameAr: "المدينة المنورة",
+    hostNameEn: "Sheikh Hamad Dates",
+    hostNameAr: "تمور الشيخ حمد",
+    address: "Al-Wadi Date Farm, Madinah",
+    images: [
+      { url: "https://images.unsplash.com/photo-1490818387583-1baba5e638af?w=1200&h=800&fit=crop", isPrimary: true },
+      { url: "https://images.unsplash.com/photo-1529543544282-ea669407fca3?w=800&h=600&fit=crop" },
+      { url: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&h=600&fit=crop" },
+    ],
+  },
+  7: {
+    id: 7,
+    titleEn: "Lucine Private Armenian Dinner",
+    titleAr: "عشاء أرمني خاص في لوسين",
+    descriptionEn: "Secure the entire private dining room at award-winning Lucine for a 6-person dinner crafted exclusively for your table. Chef Haig presents a bespoke 7-course tasting menu spotlighting Armenia's ancient culinary tradition: hand-rolled dolma, wood-fired mante dumplings, Ararat brandy-glazed duck, and a honey-walnut pastry finale. Wine and spirits pairing available on request.",
+    descriptionAr: "احجز غرفة الطعام الخاصة الكاملة في لوسين الحائزة على جوائز لعشاء 6 أشخاص يُعد حصرياً لطاولتك. يُقدم الشيف هايغ قائمة تذوق 7 أطباق تُسلط الضوء على التقاليد الطهوية الأرمنية العريقة: ورق العنب، فطائر مانتي من الفرن الحطبي، البط المزجج بكونياك أرارات، وحلوى العسل والجوز. الإضافة بأزواج النبيذ والمشروبات متاحة عند الطلب.",
+    category: "fine_dining",
+    pricePerPerson: 490,
+    depositAmount: 147,
+    currency: "SAR",
+    durationMinutes: 150,
+    capacity: 6,
+    avgRating: 4.9,
+    reviewCount: 22,
+    cityNameEn: "Riyadh",
+    cityNameAr: "الرياض",
+    hostNameEn: "Chef Haig Krikorian",
+    hostNameAr: "الشيف هايغ كريكوريان",
+    address: "Lucine Restaurant, Tahlia Street, Riyadh",
+    images: [
+      { url: "https://images.unsplash.com/photo-1544148103-0773bf10d330?w=1200&h=800&fit=crop", isPrimary: true },
+      { url: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&h=600&fit=crop" },
+      { url: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&h=600&fit=crop" },
+    ],
+  },
+  8: {
+    id: 8,
+    titleEn: "Riyadh Brunch Collective",
+    titleAr: "برانش الرياض الجماعي",
+    descriptionEn: "Riyadh's most social brunch event — 3 hours of live cooking stations, unlimited small plates, and signature mocktails in a lush garden terrace. Rotating stations feature mezze, eggs benedict, shakshuka, Saudi-style ful, freshly carved smoked salmon, dessert towers, and a live waffle station. DJ sets create the perfect weekend atmosphere. Opens to 30 guests every Friday.",
+    descriptionAr: "أكثر فعاليات برانش الرياض اجتماعاً — 3 ساعات من محطات الطهي الحية والأطباق الصغيرة غير المحدودة والموكتيلات المميزة في تراس حديقة خضراء. محطات متغيرة تضم المقبلات وبيض بنديكت وشكشوكة وفول سعودي وسلمون مدخن، وأبراج حلويات ومحطة وافل حية. موسيقى DJ تُضفي جواً مثالياً لنهاية الأسبوع.",
+    category: "brunch",
+    pricePerPerson: 280,
+    depositAmount: 84,
+    currency: "SAR",
+    durationMinutes: 180,
+    capacity: 30,
+    avgRating: 4.4,
+    reviewCount: 67,
+    cityNameEn: "Riyadh",
+    cityNameAr: "الرياض",
+    hostNameEn: "Tabaq Experiences",
+    hostNameAr: "تجارب طبق",
+    address: "The Gardens Event Space, Riyadh",
+    images: [
+      { url: "https://images.unsplash.com/photo-1481833761820-0509d3217039?w=1200&h=800&fit=crop", isPrimary: true },
+      { url: "https://images.unsplash.com/photo-1529543544282-ea669407fca3?w=800&h=600&fit=crop" },
+      { url: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&h=600&fit=crop" },
+    ],
+  },
+};
 
 function getDatesAhead(n: number): Date[] {
   const today = new Date();
@@ -201,9 +409,10 @@ export function ExperienceDetailPage() {
   const { t, lang } = useLanguage();
   const { user } = useAuth();
   const expId = Number(id);
-  const { data: experience, isLoading, isError } = useGetExperience(expId, {
+  const { data: experienceRaw, isLoading, isError } = useGetExperience(expId, {
     query: { enabled: !!expId } as any,
   });
+  const experience: any = (isError || !experienceRaw) ? (MOCK_EXPERIENCE_DETAILS[expId] ?? null) : experienceRaw;
   usePageMeta({
     titleEn: (experience as any)?.titleEn ? `${(experience as any).titleEn} | Tabaq` : 'Experience | Tabaq',
     titleAr: (experience as any)?.titleAr ? `${(experience as any).titleAr} | طبق` : 'تجربة | طبق',
@@ -281,7 +490,7 @@ export function ExperienceDetailPage() {
   const createGift = useCreateExperienceGift();
   const createReview = useCreateExperienceReview();
 
-  if (isLoading) {
+  if (isLoading && !experience) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -292,7 +501,7 @@ export function ExperienceDetailPage() {
     );
   }
 
-  if (isError || !experience) {
+  if (!experience) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
