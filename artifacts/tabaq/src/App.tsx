@@ -47,6 +47,8 @@ import { ExperiencesPage } from "@/pages/ExperiencesPage";
 import { ExperienceDetailPage } from "@/pages/ExperienceDetailPage";
 import { GiftRedeemPage } from "@/pages/GiftRedeemPage";
 import { JoinPage } from "@/pages/JoinPage";
+import { ChefsPage } from "@/pages/ChefsPage";
+import { ChefDetailPage } from "@/pages/ChefDetailPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -95,6 +97,8 @@ function Router() {
               <Route path="/orders/:id" component={OrderTrackingPage} />
               <Route path="/orders" component={OrdersPage} />
               <Route path="/gold" component={TabaqGoldPage} />
+              <Route path="/chefs/:id" component={ChefDetailPage} />
+              <Route path="/chefs" component={ChefsPage} />
               <Route path="/michelin/:id" component={MichelinDetailPage} />
               <Route path="/michelin" component={MichelinPage} />
               <Route path="/experiences" component={ExperiencesPage} />

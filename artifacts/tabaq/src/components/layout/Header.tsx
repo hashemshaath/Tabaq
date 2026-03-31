@@ -87,7 +87,8 @@ export function Header() {
     { href: "/", en: "Home", ar: "الرئيسية", icon: Home },
     { href: "/restaurants", en: "Discovery", ar: "استكشف", icon: Search },
     { href: "/michelin", en: "Michelin Guide", ar: "دليل ميشلان", icon: Award },
-    { href: "/experiences", en: "Experiences", ar: "التجارب", icon: ChefHat },
+    { href: "/chefs", en: "Chefs", ar: "الطهاة", icon: ChefHat },
+    { href: "/experiences", en: "Experiences", ar: "التجارب", icon: Utensils },
     { href: "/offers", en: "Offers", ar: "العروض", icon: Sparkles },
     { href: "/leaderboard", en: "Leaderboard", ar: "المتصدرين", icon: Trophy },
   ];
