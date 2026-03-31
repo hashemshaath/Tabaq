@@ -635,10 +635,16 @@ function ReviewItem({ r, lang }: { r: any; lang: string }) {
     <div className="bg-card border border-border rounded-xl p-4 space-y-3">
       <div className="flex items-center gap-3">
         <div className="w-12 h-12 rounded-lg overflow-hidden bg-secondary shrink-0">
-          {r.restaurantImage && <img src={r.restaurantImage} alt="" className="w-full h-full object-cover" />}
+          {(r.restaurantCoverImageUrl || r.restaurantImage) && <img src={r.restaurantCoverImageUrl || r.restaurantImage} alt="" className="w-full h-full object-cover" />}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="font-semibold text-sm truncate">{lang === "ar" ? r.restaurantNameAr : r.restaurantNameEn}</p>
+          {r.restaurantId ? (
+            <Link href={`/restaurants/${r.restaurantId}`}>
+              <p className="font-semibold text-sm truncate hover:text-primary transition-colors cursor-pointer">{lang === "ar" ? r.restaurantNameAr : r.restaurantNameEn}</p>
+            </Link>
+          ) : (
+            <p className="font-semibold text-sm truncate">{lang === "ar" ? r.restaurantNameAr : r.restaurantNameEn}</p>
+          )}
           <div className="flex items-center gap-1 mt-0.5">
             {Array.from({ length: 5 }).map((_, i) => (
               <Star key={i} className={`w-3 h-3 ${i < r.ratingOverall ? "fill-amber-400 text-amber-400" : "text-muted-foreground/30"}`} />
@@ -1516,7 +1522,7 @@ export function PublicProfilePage() {
     onSuccess: () => { setShowUpgrade(false); qc.invalidateQueries({ queryKey: ["profile", username] }); },
   });
 
-  const reviews: any[] = revData?.reviews ?? [];
+  const reviews: any[] = Array.isArray(revData) ? revData : (revData?.reviews ?? []);
   const visits: any[]  = visitData?.bookings ?? [];
   const savedRestaurants: any[] = Array.isArray(savedRestData) ? savedRestData : (savedRestData?.restaurants ?? []);
   const savedDishes: any[] = Array.isArray(savedDishData) ? savedDishData : [];
