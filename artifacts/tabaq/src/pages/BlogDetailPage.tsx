@@ -3,7 +3,7 @@ import { Link, useRoute } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { useLanguage } from '@/hooks/use-language';
 import { usePageMeta, buildArticleSchema, buildBreadcrumbSchema } from '@/hooks/use-page-meta';
-import { Clock, User, Tag, ArrowLeft, ArrowRight, ChevronRight, Share2, Bookmark, ThumbsUp, MessageCircle, Facebook, Twitter, Link2, Check } from 'lucide-react';
+import { Clock, User, Tag, ArrowLeft, ArrowRight, ChevronRight, Share2, Bookmark, ThumbsUp, MessageCircle, Facebook, Twitter, Link2, Check, Loader2 } from 'lucide-react';
 
 function slugify(text: string) {
   return text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').trim();
@@ -29,85 +29,6 @@ function injectHeadingIds(html: string): string {
   });
 }
 
-const SAMPLE_POSTS: Record<string, {
-  id: number; slug: string; titleEn: string; titleAr: string;
-  excerptEn: string; excerptAr: string; coverImage: string;
-  authorName: string; authorAr: string; authorAvatar: string; authorBioEn: string; authorBioAr: string;
-  categoryEn: string; categoryAr: string; categorySlug: string;
-  readTimeEn: string; readTimeAr: string; publishedAt: string;
-  tags: string[];
-  contentEn: string; contentAr: string;
-}> = {
-  'best-restaurants-riyadh-2025': {
-    id: 1, slug: 'best-restaurants-riyadh-2025',
-    titleEn: 'The Best Restaurants in Riyadh for 2025',
-    titleAr: 'أفضل مطاعم الرياض لعام ٢٠٢٥',
-    excerptEn: 'From traditional Saudi cuisine to international fine dining, our editors handpick the definitive list of must-visit restaurants in the Saudi capital this year.',
-    excerptAr: 'من المأكولات السعودية التقليدية إلى المطابخ العالمية الراقية، يختار محررونا القائمة النهائية للمطاعم التي يجب زيارتها في العاصمة السعودية هذا العام.',
-    coverImage: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1200&h=600&fit=crop',
-    authorName: 'Layla Al-Rasheed', authorAr: 'ليلى الرشيد',
-    authorAvatar: 'https://i.pravatar.cc/80?u=layla',
-    authorBioEn: 'Senior Food Editor at Tabaq with 10+ years covering the Saudi dining scene.',
-    authorBioAr: 'محررة طعام أولى في طبق مع أكثر من ١٠ سنوات في تغطية مشهد الطعام السعودي.',
-    categoryEn: 'Restaurant Guides', categoryAr: 'أدلة المطاعم', categorySlug: 'restaurant-guides',
-    readTimeEn: '8 min read', readTimeAr: '٨ دقائق قراءة',
-    publishedAt: '2025-03-15',
-    tags: ['Riyadh', 'Fine Dining', 'Saudi Cuisine'],
-    contentEn: `<h2>Introduction</h2>
-<p>Riyadh's restaurant scene has undergone a remarkable transformation over the past few years. The city that was once known primarily for traditional Saudi hospitality now boasts a dynamic, cosmopolitan dining landscape that rivals any global capital.</p>
-<p>Whether you're in search of authentic Saudi flavors passed down through generations, Japanese omakase experiences, or molecular gastronomy that pushes culinary boundaries, Riyadh delivers on all fronts.</p>
-<h2>1. Najd Village — The Gold Standard for Saudi Cuisine</h2>
-<p>If there's one restaurant every visitor to Riyadh must experience, it's Najd Village. Nestled in a beautifully restored traditional Saudi home in Malaz, this legendary establishment has been serving authentic Najdi cuisine since 1991. Think slow-cooked Jareesh, perfectly seasoned Kabsa, and Margoog that warms the soul.</p>
-<p>The experience is as much cultural as it is culinary — diners sit cross-legged on floor cushions surrounding a communal platter, echoing the timeless Bedouin tradition of shared meals.</p>
-<h2>2. Nozomi — Riyadh's Premier Japanese Experience</h2>
-<p>For a different kind of excellence, Nozomi at the Four Seasons Hotel Riyadh has consistently set the benchmark for Japanese cuisine in the Kingdom. The omakase counter experience, helmed by visiting Japanese master chefs, is particularly extraordinary. Reserve well in advance.</p>
-<h2>3. Maestro — The Italian Icon</h2>
-<p>Tucked inside the Intercontinental Hotel, Maestro has earned its legendary status through decades of consistency. The house-made pasta, aged imported cheeses, and the finest Wagyu preparations make this a reliable destination for celebrations and power dinners alike.</p>
-<h2>4. Myazu — New-Wave Asian</h2>
-<p>This sleek, contemporary restaurant delivers bold Pan-Asian flavors in a stunning setting. The black cod with miso has become something of a cult dish in Riyadh's dining circles, and for very good reason.</p>
-<h2>5. The Globe — Spectacular Views, Exceptional Food</h2>
-<p>Perched atop Faisaliyah Tower, The Globe remains an architectural marvel and a dining destination. The 360-degree views of Riyadh's glittering skyline paired with a thoughtfully curated international menu make for an unforgettable evening.</p>
-<h2>What to Expect in 2025</h2>
-<p>This year, watch out for a wave of homegrown Saudi concepts championing regional flavors with modern plating, celebrity chef pop-ups, and experiential dining formats that blur the lines between restaurant and theater.</p>`,
-    contentAr: `<h2>مقدمة</h2>
-<p>شهدت الرياض تحولاً استثنائياً في مشهد مطاعمها خلال السنوات الأخيرة. المدينة التي كانت تُعرف في المقام الأول بضيافتها السعودية الأصيلة باتت تمتلك مشهداً طهوياً ديناميكياً وعالمياً يضاهي أي عاصمة كبرى في العالم.</p>
-<p>سواء كنت تبحث عن نكهات سعودية أصيلة متوارثة عبر الأجيال، أو تجارب أوماكاسي يابانية، أو مطبخاً جزيئياً يتجاوز الحدود الطهوية، فإن الرياض توفر كل ذلك وأكثر.</p>
-<h2>١. قرية نجد — المعيار الذهبي للمطبخ السعودي</h2>
-<p>إن كان ثمة مطعم واحد يجب على كل زائر للرياض تجربته، فهو قرية نجد. يقع هذا المطعم الأسطوري في منزل سعودي تقليدي مُرمَّم بجمال في حي الملاز، ويقدم المطبخ النجدي الأصيل منذ عام ١٩٩١. تخيل الجريش المطهو ببطء، والكبسة المتبلة بإتقان، والمرقوق الذي يدفئ الروح.</p>
-<h2>٢. نوزومي — التجربة اليابانية الأولى في الرياض</h2>
-<p>لنوع مختلف من التميز، يضع نوزومي في فندق فور سيزونز الرياض معايير المطبخ الياباني في المملكة باستمرار. تجربة كاونتر أوماكاسي التي يترأسها طهاة يابانيون زائرون استثنائية بكل المقاييس. احجز مبكراً جداً.</p>
-<h2>٣. مايسترو — الأيقونة الإيطالية</h2>
-<p>يقع داخل فندق إنتركونتيننتال، وقد اكتسب مكانته الأسطورية عبر عقود من الاتساق. المعكرونة المصنوعة يدوياً، والجبن المستورد المعتق، وأرقى قطع واغو تجعله وجهة موثوقة للاحتفالات والعشاء الرسمي على حد سواء.</p>
-<h2>٤. مياتسو — آسيا بأسلوب عصري</h2>
-<p>يقدم هذا المطعم الأنيق المعاصر نكهات آسيوية جريئة في محيط مبهر. أصبح سمك القد الأسود بالميسو ما يشبه الطبق الأيقوني في أوساط الطعام الراقي بالرياض، وهذا مفهوم تماماً.</p>
-<h2>ما تتوقعه في ٢٠٢٥</h2>
-<p>هذا العام، ترقّب موجة من المفاهيم السعودية المحلية التي تُبرز النكهات الإقليمية بتقديم عصري، وأماكن طعام يحييها شيفات مشهورون، وتجارب طهوية تمزج بين المطعم والمسرح.</p>`,
-  },
-};
-
-const RELATED_POSTS = [
-  {
-    id: 4, slug: 'jeddah-waterfront-dining',
-    titleEn: "Jeddah's Best Waterfront Dining Spots", titleAr: 'أفضل مطاعم كورنيش جدة',
-    coverImage: 'https://images.unsplash.com/photo-1514190051997-0f6f39ca5cde?w=400&h=240&fit=crop',
-    readTimeEn: '7 min read', readTimeAr: '٧ دقائق قراءة',
-    categoryEn: 'Restaurant Guides', categoryAr: 'أدلة المطاعم',
-  },
-  {
-    id: 2, slug: 'saudi-coffee-culture-guide',
-    titleEn: 'Saudi Coffee Culture: A Deep Dive', titleAr: 'ثقافة القهوة السعودية',
-    coverImage: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400&h=240&fit=crop',
-    readTimeEn: '6 min read', readTimeAr: '٦ دقائق قراءة',
-    categoryEn: 'Food & Culture', categoryAr: 'الطعام والثقافة',
-  },
-  {
-    id: 3, slug: 'chef-noura-interview',
-    titleEn: 'Chef Noura Al-Ghamdi: Reinventing Saudi Cuisine', titleAr: 'الشيف نورة الغامدي',
-    coverImage: 'https://images.unsplash.com/photo-1577219491135-ce391730fb2c?w=400&h=240&fit=crop',
-    readTimeEn: '10 min read', readTimeAr: '١٠ دقائق قراءة',
-    categoryEn: 'Chef Stories', categoryAr: 'قصص الشيف',
-  },
-];
 
 function formatDate(dateStr: string, lang: string) {
   if (!dateStr) return '';
@@ -123,7 +44,7 @@ export function BlogDetailPage() {
   const slug = params?.slug ?? '';
   const [linkCopied, setLinkCopied] = useState(false);
 
-  const { data: rawApiPost } = useQuery({
+  const { data: rawApiPost, isLoading: postLoading } = useQuery({
     queryKey: ['blog-post', slug],
     queryFn: async () => {
       const res = await fetch(`/api/blog/posts/${slug}`);
@@ -156,7 +77,7 @@ export function BlogDetailPage() {
     content: lang === 'ar' ? (rawPost.contentAr ?? rawPost.content ?? '') : (rawPost.contentEn ?? rawPost.content ?? ''),
   } : null;
 
-  const post = apiPost ?? SAMPLE_POSTS[slug] ?? SAMPLE_POSTS['best-restaurants-riyadh-2025'];
+  const post = apiPost ?? null;
 
   const articleJsonLd = post ? buildArticleSchema({
     slug: post.slug,
@@ -187,13 +108,22 @@ export function BlogDetailPage() {
     structuredData: [articleJsonLd, breadcrumbJsonLd].filter(Boolean) as any,
   }, lang);
 
+  if (postLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-10 h-10 text-primary animate-spin" />
+      </div>
+    );
+  }
+
   if (!post) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <p className="text-muted-foreground">{t('Article not found', 'المقال غير موجود')}</p>
+          <p className="text-muted-foreground text-lg font-medium">{t('Article not found', 'المقال غير موجود')}</p>
+          <p className="text-muted-foreground text-sm mt-2 mb-6">{t('This article may have been moved or removed.', 'قد يكون هذا المقال قد نُقل أو حُذف.')}</p>
           <Link href="/blog">
-            <button className="mt-4 text-primary font-semibold hover:underline">{t('Back to Blog', 'العودة للمدونة')}</button>
+            <button className="text-primary font-semibold hover:underline">{t('Back to Blog', 'العودة للمدونة')}</button>
           </Link>
         </div>
       </div>
@@ -420,7 +350,7 @@ export function BlogDetailPage() {
                 readTimeEn: `${r.readTimeMinutes ?? 5} min read`,
                 readTimeAr: `${r.readTimeMinutes ?? 5} دقائق قراءة`,
               }))
-            : RELATED_POSTS.filter(p => p.slug !== slug);
+            : [];
           if (!normalizedRelated.length) return null;
           return (
             <div className="mt-16">

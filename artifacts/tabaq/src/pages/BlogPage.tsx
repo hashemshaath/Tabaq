@@ -14,92 +14,6 @@ const SAMPLE_CATEGORIES = [
   { id: 6, slug: 'travel-eat', nameEn: 'Travel & Eat', nameAr: 'سافر وكُل' },
 ];
 
-const SAMPLE_POSTS = [
-  {
-    id: 1, slug: 'best-restaurants-riyadh-2025',
-    titleEn: 'The Best Restaurants in Riyadh for 2025', titleAr: 'أفضل مطاعم الرياض لعام ٢٠٢٥',
-    excerptEn: 'From traditional Saudi cuisine to international fine dining, our editors handpick the definitive list of must-visit restaurants in the Saudi capital this year.',
-    excerptAr: 'من المأكولات السعودية التقليدية إلى المطابخ العالمية الراقية، يختار محررونا القائمة النهائية للمطاعم التي يجب زيارتها في العاصمة السعودية هذا العام.',
-    coverImage: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&h=450&fit=crop',
-    authorName: 'Layla Al-Rasheed', authorAr: 'ليلى الرشيد',
-    authorAvatar: 'https://i.pravatar.cc/60?u=layla',
-    categoryEn: 'Restaurant Guides', categoryAr: 'أدلة المطاعم',
-    categorySlug: 'restaurant-guides',
-    readTimeEn: '8 min read', readTimeAr: '٨ دقائق قراءة',
-    publishedAt: '2025-03-15', featured: true, trending: true,
-    tags: ['Riyadh', 'Fine Dining', 'Saudi Cuisine'],
-  },
-  {
-    id: 2, slug: 'saudi-coffee-culture-guide',
-    titleEn: 'Saudi Coffee Culture: A Deep Dive into Qahwa', titleAr: 'ثقافة القهوة السعودية: رحلة في عالم القهوة العربية',
-    excerptEn: 'Discover the rich traditions behind Saudi coffee, from the ceremonial pour of qahwa to the modern specialty café scene thriving across the Kingdom.',
-    excerptAr: 'اكتشف التقاليد الغنية خلف القهوة السعودية، من طقوس تقديم القهوة العربية إلى مشهد المقاهي المتخصصة الحديث المزدهر في أنحاء المملكة.',
-    coverImage: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=800&h=450&fit=crop',
-    authorName: 'Omar Al-Zahrani', authorAr: 'عمر الزهراني',
-    authorAvatar: 'https://i.pravatar.cc/60?u=omar',
-    categoryEn: 'Food & Culture', categoryAr: 'الطعام والثقافة',
-    categorySlug: 'food-culture',
-    readTimeEn: '6 min read', readTimeAr: '٦ دقائق قراءة',
-    publishedAt: '2025-03-10', featured: true, trending: false,
-    tags: ['Coffee', 'Qahwa', 'Culture', 'Tradition'],
-  },
-  {
-    id: 3, slug: 'chef-noura-interview',
-    titleEn: 'Chef Noura Al-Ghamdi on Reinventing Saudi Cuisine', titleAr: 'الشيف نورة الغامدي: إعادة اختراع المطبخ السعودي',
-    excerptEn: 'We sat down with one of the Kingdom\'s most celebrated female chefs to discuss her journey, inspirations, and the future of Saudi gastronomy.',
-    excerptAr: 'جلسنا مع إحدى أبرز الشيفات في المملكة لنناقش مسيرتها ومصادر إلهامها ومستقبل فن الطهي السعودي.',
-    coverImage: 'https://images.unsplash.com/photo-1577219491135-ce391730fb2c?w=800&h=450&fit=crop',
-    authorName: 'Tabaq Editorial', authorAr: 'تحرير طبق',
-    authorAvatar: 'https://i.pravatar.cc/60?u=editorial',
-    categoryEn: 'Chef Stories', categoryAr: 'قصص الشيف',
-    categorySlug: 'chef-stories',
-    readTimeEn: '10 min read', readTimeAr: '١٠ دقائق قراءة',
-    publishedAt: '2025-03-05', featured: false, trending: true,
-    tags: ['Chef Interview', 'Women in Food', 'Saudi Cuisine'],
-  },
-  {
-    id: 4, slug: 'jeddah-waterfront-dining',
-    titleEn: 'Jeddah\'s Best Waterfront Dining Spots in 2025', titleAr: 'أفضل مطاعم كورنيش جدة لعام ٢٠٢٥',
-    excerptEn: 'The Corniche has transformed into a dining destination like no other. We explore the best spots overlooking the Red Sea.',
-    excerptAr: 'تحوّل الكورنيش إلى وجهة مطاعم لا مثيل لها. نستكشف أفضل الأماكن المطلة على البحر الأحمر.',
-    coverImage: 'https://images.unsplash.com/photo-1514190051997-0f6f39ca5cde?w=800&h=450&fit=crop',
-    authorName: 'Sara Al-Malik', authorAr: 'سارة الملك',
-    authorAvatar: 'https://i.pravatar.cc/60?u=sara',
-    categoryEn: 'Restaurant Guides', categoryAr: 'أدلة المطاعم',
-    categorySlug: 'restaurant-guides',
-    readTimeEn: '7 min read', readTimeAr: '٧ دقائق قراءة',
-    publishedAt: '2025-02-28', featured: false, trending: false,
-    tags: ['Jeddah', 'Waterfront', 'Seafood'],
-  },
-  {
-    id: 5, slug: 'ramadan-iftar-guide',
-    titleEn: 'The Ultimate Ramadan Iftar Dining Guide', titleAr: 'الدليل الشامل لمطاعم الإفطار الرمضاني',
-    excerptEn: 'From lavish tent buffets to intimate family iftar experiences, we round up the best Ramadan dining across the Kingdom.',
-    excerptAr: 'من البوفيهات الفاخرة في الخيام إلى تجارب الإفطار العائلية المميزة، نستعرض أفضل تجارب رمضان في أنحاء المملكة.',
-    coverImage: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=800&h=450&fit=crop',
-    authorName: 'Mohammed Al-Otaibi', authorAr: 'محمد العتيبي',
-    authorAvatar: 'https://i.pravatar.cc/60?u=mohammed',
-    categoryEn: 'Food & Culture', categoryAr: 'الطعام والثقافة',
-    categorySlug: 'food-culture',
-    readTimeEn: '5 min read', readTimeAr: '٥ دقائق قراءة',
-    publishedAt: '2025-02-20', featured: false, trending: true,
-    tags: ['Ramadan', 'Iftar', 'Buffet'],
-  },
-  {
-    id: 6, slug: 'top-new-openings-q1',
-    titleEn: 'Top New Restaurant Openings in Saudi Arabia: Q1 2025', titleAr: 'أبرز افتتاحيات المطاعم في المملكة: الربع الأول ٢٠٢٥',
-    excerptEn: 'The first quarter of 2025 has brought an exciting wave of new restaurants. Here\'s everything you need to know.',
-    excerptAr: 'أفرز الربع الأول من ٢٠٢٥ موجة مثيرة من المطاعم الجديدة. إليك كل ما تحتاج معرفته.',
-    coverImage: 'https://images.unsplash.com/photo-1466978913421-dad2ebd01d17?w=800&h=450&fit=crop',
-    authorName: 'Tabaq Editorial', authorAr: 'تحرير طبق',
-    authorAvatar: 'https://i.pravatar.cc/60?u=editorial2',
-    categoryEn: 'New Openings', categoryAr: 'افتتاحيات جديدة',
-    categorySlug: 'new-openings',
-    readTimeEn: '9 min read', readTimeAr: '٩ دقائق قراءة',
-    publishedAt: '2025-01-31', featured: false, trending: false,
-    tags: ['New Openings', 'Saudi Arabia', '2025'],
-  },
-];
 
 function formatDate(dateStr: string, lang: string) {
   const date = new Date(dateStr);
@@ -218,7 +132,7 @@ export function BlogPage() {
               <h2 className="text-xl font-black text-foreground">{t('Featured', 'مميز')}</h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {featured.map((post: typeof SAMPLE_POSTS[0], i: number) => (
+              {featured.map((post: any, i: number) => (
                 <Link key={post.id} href={`/blog/${post.slug}`}>
                   <div className={`group cursor-pointer rounded-3xl overflow-hidden border border-border/60 hover:border-primary/30 hover:shadow-xl transition-all ${i === 0 ? 'md:col-span-2' : ''}`}>
                     <div className={`relative overflow-hidden ${i === 0 ? 'h-72 md:h-80' : 'h-52'}`}>
@@ -288,7 +202,7 @@ export function BlogPage() {
               </div>
             ) : (
               <div className="space-y-5">
-                {(selectedCategory !== 'all' || searchQuery ? filtered : regular).map((post: typeof SAMPLE_POSTS[0]) => (
+                {(selectedCategory !== 'all' || searchQuery ? filtered : regular).map((post: any) => (
                   <Link key={post.id} href={`/blog/${post.slug}`}>
                     <div className="group cursor-pointer flex gap-4 p-4 rounded-2xl border border-border/60 hover:border-primary/30 hover:shadow-md bg-card transition-all">
                       <div className="relative w-32 h-24 shrink-0 rounded-xl overflow-hidden">

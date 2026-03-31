@@ -417,24 +417,6 @@ function StoriesStrip({
 
 // ── Feed components ────────────────────────────────────────────────────────────
 
-const TRENDING_CRITICS = [
-  { id: 1, name: 'Noura Al-Rashid', nameAr: 'نورة الراشد', handle: '@noura', avatar: 'https://i.pravatar.cc/40?img=47', level: 5, reviews: 142, badge: '👑', specialty: 'Fine Dining' },
-  { id: 2, name: 'Faisal Al-Harbi', nameAr: 'فيصل الحربي', handle: '@faisal', avatar: 'https://i.pravatar.cc/40?img=12', level: 4, reviews: 98, badge: '🍽️', specialty: 'Street Food' },
-  { id: 3, name: 'Lama Khalid', nameAr: 'لمى خالد', handle: '@lama', avatar: 'https://i.pravatar.cc/40?img=32', level: 4, reviews: 87, badge: '⭐', specialty: 'Desserts' },
-  { id: 4, name: 'Sultan Qahtani', nameAr: 'سلطان القحطاني', handle: '@sultan', avatar: 'https://i.pravatar.cc/40?img=15', level: 3, reviews: 64, badge: '🌱', specialty: 'Healthy Eats' },
-];
-
-const TRENDING_RESTAURANTS = [
-  { id: 1, nameEn: 'Reem Al-Bawadi', nameAr: 'ريم البوادي', cuisine: 'شامي', rating: 4.5, image: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=200&h=200&fit=crop', city: 'الرياض', trend: '+24%' },
-  { id: 2, nameEn: 'Sushi Sama', nameAr: 'سوشي ساما', cuisine: 'ياباني', rating: 4.7, image: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=200&h=200&fit=crop', city: 'جدة', trend: '+18%' },
-  { id: 3, nameEn: 'Nusret', nameAr: 'نصرت', cuisine: 'لحوم', rating: 4.6, image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&h=200&fit=crop', city: 'الرياض', trend: '+12%' },
-];
-
-const TRENDING_DISHES = [
-  { nameEn: 'Wagyu Tenderloin', nameAr: 'ستيك واغيو', restaurant: 'Nusret', price: '320 ر.س', image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=120&h=120&fit=crop', likes: 842 },
-  { nameEn: 'Dragon Roll', nameAr: 'دراغون رول', restaurant: 'Sushi Sama', price: '85 ر.س', image: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=120&h=120&fit=crop', likes: 634 },
-  { nameEn: 'Mezze Platter', nameAr: 'طبق المقبلات', restaurant: 'Reem Al-Bawadi', price: '55 ر.س', image: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=120&h=120&fit=crop', likes: 521 },
-];
 
 
 function PeopleYouMayKnowCard({ t, lang }: { t: (en: string, ar: string) => string; lang: string }) {
@@ -553,9 +535,7 @@ function TrendingCriticsCard({ t, lang }: { t: (en: string, ar: string) => strin
     levelTitle: entry.user.levelTitle || 'Food Explorer',
   }));
 
-  const displayCritics = critics.length > 0 ? critics : TRENDING_CRITICS.map((c, i) => ({
-    id: c.id, name: c.name, nameAr: c.nameAr, avatar: c.avatar, badge: c.badge, reviews: c.reviews, levelTitle: c.specialty,
-  }));
+  const displayCritics = critics;
 
   return (
     <div className="bg-card border border-border/60 rounded-3xl p-4">
@@ -576,6 +556,8 @@ function TrendingCriticsCard({ t, lang }: { t: (en: string, ar: string) => strin
             </div>
           ))}
         </div>
+      ) : displayCritics.length === 0 ? (
+        <p className="text-xs text-muted-foreground text-center py-4">{t('No critics yet', 'لا يوجد نقاد بعد')}</p>
       ) : (
         <div className="space-y-3">
           {displayCritics.map((critic: (typeof displayCritics)[0], i: number) => (
@@ -615,7 +597,7 @@ function TrendingRestaurantsCard({ t, lang }: { t: (en: string, ar: string) => s
     staleTime: 120000,
   });
 
-  const restaurants = (data?.restaurants ?? TRENDING_RESTAURANTS).slice(0, 3);
+  const restaurants = (data?.restaurants ?? []).slice(0, 3);
 
   return (
     <div className="bg-card border border-border/60 rounded-3xl p-4">
@@ -623,27 +605,31 @@ function TrendingRestaurantsCard({ t, lang }: { t: (en: string, ar: string) => s
         <Flame className="w-5 h-5 text-orange-500" />
         <h3 className="font-bold text-foreground text-sm">{t('Trending This Week', 'الأكثر رواجاً هذا الأسبوع')}</h3>
       </div>
-      <div className="space-y-3">
-        {restaurants.map((r: any) => (
-          <Link key={r.id} href={`/restaurants/${r.id}`}>
-            <div className="flex items-center gap-3 hover:bg-secondary/40 rounded-2xl p-1.5 transition-colors cursor-pointer">
-              <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 bg-muted">
-                <img src={r.coverImageUrl ?? r.image ?? 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=200&h=200&fit=crop'} alt={r.nameEn} className="w-full h-full object-cover" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold text-foreground truncate">{lang === 'ar' ? (r.nameAr ?? r.nameEn) : r.nameEn}</p>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                  <span className="text-[10px] text-muted-foreground">{Number(r.avgRating ?? r.rating ?? 0).toFixed(1)} · {r.cityNameEn ?? r.city ?? 'Riyadh'}</span>
+      {restaurants.length === 0 ? (
+        <p className="text-xs text-muted-foreground text-center py-4">{t('No trending restaurants yet', 'لا توجد مطاعم رائجة بعد')}</p>
+      ) : (
+        <div className="space-y-3">
+          {restaurants.map((r: any) => (
+            <Link key={r.id} href={`/restaurants/${r.id}`}>
+              <div className="flex items-center gap-3 hover:bg-secondary/40 rounded-2xl p-1.5 transition-colors cursor-pointer">
+                <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 bg-muted">
+                  <img src={r.coverImageUrl ?? r.image ?? 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=200&h=200&fit=crop'} alt={r.nameEn} className="w-full h-full object-cover" />
                 </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-foreground truncate">{lang === 'ar' ? (r.nameAr ?? r.nameEn) : r.nameEn}</p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                    <span className="text-[10px] text-muted-foreground">{Number(r.avgRating ?? r.rating ?? 0).toFixed(1)} · {r.cityNameEn ?? r.city ?? 'Riyadh'}</span>
+                  </div>
+                </div>
+                <span className="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full flex items-center gap-0.5 shrink-0">
+                  <ArrowUp className="w-2.5 h-2.5" />{r.trend ?? '+12%'}
+                </span>
               </div>
-              <span className="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full flex items-center gap-0.5 shrink-0">
-                <ArrowUp className="w-2.5 h-2.5" />{r.trend ?? '+12%'}
-              </span>
-            </div>
-          </Link>
-        ))}
-      </div>
+            </Link>
+          ))}
+        </div>
+      )}
       <Link href="/restaurants">
         <button className="w-full mt-3 text-xs text-primary font-semibold hover:underline flex items-center justify-center gap-1">
           {t('Explore restaurants', 'استكشف المطاعم')} <ChevronRight className="w-3 h-3" />
@@ -664,7 +650,7 @@ function TrendingDishesCard({ t, lang }: { t: (en: string, ar: string) => string
     staleTime: 120000,
   });
 
-  const dishes = (Array.isArray(data) ? data : data?.dishes ?? TRENDING_DISHES).slice(0, 3);
+  const dishes = (Array.isArray(data) ? data : data?.dishes ?? []).slice(0, 3);
 
   return (
     <div className="bg-card border border-border/60 rounded-3xl p-4">
@@ -672,6 +658,9 @@ function TrendingDishesCard({ t, lang }: { t: (en: string, ar: string) => string
         <Utensils className="w-5 h-5 text-primary" />
         <h3 className="font-bold text-foreground text-sm">{t("Today's Top Dishes", 'أفضل الأطباق اليوم')}</h3>
       </div>
+      {dishes.length === 0 ? (
+        <p className="text-xs text-muted-foreground text-center py-4">{t('No dishes yet', 'لا توجد أطباق بعد')}</p>
+      ) : (
       <div className="space-y-3">
         {dishes.map((dish: any, i: number) => (
           <Link key={dish.id ?? i} href={dish.restaurantId ? `/restaurants/${dish.restaurantId}` : '/restaurants'}>
@@ -694,6 +683,7 @@ function TrendingDishesCard({ t, lang }: { t: (en: string, ar: string) => string
           </Link>
         ))}
       </div>
+      )}
       <Link href="/dishes">
         <button className="w-full mt-3 text-xs text-primary font-semibold hover:underline flex items-center justify-center gap-1">
           {t('Browse all dishes', 'تصفح جميع الأطباق')} <ChevronRight className="w-3 h-3" />

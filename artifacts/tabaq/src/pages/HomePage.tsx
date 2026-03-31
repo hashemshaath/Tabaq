@@ -612,17 +612,54 @@ function SectionHeader({ badge, badgeIcon: Icon, title, subtitle, viewAllHref, v
 }
 
 // ── Suggested People Strip ─────────────────────────────────────────
-const SUGGESTED_CRITICS = [
-  { id: 1, nameEn: 'Noura Al-Rashid', nameAr: 'نورة الراشد', handle: 'noura', avatar: 'https://i.pravatar.cc/80?img=47', reviewCount: 142, badge: '👑', specialtyEn: 'Fine Dining', specialtyAr: 'المطاعم الفاخرة' },
-  { id: 2, nameEn: 'Faisal Al-Harbi', nameAr: 'فيصل الحربي', handle: 'faisal', avatar: 'https://i.pravatar.cc/80?img=12', reviewCount: 98, badge: '🍽️', specialtyEn: 'Street Food', specialtyAr: 'أكل الشوارع' },
-  { id: 3, nameEn: 'Lama Khalid', nameAr: 'لمى خالد', handle: 'lama', avatar: 'https://i.pravatar.cc/80?img=32', reviewCount: 87, badge: '⭐', specialtyEn: 'Desserts', specialtyAr: 'الحلويات' },
-  { id: 4, nameEn: 'Sultan Qahtani', nameAr: 'سلطان القحطاني', handle: 'sultan', avatar: 'https://i.pravatar.cc/80?img=15', reviewCount: 64, badge: '🌱', specialtyEn: 'Healthy Eats', specialtyAr: 'الأكل الصحي' },
-  { id: 5, nameEn: 'Reem Alobaidan', nameAr: 'ريم العبيدان', handle: 'reem', avatar: 'https://i.pravatar.cc/80?img=25', reviewCount: 201, badge: '🔥', specialtyEn: 'Saudi Cuisine', specialtyAr: 'المطبخ السعودي' },
-  { id: 6, nameEn: 'Khaled Nasser', nameAr: 'خالد ناصر', handle: 'khaled', avatar: 'https://i.pravatar.cc/80?img=8', reviewCount: 55, badge: '🎯', specialtyEn: 'Grills & BBQ', specialtyAr: 'المشويات والباربيكيو' },
-];
+const PEOPLE_BADGES = ['👑', '🔥', '⭐', '🍽️', '🌱', '🎯'];
 
 function SuggestedPeopleStrip({ t, lang }: { t: (en: string, ar: string) => string; lang: string }) {
   const [following, setFollowing] = useState<Record<number, boolean>>({});
+  const { data, isLoading } = useQuery({
+    queryKey: ['home-suggested-people'],
+    queryFn: async () => {
+      const res = await fetch('/api/leaderboard?limit=6');
+      if (!res.ok) return [];
+      return res.json();
+    },
+    staleTime: 300000,
+  });
+
+  const people = (Array.isArray(data) ? data : []).slice(0, 6).map((entry: any, i: number) => ({
+    id: entry.user.id,
+    nameEn: entry.user.nameEn ?? entry.user.username ?? 'User',
+    nameAr: entry.user.nameAr ?? entry.user.nameEn ?? 'مستخدم',
+    avatar: entry.user.avatarUrl ?? `https://i.pravatar.cc/80?u=${entry.user.id}`,
+    reviewCount: entry.reviewCount ?? 0,
+    badge: PEOPLE_BADGES[i] ?? '⭐',
+    levelTitle: entry.user.levelTitle ?? '',
+  }));
+
+  if (isLoading) {
+    return (
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-14">
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h2 className="text-lg font-bold text-foreground">{t('People to Follow', 'مميّزون في عالم الطعام')}</h2>
+            <p className="text-muted-foreground text-sm mt-0.5">{t('Top food critics loved by the Tabaq community', 'نقاد الطعام المميزون في مجتمع طبق')}</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+          {[1,2,3,4,5,6].map(i => (
+            <div key={i} className="bg-card border border-border rounded-2xl p-4 flex flex-col items-center animate-pulse">
+              <div className="w-14 h-14 rounded-full bg-muted mb-3" />
+              <div className="h-3 bg-muted rounded w-20 mb-2" />
+              <div className="h-2.5 bg-muted rounded w-14 mb-4" />
+              <div className="h-7 bg-muted rounded-xl w-full" />
+            </div>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  if (people.length === 0) return null;
 
   return (
     <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-14">
@@ -637,7 +674,7 @@ function SuggestedPeopleStrip({ t, lang }: { t: (en: string, ar: string) => stri
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-        {SUGGESTED_CRITICS.map(person => (
+        {people.map(person => (
           <div key={person.id} className="bg-card border border-border rounded-2xl p-4 flex flex-col items-center text-center hover:shadow-md transition-shadow group">
             <div className="relative mb-3">
               <img
@@ -648,7 +685,7 @@ function SuggestedPeopleStrip({ t, lang }: { t: (en: string, ar: string) => stri
               <span className="absolute -bottom-1 -end-1 text-base leading-none">{person.badge}</span>
             </div>
             <p className="font-semibold text-foreground text-sm leading-tight mb-0.5">{lang === 'ar' ? person.nameAr : person.nameEn}</p>
-            <p className="text-xs text-muted-foreground mb-1">{lang === 'ar' ? person.specialtyAr : person.specialtyEn}</p>
+            <p className="text-xs text-muted-foreground mb-1">{person.levelTitle}</p>
             <p className="text-xs text-muted-foreground mb-3">{person.reviewCount} {t('reviews', 'تقييم')}</p>
             <button
               onClick={() => setFollowing(prev => ({ ...prev, [person.id]: !prev[person.id] }))}
