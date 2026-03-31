@@ -322,6 +322,84 @@ All core features COMPLETE and world-class:
 - **Dynamic SEO page titles** — Created `usePageMeta` hook (`src/hooks/use-page-meta.ts`) that sets `document.title`, `<meta name="description">`, and Open Graph tags dynamically per page. Applied to: HomePage, DiscoveryPage, ExperiencesPage, OffersPage, SearchPage, RestaurantDetailPage (uses actual restaurant name when data loads)
 - **index.html meta tags** — Added full static meta suite: `<meta name="description">`, keywords, robots, theme-color, Open Graph (og:title, og:description, og:image, og:locale with ar_SA + en_US), Twitter Card (summary_large_image)
 
+## Session 11 — Comprehensive Profile System
+
+### New DB Schema (`lib/db/src/schema/profile.ts`)
+5 new tables pushed to production:
+- **`user_check_ins`** — User visits/check-ins with restaurant, date, time, party size, notes, companion names, isPublic
+- **`visit_plans`** — Future visit plans with title, restaurant (optional), planned date, notes, priority (low/medium/high), status (active/completed/cancelled), theme label, reminder toggle
+- **`user_recommendations`** — Restaurant or dish recommendations with bilingual notes, visibility toggle
+- **`saved_dishes`** — User's saved/favourite dishes (unique per user+dish)
+- **`content_privacy`** — Per-content-type visibility settings (visits, reviews, favorites, activity, plans, recommendations) with values: public/followers/only_me
+
+### New API Routes (`artifacts/api-server/src/routes/profile.ts`)
+12 new endpoints wired into the main router:
+- `GET/POST /api/me/checkins` · `DELETE /api/me/checkins/:id`
+- `GET/POST /api/me/plans` · `PATCH/DELETE /api/me/plans/:id`
+- `GET/POST /api/me/recommendations` · `DELETE /api/me/recommendations/:id`
+- `GET /api/me/saved-dishes` · `POST/DELETE /api/me/saved-dishes/:dishId`
+- `GET/PUT /api/me/content-privacy`
+- `GET /api/me/blocked-users`
+
+### ProfilePage Overhaul (`artifacts/tabaq/src/pages/ProfilePage.tsx`)
+Complete rewrite from 4 tabs (915 lines) to 10 tabs (~900 effective lines of new logic):
+
+**Tab 1 — Overview**
+- 4 quick-action buttons: Log Visit, Write Review, Add Plan, Recommend
+- 4 food-journey stat cards: Restaurants Visited, Reviews Written, Places Saved, Recommendations
+- "Your Top Cuisines" horizontal bar chart (computed from check-in history)
+- Recent Activity mini-feed (last 3 events) with link to full Activity tab
+- Upcoming Plans preview card (active plans count + first 2 items)
+
+**Tab 2 — Visits** (Check-in History)
+- "Log Visit" button opens `CheckInDialog` — picks restaurant, date, time, party size, companions, notes
+- Timeline of all check-ins: restaurant photo, name, date/time, party size, companion names, italic notes
+- Per-card delete button
+
+**Tab 3 — Reviews**
+- Filter pills: All / Restaurants / Dishes
+- Review cards: restaurant photo, name, star ratings, dish name (if dish review), review text, sub-ratings (food/service/ambiance), like count, visit date
+
+**Tab 4 — Favourites**
+- Toggle: Saved Restaurants | Saved Dishes
+- Restaurants: 2-col photo grid with unsave heart button
+- Dishes: list cards with dish image, name, restaurant, price, unsave button
+
+**Tab 5 — Plans**
+- "Add Plan" button opens `PlanDialog` — title, restaurant (optional), date, priority, theme label, notes, reminder toggle
+- Active Plans section with priority badge, theme pill, date, reminder indicator, ✓ complete + delete actions
+- Completed Plans section (greyed out, strikethrough title)
+
+**Tab 6 — Recommendations**
+- 2-col grid cards: restaurant cover photo, cuisine, dish name (if dish rec), bilingual note, date, share + delete actions
+- Empty state with CTA
+
+**Tab 7 — Activity** (existing, enhanced with check_in + bookmark event types)
+
+**Tab 8 — Followers** (existing + block button per follower)
+
+**Tab 9 — Following** (existing, unchanged)
+
+**Tab 10 — Settings** (completely overhauled)
+- **Account Privacy** — private/public toggle (existing, polished)
+- **Content Visibility** — per-type picker (6 content types × 3 visibility options, saved to API)
+- **Username** — existing debounced check + save
+- **Blocked Users** — live list of blocked users with Unblock button (calls DELETE /api/users/:id/block)
+- **Notification Preferences** — link to /notifications
+- **Account** — Points History + Referral Programme links
+
+### Inline Components (defined inside ProfilePage.tsx)
+- `CheckInDialog` — full form modal for logging visits
+- `PlanDialog` — full form modal for creating visit plans
+- `EditProfileDialog` — modal for editing name + bio (calls PATCH /api/me/profile)
+- `PrivacyCard` — account-level private/public toggle
+- `StarRow` — reusable star rating display
+- `EmptyState` — reusable empty state with icon, title, subtitle, action slot
+- `PriorityBadge` — colored badge for plan priority
+
+### Mock Data (for unauthenticated preview)
+Rich mock data for all 6 new sections: MOCK_CHECK_INS (5 visits), MOCK_REVIEWS (4 reviews), MOCK_SAVED_RESTAURANTS (4), MOCK_SAVED_DISHES (4), MOCK_PLANS (4 with mixed status), MOCK_RECOMMENDATIONS (3 with dishes)
+
 ## Session 10 — Share Modal + Rate Your Last Visit
 
 ### ShareModal (`src/components/ShareModal.tsx`)
