@@ -37,222 +37,10 @@ interface Chef {
   tabaqStars?: number;
 }
 
-// ── Mock Data ──────────────────────────────────────────────────────────────────
+// ── Chef Data (populated from API when available) ──────────────────────────────
 
-const CHEFS: Chef[] = [
-  {
-    id: 1,
-    nameEn: 'Mahmoud Al-Rashidi',
-    nameAr: 'محمود الراشدي',
-    titleEn: 'Executive Chef & Culinary Director',
-    titleAr: 'الشيف التنفيذي ومدير الطهي',
-    nationalityEn: 'Saudi Arabian',
-    nationalityAr: 'سعودي',
-    restaurantEn: 'Atma — Saudi Fine Dining',
-    restaurantAr: 'أتما — طعام سعودي فاخر',
-    restaurantId: 7,
-    cityEn: 'Riyadh',
-    cityAr: 'الرياض',
-    cuisineEn: 'Modern Saudi',
-    cuisineAr: 'مطبخ سعودي حديث',
-    photo: 'https://images.unsplash.com/photo-1577219491135-ce391730fb2c?w=400&h=500&fit=crop&crop=face',
-    coverPhoto: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=1200&h=600&fit=crop',
-    michelinStars: 2,
-    awards: ['Michelin ✦✦', 'MENA Best Chef 2024', 'Tabaq Gold Award'],
-    awardsAr: ['ميشلان ✦✦', 'أفضل شيف في الشرق الأوسط 2024', 'جائزة طبق الذهبية'],
-    bioShortEn: 'A pioneer of modern Saudi cuisine, Chef Mahmoud trained at Le Cordon Bleu Paris before returning to elevate the flavours of his homeland. His restaurant Atma has held two Michelin stars since 2023, pioneering heritage grain fermentations and slow-cooked desert lamb.',
-    bioShortAr: 'رائد المطبخ السعودي الحديث، تدرّب الشيف محمود في لو كوردون بلو باريس قبل أن يعود لترقية نكهات وطنه. يحتل مطعمه "أتما" نجمتين ميشلان منذ 2023، رائداً في تخمير الحبوب الموروثة وطهي لحم الضأن الصحراوي ببطء.',
-    specialtyEn: 'Heritage grain fermentation & desert lamb',
-    specialtyAr: 'تخمير الحبوب الموروثة ولحم الضأن الصحراوي',
-    yearsExp: 18,
-    featured: true,
-    tabaqStars: 5,
-  },
-  {
-    id: 2,
-    nameEn: 'Sara Al-Otaibi',
-    nameAr: 'سارة العتيبي',
-    titleEn: 'Chef-Owner',
-    titleAr: 'شيف ومالكة',
-    nationalityEn: 'Saudi Arabian',
-    nationalityAr: 'سعودية',
-    restaurantEn: 'Bint Al-Jazira',
-    restaurantAr: 'بنت الجزيرة',
-    restaurantId: 2,
-    cityEn: 'Jeddah',
-    cityAr: 'جدة',
-    cuisineEn: 'Elevated Traditional Saudi',
-    cuisineAr: 'مطبخ سعودي تقليدي راقٍ',
-    photo: 'https://images.unsplash.com/photo-1583394293214-bf9b5e68d6c1?w=400&h=500&fit=crop&crop=face',
-    coverPhoto: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1200&h=600&fit=crop',
-    michelinStars: 0,
-    awards: ['Michelin Bib Gourmand', 'Forbes 30 Under 30 MENA', 'Saudi Vision 2030 Culinary Ambassador'],
-    awardsAr: ['بيب جورمان ميشلان', 'فوربس 30 تحت 30 في منطقة الشرق الأوسط', 'سفيرة الطهي لرؤية السعودية 2030'],
-    bioShortEn: 'The first Saudi woman to receive a Michelin recognition, Chef Sara\'s Bint Al-Jazira is a love letter to the flavours she grew up with in Jeddah\'s old city. Her kitchen is a classroom and a temple — where traditional Ma\'asub, Saleeg, and Kabsa are reimagined without compromise.',
-    bioShortAr: 'أول امرأة سعودية تنال اعترافاً من ميشلان، مطعم "بنت الجزيرة" للشيف سارة هو رسالة حب لنكهات طفولتها في جدة القديمة. مطبخها فصل دراسي ومعبد — حيث يُعاد تصور المعصوب والسليق والكبسة التقليدية دون تنازلات.',
-    specialtyEn: 'Hejazi cuisine & ancient bread traditions',
-    specialtyAr: 'المطبخ الحجازي وتقاليد الخبز القديمة',
-    yearsExp: 12,
-    tabaqStars: 5,
-  },
-  {
-    id: 3,
-    nameEn: 'Yuki Tanaka',
-    nameAr: 'يوكي تاناكا',
-    titleEn: 'Head Sushi Chef',
-    titleAr: 'رئيس شيف السوشي',
-    nationalityEn: 'Japanese',
-    nationalityAr: 'ياباني',
-    restaurantEn: 'Sushi Sama',
-    restaurantAr: 'سوشي ساما',
-    restaurantId: 3,
-    cityEn: 'Riyadh',
-    cityAr: 'الرياض',
-    cuisineEn: 'Edomae & Omakase',
-    cuisineAr: 'إدوماي وأوماكاسي',
-    photo: 'https://images.unsplash.com/photo-1607631568010-a87245c0daf6?w=400&h=500&fit=crop&crop=face',
-    coverPhoto: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=1200&h=600&fit=crop',
-    michelinStars: 1,
-    awards: ['Michelin ✦', 'Best Asian Chef Saudi Arabia 2024', 'Tokyo Sushi Masters Finalist'],
-    awardsAr: ['ميشلان ✦', 'أفضل شيف آسيوي في المملكة 2024', 'متأهل لمسابقة أساتذة السوشي طوكيو'],
-    bioShortEn: 'Chef Yuki spent 12 years perfecting Edomae technique in Tokyo\'s most revered sushi-ya before bringing his mastery to Riyadh. Every grain of his shari rice is seasoned individually, and his fish is sourced twice weekly directly from Toyosu Market.',
-    bioShortAr: 'قضى الشيف يوكي 12 عاماً في إتقان تقنية إدوماي في أرقى مطاعم السوشي بطوكيو قبل أن يجلب إتقانه إلى الرياض. كل حبة في أرز الشاري يُتبَّل بشكل فردي، وسمكه يُجلب مرتين أسبوعياً مباشرة من سوق تويوسو.',
-    specialtyEn: 'Edomae sushi & seasonal omakase',
-    specialtyAr: 'سوشي إدوماي وأوماكاسي موسمي',
-    yearsExp: 20,
-    tabaqStars: 5,
-  },
-  {
-    id: 4,
-    nameEn: 'Luca Ferrari',
-    nameAr: 'لوكا فيراري',
-    titleEn: 'Executive Chef',
-    titleAr: 'الشيف التنفيذي',
-    nationalityEn: 'Italian',
-    nationalityAr: 'إيطالي',
-    restaurantEn: 'La Perla Riyadh',
-    restaurantAr: 'لا بيرلا الرياض',
-    restaurantId: 1,
-    cityEn: 'Riyadh',
-    cityAr: 'الرياض',
-    cuisineEn: 'Modern Italian Fine Dining',
-    cuisineAr: 'الطهي الإيطالي الفاخر الحديث',
-    photo: 'https://images.unsplash.com/photo-1595475038665-c3eb23dc517e?w=400&h=500&fit=crop&crop=face',
-    coverPhoto: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=1200&h=600&fit=crop',
-    michelinStars: 1,
-    awards: ['Michelin ✦', 'World\'s 50 Best Alumni', 'Italian Culinary Excellence Award'],
-    awardsAr: ['ميشلان ✦', 'خريج أفضل 50 مطعماً في العالم', 'جائزة التميز في فن الطهي الإيطالي'],
-    bioShortEn: 'Born in Modena, Chef Luca trained under Massimo Bottura before charting his own path across Dubai and now Riyadh. His tasting menu is a journey through the regions of Italy, reinterpreted through the lens of Saudi seasonal produce.',
-    bioShortAr: 'وُلد في مودينا، وتدرّب الشيف لوكا على يد ماسيمو بوتورا قبل أن يشق طريقه الخاص عبر دبي ثم الرياض. قائمة التذوق لديه رحلة عبر مناطق إيطاليا، معاد تفسيرها من خلال منتجات المملكة الموسمية.',
-    specialtyEn: 'Fresh pasta & truffle gastronomy',
-    specialtyAr: 'المعكرونة الطازجة والكمأة الفاخرة',
-    yearsExp: 22,
-  },
-  {
-    id: 5,
-    nameEn: 'Tariq Al-Ghamdi',
-    nameAr: 'طارق الغامدي',
-    titleEn: 'Chef & Co-Founder',
-    titleAr: 'شيف ومؤسس مشارك',
-    nationalityEn: 'Saudi Arabian',
-    nationalityAr: 'سعودي',
-    restaurantEn: 'Qasr Al-Tabikh',
-    restaurantAr: 'قصر الطبيخ',
-    restaurantId: 4,
-    cityEn: 'Riyadh',
-    cityAr: 'الرياض',
-    cuisineEn: 'Molecular Arabic Gastronomy',
-    cuisineAr: 'الطهي الجزيئي العربي',
-    photo: 'https://images.unsplash.com/photo-1500048993953-d23a436266cf?w=400&h=500&fit=crop&crop=face',
-    coverPhoto: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=1200&h=600&fit=crop',
-    michelinStars: 1,
-    awards: ['Michelin ✦', 'Best Innovative Chef Arab World 2023', 'Tabaq Chef of the Year 2024'],
-    awardsAr: ['ميشلان ✦', 'أكثر الشيفات ابتكاراً في العالم العربي 2023', 'شيف طبق للعام 2024'],
-    bioShortEn: 'Chef Tariq graduated top of his class at The Culinary Institute of America before immersing himself in the molecular kitchens of elBulli alumni. He then brought this radical technique home — applying spherification, liquid nitrogen, and edible aerosols to Saudi grandmothers\' recipes.',
-    bioShortAr: 'تخرّج الشيف طارق في مقدمة فصله من معهد أمريكا للطهي قبل أن يغمر نفسه في مطابخ خريجي إيل بولي الجزيئية. ثم جلب هذه التقنية الجذرية إلى الوطن — مطبقاً التكويرة والنيتروجين السائل والهباء الجوي الصالح للأكل على وصفات الجدات السعوديات.',
-    specialtyEn: 'Spherification of Arabic spices & liquid nitrogen desserts',
-    specialtyAr: 'تكويرة التوابل العربية وحلويات النيتروجين السائل',
-    yearsExp: 14,
-  },
-  {
-    id: 6,
-    nameEn: 'Ahmed Farouk',
-    nameAr: 'أحمد فاروق',
-    titleEn: 'Executive Chef',
-    titleAr: 'الشيف التنفيذي',
-    nationalityEn: 'Egyptian-Saudi',
-    nationalityAr: 'مصري-سعودي',
-    restaurantEn: 'Bab Al-Sharq',
-    restaurantAr: 'باب الشرق',
-    restaurantId: 2,
-    cityEn: 'Riyadh',
-    cityAr: 'الرياض',
-    cuisineEn: 'Elevated Levantine & Gulf',
-    cuisineAr: 'المطبخ الشامي والخليجي الراقي',
-    photo: 'https://images.unsplash.com/photo-1622021142947-da7dedc7c39a?w=400&h=500&fit=crop&crop=face',
-    coverPhoto: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1200&h=600&fit=crop',
-    michelinStars: 0,
-    awards: ['Michelin Bib Gourmand', 'Time Out Best MENA Restaurant 2023', 'Top 100 Chefs Arab World'],
-    awardsAr: ['بيب جورمان ميشلان', 'أفضل مطعم في الشرق الأوسط - تايم آوت 2023', 'أفضل 100 شيف في العالم العربي'],
-    bioShortEn: 'Born in Cairo to a family of hospitality professionals, Chef Ahmed has spent 20 years traversing the MENA region to document, archive, and then reinvent its most beloved dishes. His mezze spreads have been described as "edible archaeology".',
-    bioShortAr: 'وُلد في القاهرة لعائلة من المهنيين في قطاع الضيافة، قضى الشيف أحمد 20 عاماً في جولات منطقة الشرق الأوسط لتوثيق وأرشفة ثم إعادة ابتكار أكثر أطباقها شعبية. وصفت مائدة مزته بأنها "علم الآثار الصالح للأكل".',
-    specialtyEn: 'Levantine mezze revival & ancient spice blends',
-    specialtyAr: 'إحياء المزة الشامية ومزيج التوابل القديمة',
-    yearsExp: 20,
-  },
-  {
-    id: 7,
-    nameEn: 'James Whitfield',
-    nameAr: 'جيمس ويتفيلد',
-    titleEn: 'Head Chef',
-    titleAr: 'رئيس الطهاة',
-    nationalityEn: 'British',
-    nationalityAr: 'بريطاني',
-    restaurantEn: 'Nobu Riyadh',
-    restaurantAr: 'نوبو الرياض',
-    restaurantId: 7,
-    cityEn: 'Riyadh',
-    cityAr: 'الرياض',
-    cuisineEn: 'Japanese-Peruvian Fusion',
-    cuisineAr: 'المطبخ الياباني-البيروفي المدموج',
-    photo: 'https://images.unsplash.com/photo-1512485694743-9c9538b4e6e0?w=400&h=500&fit=crop&crop=face',
-    coverPhoto: 'https://images.unsplash.com/photo-1562802378-063ec186a863?w=1200&h=600&fit=crop',
-    michelinStars: 0,
-    awards: ['Nobu Global Excellence Award', 'Great British Menu Finalist', 'Harden\'s Top 100 Chef'],
-    awardsAr: ['جائزة التميز العالمية نوبو', 'متأهل لـ Great British Menu', 'أفضل 100 شيف بريطاني'],
-    bioShortEn: 'Trained at The Fat Duck and then mentored by Nobu Matsuhisa himself for five years, Chef James brings an obsessive attention to temperature and texture. His version of Black Cod Miso has been called the definitive interpretation outside Japan.',
-    bioShortAr: 'تدرّب في The Fat Duck ثم أُتيحت له الإرشاد من نوبو ماتسوهيسا نفسه لمدة خمس سنوات، يُعبّر الشيف جيمس عن اهتمام وسواسي بالحرارة والملمس. وُصف إصداره من القد الأسود بالميسو بأنه التفسير النهائي خارج اليابان.',
-    specialtyEn: 'Black Cod Miso & Nikkei cuisine',
-    specialtyAr: 'القد الأسود بالميسو ومطبخ نيكي',
-    yearsExp: 16,
-  },
-  {
-    id: 8,
-    nameEn: 'Maria Santos',
-    nameAr: 'ماريا سانتوس',
-    titleEn: 'Chef-Owner',
-    titleAr: 'شيف ومالكة',
-    nationalityEn: 'Brazilian-Lebanese',
-    nationalityAr: 'برازيلية-لبنانية',
-    restaurantEn: 'Sao & Beirut — Fusion Kitchen',
-    restaurantAr: 'ساو وبيروت — مطبخ الدمج',
-    restaurantId: 1,
-    cityEn: 'Jeddah',
-    cityAr: 'جدة',
-    cuisineEn: 'Brazilian-Arabic Fusion',
-    cuisineAr: 'مطبخ دمج برازيلي-عربي',
-    photo: 'https://images.unsplash.com/photo-1618000851718-75f59e8264e1?w=400&h=500&fit=crop&crop=face',
-    coverPhoto: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1200&h=600&fit=crop',
-    michelinStars: 0,
-    awards: ['Best Female Chef Jeddah 2024', 'Gault&Millau Rising Star', 'Tabaq Community Award 2024'],
-    awardsAr: ['أفضل شيف نسائية في جدة 2024', 'نجم صاعد - غو وميو', 'جائزة مجتمع طبق 2024'],
-    bioShortEn: 'Chef Maria\'s story is one of two worlds colliding beautifully. Raised between São Paulo and Beirut, she arrived in Jeddah seven years ago and found a city ready for her vision — a kitchen where açaí meets pomegranate molasses, and ceviche meets tabbouleh.',
-    bioShortAr: 'قصة الشيف ماريا هي تصادم جميل بين عالمين. نشأت بين ساو باولو وبيروت، وصلت جدة منذ سبع سنوات ووجدت مدينة جاهزة لرؤيتها — مطبخ يلتقي فيه الأساي مع دبس الرمان، ويلتقي السيفيتشي مع التبولة.',
-    specialtyEn: 'Afro-Arab spice crossover & Amazonian ingredients',
-    specialtyAr: 'تقاطع التوابل الأفريقية العربية ومكونات الأمازون',
-    yearsExp: 15,
-  },
-];
+const CHEFS: Chef[] = [];
+
 
 const CUISINE_FILTERS = [
   { en: 'All Cuisines', ar: 'كل المطابخ', value: '' },
@@ -482,12 +270,6 @@ export function ChefsPage() {
     });
   }, [search, cuisineFilter, awardFilter]);
 
-  const stats = [
-    { valueEn: '8', valueAr: '٨', labelEn: 'World-Class Chefs', labelAr: 'طهاة عالميون' },
-    { valueEn: '5', valueAr: '٥', labelEn: 'Michelin Stars', labelAr: 'نجوم ميشلان' },
-    { valueEn: '7', valueAr: '٧', labelEn: 'Nationalities', labelAr: 'جنسيات' },
-    { valueEn: '145+', valueAr: '١٤٥+', labelEn: 'Collective Years Experience', labelAr: 'سنة خبرة مجتمعة' },
-  ];
 
   return (
     <div className="min-h-screen bg-background pb-20" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
@@ -513,15 +295,6 @@ export function ChefsPage() {
             )}
           </p>
 
-          {/* Stats */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-2xl mx-auto">
-            {stats.map((s, i) => (
-              <div key={i} className="bg-white/5 border border-white/10 rounded-2xl py-4 px-3">
-                <p className="text-amber-400 font-extrabold text-2xl">{lang === 'ar' ? s.valueAr : s.valueEn}</p>
-                <p className="text-white/50 text-xs mt-0.5">{lang === 'ar' ? s.labelAr : s.labelEn}</p>
-              </div>
-            ))}
-          </div>
         </div>
       </div>
 
@@ -583,9 +356,12 @@ export function ChefsPage() {
 
         {/* Chef grid */}
         {filtered.length === 0 ? (
-          <div className="text-center py-20">
-            <ChefHat className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
-            <p className="text-muted-foreground">{t('No chefs match your filters.', 'لا يوجد طهاة يطابقون تصفيتك.')}</p>
+          <div className="text-center py-24">
+            <ChefHat className="w-16 h-16 text-muted-foreground/20 mx-auto mb-5" />
+            <h3 className="text-xl font-bold text-foreground mb-2">{t('Chef Directory Coming Soon', 'دليل الطهاة قريباً')}</h3>
+            <p className="text-muted-foreground text-sm max-w-sm mx-auto">
+              {t('We\'re building a directory of the best chefs across Saudi Arabia. Check back soon.', 'نحن نبني دليل أفضل الطهاة في المملكة العربية السعودية. تحقق مجدداً قريباً.')}
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">

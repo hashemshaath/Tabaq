@@ -134,7 +134,7 @@ export function BusinessConsolePage() {
     staleTime: 300000,
   });
   const myRestaurant = myRestaurantData?.restaurant ?? null;
-  const RESTAURANT_ID = myRestaurant?.id ?? 2;
+  const RESTAURANT_ID = myRestaurant?.id ?? null;
 
   // Real campaigns
   const { data: campaignsData, refetch: refetchCampaigns } = useQuery({
@@ -144,7 +144,7 @@ export function BusinessConsolePage() {
       if (!res.ok) return null;
       return res.json();
     },
-    enabled: activeTab === 'campaigns',
+    enabled: !!RESTAURANT_ID && activeTab === 'campaigns',
   });
 
   // Real vouchers
@@ -155,7 +155,7 @@ export function BusinessConsolePage() {
       if (!res.ok) return null;
       return res.json();
     },
-    enabled: activeTab === 'vouchers',
+    enabled: !!RESTAURANT_ID && activeTab === 'vouchers',
   });
 
   // Real stats for this restaurant
@@ -177,7 +177,7 @@ export function BusinessConsolePage() {
       if (!res.ok) return null;
       return res.json();
     },
-    enabled: activeTab === 'crm',
+    enabled: !!RESTAURANT_ID && activeTab === 'crm',
     staleTime: 60000,
   });
 
@@ -190,7 +190,7 @@ export function BusinessConsolePage() {
       if (!res.ok) return null;
       return res.json();
     },
-    enabled: activeTab === 'crm',
+    enabled: !!RESTAURANT_ID && activeTab === 'crm',
     staleTime: 60000,
   });
 
@@ -202,6 +202,7 @@ export function BusinessConsolePage() {
       if (!res.ok) return null;
       return res.json();
     },
+    enabled: !!RESTAURANT_ID,
     staleTime: 30000,
   });
 
@@ -213,6 +214,7 @@ export function BusinessConsolePage() {
       if (!res.ok) return null;
       return res.json();
     },
+    enabled: !!RESTAURANT_ID,
     staleTime: 30000,
   });
 
@@ -224,6 +226,7 @@ export function BusinessConsolePage() {
       if (!res.ok) return null;
       return res.json();
     },
+    enabled: !!RESTAURANT_ID,
     staleTime: 60000,
   });
 
