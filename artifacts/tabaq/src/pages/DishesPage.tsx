@@ -48,7 +48,7 @@ function DishQuickCard({ dish, lang }: { dish: ExtendedDishCard; lang: string })
       price: Number(dish.price ?? 0),
       currency: dish.currency ?? 'SAR',
       imageUrl: dish.imageUrl ?? undefined,
-      restaurantId: 0,
+      restaurantId: dish.restaurantId ?? 0,
       restaurantNameEn: dish.restaurantNameEn ?? '',
       restaurantNameAr: dish.restaurantNameAr ?? '',
     });

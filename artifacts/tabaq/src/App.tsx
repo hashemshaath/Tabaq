@@ -55,6 +55,7 @@ import { AccountSettingsPage } from "@/pages/AccountSettingsPage";
 import { BlogPage } from "@/pages/BlogPage";
 import { BlogDetailPage } from "@/pages/BlogDetailPage";
 import { CateringPage } from "@/pages/CateringPage";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -84,25 +85,53 @@ function Router() {
               <Route path="/dishes/:id" component={DishDetailPage} />
               <Route path="/offers" component={OffersPage} />
               <Route path="/leaderboard" component={LeaderboardPage} />
-              <Route path="/profile" component={ProfilePage} />
-              <Route path="/bookings" component={BookingsPage} />
-              <Route path="/vouchers" component={VouchersPage} />
-              <Route path="/feed" component={FeedPage} />
+              <Route path="/profile">
+                <ProtectedRoute><ProfilePage /></ProtectedRoute>
+              </Route>
+              <Route path="/bookings">
+                <ProtectedRoute><BookingsPage /></ProtectedRoute>
+              </Route>
+              <Route path="/vouchers">
+                <ProtectedRoute><VouchersPage /></ProtectedRoute>
+              </Route>
+              <Route path="/feed">
+                <ProtectedRoute><FeedPage /></ProtectedRoute>
+              </Route>
               <Route path="/collections/:id" component={CollectionsPage} />
               <Route path="/collections" component={CollectionsPage} />
-              <Route path="/console" component={BusinessConsolePage} />
-              <Route path="/dashboard" component={UserDashboardPage} />
+              <Route path="/console">
+                <ProtectedRoute requireOwner><BusinessConsolePage /></ProtectedRoute>
+              </Route>
+              <Route path="/dashboard">
+                <ProtectedRoute><UserDashboardPage /></ProtectedRoute>
+              </Route>
               <Route path="/partners" component={PartnerLandingPage} />
               <Route path="/partners/register" component={ProviderRegistrationPage} />
               <Route path="/providers/register" component={ProviderRegisterPage} />
-              <Route path="/console/experiences" component={ExperiencesConsolePage} />
-              <Route path="/referral" component={ReferralPage} />
-              <Route path="/notifications" component={NotificationsPage} />
-              <Route path="/admin" component={AdminPanelPage} />
-              <Route path="/settings" component={SettingsPage} />
-              <Route path="/checkout" component={CheckoutPage} />
-              <Route path="/orders/:id" component={OrderTrackingPage} />
-              <Route path="/orders" component={OrdersPage} />
+              <Route path="/console/experiences">
+                <ProtectedRoute requireOwner><ExperiencesConsolePage /></ProtectedRoute>
+              </Route>
+              <Route path="/referral">
+                <ProtectedRoute><ReferralPage /></ProtectedRoute>
+              </Route>
+              <Route path="/notifications">
+                <ProtectedRoute><NotificationsPage /></ProtectedRoute>
+              </Route>
+              <Route path="/admin">
+                <ProtectedRoute requireAdmin><AdminPanelPage /></ProtectedRoute>
+              </Route>
+              <Route path="/settings">
+                <ProtectedRoute><SettingsPage /></ProtectedRoute>
+              </Route>
+              <Route path="/checkout">
+                <ProtectedRoute><CheckoutPage /></ProtectedRoute>
+              </Route>
+              <Route path="/orders/:id">
+                <ProtectedRoute><OrderTrackingPage /></ProtectedRoute>
+              </Route>
+              <Route path="/orders">
+                <ProtectedRoute><OrdersPage /></ProtectedRoute>
+              </Route>
               <Route path="/gold" component={TabaqGoldPage} />
               <Route path="/user/:username" component={PublicProfilePage} />
               <Route path="/chefs/:id" component={ChefDetailPage} />
@@ -111,8 +140,12 @@ function Router() {
               <Route path="/michelin" component={MichelinPage} />
               <Route path="/experiences" component={ExperiencesPage} />
               <Route path="/experiences/:id" component={ExperienceDetailPage} />
-              <Route path="/edit-profile" component={EditProfilePage} />
-              <Route path="/account-settings" component={AccountSettingsPage} />
+              <Route path="/edit-profile">
+                <ProtectedRoute><EditProfilePage /></ProtectedRoute>
+              </Route>
+              <Route path="/account-settings">
+                <ProtectedRoute><AccountSettingsPage /></ProtectedRoute>
+              </Route>
               <Route path="/catering" component={CateringPage} />
               <Route path="/blog/:slug" component={BlogDetailPage} />
               <Route path="/blog" component={BlogPage} />

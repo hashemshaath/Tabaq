@@ -90,8 +90,10 @@ router.get("/restaurants", async (req, res) => {
 
     const orderExpr = sortBy === "newest"
       ? desc(restaurantsTable.createdAt)
-      : sortBy === "topRated"
+      : sortBy === "topRated" || sortBy === "top-rated"
       ? desc(restaurantsTable.avgRating)
+      : sortBy === "trending"
+      ? desc(sql`(${restaurantsTable.reviewCount} * 0.6 + ${restaurantsTable.avgRating} * 8)`)
       : sortBy === "featured"
       ? desc(restaurantsTable.isFeatured)
       : sortBy === "mostReviewed"

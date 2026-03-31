@@ -159,6 +159,14 @@ export function DiscoveryPage() {
   const occasions = occasionsData ?? [];
   const cities = citiesData ?? [];
 
+  const sortKeyMap: Record<string, string> = {
+    'top-rated': 'topRated',
+    'trending': 'trending',
+    'newest': 'newest',
+    'featured': 'featured',
+    'mostReviewed': 'mostReviewed',
+  };
+
   const apiFilters: Record<string, string | number | boolean | undefined> = {
     limit: LIMIT,
     offset: page * LIMIT,
@@ -171,6 +179,9 @@ export function DiscoveryPage() {
   if (filters.hasParking) apiFilters.hasParking = true;
   if (filters.hasOutdoorSeating) apiFilters.hasOutdoorSeating = true;
   if (filters.openNow) apiFilters.openNow = true;
+  if (filters.sortBy && filters.sortBy !== 'awards') {
+    apiFilters.sortBy = sortKeyMap[filters.sortBy] ?? filters.sortBy;
+  }
 
   const { data, isLoading } = useListRestaurants(apiFilters as any, {
     query: { queryKey: ['restaurants', apiFilters] },

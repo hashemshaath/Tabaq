@@ -161,11 +161,19 @@ export function SearchPage() {
   const activeFilterCount = (filterRating > 0 ? 1 : 0) + (filterOpenNow ? 1 : 0) + (filterCuisine ? 1 : 0) + (filterPriceRange ? 1 : 0);
 
   const restaurantsToShow = allRestaurants.filter((r: any) => {
-    if (filterRating > 0 && Number(r.rating ?? 0) < filterRating) return false;
-    if (filterPriceRange && r.priceRange !== filterPriceRange) return false;
+    if (filterRating > 0 && Number(r.avgRating ?? r.rating ?? 0) < filterRating) return false;
+    if (filterPriceRange && r.priceTier !== filterPriceRange) return false;
+    if (filterOpenNow && r.isOpen === false) return false;
+    if (filterCuisine) {
+      const cuisines = (r.cuisineTypes || []).map((c: string) => c.toLowerCase());
+      if (!cuisines.some((c: string) => c.includes(filterCuisine.toLowerCase()))) return false;
+    }
     return true;
   });
-  const dishesToShow = allDishes;
+  const dishesToShow = allDishes.filter((d: any) => {
+    if (filterRating > 0 && Number(d.avgRating ?? 0) < filterRating) return false;
+    return true;
+  });
   const hasResults = restaurantsToShow.length > 0 || dishesToShow.length > 0;
   const hasQuery = debouncedQuery.length > 2;
 
@@ -299,7 +307,7 @@ export function SearchPage() {
                     { v: 'budget', label: t('Budget ($)', 'اقتصادي') },
                     { v: 'mid', label: t('Mid-range ($$)', 'متوسط') },
                     { v: 'upscale', label: t('Upscale ($$$)', 'راقي') },
-                    { v: 'fine-dining', label: t('Fine Dining ($$$$)', 'فاخر') },
+                    { v: 'fine_dining', label: t('Fine Dining ($$$$)', 'فاخر') },
                   ] as { v: string; label: string }[]).map(({ v, label }) => (
                     <button
                       key={v}
@@ -310,6 +318,17 @@ export function SearchPage() {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* Open Now toggle */}
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t('Open Now', 'مفتوح الآن')}</p>
+                <button
+                  onClick={() => setFilterOpenNow(v => !v)}
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${filterOpenNow ? 'bg-primary' : 'bg-border'}`}
+                >
+                  <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${filterOpenNow ? 'translate-x-5' : 'translate-x-1'}`} />
+                </button>
               </div>
 
               {/* Active filter chips + reset */}
