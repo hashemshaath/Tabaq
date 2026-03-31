@@ -40,7 +40,7 @@ router.post("/orders", optionalAuth, async (req, res) => {
       .insert(ordersTable)
       .values({
         orderNumber: generateOrderNumber(),
-        userId: req.user?.id ?? null,
+        userId: req.auth?.userId ?? null,
         restaurantId: restaurantId ?? items[0]?.restaurantId ?? null,
         items,
         subtotal: String(subtotal),
@@ -67,7 +67,7 @@ router.post("/orders", optionalAuth, async (req, res) => {
 
 router.get("/orders", requireAuth, async (req, res) => {
   try {
-    const userId = req.user!.id;
+    const userId = req.auth!.userId;
 
     const orders = await db
       .select({

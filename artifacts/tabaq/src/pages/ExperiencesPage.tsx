@@ -269,43 +269,56 @@ export function ExperiencesPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="bg-gradient-to-br from-primary/10 via-background to-background border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-          <div className="flex items-center gap-2 mb-2">
-            <Sparkles className="w-4 h-4 text-primary" />
-            <span className="text-primary font-medium text-xs tracking-[0.05em] uppercase">{t('Curated Experiences', 'تجارب مختارة')}</span>
-          </div>
-          <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2">
-            {t('Food Experiences', 'تجارب الطعام')}
-          </h1>
-          <p className="text-muted-foreground text-sm mb-6 max-w-xl">
-            {t(
-              'Immersive culinary journeys — from private chef dinners to hands-on cooking classes across Saudi Arabia.',
-              'رحلات طهي غامرة — من عشاءات الشيف الخاصة إلى دروس الطبخ التفاعلية في جميع أنحاء المملكة.'
-            )}
-          </p>
-
-          {/* Search bar */}
-          <div className="flex items-center max-w-lg bg-background border border-border rounded-xl overflow-hidden shadow-sm">
-            <div className="flex-1 flex items-center gap-2 px-4">
-              <Search className="w-4 h-4 text-muted-foreground shrink-0" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                placeholder={t('Search experiences…', 'ابحث عن تجربة…')}
-                className="flex-1 bg-transparent text-foreground placeholder:text-muted-foreground outline-none text-sm py-3"
-              />
-              {searchQuery && (
-                <button onClick={() => setSearchQuery('')} className="text-muted-foreground hover:text-foreground">
-                  <X className="w-4 h-4" />
-                </button>
+      {/* ── Hero ─────────────────────────────────────────────────── */}
+      <div className="relative overflow-hidden" style={{ height: '420px' }}>
+        <img
+          src="https://images.unsplash.com/photo-1529543544282-ea669407fca3?w=1600&h=900&fit=crop"
+          alt="Food experiences"
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20" />
+        <div className="absolute inset-0 flex flex-col justify-end">
+          <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pb-10">
+            <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm border border-white/20 text-white text-xs font-semibold px-3 py-1.5 rounded-full mb-4">
+              <Sparkles className="w-3 h-3" />
+              {t('Curated Experiences', 'تجارب مختارة')}
+            </div>
+            <h1 className="text-4xl md:text-5xl font-black text-white mb-2 leading-tight drop-shadow-lg">
+              {t('Food Experiences', 'تجارب الطعام')}
+            </h1>
+            <p className="text-white/80 text-sm md:text-base mb-6 max-w-xl">
+              {t(
+                'Immersive culinary journeys — from private chef dinners to hands-on cooking classes across Saudi Arabia.',
+                'رحلات طهي غامرة — من عشاءات الشيف الخاصة إلى دروس الطبخ التفاعلية في جميع أنحاء المملكة.'
               )}
+            </p>
+
+            {/* Search bar */}
+            <div className="flex items-center max-w-lg bg-white/95 backdrop-blur rounded-xl overflow-hidden shadow-xl">
+              <div className="flex-1 flex items-center gap-2 px-4">
+                <Search className="w-4 h-4 text-muted-foreground shrink-0" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  placeholder={t('Search experiences…', 'ابحث عن تجربة…')}
+                  className="flex-1 bg-transparent text-foreground placeholder:text-muted-foreground outline-none text-sm py-3.5"
+                />
+                {searchQuery && (
+                  <button onClick={() => setSearchQuery('')} className="text-muted-foreground hover:text-foreground">
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
+        </div>
+      </div>
 
-          {/* Sort Pills */}
-          <div className="flex gap-2 mt-4 overflow-x-auto pb-1 hide-scrollbar">
+      {/* ── Category Quick-Browse ──────────────────────────────── */}
+      <div className="bg-card border-b border-border">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex gap-2 overflow-x-auto pb-0.5 hide-scrollbar items-center">
             {SORT_OPTIONS.map(sort => {
               const Icon = sort.icon;
               const isActive = filters.sortBy === sort.key;
@@ -325,10 +338,41 @@ export function ExperiencesPage() {
                 </button>
               );
             })}
-          </div>
 
-          {/* Filter controls row */}
-          <div className="flex flex-wrap gap-2 items-center mt-3">
+            <div className="w-px h-6 bg-border mx-1 shrink-0" />
+
+            {/* Category filter pills */}
+            <button
+              onClick={() => setFilters(f => ({ ...f, category: '' }))}
+              className={cn(
+                'flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold border shrink-0 transition-all',
+                !filters.category ? 'bg-foreground text-background border-foreground' : 'bg-background border-border hover:border-primary/40 text-foreground'
+              )}
+            >
+              {t('All', 'الكل')}
+            </button>
+            {EXPERIENCE_CATEGORIES.map(cat => (
+              <button
+                key={cat.value}
+                onClick={() => setFilters(f => ({ ...f, category: f.category === cat.value ? '' : cat.value }))}
+                className={cn(
+                  'flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold border shrink-0 transition-all',
+                  filters.category === cat.value
+                    ? 'bg-foreground text-background border-foreground'
+                    : 'bg-background border-border hover:border-primary/40 text-foreground'
+                )}
+              >
+                {lang === 'ar' ? cat.ar : cat.en}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Sub-Filter Bar ─────────────────────────────────────── */}
+      <div className="bg-background border-b border-border/60">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+          <div className="flex flex-wrap gap-2 items-center">
             <Button
               variant={showFilters ? 'default' : 'outline'}
               onClick={() => setShowFilters(v => !v)}
@@ -336,7 +380,7 @@ export function ExperiencesPage() {
               size="sm"
             >
               <SlidersHorizontal className="w-3.5 h-3.5" />
-              {t('Filters', 'تصنيفات')}
+              {t('More Filters', 'فلاتر')}
               {activeFilterCount > 0 && (
                 <span className="bg-white text-primary text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
                   {activeFilterCount}
