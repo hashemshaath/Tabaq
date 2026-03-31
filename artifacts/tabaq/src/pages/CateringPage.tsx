@@ -194,6 +194,7 @@ function InquiryModal({ pkg, onClose, t, lang }: { pkg: CateringPackage | null; 
   const [refCode, setRefCode] = useState('');
 
   if (!pkg) return null;
+  const safePkg = pkg;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -202,7 +203,7 @@ function InquiryModal({ pkg, onClose, t, lang }: { pkg: CateringPackage | null; 
       const r = await fetch('/api/catering/inquiries', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ packageId: pkg.id > 0 ? pkg.id : null, restaurantId: null, ...form }),
+        body: JSON.stringify({ packageId: safePkg.id > 0 ? safePkg.id : null, restaurantId: null, ...form }),
       });
       const data = await r.json();
       if (r.ok) { setSubmitted(true); setRefCode(data.referenceCode); }

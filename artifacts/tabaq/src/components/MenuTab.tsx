@@ -364,7 +364,7 @@ function DishCard({
             <div className="flex items-center gap-2 px-3 py-2 border-t border-border/30 bg-muted/20" onClick={e => e.preventDefault()}>
               <Camera className="w-3 h-3 text-muted-foreground shrink-0" />
               <div className="flex gap-1.5 overflow-x-auto hide-scrollbar">
-                {gallery.slice(0, 4).map((img, i) => (
+                {gallery.slice(0, 4).map((img: string, i: number) => (
                   <button
                     key={i}
                     onClick={e => { e.preventDefault(); e.stopPropagation(); setLightboxIdx(i); setLightboxImg(img); }}
@@ -541,7 +541,7 @@ export function MenuTab({ menuData, restaurantId, restaurantNameEn = 'Restaurant
           <div className="absolute top-4 start-4 text-4xl opacity-20">🍽️</div>
           <div className="absolute bottom-4 end-4 text-4xl opacity-20">🥘</div>
           <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <Wheat className="w-8 h-8 text-primary" />
+            <ChefHat className="w-8 h-8 text-primary" />
           </div>
           <h3 className="text-lg font-bold text-foreground mb-1">{t('Menu Coming Soon', 'المنيو قريباً')}</h3>
           <p className="text-muted-foreground text-sm max-w-xs mx-auto">

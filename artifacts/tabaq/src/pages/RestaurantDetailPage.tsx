@@ -1812,17 +1812,6 @@ export function RestaurantDetailPage() {
             />
           </div>
         )}
-        {activeTab === 'book' && (
-          <div className="mt-6 bg-white rounded-lg border border-gray-200 p-5 hidden lg:block max-w-xl">
-            <h2 className="text-base font-bold text-gray-900 mb-4">{t('Reserve a Table', 'احجز طاولة')}</h2>
-            <BookingSection
-              restaurantId={numericId}
-              restaurantNameEn={restaurant.nameEn}
-              restaurantNameAr={restaurant.nameAr}
-              menuData={menuData}
-            />
-          </div>
-        )}
       </div>
 
 

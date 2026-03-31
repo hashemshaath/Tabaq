@@ -29,9 +29,6 @@ router.get("/me/checkins", requireAuth, async (req, res) => {
         restaurantNameEn: restaurantsTable.nameEn,
         restaurantNameAr: restaurantsTable.nameAr,
         restaurantCoverImage: restaurantsTable.coverImageUrl,
-        restaurantCuisineEn: restaurantsTable.cuisineEn,
-        restaurantCuisineAr: restaurantsTable.cuisineAr,
-        restaurantCityEn: restaurantsTable.cityEn,
       })
       .from(userCheckInsTable)
       .leftJoin(restaurantsTable, eq(userCheckInsTable.restaurantId, restaurantsTable.id))
@@ -97,8 +94,6 @@ router.get("/me/plans", requireAuth, async (req, res) => {
         restaurantNameEn: restaurantsTable.nameEn,
         restaurantNameAr: restaurantsTable.nameAr,
         restaurantCoverImage: restaurantsTable.coverImageUrl,
-        restaurantCuisineEn: restaurantsTable.cuisineEn,
-        restaurantCuisineAr: restaurantsTable.cuisineAr,
       })
       .from(visitPlansTable)
       .leftJoin(restaurantsTable, eq(visitPlansTable.restaurantId, restaurantsTable.id))
@@ -185,7 +180,6 @@ router.get("/me/recommendations", requireAuth, async (req, res) => {
         restaurantNameEn: restaurantsTable.nameEn,
         restaurantNameAr: restaurantsTable.nameAr,
         restaurantCoverImage: restaurantsTable.coverImageUrl,
-        restaurantCuisineEn: restaurantsTable.cuisineEn,
         dishNameEn: dishesTable.nameEn,
         dishNameAr: dishesTable.nameAr,
       })
@@ -246,9 +240,7 @@ router.get("/me/saved-dishes", requireAuth, async (req, res) => {
         dishNameEn: dishesTable.nameEn,
         dishNameAr: dishesTable.nameAr,
         dishImageUrl: dishesTable.imageUrl,
-        dishPriceMin: dishesTable.priceMin,
-        dishPriceMax: dishesTable.priceMax,
-        dishCategory: dishesTable.categoryEn,
+        dishPrice: dishesTable.price,
         restaurantId: dishesTable.restaurantId,
       })
       .from(savedDishesTable)

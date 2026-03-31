@@ -73,11 +73,15 @@ Added `<link rel="sitemap" href="/api/sitemap.xml">` for crawler discovery.
 
 Database is seeded with real data:
 - 8 restaurants (Nobu, Lusin, Najd Village, Sushi Sama, etc.)
-- 4 countries, 7 cities (Riyadh, Jeddah, Dammam, Dubai, etc.)
-- Categories, occasions, opening hours, menus, dishes
+- 4 countries, 8 canonical cities (Riyadh=1, Jeddah=2, Dammam=3, Al Khobar=4, Makkah=5, Madinah=6, Abha=7, Tabuk=8)
+- Categories, occasions, opening hours, menus, dishes with badge fields
 - 6 offers with discount percentages
 - 16 reviews (2 per restaurant, ratings updated)
 - 10 bookings, 6 contracts, 8 transactions, 4 invoices
+- 8 food experiences with images (17) and time slots (33) — IDs 1-8, status=active
+  - Categories used: fine_dining, street_food, heritage, cultural
+  - Host users: user IDs 1, 2, 3, 4, 5, 6
+  - Cities: Riyadh (city_id=1), Jeddah (city_id=2), Madinah (city_id=6)
 
 ---
 

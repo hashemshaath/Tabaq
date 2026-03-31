@@ -13,11 +13,13 @@ const FALLBACK_IMAGES = [
   'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&h=600&fit=crop',
 ];
 
-function getImageForExp(id: number, images?: { url: string; isPrimary?: boolean }[]): string {
+function getImageForExp(id: number, images?: { url: string; isPrimary?: boolean }[], primaryImageUrl?: string | null, coverImageUrl?: string | null): string {
   if (images && images.length > 0) {
     const primary = images.find(i => i.isPrimary);
     return primary?.url ?? images[0].url;
   }
+  if (primaryImageUrl) return primaryImageUrl;
+  if (coverImageUrl) return coverImageUrl;
   return FALLBACK_IMAGES[id % FALLBACK_IMAGES.length];
 }
 
@@ -61,7 +63,7 @@ export function ExperienceCard({ experience, layout = 'grid' }: ExperienceCardPr
   const city = lang === 'ar'
     ? (experience.cityNameAr ?? expAny.city ?? '')
     : (experience.cityNameEn ?? expAny.city ?? '');
-  const img = getImageForExp(experience.id, experience.images);
+  const img = getImageForExp(experience.id, experience.images, expAny.primaryImageUrl, expAny.coverImageUrl);
   const duration = experience.durationMinutes ? formatDuration(experience.durationMinutes) : null;
 
   const price = Number(experience.pricePerPerson).toLocaleString('en-SA', {
