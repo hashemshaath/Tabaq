@@ -10,6 +10,7 @@
     "seed-dishes": "tsx ./src/seed-dishes.ts",
     "seed-menus": "tsx ./src/seed-menus.ts",
     "seed-experiences": "tsx ./src/seed-experiences.ts",
+    "enrich-experiences": "tsx ./src/enrich-experiences.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

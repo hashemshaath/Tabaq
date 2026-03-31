@@ -572,6 +572,28 @@ export function ExperienceDetailPage() {
                     </div>
                   ))}
                 </div>
+
+                {/* Menu / Programme Details */}
+                {(lang === 'ar' ? experience.menuDetailsAr : experience.menuDetailsEn) && (
+                  <div>
+                    <h3 className="text-base font-bold text-foreground mb-3">{t('Menu & Programme', 'القائمة والبرنامج')}</h3>
+                    <div className="bg-secondary/30 rounded-2xl p-5 space-y-2">
+                      {(lang === 'ar' ? experience.menuDetailsAr! : experience.menuDetailsEn!)
+                        .split('\n')
+                        .filter(line => line.trim())
+                        .map((line: string, i: number) => {
+                          const isCourse = line.startsWith('Course') || line.startsWith('طبق') || line.startsWith('Stop') || line.startsWith('محطة') || line.startsWith('Part') || line.startsWith('الجزء') || line.startsWith('Hands-on') || line.startsWith('درس') || line.startsWith('Welcome') || line.startsWith('Arrival') || line.startsWith('الوصول') || line.startsWith('ترحيب') || line.startsWith('Dessert') || line.startsWith('حلوى') || line.startsWith('Finale') || line.startsWith('ختام') || line.startsWith('Shared') || line.startsWith('غداء') || line.startsWith('Take-home') || line.startsWith('ما تأخذه');
+                          return (
+                            <div key={i} className={cn('text-sm', isCourse ? 'font-semibold text-foreground pt-1' : 'text-muted-foreground ps-3')}>
+                              {line.startsWith('•') ? (
+                                <span className="flex gap-2"><span className="text-primary shrink-0">•</span><span>{line.slice(1).trim()}</span></span>
+                              ) : line}
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -729,19 +751,34 @@ export function ExperienceDetailPage() {
             {activeTab === 'policies' && (
               <div className="space-y-4">
                 <h2 className="text-lg font-bold text-foreground">{t('Rules & Policies', 'القواعد والسياسات')}</h2>
-                <ul className="space-y-3">
-                  {[
-                    { en: 'Free cancellation up to 48 hours before the experience.', ar: 'إلغاء مجاني حتى 48 ساعة قبل التجربة.' },
-                    { en: 'Please arrive 10 minutes before the start time.', ar: 'يرجى الوصول 10 دقائق قبل وقت البدء.' },
-                    { en: 'Dietary requirements must be communicated at booking.', ar: 'يجب إبلاغنا بالمتطلبات الغذائية عند الحجز.' },
-                    { en: 'Maximum group size may be limited per session.', ar: 'قد يكون الحد الأقصى لحجم المجموعة محدوداً لكل جلسة.' },
-                  ].map((p, i) => (
-                    <li key={i} className="flex items-start gap-3 bg-secondary/30 rounded-xl p-4 text-sm">
-                      <ShieldCheck className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                      <span>{lang === 'ar' ? p.ar : p.en}</span>
-                    </li>
-                  ))}
-                </ul>
+                {(lang === 'ar' ? experience.rulesAr : experience.rulesEn) ? (
+                  <ul className="space-y-3">
+                    {(lang === 'ar' ? experience.rulesAr! : experience.rulesEn!)
+                      .split(/\.\s+/)
+                      .map((s: string) => s.trim())
+                      .filter((s: string) => s.length > 4)
+                      .map((rule, i) => (
+                        <li key={i} className="flex items-start gap-3 bg-secondary/30 rounded-xl p-4 text-sm">
+                          <ShieldCheck className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                          <span>{rule.endsWith('.') ? rule : rule + '.'}</span>
+                        </li>
+                      ))}
+                  </ul>
+                ) : (
+                  <ul className="space-y-3">
+                    {[
+                      { en: 'Free cancellation up to 48 hours before the experience.', ar: 'إلغاء مجاني حتى 48 ساعة قبل التجربة.' },
+                      { en: 'Please arrive 10 minutes before the start time.', ar: 'يرجى الوصول 10 دقائق قبل وقت البدء.' },
+                      { en: 'Dietary requirements must be communicated at booking.', ar: 'يجب إبلاغنا بالمتطلبات الغذائية عند الحجز.' },
+                      { en: 'Maximum group size may be limited per session.', ar: 'قد يكون الحد الأقصى لحجم المجموعة محدوداً لكل جلسة.' },
+                    ].map((p, i) => (
+                      <li key={i} className="flex items-start gap-3 bg-secondary/30 rounded-xl p-4 text-sm">
+                        <ShieldCheck className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                        <span>{lang === 'ar' ? p.ar : p.en}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             )}
           </div>
