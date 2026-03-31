@@ -606,7 +606,7 @@ function BookingSection({ restaurantId, restaurantNameEn, restaurantNameAr, comp
 }
 
 // ── Main RestaurantDetailPage ───────────────────────────────────────
-type Tab = 'overview' | 'menu' | 'book' | 'reviews' | 'photos' | 'info';
+type Tab = 'overview' | 'menu' | 'book' | 'reviews' | 'photos' | 'info' | 'stories';
 
 export function RestaurantDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -803,6 +803,7 @@ export function RestaurantDetailPage() {
     { id: 'menu', label: 'Menu', labelAr: 'المنيو' },
     { id: 'photos', label: `Photos (${allGalleryPhotos.length})`, labelAr: `الصور (${allGalleryPhotos.length})` },
     { id: 'reviews', label: `Reviews (${restaurant.reviewCount || 0})`, labelAr: `التقييمات (${restaurant.reviewCount || 0})` },
+    { id: 'stories', label: 'Stories', labelAr: 'القصص' },
     { id: 'info', label: 'Info', labelAr: 'معلومات' },
   ];
 
@@ -1671,8 +1672,8 @@ export function RestaurantDetailPage() {
               </div>
             )}
 
-            {/* ─ Tab: Stories (hidden but available) ─ */}
-            {activeTab === ('stories' as any) && (
+            {/* ─ Tab: Stories ─ */}
+            {activeTab === 'stories' && (
               <StoriesTab restaurantId={numericId} />
             )}
 

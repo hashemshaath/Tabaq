@@ -11,7 +11,7 @@ import {
 } from '@workspace/api-client-react';
 import {
   Search, Loader2, Utensils, MapPin, X, Building2, ChefHat,
-  Clock, TrendingUp, Star, ArrowRight, Flame, Sparkles
+  Clock, TrendingUp, Star, ArrowRight, Flame, Sparkles, SlidersHorizontal, ChevronDown
 } from 'lucide-react';
 import { RestaurantCard } from '@/components/RestaurantCard';
 import { DishCard } from '@/components/DishCard';
@@ -81,6 +81,11 @@ export function SearchPage() {
   const [activeTab, setActiveTab] = useState<SearchTab>('all');
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>(() => getRecent());
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterRating, setFilterRating] = useState<number>(0);
+  const [filterOpenNow, setFilterOpenNow] = useState(false);
+  const [filterCuisine, setFilterCuisine] = useState('');
+  const [filterPriceRange, setFilterPriceRange] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<HTMLDivElement>(null);
 
@@ -150,8 +155,17 @@ export function SearchPage() {
     { id: 'dishes', labelEn: 'Dishes', labelAr: 'الأطباق' },
   ];
 
-  const restaurantsToShow = searchData?.restaurants || [];
-  const dishesToShow = searchData?.dishes || [];
+  const allRestaurants = searchData?.restaurants || [];
+  const allDishes = searchData?.dishes || [];
+
+  const activeFilterCount = (filterRating > 0 ? 1 : 0) + (filterOpenNow ? 1 : 0) + (filterCuisine ? 1 : 0) + (filterPriceRange ? 1 : 0);
+
+  const restaurantsToShow = allRestaurants.filter((r: any) => {
+    if (filterRating > 0 && Number(r.rating ?? 0) < filterRating) return false;
+    if (filterPriceRange && r.priceRange !== filterPriceRange) return false;
+    return true;
+  });
+  const dishesToShow = allDishes;
   const hasResults = restaurantsToShow.length > 0 || dishesToShow.length > 0;
   const hasQuery = debouncedQuery.length > 2;
 
@@ -221,24 +235,95 @@ export function SearchPage() {
             )}
           </div>
 
-          {/* Result tabs */}
+          {/* Result tabs + filter toggle */}
           {hasQuery && (
-            <div className="flex gap-0 mt-3 border-b border-border">
-              {tabs.map(tab => (
+            <div className="flex items-center gap-2 mt-3 border-b border-border">
+              <div className="flex flex-1 gap-0">
+                {tabs.map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`px-5 py-2.5 text-sm font-semibold border-b-2 transition-all ${activeTab === tab.id ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+                  >
+                    {lang === 'ar' ? tab.labelAr : tab.labelEn}
+                    {tab.id === 'restaurants' && restaurantsToShow.length > 0 && (
+                      <span className="ms-2 text-xs bg-secondary text-secondary-foreground px-1.5 py-0.5 rounded-md">{restaurantsToShow.length}</span>
+                    )}
+                    {tab.id === 'dishes' && dishesToShow.length > 0 && (
+                      <span className="ms-2 text-xs bg-secondary text-secondary-foreground px-1.5 py-0.5 rounded-md">{dishesToShow.length}</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+              {(activeTab === 'all' || activeTab === 'restaurants') && (
                 <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`px-5 py-2.5 text-sm font-semibold border-b-2 transition-all ${activeTab === tab.id ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+                  onClick={() => setShowFilters(f => !f)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 mb-1 rounded-xl text-sm font-medium transition-all border ${showFilters || activeFilterCount > 0 ? 'bg-primary text-white border-primary' : 'bg-secondary text-muted-foreground border-border hover:border-primary hover:text-primary'}`}
                 >
-                  {lang === 'ar' ? tab.labelAr : tab.labelEn}
-                  {tab.id === 'restaurants' && searchData?.totalRestaurants != null && (
-                    <span className="ms-2 text-xs bg-secondary text-secondary-foreground px-1.5 py-0.5 rounded-md">{searchData.totalRestaurants}</span>
+                  <SlidersHorizontal className="w-3.5 h-3.5" />
+                  {t('Filters', 'فلاتر')}
+                  {activeFilterCount > 0 && (
+                    <span className="w-4 h-4 rounded-full bg-white/30 text-xs flex items-center justify-center font-bold">{activeFilterCount}</span>
                   )}
-                  {tab.id === 'dishes' && searchData?.totalDishes != null && (
-                    <span className="ms-2 text-xs bg-secondary text-secondary-foreground px-1.5 py-0.5 rounded-md">{searchData.totalDishes}</span>
-                  )}
+                  <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
                 </button>
-              ))}
+              )}
+            </div>
+          )}
+
+          {/* ── Filter panel ── */}
+          {hasQuery && showFilters && (activeTab === 'all' || activeTab === 'restaurants') && (
+            <div className="mt-3 p-4 bg-card border border-border rounded-2xl space-y-4 animate-in slide-in-from-top-2 duration-200">
+              {/* Rating */}
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t('Min Rating', 'أدنى تقييم')}</p>
+                <div className="flex flex-wrap gap-2">
+                  {([0, 3.5, 4, 4.5] as number[]).map(r => (
+                    <button
+                      key={r}
+                      onClick={() => setFilterRating(r)}
+                      className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-sm font-medium border transition-all ${filterRating === r ? 'bg-primary text-white border-primary' : 'bg-secondary text-foreground border-border hover:border-primary'}`}
+                    >
+                      {r === 0 ? t('Any', 'الكل') : <><Star className="w-3 h-3" /> {r}+</>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Price range */}
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t('Price Range', 'نطاق السعر')}</p>
+                <div className="flex flex-wrap gap-2">
+                  {([
+                    { v: '', label: t('Any', 'الكل') },
+                    { v: 'budget', label: t('Budget ($)', 'اقتصادي') },
+                    { v: 'mid', label: t('Mid-range ($$)', 'متوسط') },
+                    { v: 'upscale', label: t('Upscale ($$$)', 'راقي') },
+                    { v: 'fine-dining', label: t('Fine Dining ($$$$)', 'فاخر') },
+                  ] as { v: string; label: string }[]).map(({ v, label }) => (
+                    <button
+                      key={v}
+                      onClick={() => setFilterPriceRange(v)}
+                      className={`px-3 py-1.5 rounded-xl text-sm font-medium border transition-all ${filterPriceRange === v ? 'bg-primary text-white border-primary' : 'bg-secondary text-foreground border-border hover:border-primary'}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Active filter chips + reset */}
+              {activeFilterCount > 0 && (
+                <div className="flex items-center justify-between pt-1 border-t border-border">
+                  <p className="text-xs text-muted-foreground">{restaurantsToShow.length} {t('restaurants match', 'مطعم مطابق')}</p>
+                  <button
+                    onClick={() => { setFilterRating(0); setFilterOpenNow(false); setFilterCuisine(''); setFilterPriceRange(''); }}
+                    className="text-xs text-primary font-semibold hover:underline"
+                  >
+                    {t('Clear all', 'مسح الكل')}
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

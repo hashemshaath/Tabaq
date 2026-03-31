@@ -10,7 +10,7 @@ import {
   FileText, ArrowUpRight, ChevronRight, MoreHorizontal, Plus,
   MapPin, Clock, LogOut, Database, Activity, FileSignature,
   DollarSign, Receipt, Send, Percent, BadgeCheck, Ban, RefreshCw,
-  CheckSquare, X, Hash, ChefHat, Sparkles
+  CheckSquare, X, Hash, ChefHat, Sparkles, Film, ThumbsUp, ThumbsDown, PlayCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StarRating } from '@/components/StarRating';
@@ -518,6 +518,132 @@ type Module = {
   dependencies: string[];
 };
 
+// ─── Stories Management Tab ─────────────────────────────────────
+function StoriesManagementTab({ t }: { t: (en: string, ar: string) => string }) {
+  const queryClient = useQueryClient();
+  const [statusFilter, setStatusFilter] = useState<'pending' | 'approved' | 'rejected'>('pending');
+
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['admin-stories', statusFilter],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/stories?status=${statusFilter}`, { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error('Failed to fetch stories');
+      return res.json();
+    },
+  });
+
+  const stories: any[] = data?.stories || [];
+
+  const moderate = async (storyId: number, action: 'approved' | 'rejected') => {
+    try {
+      const res = await fetch(`/api/admin/stories/${storyId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({ status: action }),
+      });
+      if (res.ok) {
+        queryClient.invalidateQueries({ queryKey: ['admin-stories'] });
+      }
+    } catch {}
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold text-foreground">{t('Stories Moderation', 'إدارة القصص')}</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">{t('Review and approve user-submitted restaurant stories.', 'مراجعة وقبول قصص المطاعم التي يرسلها المستخدمون.')}</p>
+        </div>
+        <button onClick={() => refetch()} className="p-2 rounded-xl border border-border text-muted-foreground hover:text-foreground transition-colors">
+          <RefreshCw className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Status Filter */}
+      <div className="flex gap-2">
+        {(['pending', 'approved', 'rejected'] as const).map(s => (
+          <button
+            key={s}
+            onClick={() => setStatusFilter(s)}
+            className={`px-4 py-2 rounded-xl text-sm font-semibold capitalize transition-all ${statusFilter === s ? 'bg-primary text-white' : 'bg-secondary text-muted-foreground hover:text-foreground'}`}
+          >
+            {s === 'pending' ? t('Pending', 'قيد الانتظار') : s === 'approved' ? t('Approved', 'مقبول') : t('Rejected', 'مرفوض')}
+          </button>
+        ))}
+      </div>
+
+      {isLoading ? (
+        <div className="text-center py-12 text-muted-foreground">{t('Loading stories...', 'جارٍ تحميل القصص...')}</div>
+      ) : stories.length === 0 ? (
+        <div className="text-center py-16">
+          <Film className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
+          <p className="text-muted-foreground font-medium">{t(`No ${statusFilter} stories`, `لا توجد قصص ${statusFilter === 'pending' ? 'معلقة' : statusFilter === 'approved' ? 'مقبولة' : 'مرفوضة'}`)}</p>
+        </div>
+      ) : (
+        <div className="grid gap-4">
+          {stories.map((story: any) => (
+            <div key={story.id} className="bg-card border border-border rounded-2xl overflow-hidden">
+              <div className="flex items-start gap-4 p-4">
+                {/* Thumbnail */}
+                <div className="w-20 h-20 rounded-xl bg-secondary overflow-hidden shrink-0 flex items-center justify-center">
+                  {story.mediaUrl ? (
+                    story.mediaType === 'video' ? (
+                      <div className="relative w-full h-full">
+                        <video src={story.mediaUrl} className="w-full h-full object-cover" muted />
+                        <PlayCircle className="absolute inset-0 m-auto w-6 h-6 text-white drop-shadow" />
+                      </div>
+                    ) : (
+                      <img src={story.mediaUrl} alt="" className="w-full h-full object-cover" />
+                    )
+                  ) : (
+                    <Film className="w-6 h-6 text-muted-foreground" />
+                  )}
+                </div>
+
+                {/* Info */}
+                <div className="flex-grow min-w-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="font-semibold text-foreground text-sm">{story.caption || t('No caption', 'بدون تعليق')}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {t('Restaurant ID', 'معرف المطعم')}: {story.restaurantId} · {t('User ID', 'معرف المستخدم')}: {story.userId}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {story.mediaType === 'video' ? t('Video', 'فيديو') : t('Image', 'صورة')} · {new Date(story.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold shrink-0 ${story.status === 'pending' ? 'bg-amber-100 text-amber-700' : story.status === 'approved' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                      {story.status === 'pending' ? t('Pending', 'معلق') : story.status === 'approved' ? t('Approved', 'مقبول') : t('Rejected', 'مرفوض')}
+                    </span>
+                  </div>
+
+                  {/* Actions */}
+                  {story.status === 'pending' && (
+                    <div className="flex gap-2 mt-3">
+                      <button
+                        onClick={() => moderate(story.id, 'approved')}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-green-500 text-white rounded-lg text-xs font-semibold hover:bg-green-600 transition-colors"
+                      >
+                        <ThumbsUp className="w-3.5 h-3.5" /> {t('Approve', 'قبول')}
+                      </button>
+                      <button
+                        onClick={() => moderate(story.id, 'rejected')}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500 text-white rounded-lg text-xs font-semibold hover:bg-red-600 transition-colors"
+                      >
+                        <ThumbsDown className="w-3.5 h-3.5" /> {t('Reject', 'رفض')}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const INITIAL_MODULES: Module[] = [
   { id: 'reservations', nameEn: 'Reservations Engine', desc: 'Table booking, availability management, and confirmation flows', icon: CalendarDays, color: 'bg-blue-500/10 text-blue-600', enabled: true, version: '2.1.0', dependencies: [] },
   { id: 'reviews', nameEn: 'Reviews & Ratings', desc: 'User reviews, rating aggregation, and moderation tools', icon: Star, color: 'bg-amber-500/10 text-amber-600', enabled: true, version: '1.8.3', dependencies: [] },
@@ -534,7 +660,7 @@ const INITIAL_MODULES: Module[] = [
 ];
 
 // ─── Types ──────────────────────────────────────────────────────
-type AdminTab = 'overview' | 'offers' | 'contracts' | 'finance' | 'messages' | 'referrals' | 'restaurants' | 'registrations' | 'users' | 'bookings' | 'reviews' | 'blog' | 'seo' | 'modules' | 'settings' | 'review-queue' | 'promo-codes' | 'settlement' | 'exp-providers' | 'exp-listings' | 'exp-bookings' | 'exp-settings' | 'menus';
+type AdminTab = 'overview' | 'offers' | 'contracts' | 'finance' | 'messages' | 'referrals' | 'restaurants' | 'registrations' | 'users' | 'bookings' | 'reviews' | 'blog' | 'seo' | 'modules' | 'settings' | 'review-queue' | 'promo-codes' | 'settlement' | 'exp-providers' | 'exp-listings' | 'exp-bookings' | 'exp-settings' | 'menus' | 'stories';
 
 // ─── Component ──────────────────────────────────────────────────
 export function AdminPanelPage() {
@@ -1030,6 +1156,7 @@ export function AdminPanelPage() {
     { id: 'messages', label: 'Messages', icon: Send },
     { id: 'referrals', label: 'Referrals & Points', icon: Award },
     { id: 'reviews', label: 'Reviews', icon: Star, badge: 1 },
+    { id: 'stories', label: 'Stories', icon: Film },
     { id: 'menus', label: 'Menu Management', icon: Utensils },
     { id: 'blog', label: 'Blog & Content', icon: BookOpen },
     { id: 'seo', label: 'SEO Manager', icon: Globe },
@@ -1605,6 +1732,9 @@ export function AdminPanelPage() {
 
           {/* ── MENUS ── */}
           {activeTab === 'menus' && <MenuManagementTab lang={lang} t={t} />}
+
+          {/* ── STORIES ── */}
+          {activeTab === 'stories' && <StoriesManagementTab t={t} />}
 
           {/* ── BLOG ── */}
           {activeTab === 'blog' && <BlogManagementTab t={t} />}
