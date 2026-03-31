@@ -78,11 +78,19 @@ Database is seeded with real data:
 - 6 offers with discount percentages
 - 37 reviews total (16 original + 21 from community users; review_count + avg_rating updated on restaurants)
 - 10 bookings, 6 contracts, 8 transactions, 4 invoices
-- 8 food experiences with images (17) and time slots (33) — IDs 1-8, status=active
+- **10 food experiences** with time slots (6 each) — IDs 1-10, status=active:
+  - EXP-001: Private Chef Wagyu Dinner — Riyadh, SAR 450, fine_dining
+  - EXP-002: Omakase Sushi Masterclass — Riyadh, SAR 280, cooking_class
+  - EXP-003: Desert Starlight Dining Al Ula — SAR 650, outdoor
+  - EXP-004: Levantine Mezze & Bread Workshop — Jeddah, SAR 195, cooking_class
+  - EXP-005: Dammam Corniche Seafood Grill — Dammam (cityId=3), SAR 220, outdoor
+  - EXP-006: Makkah Heritage Dates & Qahwa — Makkah (cityId=4), SAR 145, cultural
+  - EXP-007: Madinah Traditional Feast — Madinah (cityId=5), SAR 260, heritage
+  - EXP-008: Jeddah Rooftop Dinner Red Sea — Jeddah, SAR 380, fine_dining
+  - EXP-009: Riyadh Kabsa & Mandi Masterclass — Riyadh, SAR 240, cooking_class
+  - EXP-010: Diriyah Night Street Food Walk — Riyadh, SAR 165, street_food
+  - Seed script: `pnpm --filter @workspace/scripts run seed-experiences`
 - **7 catering packages** across 4 restaurants: Najd Village (Heritage Iftar Buffet + Najdi Feast), Lusin (Prestige Gala Dinner + Executive Business Lunch), Sushi Sama (Omakase Buffet), Spice Route/Jeddah (Red Sea Seafood Banquet + Corniche Wedding Package); menus IDs 3-6 (type=catering/buffet)
-  - Categories used: fine_dining, street_food, heritage, cultural
-  - Host users: user IDs 1, 2, 3, 4, 5, 6
-  - Cities: Riyadh (city_id=1), Jeddah (city_id=2), Madinah (city_id=6)
 - **12 users total** — user 1 (admin/Food Explorer), user 2 (blank), users 3-12 (community):
   - 3: Noura Al-Rashid, Master Chef, 3200pts — 4: Faisal Al-Saud, Food Critic, 2800pts
   - 5: Lama Al-Otaibi, Food Critic, 2100pts — 6: Sultan Al-Ghamdi, Food Critic, 1650pts

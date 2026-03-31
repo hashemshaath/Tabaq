@@ -8,6 +8,8 @@
     "seed": "tsx ./src/seed.ts",
     "seed-blog": "tsx ./src/seed-blog.ts",
     "seed-dishes": "tsx ./src/seed-dishes.ts",
+    "seed-menus": "tsx ./src/seed-menus.ts",
+    "seed-experiences": "tsx ./src/seed-experiences.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
