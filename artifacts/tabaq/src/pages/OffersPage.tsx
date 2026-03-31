@@ -29,184 +29,6 @@ interface OfferTier {
   boughtCount: number;
 }
 
-// ─── Mock offers ─────────────────────────────────────────────────
-const MOCK_OFFERS = [
-  {
-    id: 9001,
-    titleEn: 'Voucher Worth SAR 100, 200, 300 or 500 to Spend on Anything Off Menu',
-    titleAr: 'قسيمة بقيمة 100 أو 200 أو 300 أو 500 ريال لإنفاقها على أي شيء من القائمة',
-    descriptionEn: 'Indulge in the finest traditional Saudi cuisine at Najd Village — Saudi Arabia\'s most celebrated heritage restaurant. Established 1996. Savor authentic kabsa, mandi, jareesh, mutabbaq and more in an immersive palace setting with live oud music.',
-    descriptionAr: 'استمتع بأرقى المطبخ السعودي التقليدي في قرية نجد — أشهر مطعم تراثي في المملكة. يُقدم أشهى الكبسة والمندي والجريش والمطبق في أجواء قصر تراثي مع موسيقى العود.',
-    restaurantId: 1, restaurantNameEn: 'Najd Village', restaurantNameAr: 'قرية نجد',
-    locationsCount: 3,
-    imageUrl: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=900&h=600&fit=crop',
-    images: [
-      'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=900&h=600&fit=crop',
-      'https://images.unsplash.com/photo-1544025162-d76694265947?w=900&h=600&fit=crop',
-      'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=900&h=600&fit=crop',
-      'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=900&h=600&fit=crop',
-      'https://images.unsplash.com/photo-1466978913421-dad2ebd01d17?w=900&h=600&fit=crop',
-    ],
-    discountPercent: '40', originalPrice: '200', discountedPrice: '120', currency: 'SAR',
-    promoCode: 'TABAQ10',
-    validUntil: new Date(Date.now() + 5 * 86400000).toISOString(),
-    remainingCapacity: 18, boughtCount: 234,
-    categoryEn: 'Saudi Cuisine', city: 'Riyadh',
-    address: 'Al Hamra District - Olaya St · next to Hilton',
-    distanceKm: 3.9,
-    rating: 4.8, reviews: 342,
-    badges: ['Best Rated', 'Popular Gift'],
-    highlights: ['Authentic Saudi Cuisine', 'Heritage Palace Setting', 'Live Oud Music', 'Valid Any Day'],
-    needToKnow: ['Advance booking required 24 hours before', 'Not valid with any other offer', 'Non-refundable once purchased', 'Valid 60 days from purchase date', 'Show voucher to staff on arrival'],
-    whereToRedeem: 'Al Hamra District, Riyadh 12943. Show voucher code to the restaurant staff upon arrival.',
-    termsEn: 'Valid for the number of guests specified. Advance booking required 24 hours before. Not valid with any other offer. Non-refundable once purchased.',
-    tiers: [
-      { id: 't1', labelEn: 'Pay SAR 60 and get a voucher worth SAR 100 to spend on anything off the menu', labelAr: 'ادفع 60 ريالاً واحصل على قسيمة بقيمة 100 ريال', originalPrice: 100, discountedPrice: 60, discountPercent: 40, promoPrice: 54, promoCode: 'TABAQ10', boughtCount: 234 },
-      { id: 't2', labelEn: 'Pay SAR 119 and get a voucher worth SAR 200 to spend on anything off the menu', labelAr: 'ادفع 119 ريالاً واحصل على قسيمة بقيمة 200 ريال', originalPrice: 200, discountedPrice: 119, discountPercent: 41, promoPrice: 107, promoCode: 'TABAQ10', boughtCount: 89 },
-      { id: 't3', labelEn: 'Pay SAR 179 and get a voucher worth SAR 300 to spend on anything off the menu', labelAr: 'ادفع 179 ريالاً واحصل على قسيمة بقيمة 300 ريال', originalPrice: 300, discountedPrice: 179, discountPercent: 40, promoPrice: 161, promoCode: 'TABAQ10', boughtCount: 56 },
-      { id: 't4', labelEn: 'Pay SAR 295 and get a voucher worth SAR 500 to spend on anything off the menu', labelAr: 'ادفع 295 ريالاً واحصل على قسيمة بقيمة 500 ريال', originalPrice: 500, discountedPrice: 295, discountPercent: 41, promoPrice: 266, promoCode: 'TABAQ10', boughtCount: 31 },
-    ] as OfferTier[],
-  },
-  {
-    id: 9002,
-    titleEn: 'Premium Omakase Dinner Experience — 12 Chef-Curated Courses',
-    titleAr: 'تجربة عشاء أوماكاسي مميزة — 12 طبقاً من اختيار الشيف',
-    descriptionEn: 'Experience the finest Japanese Omakase at Sushi Sama. The chef curates 12 seasonal courses using the freshest daily imported fish. A truly unmissable culinary journey that showcases the art of Japanese precision.',
-    descriptionAr: 'اختبر أرقى الأوماكاسي الياباني في سوشي ساما. يختار الشيف 12 طبقاً موسمياً يومياً من أطازج الأسماك المستوردة.',
-    restaurantId: 3, restaurantNameEn: 'Sushi Sama', restaurantNameAr: 'سوشي ساما',
-    locationsCount: 2,
-    imageUrl: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=900&h=600&fit=crop',
-    images: [
-      'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=900&h=600&fit=crop',
-      'https://images.unsplash.com/photo-1534482421-64566f976cfa?w=900&h=600&fit=crop',
-      'https://images.unsplash.com/photo-1611143669185-af224c5e3252?w=900&h=600&fit=crop',
-    ],
-    discountPercent: '40', originalPrice: '650', discountedPrice: '390', currency: 'SAR',
-    promoCode: 'TABAQ10',
-    validUntil: new Date(Date.now() + 12 * 86400000).toISOString(),
-    remainingCapacity: 6, boughtCount: 89,
-    categoryEn: 'Japanese', city: 'Riyadh',
-    address: 'Olaya Street, Riyadh 12611',
-    distanceKm: 5.2,
-    rating: 4.9, reviews: 187,
-    badges: ['Best Rated'],
-    highlights: ['12 Seasonal Courses', "Chef's Selection Daily", 'Sake Pairing Add-on', 'Private Counter Seating'],
-    needToKnow: ['Booking required 48 hours in advance', 'Allergies must be communicated at time of booking', 'Valid Mon–Sat evenings only', 'Single diner per voucher'],
-    whereToRedeem: 'Olaya Street, Riyadh 12611. Counter seating — show voucher on arrival.',
-    termsEn: 'Valid for 1 person. Booking required 48 hours in advance. Valid Mon–Sat evenings only.',
-    tiers: [
-      { id: 't1', labelEn: 'Pay SAR 390 and get a full Omakase dinner (12 courses)', labelAr: 'ادفع 390 ريالاً واحصل على عشاء أوماكاسي كامل', originalPrice: 650, discountedPrice: 390, discountPercent: 40, promoPrice: 351, promoCode: 'TABAQ10', boughtCount: 89 },
-    ] as OfferTier[],
-  },
-  {
-    id: 9003,
-    titleEn: 'Luxury Afternoon Tea for Two — 3-Tier Pastry Stand & Premium Teas',
-    titleAr: 'شاي ما بعد الظهر الفاخر لشخصين — طقم معجنات 3 طبقات وشاي مميز',
-    descriptionEn: 'Enjoy a luxurious Afternoon Tea service at The Terrace featuring 3 tiers of freshly baked pastries, finger sandwiches, house-made scones, and unlimited premium teas and coffees with stunning city views.',
-    descriptionAr: 'استمتع بخدمة شاي ما بعد الظهر الفاخرة في التيراس مع 3 طوابق من المعجنات الطازجة.',
-    restaurantId: 5, restaurantNameEn: 'The Terrace', restaurantNameAr: 'التيراس',
-    locationsCount: 1,
-    imageUrl: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=900&h=600&fit=crop',
-    images: ['https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=900&h=600&fit=crop', 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?w=900&h=600&fit=crop'],
-    discountPercent: '35', originalPrice: '280', discountedPrice: '182', currency: 'SAR',
-    promoCode: 'TABAQ10',
-    validUntil: new Date(Date.now() + 21 * 86400000).toISOString(),
-    remainingCapacity: 35, boughtCount: 412,
-    categoryEn: 'Café', city: 'Riyadh',
-    address: 'Kingdom Tower, King Fahd Road, Riyadh',
-    distanceKm: 2.1,
-    rating: 4.6, reviews: 94,
-    badges: ['Popular Gift'],
-    highlights: ['3-Tier Pastry Stand', 'Unlimited Tea & Coffee', 'Valid Weekends', 'City View Seating'],
-    needToKnow: ['Valid for 2 guests', 'Minimum age 12', 'Not valid on public holidays', 'Booking required 12 hours in advance'],
-    whereToRedeem: 'Kingdom Tower, Riyadh 12214. Show voucher at reception.',
-    termsEn: 'Valid for 2 guests. Minimum age 12. Not valid on public holidays.',
-    tiers: [
-      { id: 't1', labelEn: 'Pay SAR 182 and get Afternoon Tea for Two (full service)', labelAr: 'ادفع 182 ريالاً واحصل على شاي العصر لشخصين', originalPrice: 280, discountedPrice: 182, discountPercent: 35, promoPrice: 164, promoCode: 'TABAQ10', boughtCount: 412 },
-    ] as OfferTier[],
-  },
-  {
-    id: 9004,
-    titleEn: 'Friday BBQ Brunch Buffet — Unlimited Grills & Saudi Specialties',
-    titleAr: 'بوفيه شواء الجمعة — مشويات لا محدودة وأطباق سعودية',
-    descriptionEn: 'Feast on an unlimited BBQ brunch at Reem Al Bawadi every Friday. Featuring live grill stations, traditional Saudi dishes, international spreads, fresh juices, and decadent dessert stations.',
-    descriptionAr: 'استمتع ببوفيه شواء لا محدود كل جمعة في ريم البوادي مع محطات شواء حية.',
-    restaurantId: 2, restaurantNameEn: 'Reem Al Bawadi', restaurantNameAr: 'ريم البوادي',
-    locationsCount: 4,
-    imageUrl: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=900&h=600&fit=crop',
-    images: ['https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=900&h=600&fit=crop', 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=900&h=600&fit=crop'],
-    discountPercent: '30', originalPrice: '240', discountedPrice: '168', currency: 'SAR',
-    promoCode: 'TABAQ10',
-    validUntil: new Date(Date.now() + 30 * 86400000).toISOString(),
-    remainingCapacity: 50, boughtCount: 678,
-    categoryEn: 'Saudi Cuisine', city: 'Riyadh',
-    address: 'Al Aqiq District, Prince Mohammed Bin Salman Rd',
-    distanceKm: 7.3,
-    rating: 4.5, reviews: 218,
-    badges: ['Popular Gift'],
-    highlights: ['Unlimited Buffet', 'Live Grill Station', 'Fresh Juice Bar', 'Kids Eat Free Under 5'],
-    needToKnow: ['Valid Fridays only, 12PM–4PM', 'Maximum 1 voucher per person per visit', 'Kids under 5 eat free'],
-    whereToRedeem: 'Al Aqiq District, Riyadh 13522. Show voucher upon entry.',
-    termsEn: 'Valid Fridays only. Maximum 1 voucher per person per visit.',
-    tiers: [
-      { id: 't1', labelEn: 'Pay SAR 168 and get Unlimited BBQ Brunch Buffet for One', labelAr: 'ادفع 168 ريالاً واحصل على بوفيه شواء لشخص واحد', originalPrice: 240, discountedPrice: 168, discountPercent: 30, promoPrice: 151, promoCode: 'TABAQ10', boughtCount: 678 },
-    ] as OfferTier[],
-  },
-  {
-    id: 9005,
-    titleEn: 'Premium Business Lunch — 3-Course Set Menu at Hakkasan',
-    titleAr: 'غداء الأعمال المميز — قائمة مكونة من 3 أطباق في هاكاسان',
-    descriptionEn: 'A premium 3-course business lunch at Hakkasan. Starter, signature main course, and dessert with choice of soft drink or Chinese tea. Perfect for corporate dining.',
-    descriptionAr: 'غداء أعمال فاخر مكون من 3 أطباق في هاكاسان مع مشروب من اختيارك.',
-    restaurantId: 5, restaurantNameEn: 'Hakkasan', restaurantNameAr: 'هاكاسان',
-    locationsCount: 1,
-    imageUrl: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=900&h=600&fit=crop',
-    images: ['https://images.unsplash.com/photo-1544025162-d76694265947?w=900&h=600&fit=crop'],
-    discountPercent: '45', originalPrice: '320', discountedPrice: '176', currency: 'SAR',
-    promoCode: 'TABAQ10',
-    validUntil: new Date(Date.now() + 8 * 86400000).toISOString(),
-    remainingCapacity: 12, boughtCount: 156,
-    categoryEn: 'Chinese', city: 'Riyadh',
-    address: 'Rosewood Hotel, King Fahd Rd, Riyadh',
-    distanceKm: 4.7,
-    rating: 4.7, reviews: 289,
-    badges: ['Best Rated'],
-    highlights: ['3-Course Set Lunch', 'Weekdays Only', 'Includes Soft Drink', 'Private Room Available'],
-    needToKnow: ['Valid Mon–Thu lunch service 12PM–3PM', 'Single diner only', 'Receipt required for redemption'],
-    whereToRedeem: 'Rosewood Hotel, Riyadh 12261. Show voucher to the host.',
-    termsEn: 'Valid Mon–Thu lunch service 12PM–3PM. Single diner only.',
-    tiers: [
-      { id: 't1', labelEn: 'Pay SAR 176 and get a 3-Course Business Lunch for One', labelAr: 'ادفع 176 ريالاً واحصل على غداء أعمال لشخص واحد', originalPrice: 320, discountedPrice: 176, discountPercent: 45, promoPrice: 158, promoCode: 'TABAQ10', boughtCount: 156 },
-    ] as OfferTier[],
-  },
-  {
-    id: 9006,
-    titleEn: 'Family Feast for 4 — Mains, Sides & Shared Dessert Platter',
-    titleAr: 'وجبة العائلة لـ4 أشخاص — وجبات رئيسية وأطباق جانبية وحلوى مشتركة',
-    descriptionEn: 'Bring the whole family for a feast at Burger & Lobster Jeddah. Includes 4 mains, 4 sides, 4 soft drinks, and a shared dessert platter.',
-    descriptionAr: 'أحضر عائلتك لوجبة رائعة في برجر ولوبستر جدة تشمل 4 وجبات رئيسية ومشروبات وحلوى مشتركة.',
-    restaurantId: 4, restaurantNameEn: 'Burger & Lobster', restaurantNameAr: 'برجر ولوبستر',
-    locationsCount: 2,
-    imageUrl: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=900&h=600&fit=crop',
-    images: ['https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=900&h=600&fit=crop'],
-    discountPercent: '25', originalPrice: '440', discountedPrice: '330', currency: 'SAR',
-    promoCode: 'TABAQ10',
-    validUntil: new Date(Date.now() + 45 * 86400000).toISOString(),
-    remainingCapacity: 75, boughtCount: 321,
-    categoryEn: 'American', city: 'Jeddah',
-    address: 'Al Rawdah District, Jeddah Corniche',
-    distanceKm: 1.8,
-    rating: 4.2, reviews: 156,
-    badges: [],
-    highlights: ['4 Mains Included', '4 Sides Included', 'Shared Dessert', 'Kids Menu Available'],
-    needToKnow: ['Valid for exactly 4 guests', 'Not valid on Fridays', 'Booking required 24 hours in advance'],
-    whereToRedeem: 'Al Rawdah, Jeddah 23432. Show voucher at the door.',
-    termsEn: 'Valid for exactly 4 guests. Not valid on Fridays.',
-    tiers: [
-      { id: 't1', labelEn: 'Pay SAR 330 and get the Full Family Feast for 4', labelAr: 'ادفع 330 ريالاً واحصل على وجبة العائلة الكاملة لـ4', originalPrice: 440, discountedPrice: 330, discountPercent: 25, promoPrice: 297, promoCode: 'TABAQ10', boughtCount: 321 },
-    ] as OfferTier[],
-  },
-];
 
 const CATEGORIES = [
   { en: 'All', ar: 'الكل' },
@@ -231,8 +53,39 @@ const SORT_OPTIONS = [
   { en: 'Ending Soon', ar: 'ينتهي قريباً' },
 ];
 
-type MockOffer = typeof MOCK_OFFERS[0];
-type ExtendedOffer = MockOffer & Partial<Offer>;
+interface ExtendedOffer {
+  id: number;
+  titleEn: string;
+  titleAr: string;
+  descriptionEn: string;
+  descriptionAr: string;
+  restaurantId: number;
+  restaurantNameEn: string;
+  restaurantNameAr: string;
+  imageUrl: string;
+  images: string[];
+  discountPercent: string;
+  originalPrice: string;
+  discountedPrice: string;
+  currency: string;
+  promoCode: string;
+  validUntil: string;
+  remainingCapacity: number;
+  boughtCount: number;
+  categoryEn: string;
+  city: string;
+  address: string;
+  distanceKm?: number;
+  locationsCount: number;
+  rating: number;
+  reviews: number;
+  badges: string[];
+  highlights: string[];
+  needToKnow: string[];
+  whereToRedeem: string;
+  termsEn: string;
+  tiers: OfferTier[];
+}
 
 function timeUntil(dateStr: string | Date | null | undefined, lang: string): string {
   if (!dateStr) return '';

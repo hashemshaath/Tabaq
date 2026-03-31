@@ -436,179 +436,6 @@ const TRENDING_DISHES = [
   { nameEn: 'Mezze Platter', nameAr: 'طبق المقبلات', restaurant: 'Reem Al-Bawadi', price: '55 ر.س', image: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=120&h=120&fit=crop', likes: 521 },
 ];
 
-const MOCK_FEED_ACTIVITIES = [
-  {
-    id: 1,
-    type: 'review',
-    user: { name: 'Noura Al-Rashid', nameAr: 'نورة الراشد', avatar: 'https://i.pravatar.cc/64?img=47', handle: '@noura', badge: '👑' },
-    restaurant: { nameEn: 'Reem Al-Bawadi', nameAr: 'ريم البوادي', image: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&h=400&fit=crop', id: 2 },
-    rating: 4.5,
-    text: 'Absolutely stunning ambiance and the lamb ouzi was to die for. The service was impeccable — they remembered my dietary preferences from last time. Highly recommend for a special occasion.',
-    textAr: 'أجواء رائعة وخروف الأوزي كان لذيذاً جداً. الخدمة كانت ممتازة — تذكروا تفضيلاتي الغذائية من المرة الأخيرة. أنصح به بشدة للمناسبات الخاصة.',
-    time: '45 دقيقة',
-    likes: 34,
-    comments: 8,
-    image: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&h=400&fit=crop',
-  },
-  {
-    id: 2,
-    type: 'review',
-    user: { name: 'Faisal Al-Harbi', nameAr: 'فيصل الحربي', avatar: 'https://i.pravatar.cc/64?img=12', handle: '@faisal', badge: '🍽️' },
-    restaurant: { nameEn: 'Sushi Sama', nameAr: 'سوشي ساما', image: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=600&h=400&fit=crop', id: 3 },
-    rating: 5,
-    text: 'Best sushi in Riyadh, no contest. The dragon roll with their signature sauce is a masterpiece. Fresh fish, expert craftsmanship.',
-    textAr: 'أفضل سوشي في الرياض بلا منافس. رول التنين مع الصوص الخاص بهم تحفة فنية. سمك طازج وصنعة احترافية.',
-    time: '2 ساعة',
-    likes: 21,
-    comments: 5,
-    image: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=600&h=400&fit=crop',
-  },
-  {
-    id: 3,
-    type: 'review',
-    user: { name: 'Lama Khalid', nameAr: 'لمى خالد', avatar: 'https://i.pravatar.cc/64?img=32', handle: '@lama', badge: '⭐' },
-    restaurant: { nameEn: 'Nusret', nameAr: 'نصرت', image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&h=400&fit=crop', id: 4 },
-    rating: 4,
-    text: 'The wagyu was exceptional, but portions could be bigger for the price. Still, the overall experience was unforgettable.',
-    textAr: 'الواغيو كان استثنائياً، لكن الحصص يمكن أن تكون أكبر بالنسبة للسعر. رغم ذلك، التجربة الإجمالية كانت لا تُنسى.',
-    time: '5 ساعات',
-    likes: 15,
-    comments: 3,
-    image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&h=400&fit=crop',
-  },
-  {
-    id: 4,
-    type: 'checkin',
-    user: { name: 'Faris Al-Otaibi', nameAr: 'فارس العتيبي', avatar: 'https://i.pravatar.cc/64?img=11', handle: '@faris_eats', badge: '🌟' },
-    restaurant: { nameEn: 'Tatel Riyadh', nameAr: 'تاتيل الرياض', image: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&h=400&fit=crop', id: 1 },
-    rating: 5,
-    text: 'Checked in for the fifth time this month — Tatel has become my go-to for special occasions. The Iberian ham croquettes are unmatched.',
-    textAr: 'تسجيل وصول للمرة الخامسة هذا الشهر — أصبح تاتيل وجهتي المفضلة للمناسبات الخاصة. كروكيتات لحم الخنزير الإيبيري لا مثيل لها.',
-    time: '٢ ساعة',
-    likes: 38,
-    comments: 7,
-    image: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&h=400&fit=crop',
-  },
-  {
-    id: 5,
-    type: 'review',
-    user: { name: 'Hessa Al-Dosari', nameAr: 'حصة الدوسري', avatar: 'https://i.pravatar.cc/64?img=47', handle: '@hessa_bites', badge: '🍽️' },
-    restaurant: { nameEn: 'Nobu Riyadh', nameAr: 'نوبو الرياض', image: 'https://images.unsplash.com/photo-1562802378-063ec186a863?w=600&h=400&fit=crop', id: 7 },
-    rating: 5,
-    text: 'Nobu never disappoints. The omakase experience here rivals Tokyo — every course was a conversation stopper. 10/10 would return.',
-    textAr: 'نوبو لا يخذل أبداً. تجربة أوماكاسي هنا تضاهي طوكيو — كل طبق كان مفاجأة تستحق التحدث عنها. ١٠/١٠ سأعود بالتأكيد.',
-    time: '٨ ساعات',
-    likes: 92,
-    comments: 14,
-    image: 'https://images.unsplash.com/photo-1562802378-063ec186a863?w=600&h=400&fit=crop',
-  },
-  {
-    id: 6,
-    type: 'checkin',
-    user: { name: 'Dana Al-Saud', nameAr: 'دانا آل سعود', avatar: 'https://i.pravatar.cc/64?img=25', handle: '@dana_dines', badge: '👑' },
-    restaurant: { nameEn: 'Nusr-Et Steakhouse', nameAr: 'نصرت ستيك هاوس', image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&h=400&fit=crop', id: 4 },
-    rating: 4,
-    text: 'Nothing beats watching a master at work. The tomahawk presentation is pure theatre — arrived sizzling on a cast-iron platter. Perfection.',
-    textAr: 'لا شيء يعلو على مشاهدة خبير في عمله. عرض التوماهوك مسرحية بحد ذاتها — وصل يشوي على صينية حديدية. الكمال.',
-    time: '١ يوم',
-    likes: 54,
-    comments: 9,
-    image: 'https://images.unsplash.com/photo-1515516969-d4008cc6241a?w=600&h=400&fit=crop',
-  },
-  {
-    id: 7,
-    type: 'review',
-    user: { name: 'Omar Bin Nasser', nameAr: 'عمر بن ناصر', avatar: 'https://i.pravatar.cc/64?img=59', handle: '@omar_gastro', badge: '🔥' },
-    restaurant: { nameEn: 'Zuma Riyadh', nameAr: 'زوما الرياض', image: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=600&h=400&fit=crop', id: 3 },
-    rating: 5,
-    text: 'Zuma is in a league of its own. The robata-grilled black cod and the rock shrimp tempura arrived together, and I nearly forgot where I was.',
-    textAr: 'زوما في مستوى خاص بها. القد الأسود المشوي على الروباتا وروك شريمب تمبورا وصلا معاً، وكدت أنسى أين أنا.',
-    time: '٢ يوم',
-    likes: 113,
-    comments: 21,
-    image: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=600&h=400&fit=crop',
-  },
-  {
-    id: 8,
-    type: 'checkin',
-    user: { name: 'Mariam Al-Harbi', nameAr: 'مريم الحربي', avatar: 'https://i.pravatar.cc/64?img=38', handle: '@mariam_eats', badge: '🌿' },
-    restaurant: { nameEn: 'Bab Al-Sharq', nameAr: 'باب الشرق', image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&h=400&fit=crop', id: 2 },
-    rating: 5,
-    text: "Friday brunch at Bab Al-Sharq — the mezze spread was extraordinary. Fresh fattoush, smoky baba ghanoush, and the best kibbeh I've ever had.",
-    textAr: 'غداء الجمعة في باب الشرق — مائدة المزة كانت استثنائية. فتوش طازج، وبابا غنوج مدخن، وأفضل كبة جربتها في حياتي.',
-    time: '٣ أيام',
-    likes: 67,
-    comments: 11,
-    image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&h=400&fit=crop',
-  },
-];
-
-function ActivityCard({ activity, lang, t }: { activity: typeof MOCK_FEED_ACTIVITIES[0]; lang: string; t: (en: string, ar: string) => string }) {
-  const [liked, setLiked] = useState(false);
-  const [bookmarked, setBookmarked] = useState(false);
-
-  return (
-    <article className="bg-card border border-border/60 rounded-3xl overflow-hidden hover:shadow-md transition-all">
-      <Link href={`/restaurants/${activity.restaurant.id}`}>
-        <div className="relative h-48 overflow-hidden">
-          <img src={activity.image} alt={activity.restaurant.nameEn} className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-          <div className="absolute bottom-3 start-3 end-3 flex items-end justify-between">
-            <div>
-              <p className="text-white font-bold text-lg leading-tight">{lang === 'ar' ? activity.restaurant.nameAr : activity.restaurant.nameEn}</p>
-              <StarRating rating={activity.rating} size="md" />
-            </div>
-            <span className="bg-amber-400 text-black font-black text-sm px-2.5 py-1 rounded-xl">{activity.rating.toFixed(1)}</span>
-          </div>
-        </div>
-      </Link>
-
-      <div className="p-4">
-        <div className="flex items-center gap-3 mb-3">
-          <img src={activity.user.avatar} alt={activity.user.name} className="w-10 h-10 rounded-full object-cover ring-2 ring-primary/20" />
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5">
-              <p className="font-bold text-foreground text-sm">{lang === 'ar' ? activity.user.nameAr : activity.user.name}</p>
-              <span className="text-base leading-none">{activity.user.badge}</span>
-            </div>
-            <p className="text-xs text-muted-foreground">{activity.user.handle} · {t('منذ', 'ago')} {activity.time}</p>
-          </div>
-          <button className="text-xs text-primary font-semibold border border-primary/20 px-3 py-1 rounded-full hover:bg-primary/5 transition-colors">
-            {t('Follow', 'تابع')}
-          </button>
-        </div>
-
-        <p className="text-sm text-foreground leading-relaxed line-clamp-3">
-          {lang === 'ar' ? activity.textAr : activity.text}
-        </p>
-
-        <div className="flex items-center gap-4 mt-4 pt-3 border-t border-border/50">
-          <button
-            onClick={() => setLiked(!liked)}
-            className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${liked ? 'text-red-500' : 'text-muted-foreground hover:text-red-500'}`}
-          >
-            <Heart className={`w-4 h-4 ${liked ? 'fill-current' : ''}`} />
-            {activity.likes + (liked ? 1 : 0)}
-          </button>
-          <button className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-primary transition-colors">
-            <MessageSquare className="w-4 h-4" />
-            {activity.comments}
-          </button>
-          <button className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-primary transition-colors">
-            <Share2 className="w-4 h-4" />
-            {t('Share', 'شارك')}
-          </button>
-          <button
-            onClick={() => setBookmarked(!bookmarked)}
-            className={`flex items-center gap-1.5 text-xs font-medium ms-auto transition-colors ${bookmarked ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}
-          >
-            <Bookmark className={`w-4 h-4 ${bookmarked ? 'fill-current' : ''}`} />
-          </button>
-        </div>
-      </div>
-    </article>
-  );
-}
 
 function PeopleYouMayKnowCard({ t, lang }: { t: (en: string, ar: string) => string; lang: string }) {
   const { user } = useAuth();
@@ -1106,25 +933,28 @@ export default function FeedPage() {
                 </div>
               )}
 
-              {/* No live data — show rich mock feed */}
+              {/* Empty state */}
               {!isLoading && (!liveReviews || liveReviews.length === 0) && (tab === 'community' || (tab === 'following' && !!user)) && (
-                <div className="space-y-5">
-                  <div className="flex items-center gap-3 py-2">
-                    <div className="h-px flex-1 bg-border" />
-                    <p className="text-xs text-muted-foreground font-medium">{t('Community highlights', 'أبرز ما في المجتمع')}</p>
-                    <div className="h-px flex-1 bg-border" />
+                <div className="py-16 text-center">
+                  <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-5">
+                    <Utensils className="w-7 h-7 text-muted-foreground" />
                   </div>
-                  {MOCK_FEED_ACTIVITIES.map(activity => (
-                    <ActivityCard key={activity.id} activity={activity} lang={lang} t={t} />
-                  ))}
-                  <div className="text-center py-6">
-                    <Link href="/restaurants">
-                      <Button variant="outline" className="rounded-2xl gap-2">
-                        <Search className="w-4 h-4" />
-                        {t('Discover more restaurants', 'اكتشف المزيد من المطاعم')}
-                      </Button>
-                    </Link>
-                  </div>
+                  <h3 className="text-xl font-bold text-foreground mb-2">
+                    {tab === 'following'
+                      ? t('No posts from people you follow yet', 'لا توجد منشورات ممن تتابعهم بعد')
+                      : t('No reviews yet', 'لا توجد تقييمات بعد')}
+                  </h3>
+                  <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
+                    {tab === 'following'
+                      ? t('Follow food lovers to see their reviews and check-ins here.', 'تابع محبي الطعام لرؤية تقييماتهم هنا.')
+                      : t('Be the first to share your dining experience.', 'كن أول من يشارك تجربته في المطعم.')}
+                  </p>
+                  <Link href="/restaurants">
+                    <Button variant="outline" className="rounded-2xl gap-2">
+                      <Search className="w-4 h-4" />
+                      {t('Discover restaurants', 'اكتشف المطاعم')}
+                    </Button>
+                  </Link>
                 </div>
               )}
             </div>

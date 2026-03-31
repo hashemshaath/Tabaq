@@ -296,52 +296,6 @@ function addDismissed(id: number) {
   localStorage.setItem(RATE_DISMISS_KEY, JSON.stringify([...prev, id]));
 }
 
-const MOCK_PAST_VISITS = [
-  {
-    id: 7,
-    nameEn: 'Nobu Riyadh',
-    nameAr: 'نوبو الرياض',
-    coverImageUrl: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=400&h=280&fit=crop',
-    cuisineEn: 'Japanese',
-    cuisineAr: 'ياباني',
-    visitDate: '2026-03-15',
-    partySize: 2,
-    bookingId: 101,
-  },
-  {
-    id: 8,
-    nameEn: 'Nusr-Et Riyadh',
-    nameAr: 'نصرت الرياض',
-    coverImageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=280&fit=crop',
-    cuisineEn: 'Steakhouse',
-    cuisineAr: 'مطعم لحوم',
-    visitDate: '2026-03-10',
-    partySize: 4,
-    bookingId: 102,
-  },
-  {
-    id: 9,
-    nameEn: 'La Petite Maison',
-    nameAr: 'لا بيتيت ميزون',
-    coverImageUrl: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400&h=280&fit=crop',
-    cuisineEn: 'French',
-    cuisineAr: 'فرنسي',
-    visitDate: '2026-02-28',
-    partySize: 3,
-    bookingId: 103,
-  },
-  {
-    id: 10,
-    nameEn: 'Zuma Riyadh',
-    nameAr: 'زوما الرياض',
-    coverImageUrl: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=400&h=280&fit=crop',
-    cuisineEn: 'Japanese',
-    cuisineAr: 'ياباني',
-    visitDate: '2026-02-18',
-    partySize: 2,
-    bookingId: 104,
-  },
-];
 
 function RateLastVisitSection() {
   const { t, lang } = useLanguage();
@@ -377,7 +331,7 @@ function RateLastVisitSection() {
         partySize: b.partySize ?? 2,
         bookingId: b.id,
       }))
-    : MOCK_PAST_VISITS;
+    : [];
 
   const visible = visits.filter(v => !dismissed.includes(v.bookingId) && !submitted.includes(v.bookingId));
   if (visible.length === 0) return null;

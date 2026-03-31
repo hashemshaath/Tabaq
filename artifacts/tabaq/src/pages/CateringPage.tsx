@@ -29,139 +29,6 @@ interface CateringPackage {
   menuType?: string;
 }
 
-// ── Mock/fallback data (shown when DB has no catering packages yet) ─────────
-const MOCK_PACKAGES: CateringPackage[] = [
-  {
-    id: -1,
-    nameEn: 'Prestige Corporate Package',
-    nameAr: 'باقة بريستيج للشركات',
-    descriptionEn: 'Elegant multi-course dining for board meetings, client entertainment, and corporate milestones. Includes dedicated service team and custom menu curation.',
-    descriptionAr: 'مأدبة راقية متعددة الأطباق للاجتماعات والضيافة الرسمية. تشمل فريق خدمة مخصص وقائمة طعام مصممة خصيصاً.',
-    pricePerPerson: '180',
-    minGuests: 20,
-    maxGuests: 200,
-    currency: 'SAR',
-    imageUrl: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&q=80',
-    restaurantNameEn: 'Nobu Riyadh',
-    restaurantNameAr: 'نوبو الرياض',
-    menuType: 'catering',
-    includedDishes: [
-      { nameEn: 'Welcome canapés selection', nameAr: 'مقبلات الترحيب' },
-      { nameEn: 'Premium cold mezze spread', nameAr: 'مزة باردة فاخرة' },
-      { nameEn: 'Chef\'s signature main course', nameAr: 'الطبق الرئيسي المميز' },
-      { nameEn: 'Artisan dessert station', nameAr: 'محطة الحلويات الحرفية' },
-      { nameEn: 'Premium beverages', nameAr: 'مشروبات مميزة' },
-    ],
-  },
-  {
-    id: -2,
-    nameEn: 'Royal Wedding Package',
-    nameAr: 'باقة حفلات الزفاف الملكية',
-    descriptionEn: 'An unforgettable wedding feast combining traditional Saudi hospitality with world-class gastronomy. Customizable to your cultural traditions and preferences.',
-    descriptionAr: 'وليمة زفاف لا تُنسى تجمع بين الضيافة السعودية الأصيلة والمطبخ العالمي الراقي. قابلة للتخصيص وفق تقاليدكم وتفضيلاتكم.',
-    pricePerPerson: '250',
-    minGuests: 100,
-    maxGuests: 1000,
-    currency: 'SAR',
-    imageUrl: 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=600&q=80',
-    restaurantNameEn: 'Lusin',
-    restaurantNameAr: 'لوسين',
-    menuType: 'catering',
-    includedDishes: [
-      { nameEn: 'Traditional Saudi gahwa & dates', nameAr: 'القهوة السعودية والتمور' },
-      { nameEn: 'Whole roasted lamb (Ouzi)', nameAr: 'خروف محشو (أوزي)' },
-      { nameEn: 'Mezze & salad spread (20+ items)', nameAr: 'مزة وسلطات (أكثر من ٢٠ صنفاً)' },
-      { nameEn: 'Live cooking stations', nameAr: 'محطات الطهي الحية' },
-      { nameEn: 'Custom wedding cake', nameAr: 'كعكة الزفاف المخصصة' },
-      { nameEn: 'Flower water & Arabic sweets', nameAr: 'ماء الورد والحلويات العربية' },
-    ],
-  },
-  {
-    id: -3,
-    nameEn: 'Ramadan Iftar Buffet',
-    nameAr: 'بوفيه إفطار رمضان',
-    descriptionEn: 'A lavish Ramadan Iftar experience with traditional Gulf dishes, live cooking stations, and a spectacular dessert corner. Minimum 50 guests.',
-    descriptionAr: 'تجربة إفطار رمضانية فاخرة بأطباق خليجية أصيلة ومحطات طهي حية وركن حلويات مبهج. بحد أدنى ٥٠ ضيفاً.',
-    pricePerPerson: '130',
-    minGuests: 50,
-    maxGuests: 500,
-    currency: 'SAR',
-    imageUrl: 'https://images.unsplash.com/photo-1569050467447-ce54b3bbc37d?w=600&q=80',
-    restaurantNameEn: 'Najd Village',
-    restaurantNameAr: 'قرية نجد',
-    menuType: 'buffet',
-    includedDishes: [
-      { nameEn: 'Thareed & Harees', nameAr: 'ثريد وهريس' },
-      { nameEn: 'Machboos & Kabsa stations', nameAr: 'محطات المجبوس والكبسة' },
-      { nameEn: 'Fresh juices & Vimto', nameAr: 'عصائر طازجة وفيمتو' },
-      { nameEn: 'Luqaimat & Umm Ali', nameAr: 'لقيمات وأم علي' },
-      { nameEn: 'Dates & Arabic coffee', nameAr: 'تمور وقهوة عربية' },
-    ],
-  },
-  {
-    id: -4,
-    nameEn: 'Private Celebration Package',
-    nameAr: 'باقة الاحتفالات الخاصة',
-    descriptionEn: 'Perfect for birthdays, anniversaries, graduation parties and family milestones. Intimate and fully customizable with dedicated event manager.',
-    descriptionAr: 'مثالية لأعياد الميلاد والمناسبات الخاصة والتخرج. خاصة وقابلة للتخصيص الكامل مع مدير حدث مخصص.',
-    pricePerPerson: '95',
-    minGuests: 15,
-    maxGuests: 80,
-    currency: 'SAR',
-    imageUrl: 'https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=600&q=80',
-    restaurantNameEn: 'Sushi Sama',
-    restaurantNameAr: 'سوشي ساما',
-    menuType: 'catering',
-    includedDishes: [
-      { nameEn: 'Welcome cocktails & mocktails', nameAr: 'مشروبات الترحيب' },
-      { nameEn: 'Customizable 3-course menu', nameAr: 'قائمة ٣ أطباق قابلة للتخصيص' },
-      { nameEn: 'Celebration cake', nameAr: 'كعكة الاحتفال' },
-      { nameEn: 'Décor & balloon setup', nameAr: 'ديكور وبالونات' },
-    ],
-  },
-  {
-    id: -5,
-    nameEn: 'National Day Gala',
-    nameAr: 'حفل اليوم الوطني',
-    descriptionEn: 'Celebrate Saudi National Day with an authentic Arabian feast featuring regional specialties, heritage performances catering, and traditional décor.',
-    descriptionAr: 'احتفل باليوم الوطني السعودي بولائم عربية أصيلة وتراث حضاري وديكور تقليدي فاخر.',
-    pricePerPerson: '155',
-    minGuests: 50,
-    maxGuests: 600,
-    currency: 'SAR',
-    imageUrl: 'https://images.unsplash.com/photo-1547592166-23ac45744acd?w=600&q=80',
-    restaurantNameEn: 'Najd Village',
-    restaurantNameAr: 'قرية نجد',
-    menuType: 'catering',
-    includedDishes: [
-      { nameEn: 'Traditional Saudi Kabsa feast', nameAr: 'كبسة سعودية تقليدية' },
-      { nameEn: 'Whole roasted sheep', nameAr: 'خروف مشوي كامل' },
-      { nameEn: 'Heritage dessert selection', nameAr: 'تشكيلة حلويات تراثية' },
-      { nameEn: 'Arabic coffee & date ceremony', nameAr: 'قهوة عربية وحفل التمور' },
-    ],
-  },
-  {
-    id: -6,
-    nameEn: 'Business Lunch Package',
-    nameAr: 'باقة غداء الأعمال',
-    descriptionEn: 'Smart, efficient, and impressive. Designed for working lunches, team meals, and mid-day corporate meetings without compromising on quality.',
-    descriptionAr: 'ذكي وفعال ومبهر. مصمم لغداء العمل واجتماعات النهار دون المساومة على الجودة.',
-    pricePerPerson: '75',
-    minGuests: 10,
-    maxGuests: 100,
-    currency: 'SAR',
-    imageUrl: 'https://images.unsplash.com/photo-1555244162-803834f70033?w=600&q=80',
-    restaurantNameEn: 'The Butcher Shop',
-    restaurantNameAr: 'ذا بوتشر شوب',
-    menuType: 'catering',
-    includedDishes: [
-      { nameEn: 'Executive salad bar', nameAr: 'بار السلطات التنفيذي' },
-      { nameEn: '2 protein mains + sides', nameAr: '٢ طبق رئيسي + مرافقات' },
-      { nameEn: 'Artisan bread & spreads', nameAr: 'خبز حرفي ومرافقاته' },
-      { nameEn: 'Dessert & coffee station', nameAr: 'محطة الحلويات والقهوة' },
-    ],
-  },
-];
 
 const EVENT_TYPES = [
   { id: 'all', labelEn: 'All Events', labelAr: 'جميع المناسبات', icon: Sparkles },
@@ -414,7 +281,7 @@ export function CateringPage() {
     },
   });
 
-  const rawPackages: CateringPackage[] = (apiData?.packages && apiData.packages.length > 0) ? apiData.packages : MOCK_PACKAGES;
+  const rawPackages: CateringPackage[] = apiData?.packages ?? [];
 
   let displayed = rawPackages.filter(pkg => {
     if (searchQ) {
@@ -575,11 +442,6 @@ export function CateringPage() {
           <p className="text-sm text-muted-foreground">
             <span className="font-bold text-foreground">{displayed.length}</span> {t('packages available', 'باقة متاحة')}
           </p>
-          {(apiData?.packages?.length === 0) && (
-            <span className="text-xs bg-amber-50 border border-amber-200 text-amber-700 px-3 py-1 rounded-full font-semibold">
-              {t('Showing curated examples', 'عرض أمثلة منسقة')}
-            </span>
-          )}
         </div>
 
         {/* Package grid */}
