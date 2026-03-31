@@ -557,6 +557,8 @@ export function ExperienceDetailPage() {
           experienceId: expId,
           slotId: selectedSlot.id,
           guestCount,
+          guestName: guestName.trim() || undefined,
+          guestEmail: guestEmail.trim() || undefined,
           specialRequests: specialRequests.trim() || undefined,
         },
       });

@@ -1,9 +1,33 @@
-import React from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { Link, useRoute } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { useLanguage } from '@/hooks/use-language';
 import { usePageMeta, buildArticleSchema, buildBreadcrumbSchema } from '@/hooks/use-page-meta';
-import { Clock, User, Tag, ArrowLeft, ArrowRight, ChevronRight, Share2, Bookmark, ThumbsUp, MessageCircle, Facebook, Twitter, Link2 } from 'lucide-react';
+import { Clock, User, Tag, ArrowLeft, ArrowRight, ChevronRight, Share2, Bookmark, ThumbsUp, MessageCircle, Facebook, Twitter, Link2, Check } from 'lucide-react';
+
+function slugify(text: string) {
+  return text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').trim();
+}
+
+function parseHeadings(html: string): { id: string; text: string; level: number }[] {
+  const results: { id: string; text: string; level: number }[] = [];
+  const re = /<h([23])[^>]*>(.*?)<\/h\1>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(html)) !== null) {
+    const text = m[2].replace(/<[^>]+>/g, '').trim();
+    if (text) results.push({ level: parseInt(m[1]), text, id: slugify(text) });
+  }
+  return results;
+}
+
+function injectHeadingIds(html: string): string {
+  return html.replace(/<h([23])([^>]*)>(.*?)<\/h\1>/gi, (_, level, attrs, inner) => {
+    const text = inner.replace(/<[^>]+>/g, '').trim();
+    const id = slugify(text);
+    if (!text) return `<h${level}${attrs}>${inner}</h${level}>`;
+    return `<h${level}${attrs} id="${id}">${inner}</h${level}>`;
+  });
+}
 
 const SAMPLE_POSTS: Record<string, {
   id: number; slug: string; titleEn: string; titleAr: string;
@@ -97,6 +121,7 @@ export function BlogDetailPage() {
   const t = (en: string, ar: string) => lang === 'ar' ? ar : en;
   const [, params] = useRoute('/blog/:slug');
   const slug = params?.slug ?? '';
+  const [linkCopied, setLinkCopied] = useState(false);
 
   const { data: rawApiPost } = useQuery({
     queryKey: ['blog-post', slug],
@@ -175,7 +200,32 @@ export function BlogDetailPage() {
     );
   }
 
-  const content = lang === 'ar' ? post.contentAr : post.contentEn;
+  const rawContent = lang === 'ar' ? post.contentAr : post.contentEn;
+  const content = rawContent ? injectHeadingIds(rawContent) : rawContent;
+  const headings = useMemo(() => parseHeadings(rawContent ?? ''), [rawContent]);
+
+  const pageUrl = typeof window !== 'undefined' ? window.location.href : `https://tabaq.sa/blog/${slug}`;
+  const pageTitle = lang === 'ar' ? post.titleAr : post.titleEn;
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(pageUrl).then(() => {
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    });
+  };
+
+  const handleFacebookShare = () => {
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(pageUrl)}`, '_blank', 'width=600,height=400');
+  };
+
+  const handleTwitterShare = () => {
+    window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(pageUrl)}&text=${encodeURIComponent(pageTitle)}`, '_blank', 'width=600,height=400');
+  };
+
+  const scrollToHeading = (id: string) => {
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   return (
     <div className="min-h-screen bg-background" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
@@ -292,17 +342,17 @@ export function BlogDetailPage() {
             <div className="mt-8 p-5 bg-secondary/40 rounded-3xl">
               <p className="font-bold text-foreground mb-3">{t('Share this article', 'شارك هذا المقال')}</p>
               <div className="flex items-center gap-2">
-                <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors">
+                <button onClick={handleFacebookShare} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors">
                   <Facebook className="w-4 h-4" />
                   Facebook
                 </button>
-                <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 transition-colors">
+                <button onClick={handleTwitterShare} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 transition-colors">
                   <Twitter className="w-4 h-4" />
                   X (Twitter)
                 </button>
-                <button className="flex items-center gap-2 px-4 py-2 rounded-xl border border-border text-sm font-semibold hover:bg-secondary transition-colors">
-                  <Link2 className="w-4 h-4" />
-                  {t('Copy Link', 'نسخ الرابط')}
+                <button onClick={handleCopyLink} className="flex items-center gap-2 px-4 py-2 rounded-xl border border-border text-sm font-semibold hover:bg-secondary transition-colors">
+                  {linkCopied ? <Check className="w-4 h-4 text-green-600" /> : <Link2 className="w-4 h-4" />}
+                  {linkCopied ? t('Copied!', 'تم النسخ!') : t('Copy Link', 'نسخ الرابط')}
                 </button>
               </div>
             </div>
@@ -331,12 +381,18 @@ export function BlogDetailPage() {
             {/* Quick Nav */}
             <div className="bg-card border border-border rounded-3xl p-5 sticky top-24">
               <h3 className="font-bold text-foreground mb-3 text-sm">{t('In This Article', 'في هذا المقال')}</h3>
-              <div className="space-y-2">
-                {['Introduction', '1. Najd Village', '2. Nozomi', '3. Maestro', '4. Myazu', '5. The Globe', 'What to Expect in 2025'].map(heading => (
-                  <button key={heading} className="block w-full text-start text-xs text-muted-foreground hover:text-primary transition-colors py-1 border-s-2 border-transparent hover:border-primary ps-3">
-                    {heading}
+              <div className="space-y-1">
+                {headings.length > 0 ? headings.map(h => (
+                  <button
+                    key={h.id}
+                    onClick={() => scrollToHeading(h.id)}
+                    className={`block w-full text-start text-xs text-muted-foreground hover:text-primary transition-colors py-1.5 border-s-2 border-transparent hover:border-primary ${h.level === 3 ? 'ps-5' : 'ps-3'}`}
+                  >
+                    {h.text}
                   </button>
-                ))}
+                )) : (
+                  <p className="text-xs text-muted-foreground ps-3">{t('No sections', 'لا توجد أقسام')}</p>
+                )}
               </div>
               <div className="mt-4 pt-4 border-t border-border">
                 <Link href="/restaurants">
