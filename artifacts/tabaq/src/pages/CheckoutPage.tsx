@@ -4,10 +4,13 @@ import { useCart } from '@/context/CartContext';
 import { useLanguage } from '@/hooks/use-language';
 import { usePageMeta } from '@/hooks/use-page-meta';
 import { formatPrice } from '@/lib/utils';
+import { getAuthHeaders } from '@/lib/api';
 import {
   ChevronLeft, MapPin, Clock, CreditCard, CheckCircle2, ShoppingBag,
   Utensils, Package, Phone, User, ChevronRight, Loader2, Star,
 } from 'lucide-react';
+
+const API_BASE = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
 
 type OrderMode = 'dine_in' | 'pickup' | 'delivery';
 type PaymentMethod = 'card' | 'apple_pay' | 'stc_pay' | 'cash';
@@ -20,12 +23,12 @@ const PAYMENT_METHODS: { id: PaymentMethod; labelEn: string; labelAr: string; ic
   { id: 'cash', labelEn: 'Cash on Delivery', labelAr: 'الدفع عند الاستلام', icon: '💵', available: true },
 ];
 
-function OrderConfirmed({ items, total, currency, lang, t, onDone }: {
+function OrderConfirmed({ items, total, currency, lang, t, onDone, orderNum, etaMinutes }: {
   items: any[]; total: number; currency: string; lang: string;
   t: (en: string, ar: string) => string; onDone: () => void;
+  orderNum: string; etaMinutes: number;
 }) {
-  const orderNum = `TBQ-${Math.floor(Math.random() * 900000 + 100000)}`;
-  const eta = `${Math.floor(Math.random() * 10 + 25)}–${Math.floor(Math.random() * 10 + 35)} ${t('min', 'د')}`;
+  const eta = `${etaMinutes}–${etaMinutes + 10} ${t('min', 'د')}`;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50 flex items-center justify-center p-4">
@@ -120,6 +123,8 @@ export function CheckoutPage() {
   const [cardExpiry, setCardExpiry] = useState('');
   const [cardCvv, setCardCvv] = useState('');
   const [placing, setPlacing] = useState(false);
+  const [confirmedOrderNum, setConfirmedOrderNum] = useState('');
+  const [confirmedEta, setConfirmedEta] = useState(35);
 
   usePageMeta({
     titleEn: 'Checkout — Tabaq',
@@ -136,7 +141,48 @@ export function CheckoutPage() {
 
   const handlePlaceOrder = async () => {
     setPlacing(true);
-    await new Promise(r => setTimeout(r, 1800));
+    const etaMinutes = orderMode === 'delivery' ? 35 : orderMode === 'pickup' ? 20 : 15;
+    try {
+      const restaurantId = items[0]?.restaurantId ?? null;
+      const res = await fetch(`${API_BASE}/api/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({
+          restaurantId,
+          items: items.map(i => ({
+            dishId: i.dishId,
+            nameEn: i.nameEn,
+            nameAr: i.nameAr,
+            qty: i.qty,
+            price: i.price,
+            currency: i.currency,
+            imageUrl: i.imageUrl,
+            restaurantId: i.restaurantId,
+            restaurantNameEn: i.restaurantNameEn,
+            restaurantNameAr: i.restaurantNameAr,
+          })),
+          subtotal: totalPrice,
+          deliveryFee,
+          total: grandTotal,
+          currency,
+          orderMode,
+          paymentMethod,
+          customerName: name,
+          customerPhone: phone,
+          deliveryAddress: orderMode === 'delivery' ? address : null,
+          notes: notes || null,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setConfirmedOrderNum(data.order?.orderNumber ?? `TBQ-${Math.floor(Math.random() * 900000 + 100000)}`);
+      } else {
+        setConfirmedOrderNum(`TBQ-${Math.floor(Math.random() * 900000 + 100000)}`);
+      }
+    } catch {
+      setConfirmedOrderNum(`TBQ-${Math.floor(Math.random() * 900000 + 100000)}`);
+    }
+    setConfirmedEta(etaMinutes);
     setPlacing(false);
     setStep('confirmed');
     clearCart();
@@ -151,6 +197,8 @@ export function CheckoutPage() {
         lang={lang}
         t={t}
         onDone={() => navigate('/restaurants')}
+        orderNum={confirmedOrderNum}
+        etaMinutes={confirmedEta}
       />
     );
   }

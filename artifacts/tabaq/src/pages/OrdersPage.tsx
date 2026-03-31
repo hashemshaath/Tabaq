@@ -236,9 +236,6 @@ function OrderCard({ order, lang, t, onReorder, reordering }: {
 
   return (
     <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
-      <div className="relative">
-        <div className="absolute top-3 start-3 bg-gray-900/70 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">Demo</div>
-      </div>
       <div className="p-4 sm:p-5">
         <div className="flex items-start gap-4">
           <img src={order.restaurantImage} alt={restName} className="w-14 h-14 rounded-xl object-cover shrink-0" />
@@ -363,6 +360,47 @@ export function OrdersPage() {
     staleTime: 60_000,
   });
 
+  const { data: ordersRaw, isLoading: ordersLoading } = useQuery<any[]>({
+    queryKey: ['orders-page-orders'],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/api/orders`, { headers: getAuthHeaders() });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return Array.isArray(data.orders) ? data.orders : [];
+    },
+    enabled: !!user,
+    staleTime: 30_000,
+  });
+
+  const realOrders: MockOrder[] = (ordersRaw ?? []).map((o: any) => {
+    const eta = o.estimatedMinutes ?? 35;
+    return {
+      id: o.orderNumber,
+      restaurantId: o.restaurantId,
+      restaurantNameEn: o.restaurantNameEn ?? 'Restaurant',
+      restaurantNameAr: o.restaurantNameAr ?? 'مطعم',
+      restaurantImage: o.restaurantCoverImageUrl ?? 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400&h=300&fit=crop',
+      restaurantAddress: o.restaurantCityEn ?? 'Riyadh',
+      items: (o.items ?? []).map((item: any) => ({
+        id: item.dishId,
+        nameEn: item.nameEn,
+        nameAr: item.nameAr,
+        qty: item.qty,
+        price: item.price,
+        imageUrl: item.imageUrl ?? 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=100&h=100&fit=crop',
+      })),
+      total: Number(o.total),
+      currency: o.currency ?? 'SAR',
+      status: o.status,
+      mode: o.orderMode,
+      placedAt: o.createdAt,
+      estimatedTime: (o.status === 'placed' || o.status === 'preparing')
+        ? `${eta}–${eta + 10} min`
+        : undefined,
+      rated: false,
+    } as MockOrder;
+  });
+
   const bookings = bookingsRaw ?? [];
 
   const today = new Date();
@@ -385,9 +423,9 @@ export function OrdersPage() {
 
   const upcomingCount = bookings.filter(isUpcoming).length;
 
-  const filteredOrders = MOCK_ORDERS.filter(o => {
+  const filteredOrders = realOrders.filter(o => {
     if (orderTab === 'all') return true;
-    if (orderTab === 'active') return ['placed', 'preparing', 'out_for_delivery'].includes(o.status);
+    if (orderTab === 'active') return ['placed', 'confirmed', 'preparing', 'out_for_delivery', 'ready_for_pickup'].includes(o.status);
     if (orderTab === 'completed') return o.status === 'delivered';
     if (orderTab === 'cancelled') return o.status === 'cancelled';
     return true;
@@ -412,10 +450,10 @@ export function OrdersPage() {
   ];
 
   const ORDER_TABS: { id: OrderTab; labelEn: string; labelAr: string; count: number }[] = [
-    { id: 'all',       labelEn: 'All Orders', labelAr: 'كل الطلبات', count: MOCK_ORDERS.length },
-    { id: 'active',    labelEn: 'Active',     labelAr: 'نشط',        count: MOCK_ORDERS.filter(o => ['placed','preparing','out_for_delivery'].includes(o.status)).length },
-    { id: 'completed', labelEn: 'Completed',  labelAr: 'مكتمل',     count: MOCK_ORDERS.filter(o => o.status === 'delivered').length },
-    { id: 'cancelled', labelEn: 'Cancelled',  labelAr: 'ملغي',      count: MOCK_ORDERS.filter(o => o.status === 'cancelled').length },
+    { id: 'all',       labelEn: 'All Orders', labelAr: 'كل الطلبات', count: realOrders.length },
+    { id: 'active',    labelEn: 'Active',     labelAr: 'نشط',        count: realOrders.filter(o => ['placed','confirmed','preparing','out_for_delivery','ready_for_pickup'].includes(o.status)).length },
+    { id: 'completed', labelEn: 'Completed',  labelAr: 'مكتمل',     count: realOrders.filter(o => o.status === 'delivered').length },
+    { id: 'cancelled', labelEn: 'Cancelled',  labelAr: 'ملغي',      count: realOrders.filter(o => o.status === 'cancelled').length },
   ];
 
   return (
@@ -524,10 +562,23 @@ export function OrdersPage() {
         {/* ── FOOD ORDERS TAB ── */}
         {mainTab === 'orders' && (
           <>
-            <div className="flex items-center gap-2 mb-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-              <p className="text-xs text-amber-800">{t('Food delivery is coming soon. The orders below are for demonstration only.', 'توصيل الطعام قادم قريباً. الطلبات أدناه هي للعرض التوضيحي فقط.')}</p>
-            </div>
+            {!user ? (
+              <div className="text-center py-20">
+                <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <Lock className="w-7 h-7 text-gray-400" />
+                </div>
+                <h3 className="font-bold text-gray-900 mb-2">{t('Sign in to see your orders', 'سجّل دخولك لرؤية طلباتك')}</h3>
+                <p className="text-gray-500 text-sm mb-6">{t('Your food orders will appear here once you sign in.', 'ستظهر طلبات طعامك هنا بعد تسجيل الدخول.')}</p>
+                <Link href="/sign-in">
+                  <button className="bg-primary text-white font-semibold px-6 py-2.5 rounded-full text-sm hover:bg-primary/90 transition-colors">{t('Sign In', 'تسجيل الدخول')}</button>
+                </Link>
+              </div>
+            ) : ordersLoading ? (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 className="w-8 h-8 text-primary animate-spin" />
+              </div>
+            ) : (
+            <>
             <div className="flex gap-1 overflow-x-auto hide-scrollbar mb-5 -mx-1 px-1">
               {ORDER_TABS.map(tab => (
                 <button
@@ -566,6 +617,8 @@ export function OrdersPage() {
                   ))}
                 </div>
               </>
+            )}
+            </>
             )}
           </>
         )}

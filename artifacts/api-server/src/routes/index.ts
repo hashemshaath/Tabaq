@@ -32,6 +32,7 @@ import analyticsRouter from "./analytics.js";
 import profileRouter from "./profile.js";
 import blogRouter from "./blog.js";
 import seoRouter from "./seo.js";
+import ordersRouter from "./orders.js";
 
 const router: IRouter = Router();
 
@@ -68,5 +69,6 @@ router.use(analyticsRouter);
 router.use(profileRouter);
 router.use(blogRouter);
 router.use(seoRouter);
+router.use(ordersRouter);
 
 export default router;
