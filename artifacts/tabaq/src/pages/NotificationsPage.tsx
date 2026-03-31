@@ -1,13 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Bell, CalendarDays, Star, Users, Tag, Gift, Award, ChevronRight,
-  Check, CheckCheck, Settings, Trash2, Clock, Heart, MessageSquare, Zap
+  Check, CheckCheck, Settings, Trash2, Clock, MessageSquare, Zap,
+  X, Mail, Smartphone, Volume2, VolumeX, ToggleLeft, ToggleRight,
+  Rss, Globe, ShieldCheck, Heart, Package, Ticket
 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLanguage } from '@/hooks/use-language';
 import { useAuth } from '@/context/AuthContext';
 import { Link } from 'wouter';
-import { Button } from '@/components/ui/button';
+import { getAuthHeaders } from '@/lib/api';
+import { toast } from 'sonner';
 
 type NotifType = 'booking' | 'review_response' | 'new_follower' | 'offer' | 'points' | 'reminder' | 'achievement' | 'system';
 
@@ -25,6 +28,15 @@ interface Notification {
   meta?: { image?: string; avatar?: string; badge?: string };
 }
 
+interface NotifPref {
+  notifType: string;
+  labelEn: string;
+  labelAr: string;
+  enabled: boolean;
+  channels: string[];
+  availableChannels: string[];
+}
+
 const MOCK_NOTIFICATIONS: Notification[] = [
   {
     id: 1, type: 'booking', read: false, time: '2026-03-29T09:00:00', timeAgo: '15 دقيقة',
@@ -36,61 +48,40 @@ const MOCK_NOTIFICATIONS: Notification[] = [
   {
     id: 2, type: 'points', read: false, time: '2026-03-29T08:30:00', timeAgo: '45 دقيقة',
     titleEn: '+10 Points Earned!', titleAr: 'ربحت 10 نقاط!',
-    bodyEn: 'You earned 10 points for confirming your booking at Reem Al-Bawadi. Keep it up!',
-    bodyAr: 'ربحت 10 نقاط لتأكيدك الحجز في ريم البوادي. استمر!',
+    bodyEn: 'You earned 10 points for confirming your booking at Reem Al-Bawadi.',
+    bodyAr: 'ربحت 10 نقاط لتأكيدك الحجز في ريم البوادي.',
     link: '/dashboard',
   },
   {
     id: 3, type: 'offer', read: false, time: '2026-03-29T07:00:00', timeAgo: '2 ساعة',
     titleEn: 'New Offer: 20% off at Sushi Sama', titleAr: 'عرض جديد: خصم 20% في سوشي ساما',
-    bodyEn: 'Exclusive offer for Tabaq members — valid until end of March. Grab it before it\'s gone!',
+    bodyEn: "Exclusive offer for Tabaq members — valid until end of March. Grab it before it's gone!",
     bodyAr: 'عرض حصري لأعضاء طبق — صالح حتى نهاية مارس. لا تفوته!',
     link: '/offers', meta: { image: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=80&h=80&fit=crop' },
   },
   {
     id: 4, type: 'review_response', read: false, time: '2026-03-28T18:00:00', timeAgo: 'أمس',
     titleEn: 'Reem Al-Bawadi replied to your review', titleAr: 'ريم البوادي ردّ على تقييمك',
-    bodyEn: '"Thank you for your kind words! We look forward to hosting you again soon." — The Management',
-    bodyAr: '"شكراً لكلماتك الطيبة! نتطلع إلى استضافتك مرة أخرى قريباً." — الإدارة',
+    bodyEn: '"Thank you for your kind words! We look forward to hosting you again." — The Management',
+    bodyAr: '"شكراً لكلماتك الطيبة! نتطلع إلى استضافتك مرة أخرى." — الإدارة',
     link: '/restaurants/2', meta: { image: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=80&h=80&fit=crop' },
   },
   {
     id: 5, type: 'new_follower', read: true, time: '2026-03-28T15:30:00', timeAgo: 'أمس',
     titleEn: 'Noura Al-Rashid is following you', titleAr: 'نورة الراشد بدأت متابعتك',
-    bodyEn: 'Top critic Noura Al-Rashid is now following your food journey. Say hi!',
-    bodyAr: 'الناقدة الكبرى نورة الراشد تتابع رحلتك الغذائية الآن. قل مرحباً!',
+    bodyEn: 'Top critic Noura Al-Rashid is now following your food journey.',
+    bodyAr: 'الناقدة الكبرى نورة الراشد تتابع رحلتك الغذائية الآن.',
     link: '/leaderboard', meta: { avatar: 'https://i.pravatar.cc/80?img=47', badge: '👑' },
   },
   {
     id: 6, type: 'achievement', read: true, time: '2026-03-27T12:00:00', timeAgo: 'يومان',
     titleEn: '🏅 Achievement Unlocked: Taste Explorer!', titleAr: '🏅 إنجاز جديد: مستكشف الطعام!',
-    bodyEn: 'You\'ve visited 10 different restaurant categories. Your palate knows no limits!',
+    bodyEn: "You've visited 10 different restaurant categories. Your palate knows no limits!",
     bodyAr: 'زرت 10 فئات مختلفة من المطاعم. ذوقك لا حدود له!',
     link: '/dashboard',
   },
   {
-    id: 7, type: 'reminder', read: true, time: '2026-03-27T08:00:00', timeAgo: 'يومان',
-    titleEn: 'Reminder: Booking Tomorrow at Sushi Sama', titleAr: 'تذكير: حجزك غداً في سوشي ساما',
-    bodyEn: 'Don\'t forget your reservation for 2 guests at 8:00 PM. We look forward to seeing you!',
-    bodyAr: 'لا تنسَ حجزك لـ 2 أشخاص الساعة 8:00 م. نتطلع لرؤيتك!',
-    link: '/bookings', meta: { image: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=80&h=80&fit=crop' },
-  },
-  {
-    id: 8, type: 'points', read: true, time: '2026-03-26T10:00:00', timeAgo: '3 أيام',
-    titleEn: '+25 Points for your review!', titleAr: 'ربحت 25 نقطة على تقييمك!',
-    bodyEn: 'Your review of Sushi Sama earned you 25 bonus points. You\'re on your way to Level 4!',
-    bodyAr: 'تقييمك لسوشي ساما جلب لك 25 نقطة إضافية. أنت في طريقك إلى المستوى 4!',
-    link: '/dashboard',
-  },
-  {
-    id: 9, type: 'offer', read: true, time: '2026-03-25T09:00:00', timeAgo: '4 أيام',
-    titleEn: 'Your voucher expires in 3 days!', titleAr: 'قسيمتك تنتهي خلال 3 أيام!',
-    bodyEn: 'Don\'t let your 15% off voucher go to waste. Use it before March 28.',
-    bodyAr: 'لا تُضيّع قسيمة الخصم 15%. استخدمها قبل 28 مارس.',
-    link: '/vouchers',
-  },
-  {
-    id: 10, type: 'system', read: true, time: '2026-03-24T08:00:00', timeAgo: '5 أيام',
+    id: 7, type: 'system', read: true, time: '2026-03-24T08:00:00', timeAgo: '5 أيام',
     titleEn: 'Welcome to Tabaq! 🎉', titleAr: 'مرحباً بك في طبق! 🎉',
     bodyEn: 'Start your food journey — explore restaurants, earn points, and share your dining experiences.',
     bodyAr: 'ابدأ رحلتك الغذائية — استكشف المطاعم واجمع النقاط وشارك تجاربك.',
@@ -98,15 +89,37 @@ const MOCK_NOTIFICATIONS: Notification[] = [
   },
 ];
 
-const TYPE_CONFIG: Record<NotifType, { icon: React.ReactNode; color: string; bg: string }> = {
+const TYPE_CONFIG: Record<string, { icon: React.ReactNode; color: string; bg: string }> = {
   booking: { icon: <CalendarDays className="w-5 h-5" />, color: 'text-primary', bg: 'bg-primary/10' },
-  review_response: { icon: <MessageSquare className="w-5 h-5" />, color: 'text-blue-600', bg: 'bg-blue-50' },
-  new_follower: { icon: <Users className="w-5 h-5" />, color: 'text-purple-600', bg: 'bg-purple-50' },
-  offer: { icon: <Tag className="w-5 h-5" />, color: 'text-orange-600', bg: 'bg-orange-50' },
-  points: { icon: <Zap className="w-5 h-5" />, color: 'text-amber-600', bg: 'bg-amber-50' },
-  reminder: { icon: <Clock className="w-5 h-5" />, color: 'text-teal-600', bg: 'bg-teal-50' },
-  achievement: { icon: <Award className="w-5 h-5" />, color: 'text-yellow-600', bg: 'bg-yellow-50' },
+  review_response: { icon: <MessageSquare className="w-5 h-5" />, color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-900/30' },
+  new_follower: { icon: <Users className="w-5 h-5" />, color: 'text-purple-600', bg: 'bg-purple-50 dark:bg-purple-900/30' },
+  offer: { icon: <Tag className="w-5 h-5" />, color: 'text-orange-600', bg: 'bg-orange-50 dark:bg-orange-900/30' },
+  points: { icon: <Zap className="w-5 h-5" />, color: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-900/30' },
+  reminder: { icon: <Clock className="w-5 h-5" />, color: 'text-teal-600', bg: 'bg-teal-50 dark:bg-teal-900/30' },
+  achievement: { icon: <Award className="w-5 h-5" />, color: 'text-yellow-600', bg: 'bg-yellow-50 dark:bg-yellow-900/30' },
   system: { icon: <Bell className="w-5 h-5" />, color: 'text-muted-foreground', bg: 'bg-muted' },
+};
+
+const CHANNEL_CONFIG: Record<string, { icon: React.ReactNode; labelEn: string; labelAr: string; color: string }> = {
+  in_app: { icon: <Bell className="w-3.5 h-3.5" />, labelEn: 'In-App', labelAr: 'داخل التطبيق', color: 'text-blue-600' },
+  email: { icon: <Mail className="w-3.5 h-3.5" />, labelEn: 'Email', labelAr: 'بريد إلكتروني', color: 'text-green-600' },
+  sms: { icon: <Smartphone className="w-3.5 h-3.5" />, labelEn: 'SMS', labelAr: 'رسالة نصية', color: 'text-purple-600' },
+  push: { icon: <Rss className="w-3.5 h-3.5" />, labelEn: 'Push', labelAr: 'إشعار فوري', color: 'text-orange-600' },
+};
+
+const NOTIF_TYPE_ICONS: Record<string, React.ReactNode> = {
+  booking_confirmed: <CalendarDays className="w-4 h-4 text-primary" />,
+  booking_cancelled: <CalendarDays className="w-4 h-4 text-red-500" />,
+  new_follower: <Users className="w-4 h-4 text-purple-500" />,
+  new_review: <Star className="w-4 h-4 text-amber-500" />,
+  new_offer: <Tag className="w-4 h-4 text-orange-500" />,
+  new_dish: <Package className="w-4 h-4 text-teal-500" />,
+  new_opening: <Globe className="w-4 h-4 text-blue-500" />,
+  order_status: <Ticket className="w-4 h-4 text-indigo-500" />,
+  points_earned: <Zap className="w-4 h-4 text-yellow-500" />,
+  follow_request: <Heart className="w-4 h-4 text-pink-500" />,
+  promo_code: <Gift className="w-4 h-4 text-red-500" />,
+  event_reminder: <Clock className="w-4 h-4 text-teal-500" />,
 };
 
 const FILTER_TABS = [
@@ -129,6 +142,320 @@ function groupByDate(notifs: Notification[], lang: string) {
   return groups;
 }
 
+// ─── Notification Preferences Panel ────────────────────────────────────────────
+function NotificationPrefsPanel({
+  open, onClose, token
+}: { open: boolean; onClose: () => void; token?: string | null }) {
+  const { lang } = useLanguage();
+  const t = (en: string, ar: string) => lang === 'ar' ? ar : en;
+  const qc = useQueryClient();
+
+  const { data: prefsData, isLoading } = useQuery({
+    queryKey: ['notification-prefs', token],
+    queryFn: async () => {
+      const apiBase = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
+      const res = await fetch(`${apiBase}/api/notifications/preferences`, {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) return null;
+      return res.json() as Promise<{ preferences: NotifPref[] }>;
+    },
+    enabled: open && !!token,
+    staleTime: 60000,
+  });
+
+  const prefs: NotifPref[] = prefsData?.preferences ?? [];
+
+  const updateMutation = useMutation({
+    mutationFn: async (updates: { notifType: string; enabled?: boolean; channels?: string[] }[]) => {
+      const apiBase = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
+      const res = await fetch(`${apiBase}/api/notifications/preferences`, {
+        method: 'PATCH',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ updates }),
+      });
+      if (!res.ok) throw new Error('Failed');
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['notification-prefs'] });
+      toast.success(t('Preferences saved', 'تم حفظ الإعدادات'));
+    },
+    onError: () => toast.error(t('Failed to save', 'فشل الحفظ')),
+  });
+
+  const toggleEnabled = (pref: NotifPref) => {
+    updateMutation.mutate([{ notifType: pref.notifType, enabled: !pref.enabled }]);
+  };
+
+  const toggleChannel = (pref: NotifPref, channel: string) => {
+    const next = pref.channels.includes(channel)
+      ? pref.channels.filter(c => c !== channel)
+      : [...pref.channels, channel];
+    if (next.length === 0) return; // must have at least one channel
+    updateMutation.mutate([{ notifType: pref.notifType, channels: next }]);
+  };
+
+  if (!open) return null;
+
+  const PREF_GROUPS = [
+    { labelEn: 'Bookings & Orders', labelAr: 'الحجوزات والطلبات', types: ['booking_confirmed', 'booking_cancelled', 'order_status'] },
+    { labelEn: 'Social', labelAr: 'الاجتماعية', types: ['new_follower', 'follow_request', 'new_review'] },
+    { labelEn: 'Discovery', labelAr: 'الاستكشاف', types: ['new_offer', 'new_dish', 'new_opening', 'promo_code', 'event_reminder'] },
+    { labelEn: 'Rewards', labelAr: 'المكافآت', types: ['points_earned'] },
+  ];
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-sm bg-background shadow-2xl flex flex-col h-full overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-card">
+          <div>
+            <h2 className="text-base font-extrabold text-foreground">{t('Notification Preferences', 'إعدادات الإشعارات')}</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">{t('Control what you receive and how', 'تحكم فيما تتلقاه وكيف')}</p>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-muted transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5">
+          {isLoading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="h-16 bg-muted rounded-2xl animate-pulse" />
+              ))}
+            </div>
+          ) : (
+            PREF_GROUPS.map(group => {
+              const groupPrefs = prefs.filter(p => group.types.includes(p.notifType));
+              if (groupPrefs.length === 0) return null;
+              return (
+                <div key={group.labelEn}>
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 px-1">
+                    {lang === 'ar' ? group.labelAr : group.labelEn}
+                  </p>
+                  <div className="bg-card border border-border rounded-2xl overflow-hidden divide-y divide-border/50">
+                    {groupPrefs.map(pref => (
+                      <div key={pref.notifType} className="px-4 py-3">
+                        <div className="flex items-center justify-between gap-3 mb-2">
+                          <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                            <div className="shrink-0">
+                              {NOTIF_TYPE_ICONS[pref.notifType] ?? <Bell className="w-4 h-4 text-muted-foreground" />}
+                            </div>
+                            <span className="text-sm font-semibold text-foreground truncate">
+                              {lang === 'ar' ? pref.labelAr : pref.labelEn}
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => toggleEnabled(pref)}
+                            disabled={updateMutation.isPending}
+                            className="shrink-0 transition-all"
+                          >
+                            {pref.enabled
+                              ? <ToggleRight className="w-8 h-8 text-primary" />
+                              : <ToggleLeft className="w-8 h-8 text-muted-foreground" />}
+                          </button>
+                        </div>
+
+                        {pref.enabled && (
+                          <div className="flex gap-1.5 flex-wrap ms-[26px]">
+                            {pref.availableChannels.map(ch => {
+                              const cfg = CHANNEL_CONFIG[ch];
+                              const active = pref.channels.includes(ch);
+                              return (
+                                <button
+                                  key={ch}
+                                  onClick={() => toggleChannel(pref, ch)}
+                                  disabled={updateMutation.isPending}
+                                  className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold border transition-all ${
+                                    active
+                                      ? 'bg-primary text-primary-foreground border-primary'
+                                      : 'bg-muted text-muted-foreground border-transparent hover:border-border'
+                                  }`}
+                                >
+                                  {cfg?.icon}
+                                  {lang === 'ar' ? cfg?.labelAr : cfg?.labelEn}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })
+          )}
+
+          {/* Mute section teaser */}
+          <div className="bg-muted/50 rounded-2xl p-4 border border-border/50">
+            <p className="text-xs font-bold text-foreground mb-1 flex items-center gap-1.5">
+              <VolumeX className="w-3.5 h-3.5 text-muted-foreground" />
+              {t('Muted Users & Restaurants', 'المكتومون والمطاعم')}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {t('You can mute any user or restaurant from their profile page to stop receiving their activity in your feed.', 'يمكنك كتم أي مستخدم أو مطعم من صفحة ملفه لإيقاف ظهور نشاطه في خلاصتك.')}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Interests Panel ────────────────────────────────────────────────────────────
+const INTEREST_GROUPS_DISPLAY = [
+  {
+    key: 'cuisine',
+    labelEn: 'Cuisines',
+    labelAr: 'المطابخ',
+    emoji: '🍽️',
+    items: ['Arabic', 'Italian', 'Japanese', 'Indian', 'Mexican', 'French', 'Chinese', 'Mediterranean', 'Turkish', 'Korean'],
+  },
+  {
+    key: 'dish_type',
+    labelEn: 'Dish Types',
+    labelAr: 'أنواع الأطباق',
+    emoji: '🥘',
+    items: ['Grills', 'Seafood', 'Desserts', 'Coffee', 'Pasta', 'Pizza', 'Sushi', 'Burgers', 'Shawarma', 'Salads'],
+  },
+  {
+    key: 'event',
+    labelEn: 'Experiences',
+    labelAr: 'التجارب',
+    emoji: '🎉',
+    items: ['Live Music', 'Cooking Classes', 'Tasting Events', 'Cultural Nights', 'Private Dining'],
+  },
+  {
+    key: 'preference',
+    labelEn: 'Preferences',
+    labelAr: 'التفضيلات',
+    emoji: '⭐',
+    items: ['New Openings', 'Exclusive Offers', 'Michelin Guide', 'Halal Only', 'Vegetarian Friendly'],
+  },
+];
+
+function InterestsPanel({ open, onClose, token }: { open: boolean; onClose: () => void; token?: string | null }) {
+  const { lang } = useLanguage();
+  const t = (en: string, ar: string) => lang === 'ar' ? ar : en;
+  const qc = useQueryClient();
+  const [selected, setSelected] = useState<Record<string, string[]>>({});
+  const [loaded, setLoaded] = useState(false);
+
+  const { data } = useQuery({
+    queryKey: ['user-interests', token],
+    queryFn: async () => {
+      const apiBase = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
+      const res = await fetch(`${apiBase}/api/me/interests`, { headers: getAuthHeaders() });
+      if (!res.ok) return null;
+      return res.json() as Promise<{ interests: Record<string, string[]> }>;
+    },
+    enabled: open && !!token,
+    staleTime: 60000,
+  });
+
+  React.useEffect(() => {
+    if (data?.interests && !loaded) {
+      setSelected(data.interests);
+      setLoaded(true);
+    }
+  }, [data, loaded]);
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const apiBase = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
+      const res = await fetch(`${apiBase}/api/me/interests`, {
+        method: 'PUT',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ interests: selected }),
+      });
+      if (!res.ok) throw new Error('Failed');
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['user-interests'] });
+      toast.success(t('Interests saved!', 'تم حفظ اهتماماتك!'));
+      onClose();
+    },
+    onError: () => toast.error(t('Failed to save', 'فشل الحفظ')),
+  });
+
+  const toggle = (groupKey: string, item: string) => {
+    setSelected(prev => {
+      const cur = prev[groupKey] ?? [];
+      return {
+        ...prev,
+        [groupKey]: cur.includes(item) ? cur.filter(x => x !== item) : [...cur, item],
+      };
+    });
+  };
+
+  const totalSelected = Object.values(selected).reduce((a, b) => a + b.length, 0);
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-sm bg-background shadow-2xl flex flex-col h-full overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-card">
+          <div>
+            <h2 className="text-base font-extrabold text-foreground">{t('My Interests', 'اهتماماتي')}</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {t(`${totalSelected} selected · used to personalize your feed`, `${totalSelected} محدد · لتخصيص خلاصتك`)}
+            </p>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-muted transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5">
+          {INTEREST_GROUPS_DISPLAY.map(group => (
+            <div key={group.key}>
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 px-1">
+                {group.emoji} {lang === 'ar' ? group.labelAr : group.labelEn}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {group.items.map(item => {
+                  const isActive = (selected[group.key] ?? []).includes(item);
+                  return (
+                    <button
+                      key={item}
+                      onClick={() => toggle(group.key, item)}
+                      className={`px-3 py-1.5 rounded-2xl text-xs font-semibold border transition-all ${
+                        isActive
+                          ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                          : 'bg-card border-border text-muted-foreground hover:text-foreground hover:border-primary/30'
+                      }`}
+                    >
+                      {item}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="px-4 py-4 border-t border-border bg-card">
+          <button
+            onClick={() => saveMutation.mutate()}
+            disabled={saveMutation.isPending}
+            className="w-full bg-primary text-primary-foreground font-bold py-3 rounded-2xl transition-all hover:bg-primary/90 disabled:opacity-60"
+          >
+            {saveMutation.isPending ? t('Saving…', 'جارٍ الحفظ…') : t('Save Interests', 'حفظ الاهتمامات')}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Page ─────────────────────────────────────────────────────────────────
 export default function NotificationsPage() {
   const { lang } = useLanguage();
   const t = (en: string, ar: string) => lang === 'ar' ? ar : en;
@@ -136,6 +463,8 @@ export default function NotificationsPage() {
   const [filterTab, setFilterTab] = useState('all');
   const [overrides, setOverrides] = useState<Record<number, Partial<Notification>>>({});
   const [dismissed, setDismissed] = useState<Set<number>>(new Set());
+  const [showPrefs, setShowPrefs] = useState(false);
+  const [showInterests, setShowInterests] = useState(false);
 
   const apiBase = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
 
@@ -157,7 +486,6 @@ export default function NotificationsPage() {
     : MOCK_NOTIFICATIONS;
 
   const notifications = rawNotifications.map(n => ({ ...n, ...(overrides[n.id] ?? {}) }));
-
   const unreadCount = notifications.filter(n => !n.read && !dismissed.has(n.id)).length;
 
   const filtered = notifications.filter(n => {
@@ -205,15 +533,23 @@ export default function NotificationsPage() {
                 className="flex items-center gap-1.5 text-xs font-semibold text-primary border border-primary/20 px-3 py-2 rounded-xl hover:bg-primary/5 transition-colors"
               >
                 <CheckCheck className="w-3.5 h-3.5" />
-                {t('Mark all read', 'تعليم الكل كمقروء')}
+                {t('Mark all read', 'تعليم الكل')}
               </button>
             )}
-            <Link href="/dashboard">
-              <button className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground border border-border px-3 py-2 rounded-xl hover:text-foreground transition-colors">
-                <Settings className="w-3.5 h-3.5" />
-                {t('Settings', 'الإعدادات')}
-              </button>
-            </Link>
+            <button
+              onClick={() => setShowInterests(true)}
+              className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground border border-border px-3 py-2 rounded-xl hover:text-foreground transition-colors"
+            >
+              <Heart className="w-3.5 h-3.5" />
+              {t('Interests', 'اهتمامات')}
+            </button>
+            <button
+              onClick={() => setShowPrefs(true)}
+              className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground border border-border px-3 py-2 rounded-xl hover:text-foreground transition-colors"
+            >
+              <Settings className="w-3.5 h-3.5" />
+              {t('Settings', 'الإعدادات')}
+            </button>
           </div>
         </div>
 
@@ -230,7 +566,7 @@ export default function NotificationsPage() {
           ))}
         </div>
 
-        {/* Grouped notifications */}
+        {/* Notification list */}
         {notifLoading ? (
           <div className="space-y-3">
             {Array.from({ length: 5 }).map((_, i) => (
@@ -259,14 +595,14 @@ export default function NotificationsPage() {
                 <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3 px-1">{group}</p>
                 <div className="space-y-2">
                   {items.map(notif => {
-                    const cfg = TYPE_CONFIG[notif.type];
+                    const cfg = TYPE_CONFIG[notif.type] ?? TYPE_CONFIG.system;
                     const hasMedia = notif.meta?.image || notif.meta?.avatar;
 
                     return (
                       <div
                         key={notif.id}
                         onClick={() => markRead(notif.id)}
-                        className={`relative flex items-start gap-4 p-4 rounded-2xl border transition-all cursor-pointer group ${notif.read ? 'bg-card border-border/50 hover:border-border' : 'bg-primary/3 border-primary/20 hover:border-primary/40'}`}
+                        className={`relative flex items-start gap-4 p-4 rounded-2xl border transition-all cursor-pointer group ${notif.read ? 'bg-card border-border/50 hover:border-border' : 'bg-primary/[0.03] border-primary/20 hover:border-primary/40'}`}
                       >
                         {!notif.read && (
                           <div className="absolute top-4 end-4 w-2 h-2 bg-primary rounded-full shrink-0" />
@@ -295,7 +631,7 @@ export default function NotificationsPage() {
                         )}
 
                         <div className="flex-1 min-w-0 pe-6">
-                          <p className={`text-sm font-bold leading-snug ${notif.read ? 'text-foreground' : 'text-foreground'}`}>
+                          <p className="text-sm font-bold leading-snug text-foreground">
                             {lang === 'ar' ? notif.titleAr : notif.titleEn}
                           </p>
                           <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed line-clamp-2">
@@ -343,6 +679,10 @@ export default function NotificationsPage() {
           </div>
         )}
       </div>
+
+      {/* Panels */}
+      <NotificationPrefsPanel open={showPrefs} onClose={() => setShowPrefs(false)} token={token} />
+      <InterestsPanel open={showInterests} onClose={() => setShowInterests(false)} token={token} />
     </div>
   );
 }

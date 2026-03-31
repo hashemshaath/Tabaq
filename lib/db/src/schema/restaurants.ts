@@ -60,6 +60,8 @@ export const restaurantFollowsTable = pgTable("restaurant_follows", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => usersTable.id),
   restaurantId: integer("restaurant_id").notNull().references(() => restaurantsTable.id),
+  // followType: 'all' | 'offers' | 'events' | 'new_dishes' | 'openings'
+  followType: text("follow_type").default("all").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (t) => [
   uniqueIndex("restaurant_follows_unique").on(t.userId, t.restaurantId),

@@ -12,7 +12,7 @@ import {
   Sparkles, Image, DollarSign, Calendar, ChevronLeft, Save,
   Upload, Trash2, Check, LayoutDashboard, Ticket, LogOut,
   ChevronDown, Search, Download, Camera, Smartphone, MousePointer2,
-  Globe, Phone, MessageCircle, MoreVertical, Copy
+  Globe, Phone, MessageCircle, MoreVertical, Copy, Heart
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StarRating } from '@/components/StarRating';
@@ -98,7 +98,7 @@ const VOUCHER_STATUS_MAP: Record<string, { labelEn: string; labelAr: string; cla
   refunded: { labelEn: 'Refunded', labelAr: 'مسترجع', className: 'text-red-600 bg-red-50' },
 };
 
-type ConsoleTab = 'overview' | 'bookings' | 'campaigns' | 'offers' | 'vouchers' | 'reviews' | 'menu' | 'settings';
+type ConsoleTab = 'overview' | 'bookings' | 'campaigns' | 'offers' | 'vouchers' | 'reviews' | 'menu' | 'settings' | 'crm';
 
 export function BusinessConsolePage() {
   const { t, lang } = useLanguage();
@@ -166,6 +166,31 @@ export function BusinessConsolePage() {
       if (!res.ok) return null;
       return res.json();
     },
+    staleTime: 60000,
+  });
+
+  // CRM analytics
+  const { data: crmData, isLoading: crmLoading } = useQuery({
+    queryKey: ['crm-overview', RESTAURANT_ID],
+    queryFn: async () => {
+      const res = await fetch(`/api/analytics/restaurant/${RESTAURANT_ID}/overview`, { headers: getAuthHeaders() });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: activeTab === 'crm',
+    staleTime: 60000,
+  });
+
+  const [crmSegment, setCrmSegment] = useState<string>('all');
+  const { data: crmCustomers, isLoading: crmCustomersLoading } = useQuery({
+    queryKey: ['crm-customers', RESTAURANT_ID, crmSegment],
+    queryFn: async () => {
+      const url = `/api/analytics/restaurant/${RESTAURANT_ID}/customers${crmSegment !== 'all' ? `?segment=${crmSegment}` : ''}`;
+      const res = await fetch(url, { headers: getAuthHeaders() });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: activeTab === 'crm',
     staleTime: 60000,
   });
 
@@ -263,6 +288,7 @@ export function BusinessConsolePage() {
   const tabs: { id: ConsoleTab; labelEn: string; labelAr: string; icon: React.ElementType }[] = [
     { id: 'overview', labelEn: 'Overview', labelAr: 'نظرة عامة', icon: BarChart3 },
     { id: 'bookings', labelEn: 'Bookings', labelAr: 'الحجوزات', icon: CalendarDays },
+    { id: 'crm', labelEn: 'CRM & Analytics', labelAr: 'إدارة العملاء', icon: Users },
     { id: 'campaigns', labelEn: 'Campaigns', labelAr: 'الحملات', icon: Tag },
     { id: 'vouchers', labelEn: 'Vouchers', labelAr: 'القسائم', icon: Ticket },
     { id: 'reviews', labelEn: 'Reviews', labelAr: 'التقييمات', icon: MessageSquare },
@@ -2048,6 +2074,262 @@ export function BusinessConsolePage() {
             <Button>{t('Manage Menu', 'إدارة القائمة')}</Button>
           </div>
         )}
+
+        {/* CRM & Analytics Tab */}
+        {activeTab === 'crm' && (() => {
+          const kpis = crmData?.kpis ?? {};
+          const recentBookings = crmData?.recentBookings ?? [];
+          const repeatCustomers = crmData?.repeatCustomers ?? [];
+          const charts = crmData?.charts ?? {};
+          const customers = crmCustomers?.customers ?? [];
+          const segmentCounts = crmCustomers?.segmentCounts ?? {};
+
+          const kpiCards = [
+            { labelEn: 'Total Bookings', labelAr: 'إجمالي الحجوزات', value: kpis.totalBookings ?? '—', icon: CalendarDays, color: 'bg-blue-50 text-blue-600 dark:bg-blue-900/30' },
+            { labelEn: 'Confirmed (30d)', labelAr: 'مؤكدة (٣٠ يوم)', value: kpis.confirmedBookings ?? '—', icon: CheckCircle2, color: 'bg-green-50 text-green-600 dark:bg-green-900/30' },
+            { labelEn: 'Total Followers', labelAr: 'إجمالي المتابعين', value: kpis.totalFollowers ?? '—', icon: Users, color: 'bg-purple-50 text-purple-600 dark:bg-purple-900/30' },
+            { labelEn: 'Avg Rating', labelAr: 'متوسط التقييم', value: kpis.avgRating ? `${kpis.avgRating} ⭐` : '—', icon: Star, color: 'bg-amber-50 text-amber-600 dark:bg-amber-900/30' },
+            { labelEn: 'Repeat Customers', labelAr: 'عملاء متكررون', value: kpis.repeatCustomerCount ?? '—', icon: Heart, color: 'bg-pink-50 text-pink-600 dark:bg-pink-900/30' },
+            { labelEn: 'Cancellation Rate', labelAr: 'معدل الإلغاء', value: kpis.cancellationRate != null ? `${kpis.cancellationRate}%` : '—', icon: XCircle, color: 'bg-red-50 text-red-600 dark:bg-red-900/30' },
+            { labelEn: 'Est. Revenue (SAR)', labelAr: 'الإيراد التقديري', value: kpis.estimatedRevenue ? `${(kpis.estimatedRevenue / 1000).toFixed(1)}K` : '—', icon: DollarSign, color: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30' },
+            { labelEn: 'Reviews', labelAr: 'التقييمات', value: kpis.reviewCount ?? '—', icon: MessageSquare, color: 'bg-teal-50 text-teal-600 dark:bg-teal-900/30' },
+          ];
+
+          const SEGMENT_TABS = [
+            { id: 'all', labelEn: 'All Customers', labelAr: 'الكل', count: Object.values(segmentCounts).reduce((a: number, b: any) => a + (b as number), 0) },
+            { id: 'vip', labelEn: '⭐ VIP', labelAr: '⭐ VIP', count: segmentCounts.vip ?? 0 },
+            { id: 'repeat', labelEn: 'Repeat', labelAr: 'متكرر', count: segmentCounts.repeat ?? 0 },
+            { id: 'new', labelEn: 'New', labelAr: 'جديد', count: segmentCounts.new ?? 0 },
+            { id: 'at_risk', labelEn: 'At Risk', labelAr: 'معرض للخسارة', count: segmentCounts.at_risk ?? 0 },
+          ];
+
+          const SEGMENT_COLORS: Record<string, string> = {
+            vip: 'bg-amber-100 text-amber-800',
+            repeat: 'bg-blue-100 text-blue-800',
+            new: 'bg-green-100 text-green-800',
+            at_risk: 'bg-red-100 text-red-800',
+          };
+
+          return (
+            <div className="space-y-8">
+              {/* KPI Cards */}
+              <div>
+                <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-primary" />
+                  {t('Analytics Overview', 'نظرة تحليلية')}
+                </h2>
+                {crmLoading ? (
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    {Array.from({ length: 8 }).map((_, i) => (
+                      <div key={i} className="h-28 bg-card border border-border rounded-2xl animate-pulse" />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    {kpiCards.map(card => {
+                      const Icon = card.icon;
+                      return (
+                        <div key={card.labelEn} className="bg-card border border-border rounded-2xl p-5">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${card.color}`}>
+                            <Icon className="w-5 h-5" />
+                          </div>
+                          <p className="text-2xl font-extrabold text-foreground">{card.value}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{lang === 'ar' ? card.labelAr : card.labelEn}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Charts row */}
+              {!crmLoading && (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Bookings by Day Bar Chart */}
+                  <div className="lg:col-span-2 bg-card border border-border rounded-2xl p-5">
+                    <h3 className="font-bold text-foreground mb-4 flex items-center gap-2">
+                      <CalendarDays className="w-4 h-4 text-primary" />
+                      {t('Bookings — Last 14 Days', 'الحجوزات — آخر ١٤ يوماً')}
+                    </h3>
+                    {(charts.bookingsByDay ?? []).length === 0 ? (
+                      <div className="h-32 flex items-center justify-center text-sm text-muted-foreground">
+                        {t('No booking data yet', 'لا توجد بيانات حجز بعد')}
+                      </div>
+                    ) : (
+                      <div className="flex items-end gap-1 h-32">
+                        {(charts.bookingsByDay as any[]).map((d: any) => {
+                          const maxCount = Math.max(...(charts.bookingsByDay as any[]).map((x: any) => x.count));
+                          const pct = maxCount > 0 ? (d.count / maxCount) * 100 : 0;
+                          return (
+                            <div key={d.date} className="flex-1 flex flex-col items-center gap-1 group">
+                              <div className="text-[9px] text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity font-bold">{d.count}</div>
+                              <div
+                                className="w-full bg-primary/80 rounded-t-md transition-all"
+                                style={{ height: `${Math.max(4, pct)}%` }}
+                              />
+                              <div className="text-[8px] text-muted-foreground">{d.date?.slice(-5)}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Peak Times */}
+                  <div className="bg-card border border-border rounded-2xl p-5">
+                    <h3 className="font-bold text-foreground mb-4 flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-primary" />
+                      {t('Peak Booking Times', 'أوقات الذروة')}
+                    </h3>
+                    {(charts.peakTimes ?? []).length === 0 ? (
+                      <div className="text-sm text-muted-foreground">{t('No data', 'لا توجد بيانات')}</div>
+                    ) : (
+                      <div className="space-y-2">
+                        {(charts.peakTimes as any[]).map((pt: any, i: number) => (
+                          <div key={pt.time} className="flex items-center gap-3">
+                            <span className="text-xs font-bold text-muted-foreground w-6">{i + 1}</span>
+                            <span className="text-sm font-semibold text-foreground flex-1">{pt.time}</span>
+                            <span className="text-xs bg-primary/10 text-primary font-bold px-2 py-0.5 rounded-full">{pt.count}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Follower breakdown */}
+                    {(charts.followersByType ?? []).length > 0 && (
+                      <div className="mt-5 pt-4 border-t border-border">
+                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">{t('Followers by Type', 'المتابعون حسب النوع')}</p>
+                        <div className="space-y-1.5">
+                          {(charts.followersByType as any[]).map((ft: any) => (
+                            <div key={ft.followType} className="flex items-center justify-between">
+                              <span className="text-xs text-muted-foreground capitalize">{ft.followType === 'all' ? t('All Updates', 'كل التحديثات') : ft.followType}</span>
+                              <span className="text-xs font-bold text-foreground">{ft.count}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* CRM Customer Segmentation */}
+              <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                <div className="flex items-center justify-between p-5 border-b border-border">
+                  <h3 className="font-bold text-foreground flex items-center gap-2">
+                    <Users className="w-4 h-4 text-primary" />
+                    {t('Customer Segments', 'شرائح العملاء')}
+                  </h3>
+                  <div className="flex gap-1.5 overflow-x-auto hide-scrollbar">
+                    {SEGMENT_TABS.map(seg => (
+                      <button
+                        key={seg.id}
+                        onClick={() => setCrmSegment(seg.id)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1 ${crmSegment === seg.id ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
+                      >
+                        {lang === 'ar' ? seg.labelAr : seg.labelEn}
+                        <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${crmSegment === seg.id ? 'bg-white/20' : 'bg-background'}`}>{seg.count}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {crmCustomersLoading ? (
+                  <div className="divide-y divide-border">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <div key={i} className="flex items-center gap-4 p-4 animate-pulse">
+                        <div className="w-10 h-10 rounded-full bg-muted shrink-0" />
+                        <div className="flex-1 space-y-1.5">
+                          <div className="h-3.5 bg-muted rounded w-1/3" />
+                          <div className="h-3 bg-muted rounded w-1/4" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : customers.length === 0 ? (
+                  <div className="text-center py-12 text-sm text-muted-foreground">
+                    {t('No customers in this segment yet', 'لا يوجد عملاء في هذه الشريحة بعد')}
+                  </div>
+                ) : (
+                  <div className="divide-y divide-border">
+                    {(customers as any[]).map((c: any) => (
+                      <div key={c.userId} className="flex items-center gap-4 p-4 hover:bg-muted/30 transition-colors">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0 overflow-hidden">
+                          {c.userAvatarUrl
+                            ? <img src={c.userAvatarUrl} alt="" className="w-full h-full object-cover" />
+                            : <span className="text-primary font-bold text-sm">{(c.userName ?? 'U')[0]}</span>}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-sm font-semibold text-foreground truncate">{c.userName ?? t('Guest', 'ضيف')}</p>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${SEGMENT_COLORS[c.segment] ?? 'bg-muted text-muted-foreground'}`}>
+                              {c.segment === 'vip' ? '⭐ VIP' : c.segment === 'repeat' ? t('Repeat', 'متكرر') : c.segment === 'at_risk' ? t('At Risk', 'معرض للخسارة') : t('New', 'جديد')}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3 mt-0.5">
+                            <p className="text-xs text-muted-foreground">
+                              {t(`${c.bookingCount} bookings`, `${c.bookingCount} حجز`)}
+                            </p>
+                            {c.lastBookingDate && (
+                              <p className="text-xs text-muted-foreground">
+                                {t('Last visit:', 'آخر زيارة:')} {c.lastBookingDate}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-end shrink-0">
+                          <p className="text-xs font-bold text-foreground">Lv. {c.userLevel}</p>
+                          <p className="text-[10px] text-muted-foreground">{c.userLevelTitle}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Recent Bookings with User Details */}
+              {!crmLoading && recentBookings.length > 0 && (
+                <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                  <div className="flex items-center justify-between p-5 border-b border-border">
+                    <h3 className="font-bold text-foreground flex items-center gap-2">
+                      <CalendarDays className="w-4 h-4 text-primary" />
+                      {t('Recent Reservations', 'الحجوزات الأخيرة')}
+                    </h3>
+                  </div>
+                  <div className="divide-y divide-border">
+                    {(recentBookings as any[]).map((b: any) => {
+                      const st = STATUS_MAP[b.status] ?? STATUS_MAP.pending;
+                      const StatusIcon = st.icon;
+                      return (
+                        <div key={b.id} className="flex items-center gap-4 p-4">
+                          <div className="w-9 h-9 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
+                            <span className="text-primary font-bold text-sm">{b.partySize}</span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-semibold text-foreground truncate">{b.userName ?? t('Guest', 'ضيف')}</p>
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${st.className}`}>
+                                <StatusIcon className="w-2.5 h-2.5 inline me-0.5" />
+                                {st.labelEn}
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground">{b.date} · {b.time} · {b.partySize} {t('guests', 'أشخاص')}</p>
+                          </div>
+                          {b.userLevel && (
+                            <div className="text-end shrink-0">
+                              <p className="text-xs font-bold text-foreground">Lv. {b.userLevel}</p>
+                              <p className="text-[10px] text-muted-foreground">{b.userLevelTitle}</p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Settings Tab */}
         {activeTab === 'settings' && (

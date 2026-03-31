@@ -294,12 +294,17 @@ router.put("/restaurants/:restaurantId", async (req, res) => {
 });
 
 // Follow / unfollow restaurant
+// body: { followType?: 'all' | 'offers' | 'events' | 'new_dishes' | 'openings' }
 router.post("/restaurants/:restaurantId/follow", requireAuth, async (req, res) => {
   try {
     const restaurantId = parseInt(req.params["restaurantId"] as string, 10);
     const userId = req.auth!.userId;
+    const followType = (req.body?.followType as string) || "all";
+    const validTypes = ["all", "offers", "events", "new_dishes", "openings"];
+    const safeFollowType = validTypes.includes(followType) ? followType : "all";
+
     const inserted = await db.insert(restaurantFollowsTable)
-      .values({ userId, restaurantId })
+      .values({ userId, restaurantId, followType: safeFollowType })
       .onConflictDoNothing()
       .returning({ id: restaurantFollowsTable.id });
     if (inserted.length > 0) {
@@ -309,10 +314,30 @@ router.post("/restaurants/:restaurantId/follow", requireAuth, async (req, res) =
     }
     const [r] = await db.select({ followerCount: restaurantsTable.followerCount })
       .from(restaurantsTable).where(eq(restaurantsTable.id, restaurantId));
-    res.json({ isFollowing: true, followerCount: r?.followerCount ?? 0 });
+    res.json({ isFollowing: true, followerCount: r?.followerCount ?? 0, followType: safeFollowType });
   } catch (err) {
     req.log.error({ err }, "Failed to follow restaurant");
     res.status(500).json({ error: "internal_error", message: "Failed to follow restaurant" });
+  }
+});
+
+// PATCH /restaurants/:restaurantId/follow — update follow type preference
+router.patch("/restaurants/:restaurantId/follow", requireAuth, async (req, res) => {
+  try {
+    const restaurantId = parseInt(req.params["restaurantId"] as string, 10);
+    const userId = req.auth!.userId;
+    const followType = (req.body?.followType as string) || "all";
+    const validTypes = ["all", "offers", "events", "new_dishes", "openings"];
+    const safeFollowType = validTypes.includes(followType) ? followType : "all";
+
+    await db.update(restaurantFollowsTable)
+      .set({ followType: safeFollowType })
+      .where(and(eq(restaurantFollowsTable.userId, userId), eq(restaurantFollowsTable.restaurantId, restaurantId)));
+
+    res.json({ success: true, followType: safeFollowType });
+  } catch (err) {
+    req.log.error({ err }, "Failed to update follow preference");
+    res.status(500).json({ error: "internal_error" });
   }
 });
 

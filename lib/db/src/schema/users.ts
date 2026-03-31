@@ -67,6 +67,44 @@ export const emailVerificationTokensTable = pgTable("email_verification_tokens",
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Notification preferences per user per type
+// notifType: 'booking_confirmed' | 'booking_cancelled' | 'new_follower' | 'new_review' | 'new_offer' | 'new_dish' | 'new_opening' | 'order_status' | 'points_earned'
+// channels: 'in_app' | 'email' | 'sms' | 'push'
+export const userNotificationPrefsTable = pgTable("user_notification_prefs", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id),
+  notifType: text("notif_type").notNull(),
+  enabled: boolean("enabled").default(true).notNull(),
+  channels: text("channels").default("in_app").notNull(), // comma-separated
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("user_notif_prefs_unique").on(t.userId, t.notifType),
+]);
+
+// User interests for personalization
+// interestType: 'cuisine' | 'dish_type' | 'event' | 'opening' | 'offer'
+export const userInterestsTable = pgTable("user_interests", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id),
+  interestType: text("interest_type").notNull(),
+  value: text("value").notNull(), // e.g. 'italian', 'desserts', 'grills', 'events'
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("user_interests_unique").on(t.userId, t.interestType, t.value),
+]);
+
+// Mute users or restaurants
+export const userMutesTable = pgTable("user_mutes", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id),
+  entityType: text("entity_type").notNull(), // 'user' | 'restaurant'
+  entityId: integer("entity_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("user_mutes_unique").on(t.userId, t.entityType, t.entityId),
+]);
+
 export const insertUserSchema = createInsertSchema(usersTable).omit({ id: true, refCode: true, createdAt: true, updatedAt: true });
 export const insertUserFollowSchema = createInsertSchema(userFollowsTable).omit({ id: true, createdAt: true });
 export const insertUserBlockSchema = createInsertSchema(userBlocksTable).omit({ id: true, createdAt: true });
@@ -78,3 +116,6 @@ export type UserFollow = typeof userFollowsTable.$inferSelect;
 export type UserBlock = typeof userBlocksTable.$inferSelect;
 export type OtpRequest = typeof otpRequestsTable.$inferSelect;
 export type EmailVerificationToken = typeof emailVerificationTokensTable.$inferSelect;
+export type UserNotificationPref = typeof userNotificationPrefsTable.$inferSelect;
+export type UserInterest = typeof userInterestsTable.$inferSelect;
+export type UserMute = typeof userMutesTable.$inferSelect;

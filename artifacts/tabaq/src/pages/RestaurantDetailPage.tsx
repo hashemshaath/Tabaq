@@ -617,6 +617,8 @@ export function RestaurantDetailPage() {
 
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [isFollowing, setIsFollowing] = useState(false);
+  const [followType, setFollowType] = useState<string>('all');
+  const [showFollowMenu, setShowFollowMenu] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [lightboxPhotos, setLightboxPhotos] = useState<{ url: string; alt: string }[] | null>(null);
   const [lightboxIndex, setLightboxIndex] = useState(0);
@@ -663,15 +665,40 @@ export function RestaurantDetailPage() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const toggleFollow = async () => {
+  const doFollow = async (type: string) => {
     if (!user) return;
-    if (isFollowing) {
-      unfollowRestaurant.mutate({ restaurantId: numericId });
-    } else {
-      followRestaurant.mutate({ restaurantId: numericId });
-    }
-    setIsFollowing(f => !f);
+    setFollowType(type);
+    setShowFollowMenu(false);
+    setIsFollowing(true);
+    followRestaurant.mutate({ restaurantId: numericId, body: { followType: type } } as any);
   };
+
+  const doUnfollow = async () => {
+    if (!user) return;
+    setShowFollowMenu(false);
+    setIsFollowing(false);
+    unfollowRestaurant.mutate({ restaurantId: numericId });
+  };
+
+  const updateFollowType = async (type: string) => {
+    if (!user) return;
+    setFollowType(type);
+    setShowFollowMenu(false);
+    const apiBase = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
+    await fetch(`${apiBase}/api/restaurants/${numericId}/follow`, {
+      method: 'PATCH',
+      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ followType: type }),
+    });
+  };
+
+  const FOLLOW_TYPES = [
+    { id: 'all',       labelEn: 'All Updates',      labelAr: 'جميع التحديثات',   icon: '🔔' },
+    { id: 'offers',    labelEn: 'Offers Only',       labelAr: 'العروض فقط',       icon: '🏷️' },
+    { id: 'events',    labelEn: 'Events Only',       labelAr: 'الفعاليات فقط',    icon: '🎉' },
+    { id: 'new_dishes',labelEn: 'New Dishes Only',   labelAr: 'الأطباق الجديدة',  icon: '🍽️' },
+    { id: 'openings',  labelEn: 'New Openings',      labelAr: 'الافتتاحات الجديدة',icon: '🆕' },
+  ];
 
   const toggleSave = async () => {
     if (!user) return;
@@ -915,10 +942,70 @@ export function RestaurantDetailPage() {
             <CalendarDays className="w-4 h-4 me-2" />
             {t('Book a Table', 'احجز طاولة')}
           </Button>
-          <Button variant="outline" className="shrink-0 border-gray-300 text-gray-700 hover:bg-gray-50" onClick={toggleFollow}>
-            {isFollowing ? <HeartOff className="w-4 h-4 me-1.5 text-red-500" /> : <Heart className="w-4 h-4 me-1.5" />}
-            {isFollowing ? t('Following', 'متابَع') : t('Follow', 'متابعة')}
-          </Button>
+          {/* Follow button with preference picker */}
+          <div className="relative shrink-0">
+            <Button
+              variant="outline"
+              className={`border-gray-300 text-gray-700 hover:bg-gray-50 ${isFollowing ? 'border-primary text-primary bg-primary/5' : ''}`}
+              onClick={() => user ? setShowFollowMenu(m => !m) : undefined}
+            >
+              {isFollowing
+                ? <><Heart className="w-4 h-4 me-1.5 fill-primary text-primary" />{t('Following', 'متابَع')}</>
+                : <><Heart className="w-4 h-4 me-1.5" />{t('Follow', 'متابعة')}</>
+              }
+            </Button>
+
+            {showFollowMenu && (
+              <>
+                <div className="fixed inset-0 z-30" onClick={() => setShowFollowMenu(false)} />
+                <div className={`absolute z-40 top-full mt-2 bg-white border border-gray-200 rounded-2xl shadow-xl py-2 w-52 ${lang === 'ar' ? 'right-0' : 'left-0'}`}>
+                  {isFollowing ? (
+                    <>
+                      <p className="px-4 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                        {t('Notify me about', 'أُنبّهني عند')}
+                      </p>
+                      {FOLLOW_TYPES.map(ft => (
+                        <button
+                          key={ft.id}
+                          onClick={() => updateFollowType(ft.id)}
+                          className={`w-full text-start px-4 py-2 text-sm flex items-center gap-2.5 hover:bg-gray-50 transition-colors ${followType === ft.id ? 'text-primary font-bold' : 'text-gray-700'}`}
+                        >
+                          <span>{ft.icon}</span>
+                          {lang === 'ar' ? ft.labelAr : ft.labelEn}
+                          {followType === ft.id && <span className="ms-auto text-primary">✓</span>}
+                        </button>
+                      ))}
+                      <div className="border-t border-gray-100 mt-1 pt-1">
+                        <button
+                          onClick={doUnfollow}
+                          className="w-full text-start px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors"
+                        >
+                          <HeartOff className="w-3.5 h-3.5" />
+                          {t('Unfollow', 'إلغاء المتابعة')}
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p className="px-4 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                        {t('Follow for', 'تابع من أجل')}
+                      </p>
+                      {FOLLOW_TYPES.map(ft => (
+                        <button
+                          key={ft.id}
+                          onClick={() => doFollow(ft.id)}
+                          className="w-full text-start px-4 py-2 text-sm flex items-center gap-2.5 text-gray-700 hover:bg-gray-50 hover:text-primary transition-colors"
+                        >
+                          <span>{ft.icon}</span>
+                          {lang === 'ar' ? ft.labelAr : ft.labelEn}
+                        </button>
+                      ))}
+                    </>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
           {user && (
             <Button variant="outline" onClick={toggleSave} className={`shrink-0 border-gray-300 text-gray-700 hover:bg-gray-50 ${isSaved ? 'text-primary border-primary bg-primary/5' : ''}`}>
               {isSaved ? <BookmarkCheck className="w-4 h-4 me-1.5 text-primary" /> : <Bookmark className="w-4 h-4 me-1.5" />}

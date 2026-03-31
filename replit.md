@@ -45,6 +45,36 @@ Database is seeded with real data:
 
 ---
 
+## Session 8 — Social System, Notifications & CRM (New)
+
+### DB Tables Added
+- `user_notification_prefs` — per-user, per-type notification preferences (enabled, channels CSV)
+- `user_interests` — user interest categories (cuisine, dish_type, event, preference)
+- `user_mutes` — mute users or restaurants from appearing in feed
+- `restaurant_follows.follow_type` — new column: 'all' | 'offers' | 'events' | 'new_dishes' | 'openings'
+
+### API Endpoints Added
+- `GET /api/notifications/preferences` — list all 12 notification types with user's enabled/channel settings
+- `PATCH /api/notifications/preferences` — bulk update notification preferences
+- `GET /api/me/interests` — get user interests with available groups
+- `PUT /api/me/interests` — replace all user interests
+- `GET /api/me/mutes` — list muted users/restaurants (enriched with names)
+- `POST /api/me/mutes/:entityType/:entityId` — mute a user or restaurant
+- `DELETE /api/me/mutes/:entityType/:entityId` — unmute
+- `PATCH /api/restaurants/:id/follow` — update follow type preference
+- `GET /api/analytics/restaurant/:id/overview` — CRM KPIs, booking charts, peak times, follower breakdown
+- `GET /api/analytics/restaurant/:id/customers` — CRM customer list with segments (VIP/repeat/new/at_risk)
+
+### Frontend Changes
+- **NotificationsPage** — "Settings" slide-out panel with 12 notification types grouped into 4 sections, per-type enable/disable toggle + channel picker (in-app/email/SMS/push). "Interests" slide-out panel with 4 interest groups (cuisine, dish type, experiences, preferences) with multi-select chips.
+- **BusinessConsolePage** — New "CRM & Analytics" tab: 8 KPI metric cards, booking-by-day bar chart, peak times list, follower type breakdown, customer segmentation table (VIP/repeat/new/at_risk filter chips), recent bookings with user detail
+- **RestaurantDetailPage** — Follow button now opens a dropdown with 5 follow type options (all/offers/events/new_dishes/openings); when following, shows current preference with checkmark + option to change preference or unfollow
+
+### Notification System Intelligence
+- Notifications list now respects user's disabled notification types (filters them out from synthesis)
+
+---
+
 ## Project Overview
 
 **Tabaq** (طبق) is a comprehensive food and dining platform for the Middle East (primarily Saudi Arabia) with full bilingual Arabic RTL / English LTR support.
