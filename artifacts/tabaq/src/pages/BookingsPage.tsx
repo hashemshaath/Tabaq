@@ -6,7 +6,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getAuthHeaders } from '@/lib/api';
 import {
   CalendarDays, Clock, Users, CheckCircle2, XCircle, AlertCircle,
-  QrCode, ChevronDown, ChevronUp, MapPin, Sparkles, Utensils, Edit2
+  QrCode, ChevronDown, ChevronUp, MapPin, Sparkles, Utensils, Edit2, X,
 } from 'lucide-react';
 import { Link } from 'wouter';
 import { Button } from '@/components/ui/button';
@@ -402,6 +402,321 @@ function ExperienceBookingCard({ booking, lang, t }: {
   );
 }
 
+// ── Table Type Config ──────────────────────────────────────────────────────────
+const TABLE_TYPES = [
+  { id: 'indoor',      labelEn: 'Indoor',       labelAr: 'داخلي',        icon: '🪑', descEn: 'Classic indoor dining',   descAr: 'طعام داخلي كلاسيكي',  bg: 'bg-blue-50 dark:bg-blue-950/20',   ring: 'ring-blue-400',   iconBg: 'bg-blue-100'  },
+  { id: 'outdoor',     labelEn: 'Outdoor',      labelAr: 'خارجي',        icon: '🌿', descEn: 'Fresh air terrace',       descAr: 'تراس في الهواء الطلق', bg: 'bg-green-50 dark:bg-green-950/20', ring: 'ring-green-400',  iconBg: 'bg-green-100' },
+  { id: 'vip',         labelEn: 'VIP Room',     labelAr: 'غرفة VIP',     icon: '👑', descEn: 'Private premium room',    descAr: 'غرفة خاصة فاخرة',      bg: 'bg-amber-50 dark:bg-amber-950/20', ring: 'ring-amber-400',  iconBg: 'bg-amber-100' },
+  { id: 'window_seat', labelEn: 'Window Seat',  labelAr: 'مقعد النافذة', icon: '🌆', descEn: 'Scenic window view',      descAr: 'إطلالة خلابة من النافذة', bg: 'bg-violet-50 dark:bg-violet-950/20', ring: 'ring-violet-400', iconBg: 'bg-violet-100'},
+] as const;
+
+type TableTypeId = typeof TABLE_TYPES[number]['id'];
+
+const CROWD_LEVELS = {
+  low:    { labelEn: 'Low Crowd',    labelAr: 'هادئ',       color: 'text-green-700  bg-green-100',  dot: 'bg-green-500'  },
+  medium: { labelEn: 'Moderate',     labelAr: 'متوسط',      color: 'text-amber-700  bg-amber-100',  dot: 'bg-amber-500'  },
+  busy:   { labelEn: 'Busy',         labelAr: 'مزدحم',      color: 'text-red-700    bg-red-100',    dot: 'bg-red-500'    },
+};
+
+function getCrowdLevel(hour: number): 'low' | 'medium' | 'busy' {
+  if (hour >= 12 && hour <= 14) return 'busy';
+  if (hour >= 19 && hour <= 21) return 'busy';
+  if ((hour >= 11 && hour < 12) || (hour >= 14 && hour < 16) || (hour >= 18 && hour < 19) || (hour >= 21 && hour < 23)) return 'medium';
+  return 'low';
+}
+
+const ALL_TIMES = ['11:00','11:30','12:00','12:30','13:00','13:30','14:00','14:30','15:00','18:00','18:30','19:00','19:30','20:00','20:30','21:00','21:30','22:00'];
+
+function QuickBookPanel({
+  lang, t, restaurants, onClose, onBooked,
+}: {
+  lang: string;
+  t: (en: string, ar: string) => string;
+  restaurants: Array<{ id: number; nameEn: string; nameAr: string }>;
+  onClose: () => void;
+  onBooked: () => void;
+}) {
+  const apiBase = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [restaurantId, setRestaurantId] = useState('');
+  const [partySize, setPartySize] = useState(2);
+  const [tableType, setTableType] = useState<TableTypeId>('indoor');
+  const [dateIdx, setDateIdx] = useState(0);
+  const [time, setTime] = useState('');
+  const [specialRequests, setSpecialRequests] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [booked, setBooked] = useState(false);
+  const [joinedWaitlist, setJoinedWaitlist] = useState(false);
+
+  const dates = useMemo(() => getDatesAhead(14), []);
+  const selectedDate = dates[dateIdx];
+  const dateKey = formatDateKey(selectedDate);
+
+  const { data: crowdData } = useQuery({
+    queryKey: ['crowd', restaurantId, dateKey],
+    queryFn: async () => {
+      if (!restaurantId) return null;
+      const r = await fetch(`${apiBase}/api/restaurants/${restaurantId}/crowd-prediction?date=${dateKey}`, { headers: getAuthHeaders() });
+      return r.ok ? r.json() : null;
+    },
+    enabled: !!restaurantId && !!dateKey,
+    staleTime: 60000,
+  });
+
+  const { data: suggestedData } = useQuery({
+    queryKey: ['suggested-times', restaurantId, dateKey, partySize],
+    queryFn: async () => {
+      if (!restaurantId) return null;
+      const r = await fetch(`${apiBase}/api/restaurants/${restaurantId}/suggested-times?date=${dateKey}&partySize=${partySize}`, { headers: getAuthHeaders() });
+      return r.ok ? r.json() : null;
+    },
+    enabled: !!restaurantId && !!dateKey,
+    staleTime: 60000,
+  });
+
+  const suggestedTimes: string[] = suggestedData?.suggestedTimes ?? ['19:00', '19:30', '20:00'];
+
+  const handleBook = async () => {
+    if (!restaurantId || !time) return;
+    setSubmitting(true);
+    try {
+      const r = await fetch(`${apiBase}/api/bookings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({
+          restaurantId: Number(restaurantId),
+          date: dateKey,
+          time,
+          partySize,
+          tableType,
+          specialRequests: specialRequests || undefined,
+        }),
+      });
+      if (r.ok) { setBooked(true); setTimeout(() => { onBooked(); onClose(); }, 1800); }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleWaitlist = async () => {
+    if (!restaurantId || !time) return;
+    await fetch(`${apiBase}/api/waitlist`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+      body: JSON.stringify({ restaurantId: Number(restaurantId), date: dateKey, time, partySize }),
+    });
+    setJoinedWaitlist(true);
+  };
+
+  if (booked) {
+    return (
+      <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 rounded-2xl p-8 text-center">
+        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+          <CheckCircle2 className="w-8 h-8 text-green-600" />
+        </div>
+        <h3 className="font-bold text-lg text-green-900 dark:text-green-100">{t('Reservation Confirmed!', 'تم تأكيد الحجز!')}</h3>
+        <p className="text-sm text-green-700 dark:text-green-300 mt-1">{t('Check your bookings below.', 'راجع حجوزاتك أدناه.')}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
+      {/* Panel header */}
+      <div className="bg-primary/5 border-b border-border px-5 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <CalendarDays className="w-5 h-5 text-primary" />
+          <h2 className="font-bold text-base">{t('New Reservation', 'حجز جديد')}</h2>
+        </div>
+        <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors">
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      <div className="p-5 space-y-6">
+        {/* Step 1: Restaurant + Basics */}
+        <div className="space-y-4">
+          <p className="text-xs font-bold text-primary uppercase tracking-wide">{t('Step 1 — Basics', 'الخطوة ١ — الأساسيات')}</p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">{t('Restaurant', 'المطعم')}</label>
+              <select
+                value={restaurantId}
+                onChange={e => setRestaurantId(e.target.value)}
+                className="w-full border border-border rounded-xl px-3 py-2.5 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+              >
+                <option value="">{t('-- Choose restaurant --', '-- اختر مطعماً --')}</option>
+                {restaurants.map(r => (
+                  <option key={r.id} value={r.id}>{lang === 'ar' ? r.nameAr : r.nameEn}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">{t('Guests', 'عدد الأشخاص')}</label>
+              <div className="flex items-center gap-2 border border-border rounded-xl px-3 py-2 bg-background">
+                <button onClick={() => setPartySize(p => Math.max(1, p - 1))} className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center hover:bg-secondary/80 font-bold text-lg">−</button>
+                <span className="flex-1 text-center font-bold text-base">{partySize}</span>
+                <button onClick={() => setPartySize(p => Math.min(20, p + 1))} className="w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center hover:bg-primary/90 font-bold text-lg">+</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Step 2: Table Type Cards */}
+        <div className="space-y-3">
+          <p className="text-xs font-bold text-primary uppercase tracking-wide">{t('Step 2 — Table Preference', 'الخطوة ٢ — تفضيل الطاولة')}</p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {TABLE_TYPES.map(tt => {
+              const selected = tableType === tt.id;
+              return (
+                <button
+                  key={tt.id}
+                  onClick={() => setTableType(tt.id)}
+                  className={`flex flex-col items-center text-center p-3 rounded-2xl border-2 transition-all ${selected ? `${tt.ring} ring-2 border-transparent ${tt.bg}` : 'border-border hover:border-primary/30 bg-background'}`}
+                >
+                  <div className={`w-10 h-10 ${tt.iconBg} rounded-xl flex items-center justify-center text-xl mb-2`}>{tt.icon}</div>
+                  <p className="text-xs font-bold leading-tight">{t(tt.labelEn, tt.labelAr)}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight">{t(tt.descEn, tt.descAr)}</p>
+                  {selected && <div className="mt-1.5 w-4 h-4 rounded-full bg-primary flex items-center justify-center"><CheckCircle2 className="w-3 h-3 text-white" /></div>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Step 3: Date + Time + Crowd */}
+        <div className="space-y-4">
+          <p className="text-xs font-bold text-primary uppercase tracking-wide">{t('Step 3 — Date & Time', 'الخطوة ٣ — التاريخ والوقت')}</p>
+
+          {/* Date strip */}
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground mb-2 block">{t('Pick a Date', 'اختر تاريخاً')}</label>
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {dates.slice(0, 10).map((d, i) => {
+                const isSelected = i === dateIdx;
+                const isWeekend = d.getDay() === 4 || d.getDay() === 5;
+                return (
+                  <button
+                    key={i}
+                    onClick={() => { setDateIdx(i); setTime(''); }}
+                    className={`shrink-0 flex flex-col items-center w-14 py-2 rounded-xl border text-center transition-all ${isSelected ? 'bg-primary text-white border-primary' : `border-border bg-background hover:border-primary/40 ${isWeekend ? 'bg-amber-50/50' : ''}`}`}
+                  >
+                    <span className="text-[10px] font-semibold uppercase">{d.toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'en', { weekday: 'short' })}</span>
+                    <span className="text-lg font-bold leading-tight">{d.getDate()}</span>
+                    <span className="text-[9px] opacity-70">{d.toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'en', { month: 'short' })}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* AI Suggested times banner */}
+          {suggestedTimes.length > 0 && (
+            <div className="bg-violet-50 dark:bg-violet-950/20 border border-violet-200 dark:border-violet-800 rounded-xl p-3 flex items-start gap-2">
+              <Sparkles className="w-4 h-4 text-violet-600 mt-0.5 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-violet-800 dark:text-violet-200 mb-1.5">{t('AI Recommended Times', 'الأوقات المقترحة')}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {suggestedTimes.map(st => (
+                    <button key={st} onClick={() => setTime(st)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-all ${time === st ? 'bg-violet-600 text-white border-violet-600' : 'border-violet-300 text-violet-700 bg-white dark:bg-violet-900/20 hover:bg-violet-100'}`}>
+                      {st}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* All time slots with crowd indicator */}
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground mb-2 block">{t('All Available Times', 'جميع الأوقات المتاحة')}</label>
+            <div className="flex flex-wrap gap-2">
+              {ALL_TIMES.map(tm => {
+                const hour = parseInt(tm);
+                const crowd = getCrowdLevel(hour);
+                const cl = CROWD_LEVELS[crowd];
+                const isSelected = time === tm;
+                const isSuggested = suggestedTimes.includes(tm);
+                return (
+                  <button key={tm} onClick={() => setTime(tm)}
+                    className={`relative flex flex-col items-center px-3 py-2 rounded-xl border text-xs font-semibold transition-all ${isSelected ? 'bg-primary text-white border-primary shadow-sm' : 'border-border bg-background hover:border-primary/40'} ${isSuggested && !isSelected ? 'border-violet-300' : ''}`}>
+                    <span>{tm}</span>
+                    {!isSelected && (
+                      <div className={`flex items-center gap-0.5 mt-0.5`}>
+                        <div className={`w-1.5 h-1.5 rounded-full ${cl.dot}`} />
+                        <span className="text-[8px] text-muted-foreground">{crowd === 'low' ? t('Low', 'هادئ') : crowd === 'medium' ? t('Mod', 'متوسط') : t('Busy', 'مزدحم')}</span>
+                      </div>
+                    )}
+                    {isSuggested && !isSelected && (
+                      <div className="absolute -top-1 -end-1 w-3 h-3 rounded-full bg-violet-500 flex items-center justify-center">
+                        <Sparkles className="w-2 h-2 text-white" />
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Crowd prediction summary for selected time */}
+          {time && (
+            <div className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold ${CROWD_LEVELS[getCrowdLevel(parseInt(time))].color}`}>
+              <div className={`w-2 h-2 rounded-full ${CROWD_LEVELS[getCrowdLevel(parseInt(time))].dot} shrink-0`} />
+              {t(`${getCrowdLevel(parseInt(time)) === 'low' ? 'Low crowd expected' : getCrowdLevel(parseInt(time)) === 'medium' ? 'Moderate crowd expected' : 'Busy time — consider a different slot'}`,
+                `${getCrowdLevel(parseInt(time)) === 'low' ? 'يُتوقع هدوء' : getCrowdLevel(parseInt(time)) === 'medium' ? 'ازدحام متوسط متوقع' : 'وقت مزدحم — جرّب وقتاً آخر'}`)}
+            </div>
+          )}
+
+          {/* Special requests */}
+          {time && restaurantId && (
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">{t('Special Requests (optional)', 'طلبات خاصة (اختياري)')}</label>
+              <input
+                value={specialRequests}
+                onChange={e => setSpecialRequests(e.target.value)}
+                placeholder={t('e.g. Window seat, birthday cake, high chair...', 'مثال: مقعد نافذة، كعكة عيد ميلاد...')}
+                className="w-full border border-border rounded-xl px-3 py-2.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="pt-2 space-y-2">
+          <Button
+            className="w-full h-12 text-sm font-bold rounded-xl"
+            disabled={!restaurantId || !time || submitting}
+            onClick={handleBook}
+          >
+            {submitting ? (
+              <div className="flex items-center gap-2"><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />{t('Booking...', 'جاري الحجز...')}</div>
+            ) : (
+              <>{t('Confirm Reservation', 'تأكيد الحجز')} {tableType && `· ${TABLE_TYPES.find(tt => tt.id === tableType)?.icon}`}</>
+            )}
+          </Button>
+
+          {time && getCrowdLevel(parseInt(time)) === 'busy' && !joinedWaitlist && (
+            <button onClick={handleWaitlist}
+              className="w-full h-10 rounded-xl border border-border text-sm font-semibold text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors flex items-center justify-center gap-2">
+              <Users className="w-4 h-4" />
+              {t('Join Waitlist Instead', 'الانضمام لقائمة الانتظار')}
+            </button>
+          )}
+
+          {joinedWaitlist && (
+            <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-4 py-2.5 text-sm font-semibold text-green-800">
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+              {t("You're on the waitlist! We'll notify you if a table opens up.", "أنت في قائمة الانتظار! سنُعلمك عند توفر طاولة.")}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const MOCK_BOOKINGS: Booking[] = [
   {
     id: 101, restaurantId: 3, restaurantNameEn: 'Nobu Riyadh', restaurantNameAr: 'نوبو الرياض',
@@ -446,7 +761,17 @@ export function BookingsPage() {
   const queryClient = useQueryClient();
   const [mainTab, setMainTab] = useState<'restaurants' | 'experiences'>('restaurants');
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
+  const [showQuickBook, setShowQuickBook] = useState(false);
   const apiBase = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
+
+  const { data: restaurantsData } = useQuery({
+    queryKey: ['all-restaurants-for-booking'],
+    queryFn: async () => {
+      const r = await fetch(`${apiBase}/api/restaurants?limit=50`);
+      return r.ok ? r.json() : { restaurants: [] };
+    },
+    staleTime: 120000,
+  });
 
   const { data, isLoading } = useListBookings({ limit: 50, offset: 0 }, {
     query: { queryKey: ['bookings'] },
@@ -513,17 +838,31 @@ export function BookingsPage() {
               <h1 className="text-3xl font-extrabold text-foreground">{t('My Bookings', 'حجوزاتي')}</h1>
               <p className="text-muted-foreground mt-1">{t('Table reservations and experience bookings', 'حجوزات الطاولات والتجارب')}</p>
             </div>
-            <Link href="/restaurants">
-              <Button className="gap-2 shrink-0" size="sm">
-                <CalendarDays className="w-4 h-4" />
-                {t('Book a Table', 'احجز طاولة')}
-              </Button>
-            </Link>
+            <Button className="gap-2 shrink-0" size="sm" onClick={() => setShowQuickBook(v => !v)}>
+              <CalendarDays className="w-4 h-4" />
+              {showQuickBook ? t('Close', 'إغلاق') : t('New Reservation', 'حجز جديد')}
+            </Button>
           </div>
         </div>
       </div>
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
+        {/* Quick Book Panel */}
+        {showQuickBook && (
+          <div className="mb-6">
+            <QuickBookPanel
+              lang={lang}
+              t={t}
+              restaurants={restaurantsData?.restaurants ?? restaurantsData ?? []}
+              onClose={() => setShowQuickBook(false)}
+              onBooked={() => {
+                queryClient.invalidateQueries({ queryKey: ['bookings'] });
+                setShowQuickBook(false);
+              }}
+            />
+          </div>
+        )}
+
         {/* Main Type Tabs */}
         <div className="flex gap-1 p-1 bg-secondary/40 rounded-2xl mb-6">
           <button

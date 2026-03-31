@@ -517,3 +517,25 @@ Rich mock data for all 6 new sections: MOCK_CHECK_INS (5 visits), MOCK_REVIEWS (
 - Leaderboard API (`users.ts`): `username` now included in both all-time and period-based responses
 - `LeaderboardPage.tsx`: `username` mapped from API; top-3 cards and "Rising Explorers" list now have clickable avatars + names → `/user/:username`
 - PublicProfilePage social links (Instagram/X/TikTok/Snapchat/Website) were already implemented
+
+---
+
+## Session 12 — Final Feature Completion
+
+### T003 Complete: BookingsPage QuickBookPanel
+- `BookingsPage.tsx`: Full inline `QuickBookPanel` component with step-by-step flow
+  - **Table Type Cards**: Indoor 🪑 / Outdoor 🌿 / VIP Room 👑 / Window Seat 🌆 — visual cards with ring highlight on selection
+  - **Date Strip**: 10-day scrollable date bar with weekday + date + month labels
+  - **AI Suggested Times**: Purple "Sparkles" banner with recommended time chips (from `/api/restaurants/:id/suggested-times`); star overlay on all-times grid
+  - **Crowd Prediction**: Per-slot `getCrowdLevel(hour)` indicator (Low/Moderate/Busy) with colored dot + label; busy warning banner when selected slot is peak time
+  - **Waitlist**: "Join Waitlist Instead" button appears when a busy slot is selected; POSTs to `/api/waitlist`; success confirmation
+  - **Special Requests**: Optional text input appears once restaurant + time selected
+  - **Confirm Button**: POSTs to `/api/bookings` with `restaurantId`, `date`, `time`, `partySize`, `tableType`, `specialRequests`; shows success state + invalidates bookings query
+  - **Toggle**: "New Reservation" header button opens/closes the panel inline; "حجز جديد" in AR
+
+### T005 Complete: Blog API Integration Fixed
+- `BlogPage.tsx`: `normalizedApiPosts` now maps `categoryNameEn/Ar` → `categoryEn/Ar`, `authorNameEn/Ar` → `authorName/authorAr`, `coverImageUrl` → `coverImage`, adds `trending` threshold at 500 views
+- `BlogDetailPage.tsx`: Fixed API response parsing — API returns `{ post, related }`, was incorrectly spreading root object; now extracts `rawApiPost.post` properly; `relatedPosts` array wired to related posts grid with API-first fallback to `RELATED_POSTS`; `formatDate()` now guard-checks for empty/invalid dates; `publishedAt` uses raw ISO string for localization (Hijri date in AR locale)
+
+### Blog Routes in DB (11 posts)
+- `top-10-fine-dining-riyadh-2026`, `saudi-coffee-culture-guide`, `chef-kareem-interview-2026`, `explore-jeddah-waterfront-dining`, `ramadan-iftar-top-spots`, `new-restaurant-openings-q1-2026`, `riyadh-hidden-gems-2026`, `best-street-food-jeddah`, `vegan-friendly-restaurants-saudi`, `halal-fine-dining-comparison`, `cooking-classes-riyadh` — all `status='published'`

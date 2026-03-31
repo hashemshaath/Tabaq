@@ -85,7 +85,9 @@ const RELATED_POSTS = [
 ];
 
 function formatDate(dateStr: string, lang: string) {
+  if (!dateStr) return '';
   const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return dateStr;
   return date.toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 }
 
@@ -106,19 +108,26 @@ export function BlogDetailPage() {
     enabled: !!slug,
   });
 
-  const apiPost = rawApiPost ? {
-    ...rawApiPost,
-    coverImage: rawApiPost.coverImageUrl ?? rawApiPost.coverImage ?? 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1200&h=600&fit=crop',
-    authorName: rawApiPost.authorNameEn ?? rawApiPost.authorName ?? 'Tabaq Editorial',
-    authorAr: rawApiPost.authorNameAr ?? rawApiPost.authorAr ?? 'فريق طبق التحريري',
-    authorAvatar: rawApiPost.authorAvatar ?? 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=100&q=80',
-    authorBioEn: rawApiPost.authorBioEn ?? 'Member of the Tabaq editorial team, passionate about discovering the best dining experiences across the Arab world.',
-    authorBioAr: rawApiPost.authorBioAr ?? 'عضو في فريق طبق التحريري، شغوف باكتشاف أفضل تجارب تناول الطعام في العالم العربي.',
-    readTimeEn: `${rawApiPost.readTimeMinutes ?? 5} min read`,
-    readTimeAr: `${rawApiPost.readTimeMinutes ?? 5} دقائق قراءة`,
-    publishedAt: rawApiPost.publishedAt ? new Date(rawApiPost.publishedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : rawApiPost.publishedAt,
-    tags: Array.isArray(rawApiPost.tags) ? rawApiPost.tags : [],
-    content: lang === 'ar' ? (rawApiPost.contentAr ?? rawApiPost.content ?? '') : (rawApiPost.contentEn ?? rawApiPost.content ?? ''),
+  const rawPost = rawApiPost?.post ?? rawApiPost;
+  const relatedPosts: any[] = rawApiPost?.related ?? [];
+
+  const apiPost = rawPost ? {
+    ...rawPost,
+    coverImage: rawPost.coverImageUrl ?? rawPost.coverImage ?? 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1200&h=600&fit=crop',
+    titleEn: rawPost.titleEn ?? rawPost.title ?? '',
+    titleAr: rawPost.titleAr ?? rawPost.title ?? '',
+    categoryEn: rawPost.categoryNameEn ?? rawPost.categoryEn ?? '',
+    categoryAr: rawPost.categoryNameAr ?? rawPost.categoryAr ?? '',
+    authorName: rawPost.authorNameEn ?? rawPost.authorName ?? 'Tabaq Editorial',
+    authorAr: rawPost.authorNameAr ?? rawPost.authorAr ?? 'فريق طبق التحريري',
+    authorAvatar: rawPost.authorAvatarUrl ?? rawPost.authorAvatar ?? `https://i.pravatar.cc/60?u=${rawPost.authorId ?? 1}`,
+    authorBioEn: rawPost.authorBioEn ?? 'Member of the Tabaq editorial team, passionate about discovering the best dining experiences across the Arab world.',
+    authorBioAr: rawPost.authorBioAr ?? 'عضو في فريق طبق التحريري، شغوف باكتشاف أفضل تجارب تناول الطعام في العالم العربي.',
+    readTimeEn: `${rawPost.readTimeMinutes ?? 5} min read`,
+    readTimeAr: `${rawPost.readTimeMinutes ?? 5} دقائق قراءة`,
+    publishedAt: rawPost.publishedAt ?? rawPost.createdAt ?? '',
+    tags: Array.isArray(rawPost.tags) ? rawPost.tags : [],
+    content: lang === 'ar' ? (rawPost.contentAr ?? rawPost.content ?? '') : (rawPost.contentEn ?? rawPost.content ?? ''),
   } : null;
 
   const post = apiPost ?? SAMPLE_POSTS[slug] ?? SAMPLE_POSTS['best-restaurants-riyadh-2025'];
@@ -312,30 +321,48 @@ export function BlogDetailPage() {
         </div>
 
         {/* Related Posts */}
-        <div className="mt-16">
-          <h2 className="text-xl font-black text-foreground mb-6">{t('Related Articles', 'مقالات ذات صلة')}</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-            {RELATED_POSTS.filter(p => p.slug !== slug).slice(0, 3).map(related => (
-              <Link key={related.id} href={`/blog/${related.slug}`}>
-                <div className="group cursor-pointer rounded-2xl overflow-hidden border border-border/60 hover:border-primary/30 hover:shadow-lg transition-all">
-                  <div className="aspect-[16/9] overflow-hidden">
-                    <img src={related.coverImage} alt={lang === 'ar' ? related.titleAr : related.titleEn} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                  </div>
-                  <div className="p-4">
-                    <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-semibold">{t(related.categoryEn, related.categoryAr)}</span>
-                    <h4 className="font-bold text-foreground text-sm mt-2 line-clamp-2 group-hover:text-primary transition-colors leading-tight">
-                      {lang === 'ar' ? related.titleAr : related.titleEn}
-                    </h4>
-                    <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      {lang === 'ar' ? related.readTimeAr : related.readTimeEn}
-                    </p>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
+        {(() => {
+          const normalizedRelated = relatedPosts.length > 0
+            ? relatedPosts.map((r: any) => ({
+                id: r.id,
+                slug: r.slug,
+                titleEn: r.titleEn ?? r.title ?? '',
+                titleAr: r.titleAr ?? r.title ?? '',
+                categoryEn: r.categoryNameEn ?? r.categoryEn ?? '',
+                categoryAr: r.categoryNameAr ?? r.categoryAr ?? '',
+                coverImage: r.coverImageUrl ?? r.coverImage ?? 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=600&q=80',
+                readTimeEn: `${r.readTimeMinutes ?? 5} min read`,
+                readTimeAr: `${r.readTimeMinutes ?? 5} دقائق قراءة`,
+              }))
+            : RELATED_POSTS.filter(p => p.slug !== slug);
+          if (!normalizedRelated.length) return null;
+          return (
+            <div className="mt-16">
+              <h2 className="text-xl font-black text-foreground mb-6">{t('Related Articles', 'مقالات ذات صلة')}</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                {normalizedRelated.slice(0, 3).map(related => (
+                  <Link key={related.id} href={`/blog/${related.slug}`}>
+                    <div className="group cursor-pointer rounded-2xl overflow-hidden border border-border/60 hover:border-primary/30 hover:shadow-lg transition-all">
+                      <div className="aspect-[16/9] overflow-hidden">
+                        <img src={related.coverImage} alt={lang === 'ar' ? related.titleAr : related.titleEn} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                      </div>
+                      <div className="p-4">
+                        <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-semibold">{t(related.categoryEn, related.categoryAr)}</span>
+                        <h4 className="font-bold text-foreground text-sm mt-2 line-clamp-2 group-hover:text-primary transition-colors leading-tight">
+                          {lang === 'ar' ? related.titleAr : related.titleEn}
+                        </h4>
+                        <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {lang === 'ar' ? related.readTimeAr : related.readTimeEn}
+                        </p>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Back to Blog */}
         <div className="mt-12 text-center">

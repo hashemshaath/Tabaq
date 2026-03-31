@@ -1,0 +1,203 @@
+You are a senior product engineer (ex-Facebook / Instagram level).
+
+Your task is to UNIFY and UPGRADE the user profile system with a professional username structure, dual-level profiles (basic & professional), and advanced profile features.
+
+========================
+
+1. USERNAME SYSTEM (UNIFIED)
+   ========================
+   Implement a global username system:
+
+Rules:
+
+* Every user (normal or chef) has ONE unique username
+* Profile URL format:
+  https://tabaq.co/:username
+
+Requirements:
+
+* Enforce uniqueness
+* Redirect all profile links to this format
+* Clicking any username opens:
+  /:username
+
+Validation:
+
+* 4–20 characters
+* Letters, numbers, underscore only
+* No spaces
+* Case insensitive
+
+========================
+2. PROFILE LEVELS
+=================
+
+Create two profile types:
+
+A) BASIC USER:
+
+* Profile photo
+* Username
+* Bio (short)
+* Visits
+* Reviews
+* Favorites
+* Followers / Following
+
+B) PROFESSIONAL USER (Chef / Creator):
+Includes everything in basic PLUS:
+
+* Extended bio (detailed)
+* Chef profile (experience, specialization)
+* Dishes created
+* Ability to showcase dishes
+* Request/order dishes (UI simulation)
+* Professional dashboard data:
+
+  * Stats (orders, followers, ratings)
+  * Performance insights
+
+Display:
+
+* Show account type under name:
+
+  * "Basic User"
+  * "Professional"
+
+========================
+3. PROFILE PAGE (ADVANCED UI)
+=============================
+
+Rebuild profile page:
+
+Header:
+
+* Cover image
+* Profile image
+* Username
+* Account type label
+* Bio
+* Social links
+
+Stats:
+
+* Followers
+* Following
+* Reviews
+* Visits
+
+Buttons:
+
+* Follow / Unfollow
+* Share profile
+
+Tabs:
+
+* Overview
+* Visits
+* Reviews
+* Favorites
+* Dishes (for professionals)
+* Plans
+* Recommendations
+
+========================
+4. STORIES SYSTEM (IMPORTANT)
+=============================
+
+Implement story feature:
+
+* Users can upload stories (image/video)
+* Stories appear as circles above profile
+* Auto-expire after 24h (mock)
+* View stories UI (like Instagram)
+
+========================
+5. PROFILE MENU (UI IMPROVEMENT)
+================================
+
+Improve user menu:
+
+* Clean dropdown design
+* Show profile image + username
+* Quick links:
+
+  * My profile
+  * Settings
+  * Favorites
+  * Logout
+
+========================
+6. EDIT PROFILE
+===============
+
+Allow full editing:
+
+* Profile image
+* Cover image
+* Bio
+* Social links
+* Privacy settings
+* Account type upgrade (basic → professional)
+
+========================
+7. VISIBILITY & PRIVACY
+=======================
+
+* Public / Followers / Private
+* Control visibility of:
+
+  * Visits
+  * Reviews
+  * Favorites
+
+========================
+8. CLICK BEHAVIOR
+=================
+
+Ensure:
+
+* Clicking ANY username → opens profile page
+* Clicking reviewers → opens their profile
+* Clicking chefs → opens professional profile
+
+========================
+9. UX & DESIGN
+==============
+
+* Premium UI (Instagram + Zomato style)
+* Smooth animations
+* Clean layout
+* Reduced border radius (6–8px)
+* IBM Plex Sans Arabic font
+* RTL support
+
+========================
+10. PERFORMANCE
+===============
+
+* Lazy load profile sections
+* Optimize images
+* Fast navigation
+
+========================
+11. OUTPUT
+==========
+
+* Full working code
+* Clean structure
+* All features connected
+* Ready to run
+
+========================
+FINAL GOAL
+==========
+
+Create a unified, scalable, and premium user profile system where:
+
+* Every user has a unique public identity (username URL)
+* Profiles support both basic and professional levels
+* Rich social features (stories, follows, reviews)
+* Professional creators (chefs) can showcase their work
+
+The experience must feel like a mix of Instagram, Facebook, and a professional food platform.

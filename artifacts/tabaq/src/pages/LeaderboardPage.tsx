@@ -235,12 +235,12 @@ export function LeaderboardPage() {
                     <div className={`w-10 text-center shrink-0 ${medalColors[index]}`}>
                       <Medal className="w-8 h-8 mx-auto" />
                     </div>
-                    <Link href={entry.username ? `/user/${entry.username}` : '#'}>
+                    <Link href={entry.username ? `/${entry.username}` : '#'}>
                       <img src={entry.avatar} alt={lang === 'ar' ? entry.nameAr : entry.nameEn} className="w-12 h-12 rounded-full object-cover shrink-0 border-2 border-white shadow hover:opacity-80 transition-opacity cursor-pointer" />
                     </Link>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
-                        <Link href={entry.username ? `/user/${entry.username}` : '#'}>
+                        <Link href={entry.username ? `/${entry.username}` : '#'}>
                           <p className="font-extrabold text-foreground truncate hover:text-primary transition-colors cursor-pointer">{lang === 'ar' ? entry.nameAr : entry.nameEn}</p>
                         </Link>
                         <span className="text-base shrink-0">{entry.badge}</span>
@@ -301,7 +301,7 @@ export function LeaderboardPage() {
                       <div className="w-8 text-center shrink-0">
                         <span className="text-sm font-black text-muted-foreground">#{entry.rank}</span>
                       </div>
-                      <Link href={entry.username ? `/user/${entry.username}` : '#'} className="relative shrink-0">
+                      <Link href={entry.username ? `/${entry.username}` : '#'} className="relative shrink-0">
                         <img src={entry.avatar} alt={lang === 'ar' ? entry.nameAr : entry.nameEn} className="w-11 h-11 rounded-full object-cover border border-border hover:opacity-80 transition-opacity" />
                         {entry.trending && (
                           <div className="absolute -top-1 -end-1 w-4 h-4 bg-orange-500 rounded-full flex items-center justify-center">
@@ -311,7 +311,7 @@ export function LeaderboardPage() {
                       </Link>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1">
-                          <Link href={entry.username ? `/user/${entry.username}` : '#'}>
+                          <Link href={entry.username ? `/${entry.username}` : '#'}>
                             <p className="font-semibold text-foreground text-sm truncate hover:text-primary transition-colors cursor-pointer">{lang === 'ar' ? entry.nameAr : entry.nameEn}</p>
                           </Link>
                           <span className="text-sm shrink-0">{entry.badge}</span>

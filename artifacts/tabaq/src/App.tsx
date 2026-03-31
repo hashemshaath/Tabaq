@@ -115,6 +115,8 @@ function Router() {
               <Route path="/about" component={AboutPage} />
               <Route path="/faq" component={FAQPage} />
               <Route path="/contact" component={ContactPage} />
+              {/* Unified /:username catch-all — must be last before NotFound */}
+              <Route path="/:username" component={PublicProfilePage} />
               <Route component={NotFound} />
             </Switch>
           </main>
