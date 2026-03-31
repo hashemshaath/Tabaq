@@ -7,6 +7,7 @@
     "hello": "tsx ./src/hello.ts",
     "seed": "tsx ./src/seed.ts",
     "seed-blog": "tsx ./src/seed-blog.ts",
+    "seed-dishes": "tsx ./src/seed-dishes.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
