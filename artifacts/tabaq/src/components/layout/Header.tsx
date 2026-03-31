@@ -322,19 +322,39 @@ export function Header() {
               {userMenuOpen && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setUserMenuOpen(false)} />
-                  <div className="absolute end-0 top-12 z-50 bg-popover border border-border rounded-2xl shadow-xl py-2 w-56 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="absolute end-0 top-12 z-50 bg-popover border border-border rounded-2xl shadow-xl py-2 w-64 animate-in fade-in zoom-in-95 duration-150">
 
-                    <div className="px-4 py-2 border-b border-border mb-1">
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("My Account", "حسابي")}</p>
+                    {/* Profile mini-card */}
+                    <div className="px-4 py-3 border-b border-border mb-1">
+                      <Link href={(user as any).username ? `/${(user as any).username}` : '/dashboard'} onClick={() => setUserMenuOpen(false)}>
+                        <div className="flex items-center gap-3 hover:opacity-80 transition-opacity cursor-pointer">
+                          <div className="w-11 h-11 rounded-full bg-primary/20 shrink-0 overflow-hidden ring-2 ring-primary/20">
+                            {(user as any).avatarUrl ? (
+                              <img src={(user as any).avatarUrl} alt={displayName || ""} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <User className="w-5 h-5 text-primary" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-bold text-foreground text-sm leading-tight truncate">{displayName}</p>
+                            {(user as any).username && (
+                              <p className="text-xs text-muted-foreground truncate">@{(user as any).username}</p>
+                            )}
+                            <p className="text-[10px] text-primary font-semibold mt-0.5">{t("View Profile →", "عرض الملف ←")}</p>
+                          </div>
+                        </div>
+                      </Link>
                     </div>
 
                     <Link href="/dashboard" className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors" onClick={() => setUserMenuOpen(false)}>
                       <div className="w-7 h-7 bg-primary/10 rounded-lg flex items-center justify-center">
-                        <User className="w-3.5 h-3.5 text-primary" />
+                        <BarChart3 className="w-3.5 h-3.5 text-primary" />
                       </div>
                       <div>
                         <p className="font-semibold text-foreground leading-none">{t("My Dashboard", "لوحتي")}</p>
-                        <p className="text-xs text-muted-foreground">{t("Profile, points & history", "الملف والنقاط والتاريخ")}</p>
+                        <p className="text-xs text-muted-foreground">{t("Points & history", "النقاط والتاريخ")}</p>
                       </div>
                     </Link>
 

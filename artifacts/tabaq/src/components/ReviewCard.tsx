@@ -27,6 +27,7 @@ type ExtendedReview = Review & {
   ratingTechnique?: number | string | null;
   ratingCreativity?: number | string | null;
   ratingPortionSize?: number | string | null;
+  userUsername?: string | null;
 };
 
 interface ReviewCardProps {
@@ -183,17 +184,35 @@ export function ReviewCard({ review, showTarget = false, onDelete }: ReviewCardP
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3">
-          {/* Avatar */}
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 overflow-hidden ${review.isExpertReview ? 'bg-amber-100 ring-2 ring-amber-300' : 'bg-primary/15'}`}>
-            {review.userAvatarUrl ? (
-              <img src={review.userAvatarUrl} alt={userName} className="w-full h-full object-cover" />
-            ) : (
-              <span className={`font-bold text-sm ${review.isExpertReview ? 'text-amber-700' : 'text-primary'}`}>{(userName || 'U')[0].toUpperCase()}</span>
-            )}
-          </div>
+          {/* Avatar — clickable if username known */}
+          {review.userUsername ? (
+            <Link href={`/${review.userUsername}`}>
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 overflow-hidden cursor-pointer hover:opacity-80 transition-opacity ${review.isExpertReview ? 'bg-amber-100 ring-2 ring-amber-300' : 'bg-primary/15'}`}>
+                {review.userAvatarUrl ? (
+                  <img src={review.userAvatarUrl} alt={userName} className="w-full h-full object-cover" />
+                ) : (
+                  <span className={`font-bold text-sm ${review.isExpertReview ? 'text-amber-700' : 'text-primary'}`}>{(userName || 'U')[0].toUpperCase()}</span>
+                )}
+              </div>
+            </Link>
+          ) : (
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 overflow-hidden ${review.isExpertReview ? 'bg-amber-100 ring-2 ring-amber-300' : 'bg-primary/15'}`}>
+              {review.userAvatarUrl ? (
+                <img src={review.userAvatarUrl} alt={userName} className="w-full h-full object-cover" />
+              ) : (
+                <span className={`font-bold text-sm ${review.isExpertReview ? 'text-amber-700' : 'text-primary'}`}>{(userName || 'U')[0].toUpperCase()}</span>
+              )}
+            </div>
+          )}
           <div>
             <div className="flex items-center gap-1.5 flex-wrap">
-              <p className="font-semibold text-foreground text-sm">{userName}</p>
+              {review.userUsername ? (
+                <Link href={`/${review.userUsername}`}>
+                  <span className="font-semibold text-foreground text-sm hover:text-primary transition-colors cursor-pointer">{userName}</span>
+                </Link>
+              ) : (
+                <p className="font-semibold text-foreground text-sm">{userName}</p>
+              )}
               {review.isExpertReview && (
                 <span className="flex items-center gap-1 bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-md text-xs font-bold border border-amber-200">
                   <Award className="w-3 h-3" />

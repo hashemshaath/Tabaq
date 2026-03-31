@@ -20,6 +20,7 @@ async function enrichReview(review: ReviewRow, viewerUserId: number | null) {
     level: usersTable.level,
     levelTitle: usersTable.levelTitle,
     credibilityScore: usersTable.credibilityScore,
+    username: usersTable.username,
   }).from(usersTable).where(eq(usersTable.id, review.userId));
 
   const photos = await db.select({ photoUrl: reviewPhotosTable.photoUrl })
@@ -69,6 +70,7 @@ async function enrichReview(review: ReviewRow, viewerUserId: number | null) {
     userLevel: user?.level ?? 1,
     userLevelTitle: user?.levelTitle ?? "Food Explorer",
     userIsVerified: isVerified,
+    userUsername: user?.username ?? null,
     photoUrls: photos.map(p => p.photoUrl),
     isLiked,
     restaurantNameEn,

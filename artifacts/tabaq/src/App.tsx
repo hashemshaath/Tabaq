@@ -50,6 +50,7 @@ import { JoinPage } from "@/pages/JoinPage";
 import { ChefsPage } from "@/pages/ChefsPage";
 import { ChefDetailPage } from "@/pages/ChefDetailPage";
 import { PublicProfilePage } from "@/pages/PublicProfilePage";
+import { EditProfilePage } from "@/pages/EditProfilePage";
 import { BlogPage } from "@/pages/BlogPage";
 import { BlogDetailPage } from "@/pages/BlogDetailPage";
 
@@ -107,6 +108,7 @@ function Router() {
               <Route path="/michelin" component={MichelinPage} />
               <Route path="/experiences" component={ExperiencesPage} />
               <Route path="/experiences/:id" component={ExperienceDetailPage} />
+              <Route path="/edit-profile" component={EditProfilePage} />
               <Route path="/blog/:slug" component={BlogDetailPage} />
               <Route path="/blog" component={BlogPage} />
               <Route path="/gift-redeem/:code" component={GiftRedeemPage} />

@@ -63,6 +63,140 @@ function fmtNum(n: number): string {
   return String(n);
 }
 
+// ── Stories system ─────────────────────────────────────────────────────────────
+type UserStory = {
+  id: number;
+  image: string;
+  caption: string;
+  captionAr: string;
+  timeAgo: string;
+  seen: boolean;
+};
+
+function generateStories(userId: number): UserStory[] {
+  const foods = [
+    { img: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&q=80', en: "Tonight's dinner \u2728", ar: '\u0639\u0634\u0627\u0621 \u0627\u0644\u0644\u064a\u0644\u0629 \u2728' },
+    { img: 'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=600&q=80', en: 'Fresh flavors 🌿', ar: 'نكهات طازجة 🌿' },
+    { img: 'https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?w=600&q=80', en: 'Brunch vibes ☀️', ar: 'برانش ممتع ☀️' },
+    { img: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&q=80', en: 'Fine dining 🕯️', ar: 'مطعم فاخر 🕯️' },
+    { img: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=600&q=80', en: 'Pizza night 🍕', ar: 'ليلة بيتزا 🍕' },
+    { img: 'https://images.unsplash.com/photo-1565958011703-44f9829ba187?w=600&q=80', en: 'Dessert time 🍰', ar: 'وقت الحلويات 🍰' },
+  ];
+  const times = ['2h', '5h', '8h', '14h', '20h', '23h'];
+  return foods.slice(0, 4 + (userId % 3)).map((f, i) => ({
+    id: i + 1, image: f.img, caption: f.en, captionAr: f.ar,
+    timeAgo: times[i], seen: i > 1,
+  }));
+}
+
+function StoryViewer({ stories, startIdx, username, onClose }: {
+  stories: UserStory[]; startIdx: number; username: string; onClose: () => void;
+}) {
+  const { lang } = useLanguage();
+  const t = (en: string, ar: string) => lang === 'ar' ? ar : en;
+  const [idx, setIdx] = useState(startIdx);
+  const [progress, setProgress] = useState(0);
+  const current = stories[idx];
+  const DURATION = 5000;
+
+  useEffect(() => {
+    setProgress(0);
+    const start = Date.now();
+    const frame = () => {
+      const pct = Math.min(100, ((Date.now() - start) / DURATION) * 100);
+      setProgress(pct);
+      if (pct < 100) { rafRef.current = requestAnimationFrame(frame); }
+      else { if (idx < stories.length - 1) setIdx(i => i + 1); else onClose(); }
+    };
+    const rafRef = { current: requestAnimationFrame(frame) };
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [idx]);
+
+  if (!current) return null;
+  return (
+    <div className="fixed inset-0 z-[100] bg-black flex items-center justify-center" onClick={onClose}>
+      <div className="relative w-full max-w-sm h-full max-h-[85vh] mx-auto" onClick={e => e.stopPropagation()}>
+        {/* Progress bars */}
+        <div className="absolute top-3 start-3 end-3 z-10 flex gap-1">
+          {stories.map((_, i) => (
+            <div key={i} className="flex-1 h-0.5 rounded-full bg-white/30 overflow-hidden">
+              <div className="h-full bg-white rounded-full transition-none" style={{ width: i < idx ? '100%' : i === idx ? `${progress}%` : '0%' }} />
+            </div>
+          ))}
+        </div>
+
+        {/* Header */}
+        <div className="absolute top-7 start-3 end-3 z-10 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-primary/30 border-2 border-white overflow-hidden">
+              <div className="w-full h-full bg-gradient-to-br from-primary to-primary/50 flex items-center justify-center text-white text-xs font-bold">
+                {username[0]?.toUpperCase()}
+              </div>
+            </div>
+            <div>
+              <p className="text-white text-xs font-bold">@{username}</p>
+              <p className="text-white/60 text-[10px]">{current.timeAgo} ago</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-black/50 flex items-center justify-center">
+            <X className="w-4 h-4 text-white" />
+          </button>
+        </div>
+
+        {/* Image */}
+        <img src={current.image} alt="" className="w-full h-full object-cover rounded-xl" />
+
+        {/* Caption */}
+        <div className="absolute bottom-6 start-0 end-0 px-5 text-center">
+          <p className="text-white font-semibold text-base drop-shadow-lg">{t(current.caption, current.captionAr)}</p>
+        </div>
+
+        {/* Tap zones */}
+        <button className="absolute inset-y-0 start-0 w-1/3 z-20" onClick={e => { e.stopPropagation(); if (idx > 0) setIdx(i => i - 1); }} />
+        <button className="absolute inset-y-0 end-0 w-1/3 z-20" onClick={e => { e.stopPropagation(); if (idx < stories.length - 1) setIdx(i => i + 1); else onClose(); }} />
+      </div>
+    </div>
+  );
+}
+
+function UserStoriesBar({ userId, username, isOwn, lang }: { userId: number; username: string; isOwn: boolean; lang: string }) {
+  const t = (en: string, ar: string) => lang === 'ar' ? ar : en;
+  const stories = generateStories(userId);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerStart, setViewerStart] = useState(0);
+
+  return (
+    <>
+      <div className="mb-4">
+        <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-none">
+          {isOwn && (
+            <button className="flex flex-col items-center gap-1.5 shrink-0" onClick={() => {}}>
+              <div className="w-16 h-16 rounded-full border-2 border-dashed border-primary/40 flex items-center justify-center bg-primary/5 hover:bg-primary/10 transition-colors">
+                <Camera className="w-6 h-6 text-primary/60" />
+              </div>
+              <span className="text-[10px] font-semibold text-muted-foreground">{t('Add Story', 'قصة')}</span>
+            </button>
+          )}
+          {stories.map((story, i) => (
+            <button key={story.id} className="flex flex-col items-center gap-1.5 shrink-0"
+              onClick={() => { setViewerStart(i); setViewerOpen(true); }}>
+              <div className={`w-16 h-16 rounded-full p-0.5 ${story.seen ? 'bg-border' : 'bg-gradient-to-br from-primary via-orange-400 to-amber-400'}`}>
+                <div className="w-full h-full rounded-full border-2 border-background overflow-hidden">
+                  <img src={story.image} alt="" className="w-full h-full object-cover" />
+                </div>
+              </div>
+              <span className="text-[10px] font-medium text-muted-foreground">{story.timeAgo}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+      {viewerOpen && (
+        <StoryViewer stories={stories} startIdx={viewerStart} username={username} onClose={() => setViewerOpen(false)} />
+      )}
+    </>
+  );
+}
+
 // ── Share modal ────────────────────────────────────────────────────────────────
 function ShareModal({ username, name, onClose }: { username: string; name: string; onClose: () => void }) {
   const { t } = useLanguage();
@@ -461,14 +595,14 @@ export function PublicProfilePage() {
             </button>
             {showMenu && (
               <div className="absolute end-0 top-11 w-44 bg-card border border-border rounded-xl shadow-xl py-1 z-20">
-                <Link href="/settings">
+                <Link href="/edit-profile">
                   <div className="flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-secondary cursor-pointer">
                     <Edit className="w-4 h-4 text-muted-foreground" />{t("Edit Profile", "تعديل الملف")}
                   </div>
                 </Link>
-                <Link href="/profile">
+                <Link href="/settings">
                   <div className="flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-secondary cursor-pointer">
-                    <User className="w-4 h-4 text-muted-foreground" />{t("My Account", "حسابي")}
+                    <Settings className="w-4 h-4 text-muted-foreground" />{t("Settings", "الإعدادات")}
                   </div>
                 </Link>
                 {user.accountType === "basic" && (
@@ -633,6 +767,11 @@ export function PublicProfilePage() {
           <StatPill label={t("Reviews", "تقييمات")}    value={reviewCount}    onClick={() => setTab("reviews")} />
           <StatPill label={t("Visits", "زيارات")}      value={bookingCount}   onClick={() => setTab("visits")} />
         </div>
+
+        {/* ── STORIES BAR ──────────────────────────────────────────────────────── */}
+        {!isPrivateLocked && (
+          <UserStoriesBar userId={user.id} username={user.username ?? username} isOwn={isOwn} lang={lang} />
+        )}
 
         {/* ── TAB BAR ──────────────────────────────────────────────────────────── */}
         <div className="overflow-x-auto -mx-4 px-4 mb-4">

@@ -235,7 +235,7 @@ function MenuManagementTab({ lang, t }: { lang: string; t: (en: string, ar: stri
   const { data: restData } = useQuery({
     queryKey: ['admin-restaurants-list'],
     queryFn: async () => {
-      const res = await fetch('/api/restaurants?limit=50', { headers: await getAuthHeaders() });
+      const res = await fetch('/api/restaurants?limit=50', { headers: getAuthHeaders() });
       return res.json();
     },
   });
@@ -243,7 +243,7 @@ function MenuManagementTab({ lang, t }: { lang: string; t: (en: string, ar: stri
   const { data: menuData, isLoading } = useQuery({
     queryKey: ['admin-menus', restaurantId],
     queryFn: async () => {
-      const res = await fetch(`/api/restaurants/${restaurantId}/menus`, { headers: await getAuthHeaders() });
+      const res = await fetch(`/api/restaurants/${restaurantId}/menus`, { headers: getAuthHeaders() });
       return res.json();
     },
     enabled: !!restaurantId,
@@ -253,7 +253,7 @@ function MenuManagementTab({ lang, t }: { lang: string; t: (en: string, ar: stri
     mutationFn: async ({ sectionId, data }: { sectionId: number; data: object }) => {
       const res = await fetch(`/api/menu-sections/${sectionId}/dishes`, {
         method: 'POST',
-        headers: { ...(await getAuthHeaders()), 'Content-Type': 'application/json' },
+        headers: { ...(getAuthHeaders()), 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
       return res.json();
@@ -263,7 +263,7 @@ function MenuManagementTab({ lang, t }: { lang: string; t: (en: string, ar: stri
 
   const deleteDish = useMutation({
     mutationFn: async (dishId: number) => {
-      await fetch(`/api/dishes/${dishId}`, { method: 'DELETE', headers: await getAuthHeaders() });
+      await fetch(`/api/dishes/${dishId}`, { method: 'DELETE', headers: getAuthHeaders() });
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-menus', restaurantId] }),
   });
