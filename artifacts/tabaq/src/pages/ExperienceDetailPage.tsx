@@ -699,17 +699,35 @@ export function ExperienceDetailPage() {
                           return (
                             <div key={review.id} className="bg-card rounded-2xl border border-border/60 p-5">
                               <div className="flex items-start gap-3 mb-3">
-                                {review.userAvatarUrl ? (
-                                  <img src={review.userAvatarUrl} alt={reviewerName} className="w-10 h-10 rounded-full object-cover shrink-0" />
+                                {review.userUsername ? (
+                                  <Link href={`/${review.userUsername}`}>
+                                    <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center shrink-0 overflow-hidden cursor-pointer hover:opacity-80 transition-opacity">
+                                      {review.userAvatarUrl ? (
+                                        <img src={review.userAvatarUrl} alt={reviewerName} className="w-full h-full object-cover" />
+                                      ) : (
+                                        <span className="font-bold text-primary text-sm">{reviewerName.charAt(0)}</span>
+                                      )}
+                                    </div>
+                                  </Link>
                                 ) : (
-                                  <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center shrink-0 font-bold text-primary text-sm">
-                                    {(reviewerName).charAt(0)}
+                                  <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center shrink-0 overflow-hidden">
+                                    {review.userAvatarUrl ? (
+                                      <img src={review.userAvatarUrl} alt={reviewerName} className="w-full h-full object-cover" />
+                                    ) : (
+                                      <span className="font-bold text-primary text-sm">{reviewerName.charAt(0)}</span>
+                                    )}
                                   </div>
                                 )}
                                 <div className="flex-1">
                                   <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
-                                      <p className="font-semibold text-foreground text-sm">{reviewerName}</p>
+                                      {review.userUsername ? (
+                                        <Link href={`/${review.userUsername}`}>
+                                          <span className="font-semibold text-foreground text-sm hover:text-primary transition-colors cursor-pointer">{reviewerName}</span>
+                                        </Link>
+                                      ) : (
+                                        <p className="font-semibold text-foreground text-sm">{reviewerName}</p>
+                                      )}
                                       {review.isVerified && (
                                         <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 px-1.5 py-0.5 rounded-full">
                                           {t('Verified', 'موثق')}
@@ -720,10 +738,15 @@ export function ExperienceDetailPage() {
                                       {new Date(review.createdAt).toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'en-SA', { year: 'numeric', month: 'short', day: 'numeric' })}
                                     </p>
                                   </div>
-                                  <div className="flex gap-0.5 mt-0.5">
-                                    {[1, 2, 3, 4, 5].map(i => (
-                                      <Star key={i} className={cn('w-3 h-3', review.ratingOverall >= i ? 'fill-amber-400 text-amber-400' : 'text-border')} />
-                                    ))}
+                                  <div className="flex items-center gap-2 mt-0.5">
+                                    <div className="flex gap-0.5">
+                                      {[1, 2, 3, 4, 5].map(i => (
+                                        <Star key={i} className={cn('w-3 h-3', review.ratingOverall >= i ? 'fill-amber-400 text-amber-400' : 'text-border')} />
+                                      ))}
+                                    </div>
+                                    {review.userLevelTitle && (
+                                      <span className="text-[10px] text-muted-foreground">{review.userLevelTitle}</span>
+                                    )}
                                   </div>
                                 </div>
                               </div>

@@ -391,6 +391,9 @@ router.get("/experiences/:experienceId/reviews", async (req, res) => {
       userNameEn: usersTable.nameEn,
       userNameAr: usersTable.nameAr,
       userAvatarUrl: usersTable.avatarUrl,
+      userUsername: usersTable.username,
+      userLevel: usersTable.level,
+      userLevelTitle: usersTable.levelTitle,
     }).from(experienceReviewsTable)
       .leftJoin(usersTable, eq(experienceReviewsTable.userId, usersTable.id))
       .where(eq(experienceReviewsTable.experienceId, experienceId))
@@ -421,6 +424,9 @@ router.get("/experiences/:experienceId/reviews", async (req, res) => {
         userNameEn: r.userNameEn ?? "User",
         userNameAr: r.userNameAr ?? "مستخدم",
         userAvatarUrl: r.userAvatarUrl ?? null,
+        userUsername: r.userUsername ?? null,
+        userLevel: r.userLevel ?? null,
+        userLevelTitle: r.userLevelTitle ?? null,
         photoUrls: photos.map(p => p.photoUrl),
       };
     }));

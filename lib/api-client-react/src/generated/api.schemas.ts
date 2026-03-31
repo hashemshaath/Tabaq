@@ -1078,6 +1078,9 @@ export interface ExperienceReview {
   userNameEn?: string;
   userNameAr?: string;
   userAvatarUrl?: string;
+  userUsername?: string | null;
+  userLevel?: number | null;
+  userLevelTitle?: string | null;
   createdAt: string;
 }
 
