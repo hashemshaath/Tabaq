@@ -1,0 +1,107 @@
+Refactor and restructure the main navigation menu and the user account area into a clean, unified, and professional system.
+
+GOAL:
+Eliminate duplication, merge Profile and Settings into a single cohesive structure, and redesign the menu for clarity, usability, and scalability.
+
+---
+
+TASKS:
+
+1. Menu Restructure
+- Redesign the main menu and account menu with clear hierarchy
+- Group related items logically
+- Remove duplicate or repeated menu entries
+- Ensure consistent naming and ordering
+- Support both desktop and mobile layouts
+
+Suggested structure:
+- Dashboard
+- Explore / Search
+- Offers / Bookings
+- Experiences
+- Notifications
+- Messages (if applicable)
+- Account (merged section)
+- Support
+- Logout
+
+---
+
+2. Merge Profile & Settings
+- Combine Profile and Settings into one unified “Account” section
+- Use tabs or side navigation inside the page
+
+Account structure:
+- Personal Info
+- Security
+- Preferences
+- Notifications
+- Privacy & Visibility
+- Addresses
+- Payments / Wallet (if applicable)
+- Referrals / Points (if applicable)
+- Membership (if applicable)
+- Support
+- Delete Account
+
+---
+
+3. Remove Duplication
+- Audit all pages and components related to:
+  - Profile
+  - Settings
+  - Account
+- Remove duplicated forms, components, and logic
+- Keep a single source of truth for each feature
+- Refactor shared components properly
+
+---
+
+4. Navigation & UX
+- No unnecessary popups — use in-page layouts
+- Ensure smooth navigation between sections
+- Add breadcrumbs if needed
+- Add active states for menu items
+- Improve spacing, alignment, and visual hierarchy
+
+---
+
+5. Direction & Language Support
+- Ensure full RTL (Arabic) and LTR (English) support
+- Fix all direction issues in menu and account pages
+- Ensure labels, icons, and layout align with language
+
+---
+
+6. Code Refactor
+- Clean and organize the codebase
+- Remove dead and unused code
+- Standardize components and naming
+- Improve maintainability and scalability
+- Ensure consistent state management
+
+---
+
+7. Data Integrity
+- Ensure all sections are connected to the database
+- Validate all save/update actions
+- Ensure no demo or hardcoded data remains
+
+---
+
+8. Additional Enhancements
+- Add profile completion indicator
+- Add quick actions in account dashboard
+- Add summary widgets (points, bookings, membership, etc.)
+- Improve visual design to a professional standard
+
+---
+
+FINAL REQUIREMENT:
+
+Deliver a fully restructured, clean, and professional menu and account system with:
+- No duplication
+- Clear navigation
+- Unified profile/settings experience
+- High-quality UX/UI
+- Clean, scalable, production-ready code
