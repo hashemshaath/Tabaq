@@ -104,15 +104,15 @@ const NEW_OPENINGS = [
   },
 ];
 
-const OCCASION_META: Record<string, { img: string; gradient: string }> = {
-  'Birthday Celebration': { img: 'https://images.unsplash.com/photo-1464349095431-e9a21285b5f3?w=300&h=200&fit=crop', gradient: 'from-rose-400 to-pink-600' },
-  'Breakfast':            { img: 'https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?w=300&h=200&fit=crop', gradient: 'from-amber-300 to-orange-400' },
-  'Business Lunch':       { img: 'https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=300&h=200&fit=crop', gradient: 'from-slate-500 to-slate-700' },
-  'Family Dinner':        { img: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=300&h=200&fit=crop', gradient: 'from-emerald-400 to-teal-600' },
-  'Group Gathering':      { img: 'https://images.unsplash.com/photo-1529543544282-ea669407fca3?w=300&h=200&fit=crop', gradient: 'from-violet-400 to-purple-600' },
-  'Healthy Dining':       { img: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=300&h=200&fit=crop', gradient: 'from-green-400 to-emerald-600' },
-  'Ramadan Iftar':        { img: 'https://images.unsplash.com/photo-1510626176961-4b57d4fbad03?w=300&h=200&fit=crop', gradient: 'from-indigo-500 to-purple-700' },
-  'Romantic Date':        { img: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=300&h=200&fit=crop', gradient: 'from-red-400 to-rose-600' },
+const OCCASION_META: Record<string, { img: string }> = {
+  'Birthday Celebration': { img: 'https://images.unsplash.com/photo-1464349095431-e9a21285b5f3?w=300&h=200&fit=crop' },
+  'Breakfast':            { img: 'https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?w=300&h=200&fit=crop' },
+  'Business Lunch':       { img: 'https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=300&h=200&fit=crop' },
+  'Family Dinner':        { img: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=300&h=200&fit=crop' },
+  'Group Gathering':      { img: 'https://images.unsplash.com/photo-1529543544282-ea669407fca3?w=300&h=200&fit=crop' },
+  'Healthy Dining':       { img: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=300&h=200&fit=crop' },
+  'Ramadan Iftar':        { img: 'https://images.unsplash.com/photo-1510626176961-4b57d4fbad03?w=300&h=200&fit=crop' },
+  'Romantic Date':        { img: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=300&h=200&fit=crop' },
 };
 const RESTAURANT_OF_THE_WEEK = {
   id: 7,
@@ -135,15 +135,10 @@ const RESTAURANT_OF_THE_WEEK = {
   tagAr: 'حائز على نجمة ميشلان',
 };
 
-const OCCASION_FALLBACK_GRADIENTS = [
-  'from-violet-400 to-purple-600',
-  'from-rose-400 to-pink-600',
-  'from-blue-400 to-cyan-500',
-  'from-emerald-400 to-teal-600',
-  'from-amber-400 to-orange-500',
-  'from-indigo-500 to-blue-600',
-  'from-pink-400 to-rose-500',
-  'from-slate-500 to-slate-700',
+// All fallback chips use brand-consistent dark tones
+const OCCASION_FALLBACK_COLORS = [
+  'bg-[#1a0d0d]', 'bg-[#1a1008]', 'bg-[#0d130d]', 'bg-[#0d0d1a]',
+  'bg-[#1a0d12]', 'bg-[#101010]', 'bg-[#1a0a0b]', 'bg-[#0e1018]',
 ];
 
 // ── Helpers ────────────────────────────────────────────────────────
@@ -635,9 +630,7 @@ export function HomePage() {
           />
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
             {(occasions.data || []).slice(0, 8).map((occ: any, idx: number) => {
-              const meta = OCCASION_META[occ.nameEn] || {};
-              const gradient = meta.gradient || OCCASION_FALLBACK_GRADIENTS[idx % OCCASION_FALLBACK_GRADIENTS.length];
-              const img = meta.img;
+              const img = (OCCASION_META[occ.nameEn] || {}).img;
               return (
                 <Link
                   key={occ.id}
@@ -647,10 +640,10 @@ export function HomePage() {
                   {img ? (
                     <>
                       <img src={img} alt={occ.nameEn} className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                      <div className={`absolute inset-0 bg-gradient-to-t ${gradient} opacity-70 group-hover:opacity-80 transition-opacity`} />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/10 group-hover:from-black/85 transition-opacity" />
                     </>
                   ) : (
-                    <div className={`absolute inset-0 bg-gradient-to-br ${gradient}`} />
+                    <div className={`absolute inset-0 ${OCCASION_FALLBACK_COLORS[idx % OCCASION_FALLBACK_COLORS.length]}`} />
                   )}
                   <div className="absolute inset-0 flex flex-col items-center justify-center p-2 text-white">
                     <span className="text-2xl mb-1 drop-shadow-md">{occ.icon || '🍽️'}</span>
@@ -683,7 +676,7 @@ export function HomePage() {
               {
                 step: '01',
                 icon: Search,
-                color: 'from-blue-500 to-cyan-500',
+                color: 'from-primary to-red-600',
                 titleEn: 'Discover',
                 titleAr: 'اكتشف',
                 descEn: 'Browse restaurants, read reviews, and explore exclusive deals tailored to your taste.',
@@ -692,7 +685,7 @@ export function HomePage() {
               {
                 step: '02',
                 icon: CalendarCheck,
-                color: 'from-violet-500 to-purple-600',
+                color: 'from-gray-800 to-gray-950',
                 titleEn: 'Book or Buy',
                 titleAr: 'احجز أو اشتر',
                 descEn: 'Reserve a table instantly or purchase a deal voucher at a discounted price.',
@@ -701,7 +694,7 @@ export function HomePage() {
               {
                 step: '03',
                 icon: ScanQrCode,
-                color: 'from-emerald-500 to-teal-600',
+                color: 'from-primary to-red-800',
                 titleEn: 'Dine & Enjoy',
                 titleAr: 'تناول واستمتع',
                 descEn: 'Show your QR voucher at the restaurant, enjoy your meal, and earn reward points.',
@@ -748,7 +741,7 @@ export function HomePage() {
       {/* ══ TABAQ STARS ═══════════════════════════════════════════ */}
       {!tabaqStars.isLoading && (tabaqStars.data || []).length > 0 && (
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-14">
-          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-500 via-orange-500 to-amber-600 p-6 md:p-10">
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#1a1200] via-[#2d2000] to-[#1a1200] border border-[#c9a84c]/30 p-6 md:p-10">
             {/* Decorative stars */}
             <div className="pointer-events-none absolute inset-0 opacity-10 text-[10rem] leading-none select-none overflow-hidden">
               <span className="absolute top-2 start-4">⭐</span>
@@ -854,8 +847,7 @@ export function HomePage() {
               <Link key={col.id} href={`/collections/${col.slug}`} className="block group">
                 <div className="relative h-44 rounded-xl overflow-hidden shadow-[0_2px_8px_rgb(0,0,0,0.1)] hover:shadow-[0_8px_24px_rgb(0,0,0,0.15)] transition-all duration-300">
                   <img src={collectionImgs[i]} alt={col.labelEn} className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.06] transition-transform duration-500" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent" />
-                  <div className={`absolute inset-0 bg-gradient-to-br ${col.gradient} opacity-35`} />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/10" />
                   <div className="absolute inset-0 flex flex-col justify-between p-3.5 text-white">
                     <span className="text-xl">{col.icon}</span>
                     <div>
@@ -1388,21 +1380,21 @@ export function HomePage() {
 
       {/* ══ EXCLUSIVE DEALS ══════════════════════════════════════ */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-14">
-        <div className="bg-gradient-to-br from-violet-950 via-violet-900 to-purple-900 rounded-3xl p-6 md:p-10 overflow-hidden relative">
+        <div className="bg-gradient-to-br from-[#1a0305] via-[#2d060a] to-[#1a0305] border border-primary/20 rounded-3xl p-6 md:p-10 overflow-hidden relative">
           {/* Background shimmer */}
           <div className="absolute inset-0 pointer-events-none opacity-20">
-            <div className="absolute top-0 end-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
-            <div className="absolute bottom-0 start-0 w-48 h-48 bg-white/10 rounded-full translate-y-1/2 -translate-x-1/2" />
+            <div className="absolute top-0 end-0 w-64 h-64 bg-primary/10 rounded-full -translate-y-1/2 translate-x-1/2" />
+            <div className="absolute bottom-0 start-0 w-48 h-48 bg-primary/10 rounded-full translate-y-1/2 -translate-x-1/2" />
           </div>
           {/* Header */}
           <div className="flex items-end justify-between mb-6 relative">
             <div>
               <div className="flex items-center gap-2 mb-2">
-                <Percent className="w-3.5 h-3.5 text-violet-300" />
-                <span className="text-violet-300 font-semibold text-xs tracking-[0.05em] uppercase">{t('Limited Time Only', 'لوقت محدود فقط')}</span>
+                <Percent className="w-3.5 h-3.5 text-primary" />
+                <span className="text-primary font-semibold text-xs tracking-[0.05em] uppercase">{t('Limited Time Only', 'لوقت محدود فقط')}</span>
               </div>
               <h2 className="text-xl md:text-2xl font-bold text-white">{t('Exclusive Dining Deals', 'عروض تناول الطعام الحصرية')}</h2>
-              <p className="text-violet-300 text-sm mt-1">{t('Save up to 50% at top restaurants. Apply code TABAQ10 for extra 10% off.', 'وفّر حتى 50٪ في أفضل المطاعم. استخدم كود TABAQ10 لخصم إضافي 10٪.')}</p>
+              <p className="text-white/60 text-sm mt-1">{t('Save up to 50% at top restaurants. Apply code TABAQ10 for extra 10% off.', 'وفّر حتى 50٪ في أفضل المطاعم. استخدم كود TABAQ10 لخصم إضافي 10٪.')}</p>
             </div>
             <Link href="/offers" className="flex items-center gap-1.5 text-sm font-semibold text-white/70 hover:text-white transition-colors shrink-0 border border-white/20 px-3 py-1.5 rounded-full hover:bg-white/10">
               {t('View all deals', 'كل العروض')} <ChevronRight className="w-3.5 h-3.5" />

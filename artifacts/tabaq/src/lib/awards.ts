@@ -44,7 +44,7 @@ export function getRestaurantAwards(restaurant: {
       labelEn: 'Fine Dining',
       labelAr: 'مطعم راقٍ',
       icon: '🍽️',
-      bgClass: 'bg-purple-600',
+      bgClass: 'bg-gray-900',
       textClass: 'text-white',
     });
   }
@@ -55,7 +55,7 @@ export function getRestaurantAwards(restaurant: {
       labelEn: 'Hidden Gem',
       labelAr: 'جوهرة خفية',
       icon: '💎',
-      bgClass: 'bg-emerald-500',
+      bgClass: 'bg-gray-700',
       textClass: 'text-white',
     });
   }
@@ -72,7 +72,7 @@ export const COLLECTIONS = [
     descEn: 'The highest-rated restaurants, chosen by thousands of diners.',
     descAr: 'أعلى المطاعم تقييماً، اختارها آلاف رواد الطعام.',
     icon: '⭐',
-    gradient: 'from-amber-400 to-orange-500',
+    gradient: 'from-amber-900 to-yellow-950',
     params: { minRating: 4.5, limit: 12 },
   },
   {
@@ -83,7 +83,7 @@ export const COLLECTIONS = [
     descEn: 'Exceptional fine-dining experiences for special occasions.',
     descAr: 'تجارب طعام راقية استثنائية للمناسبات الخاصة.',
     icon: '🍽️',
-    gradient: 'from-purple-500 to-indigo-600',
+    gradient: 'from-gray-900 to-black',
     params: { priceTier: 'fine_dining', limit: 12 },
   },
   {
@@ -94,7 +94,7 @@ export const COLLECTIONS = [
     descEn: 'Perfect romantic settings for an unforgettable evening.',
     descAr: 'الأجواء الرومانسية المثالية لأمسية لا تُنسى.',
     icon: '🌹',
-    gradient: 'from-rose-400 to-pink-600',
+    gradient: 'from-red-900 to-rose-950',
     params: { occasionId: 3, limit: 12 },
   },
   {
@@ -105,7 +105,7 @@ export const COLLECTIONS = [
     descEn: 'Great spots welcoming the whole family for a memorable meal.',
     descAr: 'أماكن رائعة تستقبل العائلة بالكامل لوجبة لا تُنسى.',
     icon: '👨‍👩‍👧‍👦',
-    gradient: 'from-blue-400 to-cyan-500',
+    gradient: 'from-gray-800 to-gray-950',
     params: { occasionId: 1, limit: 12 },
   },
   {
@@ -116,7 +116,7 @@ export const COLLECTIONS = [
     descEn: 'Undiscovered local favorites worth seeking out.',
     descAr: 'المفضلات المحلية غير المكتشفة التي تستحق البحث عنها.',
     icon: '💎',
-    gradient: 'from-emerald-400 to-teal-500',
+    gradient: 'from-gray-900 to-slate-950',
     params: { minRating: 4.0, limit: 12 },
   },
   {
@@ -127,7 +127,7 @@ export const COLLECTIONS = [
     descEn: 'Delicious food that\'s easy on the wallet.',
     descAr: 'طعام لذيذ لا يُثقل الميزانية.',
     icon: '💰',
-    gradient: 'from-green-400 to-lime-500',
+    gradient: 'from-gray-700 to-gray-900',
     params: { priceTier: 'budget', limit: 12 },
   },
   {
@@ -138,7 +138,7 @@ export const COLLECTIONS = [
     descEn: 'Sophisticated venues ideal for business lunches and meetings.',
     descAr: 'أماكن راقية مثالية لغداء العمل والاجتماعات.',
     icon: '💼',
-    gradient: 'from-slate-500 to-gray-700',
+    gradient: 'from-slate-800 to-slate-950',
     params: { occasionId: 2, limit: 12 },
   },
   {
@@ -149,7 +149,7 @@ export const COLLECTIONS = [
     descEn: 'Fresh new restaurants to discover this season.',
     descAr: 'مطاعم جديدة رائعة لاكتشافها هذا الموسم.',
     icon: '🆕',
-    gradient: 'from-orange-400 to-red-500',
+    gradient: 'from-red-800 to-red-950',
     params: { sortBy: 'newest', limit: 12 },
   },
 ] as const;
