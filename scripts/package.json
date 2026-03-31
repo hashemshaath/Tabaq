@@ -12,6 +12,7 @@
     "seed-experiences": "tsx ./src/seed-experiences.ts",
     "enrich-experiences": "tsx ./src/enrich-experiences.ts",
     "add-restaurant-logos": "tsx ./src/add-restaurant-logos.ts",
+    "add-restaurant-covers": "tsx ./src/add-restaurant-covers.ts",
     "seed-experience-reviews": "tsx ./src/seed-experience-reviews.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },

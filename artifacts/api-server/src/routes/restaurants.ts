@@ -3,7 +3,8 @@ import { db } from "@workspace/db";
 import {
   restaurantsTable, restaurantCategoriesTable, restaurantOccasionsTable,
   restaurantFollowsTable, openingHoursTable, categoriesTable, occasionsTable,
-  reviewsTable, offersTable, citiesTable, bookingsTable, userSavedRestaurantsTable
+  reviewsTable, offersTable, citiesTable, bookingsTable, userSavedRestaurantsTable,
+  usersTable,
 } from "@workspace/db/schema";
 import { eq, and, gte, sql, inArray, count, asc, desc, type SQL } from "drizzle-orm";
 import { nanoid } from "nanoid";
@@ -230,7 +231,14 @@ router.get("/restaurants/:restaurantId", async (req, res) => {
       db.select().from(openingHoursTable)
         .where(eq(openingHoursTable.restaurantId, restaurantId))
         .orderBy(openingHoursTable.dayOfWeek),
-      db.select().from(reviewsTable)
+      db.select({
+          review: reviewsTable,
+          userNameEn: usersTable.nameEn,
+          userNameAr: usersTable.nameAr,
+          userAvatarUrl: usersTable.avatarUrl,
+          userLevel: usersTable.level,
+        }).from(reviewsTable)
+        .leftJoin(usersTable, eq(reviewsTable.userId, usersTable.id))
         .where(eq(reviewsTable.restaurantId, restaurantId))
         .limit(5)
         .orderBy(sql`${reviewsTable.createdAt} desc`),
@@ -239,9 +247,17 @@ router.get("/restaurants/:restaurantId", async (req, res) => {
         .limit(3),
     ]);
 
+    // Compute real sub-rating averages from the fetched reviews
+    const avgSub = (field: 'ratingFood' | 'ratingService' | 'ratingAmbiance' | 'ratingValue') => {
+      const vals = recentReviews.map(r => Number(r.review[field])).filter(v => !isNaN(v) && v > 0);
+      return vals.length ? parseFloat((vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(2)) : 0;
+    };
     const ratingBreakdown = {
       overall: Number(restaurant.avgRating) || 0,
-      food: 0, service: 0, ambiance: 0, value: 0,
+      food: avgSub('ratingFood'),
+      service: avgSub('ratingService'),
+      ambiance: avgSub('ratingAmbiance'),
+      value: avgSub('ratingValue'),
       count: restaurant.reviewCount,
     };
 
@@ -251,14 +267,14 @@ router.get("/restaurants/:restaurantId", async (req, res) => {
       occasions,
       openingHours,
       recentReviews: recentReviews.map(r => ({
-        ...r,
-        userNameEn: "User",
-        userNameAr: "مستخدم",
-        userAvatarUrl: null,
-        userLevel: 1,
+        ...r.review,
+        userNameEn: r.userNameEn ?? "User",
+        userNameAr: r.userNameAr ?? "مستخدم",
+        userAvatarUrl: r.userAvatarUrl ?? null,
+        userLevel: r.userLevel ?? 1,
         userLevelTitle: "Food Explorer",
         photoUrls: [],
-        likeCount: r.likeCount,
+        likeCount: r.review.likeCount,
         isLiked: false,
       })),
       ratingBreakdown,
