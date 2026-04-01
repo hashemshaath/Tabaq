@@ -132,6 +132,8 @@ export const refreshTokensTable = pgTable("refresh_tokens", {
   userId: integer("user_id").notNull().references(() => usersTable.id),
   tokenHash: text("token_hash").notNull().unique(),
   deviceInfo: text("device_info"),
+  ipAddress: text("ip_address"),
+  lastUsedAt: timestamp("last_used_at"),
   expiresAt: timestamp("expires_at").notNull(),
   isRevoked: boolean("is_revoked").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),

@@ -1096,6 +1096,25 @@ Rich mock data for all 6 new sections: MOCK_CHECK_INS (5 visits), MOCK_REVIEWS (
 - Reset token is single-use (stateless JWT — 10-min TTL).
 - All refresh tokens revoked on successful reset (forces re-login on all devices).
 
+## Session Management (April 2026)
+
+### New Endpoints — `GET|DELETE /auth/sessions`
+
+| Endpoint | Auth | Description |
+|---|---|---|
+| `GET /auth/sessions` | Bearer JWT | List all active (non-revoked, non-expired) refresh-token sessions for the current user. Returns `id`, `device` (parsed UA label), `ip_address`, `last_active`, `created_at`, `expires_at`, `is_current`. |
+| `DELETE /auth/sessions/:id` | Bearer JWT | Revoke a specific session by ID. Only the session owner can revoke their own sessions. 409 if already revoked/expired. |
+| `DELETE /auth/sessions` | Bearer JWT | Revoke all active sessions for the current user (global sign-out). |
+
+### Supporting changes
+- `refresh_tokens` table gained two new columns: `ip_address text` and `last_used_at timestamp` (ALTER TABLE migration applied).
+- `buildTokens()` in `auth.ts` now accepts and stores `ipAddress`.
+- `POST /auth/refresh` stamps `last_used_at` on the outgoing (rotated) token record.
+- `POST /auth/login` and `POST /auth/verify-otp` both pass caller IP to `buildTokens`.
+- `PATCH /me/password` (profile.ts) now revokes all refresh tokens and writes a `PASSWORD_CHANGED` audit log — matching the new `/auth/password/change` endpoint.
+- Audit actions added: `SESSION_REVOKED`, `ALL_SESSIONS_REVOKED`.
+- `parseDeviceLabel(ua)` helper in sessions.ts maps User-Agent strings to friendly names (iPhone, Android phone, Chrome, Firefox, Safari, curl, Postman, etc.).
+
 ---
 
 ### Scratchpad

@@ -44,7 +44,7 @@ function generateUserUid(id: number): string {
   return `USR-${year}-${String(id).padStart(8, "0")}-${suffix}`;
 }
 
-async function buildTokens(user: typeof usersTable.$inferSelect, deviceInfo?: string) {
+async function buildTokens(user: typeof usersTable.$inferSelect, deviceInfo?: string, ipAddress?: string) {
   const uid = user.userUid ?? generateUserUid(user.id);
   const role: "admin" | "owner" | "user" = user.isAdmin ? "admin" : user.isOwner ? "owner" : "user";
   const accessToken = signToken({
@@ -65,6 +65,7 @@ async function buildTokens(user: typeof usersTable.$inferSelect, deviceInfo?: st
     userId: user.id,
     tokenHash,
     deviceInfo: deviceInfo ?? null,
+    ipAddress: ipAddress ?? null,
     expiresAt,
   });
 
@@ -341,7 +342,7 @@ router.post("/auth/verify-otp", authRateLimiter, async (req, res) => {
     await recordLoginSuccess(user.id, ip);
 
     const deviceInfo = req.headers["user-agent"] ?? undefined;
-    const { accessToken, refreshToken } = await buildTokens(user, typeof deviceInfo === "string" ? deviceInfo : undefined);
+    const { accessToken, refreshToken } = await buildTokens(user, typeof deviceInfo === "string" ? deviceInfo : undefined, ip);
 
     res.cookie("tabaq_token", accessToken, {
       httpOnly: true,
@@ -564,7 +565,7 @@ router.post("/auth/login", authRateLimiter, async (req, res) => {
     await recordLoginSuccess(user.id, ip);
 
     const deviceInfo = req.headers["user-agent"];
-    const { accessToken, refreshToken } = await buildTokens(user, typeof deviceInfo === "string" ? deviceInfo : undefined);
+    const { accessToken, refreshToken } = await buildTokens(user, typeof deviceInfo === "string" ? deviceInfo : undefined, ip);
 
     res.cookie("tabaq_token", accessToken, {
       httpOnly: true,
@@ -640,10 +641,10 @@ router.post("/auth/refresh", async (req, res) => {
       return;
     }
 
-    // Revoke the old token (rotation)
+    // Revoke the old token (rotation) and stamp last_used_at
     await db
       .update(refreshTokensTable)
-      .set({ isRevoked: true })
+      .set({ isRevoked: true, lastUsedAt: now })
       .where(eq(refreshTokensTable.id, record.id));
 
     const [user] = await db
@@ -664,7 +665,8 @@ router.post("/auth/refresh", async (req, res) => {
     }
 
     const deviceInfo = record.deviceInfo ?? req.headers["user-agent"];
-    const { accessToken, refreshToken: newRefreshToken } = await buildTokens(user, typeof deviceInfo === "string" ? deviceInfo : undefined);
+    const ip = getClientIp(req);
+    const { accessToken, refreshToken: newRefreshToken } = await buildTokens(user, typeof deviceInfo === "string" ? deviceInfo : undefined, ip);
 
     res.cookie("tabaq_token", accessToken, {
       httpOnly: true,

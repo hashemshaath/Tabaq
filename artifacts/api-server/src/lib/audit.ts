@@ -6,7 +6,9 @@ export type AuditAction =
   | "PASSWORD_RESET_REQUESTED"
   | "PASSWORD_RESET_OTP_VERIFIED"
   | "PASSWORD_RESET_COMPLETED"
-  | "PASSWORD_CHANGED";
+  | "PASSWORD_CHANGED"
+  | "SESSION_REVOKED"
+  | "ALL_SESSIONS_REVOKED";
 
 interface AuditMeta {
   method?: string;

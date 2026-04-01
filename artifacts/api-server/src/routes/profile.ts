@@ -4,6 +4,7 @@ import {
   userCheckInsTable, visitPlansTable, userRecommendationsTable,
   savedDishesTable, contentPrivacyTable, userBlocksTable,
   usersTable, restaurantsTable, dishesTable, verificationRequestsTable,
+  refreshTokensTable,
 } from "@workspace/db/schema";
 import { eq, and, desc, inArray } from "drizzle-orm";
 import { requireAuth } from "../middleware/requireAuth.js";
@@ -501,7 +502,21 @@ router.patch("/me/password", requireAuth, async (req, res) => {
     }
 
     const newHash = await bcrypt.hash(newPassword, 12);
-    await db.update(usersTable).set({ passwordHash: newHash, updatedAt: new Date() }).where(eq(usersTable.id, userId));
+    await Promise.all([
+      db.update(usersTable).set({ passwordHash: newHash, updatedAt: new Date() }).where(eq(usersTable.id, userId)),
+      db.update(refreshTokensTable).set({ isRevoked: true }).where(eq(refreshTokensTable.userId, userId)),
+    ]);
+
+    const { logAudit } = await import("../lib/audit.js");
+    const fwd = req.headers["x-forwarded-for"];
+    const ip = typeof fwd === "string" ? fwd.split(",")[0]!.trim() : (req.ip ?? "unknown");
+    await logAudit({
+      action: "PASSWORD_CHANGED",
+      actorId: userId,
+      actorUid: req.auth!.userUid,
+      ip,
+      meta: { via: "PATCH /me/password" },
+    });
 
     return res.json({ success: true, message: "Password updated successfully." });
   } catch (err) {
