@@ -5,6 +5,7 @@ import { usersTable, otpRequestsTable, emailVerificationTokensTable, refreshToke
 import { eq, and, isNull, gt, desc, gte, sql } from "drizzle-orm";
 import {
   signToken,
+  signTempToken,
   generateOtp,
   hashOtp,
   otpExpiresAt,
@@ -563,6 +564,14 @@ router.post("/auth/login", authRateLimiter, async (req, res) => {
 
     const ip = getClientIp(req);
     await recordLoginSuccess(user.id, ip);
+
+    // Admin TOTP gate — if TOTP is enabled for this user, issue a short-lived
+    // temp token and require the client to complete MFA before getting full access.
+    if (user.totpEnabledAt) {
+      const tempToken = signTempToken(user.id);
+      res.json({ requires_totp: true, temp_token: tempToken });
+      return;
+    }
 
     const deviceInfo = req.headers["user-agent"];
     const { accessToken, refreshToken } = await buildTokens(user, typeof deviceInfo === "string" ? deviceInfo : undefined, ip);

@@ -83,6 +83,14 @@ export const usersTable = pgTable("users", {
   passcodeSetAt: timestamp("passcode_set_at"),
   passcodeFailedAttempts: smallint("passcode_failed_attempts").default(0).notNull(),
   passcodeLockedUntil: timestamp("passcode_locked_until"),
+  // OAuth social login
+  googleId: text("google_id").unique(),
+  appleId: text("apple_id").unique(),
+  oauthProvider: text("oauth_provider"),          // 'google' | 'apple' | null
+  // Admin TOTP 2FA
+  totpSecret: text("totp_secret"),
+  totpEnabledAt: timestamp("totp_enabled_at"),
+  totpBackupCodes: jsonb("totp_backup_codes").$type<string[]>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

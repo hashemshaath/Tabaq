@@ -8,7 +8,15 @@ export type AuditAction =
   | "PASSWORD_RESET_COMPLETED"
   | "PASSWORD_CHANGED"
   | "SESSION_REVOKED"
-  | "ALL_SESSIONS_REVOKED";
+  | "ALL_SESSIONS_REVOKED"
+  | "OAUTH_LOGIN"
+  | "OAUTH_REGISTER"
+  | "TOTP_SETUP_INITIATED"
+  | "TOTP_ENABLED"
+  | "TOTP_DISABLED"
+  | "TOTP_LOGIN_SUCCESS"
+  | "TOTP_LOGIN_FAILED"
+  | "TOTP_BACKUP_USED";
 
 interface AuditMeta {
   method?: string;

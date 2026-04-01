@@ -42,6 +42,8 @@ import uploadRouter from "./upload.js";
 import passcodeRouter from "./passcode.js";
 import passwordResetRouter from "./password-reset.js";
 import sessionsRouter from "./sessions.js";
+import { oauthRouter } from "./oauth.js";
+import { totpRouter } from "./totp.js";
 
 const router: IRouter = Router();
 
@@ -88,5 +90,7 @@ router.use(uploadRouter);
 router.use(passcodeRouter);
 router.use(passwordResetRouter);
 router.use(sessionsRouter);
+router.use(oauthRouter);
+router.use(totpRouter);
 
 export default router;

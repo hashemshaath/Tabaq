@@ -543,6 +543,77 @@ function SecuritySection({ lang, t, logout }: { lang: string; t: (en: string, ar
     finally { setPinSaving(false); }
   };
 
+  // ── Admin TOTP / 2FA ──────────────────────────────────────────────────────
+  type TotpMode = "idle" | "setup" | "verify_setup" | "disable";
+  const [totpMode, setTotpMode]       = useState<TotpMode>("idle");
+  const [totpSecret, setTotpSecret]   = useState("");
+  const [totpQR, setTotpQR]           = useState("");
+  const [totpCode, setTotpCode]       = useState(["", "", "", "", "", ""]);
+  const [totpBackupCodes, setTotpBackupCodes] = useState<string[]>([]);
+  const [totpDisablePwd, setTotpDisablePwd] = useState("");
+  const [totpError, setTotpError]     = useState("");
+  const [totpSaving, setTotpSaving]   = useState(false);
+  const totpRefs = useRef<Array<HTMLInputElement | null>>([]);
+
+  const { data: totpStatusData, refetch: refetchTotpStatus } = useQuery({
+    queryKey: ["totp-status"],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/api/auth/totp/status`, { headers: getAuthHeaders() });
+      if (!res.ok) return null;
+      return res.json() as Promise<{ enabled: boolean; enabled_at: string | null; backup_codes_remaining: number }>;
+    },
+    enabled: !!userProfile?.isAdmin,
+    staleTime: 30000,
+  });
+
+  const handleTotpSetup = async () => {
+    setTotpSaving(true); setTotpError("");
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/totp/setup`, { method: "POST", headers: getAuthHeaders() });
+      const data = await res.json();
+      if (!res.ok) { setTotpError(data.message ?? t("Setup failed", "فشل الإعداد")); return; }
+      setTotpSecret(data.secret); setTotpQR(data.qr_code); setTotpMode("verify_setup");
+    } catch { setTotpError(t("Network error", "خطأ في الاتصال")); }
+    finally { setTotpSaving(false); }
+  };
+
+  const handleTotpVerifySetup = async () => {
+    const code = totpCode.join("");
+    if (code.length < 6) return;
+    setTotpSaving(true); setTotpError("");
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/totp/verify-setup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({ code }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setTotpError(data.message ?? t("Invalid code", "رمز غير صحيح")); return; }
+      setTotpBackupCodes(data.backup_codes ?? []);
+      setTotpMode("idle");
+      setTotpCode(["", "", "", "", "", ""]);
+      refetchTotpStatus();
+      qc.invalidateQueries({ queryKey: ["auth-me"] });
+    } catch { setTotpError(t("Network error", "خطأ في الاتصال")); }
+    finally { setTotpSaving(false); }
+  };
+
+  const handleTotpDisable = async () => {
+    setTotpSaving(true); setTotpError("");
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/totp`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({ password: totpDisablePwd }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setTotpError(data.message ?? t("Failed", "فشل")); return; }
+      setTotpMode("idle"); setTotpDisablePwd(""); refetchTotpStatus();
+      qc.invalidateQueries({ queryKey: ["auth-me"] });
+    } catch { setTotpError(t("Network error", "خطأ في الاتصال")); }
+    finally { setTotpSaving(false); }
+  };
+
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6">
@@ -736,6 +807,156 @@ function SecuritySection({ lang, t, logout }: { lang: string; t: (en: string, ar
           </div>
         )}
       </SectionCard>
+
+      {/* ── Admin TOTP / 2FA ─────────────────────────────────────────────── */}
+      {userProfile?.isAdmin && (
+        <SectionCard
+          title="Two-Factor Authentication (2FA)"
+          titleAr="التحقق بخطوتين (2FA)"
+          desc="Extra sign-in security for your admin account"
+          descAr="أمان إضافي لحسابك الإداري"
+          lang={lang}
+        >
+          {/* ── Backup codes reveal after successful setup ─────────── */}
+          {totpBackupCodes.length > 0 && (
+            <div className="mb-4 p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl space-y-3">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />
+                <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">{t("Save your backup codes", "احفظ رموز الاسترداد")}</p>
+              </div>
+              <p className="text-xs text-amber-700 dark:text-amber-300">{t("Each code can only be used once. Store them somewhere safe.", "كل رمز يمكن استخدامه مرة واحدة فقط. احفظها في مكان آمن.")}</p>
+              <div className="grid grid-cols-2 gap-1.5">
+                {totpBackupCodes.map((c, i) => (
+                  <code key={i} className="text-xs font-mono bg-amber-100 dark:bg-amber-900/50 px-2 py-1 rounded text-center tracking-widest">{c}</code>
+                ))}
+              </div>
+              <button onClick={() => setTotpBackupCodes([])} className="text-xs text-amber-600 hover:text-amber-800 dark:hover:text-amber-200 underline w-full text-center">
+                {t("I've saved these — dismiss", "لقد حفظتها — تجاهل")}
+              </button>
+            </div>
+          )}
+
+          {/* ── Idle: show current status ─────────────────────────── */}
+          {totpMode === "idle" && (
+            <div className="space-y-3">
+              {totpStatusData?.enabled ? (
+                <>
+                  <div className="flex items-center gap-3 p-3 bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800 rounded-xl">
+                    <ShieldCheck className="w-5 h-5 text-violet-600 shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-violet-800 dark:text-violet-200">{t("2FA is active", "التحقق بخطوتين نشط")}</p>
+                      <p className="text-xs text-violet-600 dark:text-violet-400">
+                        {t(`${totpStatusData.backup_codes_remaining} backup codes remaining`, `${totpStatusData.backup_codes_remaining} رموز استرداد متبقية`)}
+                      </p>
+                    </div>
+                    <CheckCircle2 className="w-4 h-4 text-violet-500 shrink-0" />
+                  </div>
+                  <button onClick={() => { setTotpMode("disable"); setTotpError(""); }}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 px-3 text-sm font-semibold border border-destructive/40 text-destructive rounded-xl hover:bg-destructive/5 transition-colors">
+                    <Trash2 className="w-4 h-4" />
+                    {t("Disable 2FA", "تعطيل التحقق بخطوتين")}
+                  </button>
+                </>
+              ) : (
+                <button onClick={() => { setTotpMode("setup"); handleTotpSetup(); setTotpError(""); }}
+                  disabled={totpSaving}
+                  className="w-full flex items-center justify-between px-4 py-3.5 rounded-xl border border-dashed border-border hover:border-primary/50 hover:bg-primary/5 transition-colors group disabled:opacity-50">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
+                      <ShieldCheck className="w-4 h-4 text-primary" />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-sm font-semibold text-foreground">{t("Set up 2FA", "إعداد التحقق بخطوتين")}</p>
+                      <p className="text-xs text-muted-foreground">{t("Use an authenticator app", "استخدام تطبيق المصادقة")}</p>
+                    </div>
+                  </div>
+                  {totpSaving ? <RefreshCw className="w-4 h-4 animate-spin text-muted-foreground" /> : <ChevronRight className={`w-4 h-4 text-muted-foreground ${isAr ? "rotate-180" : ""}`} />}
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* ── Verify setup: scan QR + enter code ───────────────── */}
+          {totpMode === "verify_setup" && (
+            <div className="space-y-4">
+              <div className="text-center space-y-2">
+                <p className="text-sm font-semibold">{t("Scan this QR code", "امسح رمز QR هذا")}</p>
+                <p className="text-xs text-muted-foreground">{t("Use Google Authenticator, Authy, or any TOTP app.", "استخدم Google Authenticator أو Authy أو أي تطبيق TOTP.")}</p>
+                {totpQR && <img src={totpQR} alt="TOTP QR Code" className="w-44 h-44 mx-auto rounded-xl border border-border" />}
+                <details className="text-xs text-muted-foreground">
+                  <summary className="cursor-pointer hover:text-foreground">{t("Can't scan? Enter manually", "لا تستطيع المسح؟ أدخل يدوياً")}</summary>
+                  <code className="block mt-2 px-3 py-2 bg-muted rounded-lg font-mono tracking-wider break-all text-foreground">{totpSecret}</code>
+                </details>
+              </div>
+              <div>
+                <p className="text-sm font-semibold mb-3 text-center">{t("Enter the 6-digit code", "أدخل الرمز المكوّن من 6 أرقام")}</p>
+                <div className="flex justify-center gap-2" dir="ltr">
+                  {totpCode.map((digit, i) => (
+                    <input
+                      key={i}
+                      ref={el => { totpRefs.current[i] = el; }}
+                      type="tel"
+                      inputMode="numeric"
+                      maxLength={1}
+                      value={digit}
+                      autoFocus={i === 0}
+                      onChange={e => {
+                        const v = e.target.value.replace(/\D/g, "").slice(-1);
+                        const next = [...totpCode]; next[i] = v; setTotpCode(next);
+                        if (v && i < 5) totpRefs.current[i + 1]?.focus();
+                      }}
+                      onKeyDown={e => { if (e.key === "Backspace" && !totpCode[i] && i > 0) totpRefs.current[i - 1]?.focus(); }}
+                      className="w-11 h-13 text-center text-xl font-bold rounded-xl border-2 border-input bg-background focus:border-primary focus:outline-none transition-colors"
+                    />
+                  ))}
+                </div>
+              </div>
+              {totpError && <p className="text-sm text-destructive text-center">{totpError}</p>}
+              <div className="flex gap-2">
+                <button onClick={() => { setTotpMode("idle"); setTotpCode(["","","","","",""]); setTotpError(""); }}
+                  className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold hover:bg-muted transition-colors">
+                  {t("Cancel", "إلغاء")}
+                </button>
+                <button onClick={handleTotpVerifySetup} disabled={totpSaving || totpCode.join("").length < 6}
+                  className="flex-1 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50">
+                  {totpSaving ? t("Activating…", "جارٍ التفعيل…") : t("Activate 2FA", "تفعيل التحقق بخطوتين")}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── Disable 2FA: password confirmation ───────────────── */}
+          {totpMode === "disable" && (
+            <div className="space-y-4">
+              <div className="text-center">
+                <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-2">
+                  <Trash2 className="w-5 h-5 text-destructive" />
+                </div>
+                <p className="font-semibold">{t("Disable 2FA?", "تعطيل التحقق بخطوتين؟")}</p>
+                <p className="text-xs text-muted-foreground mt-1">{t("Enter your password to confirm.", "أدخل كلمة المرور للتأكيد.")}</p>
+              </div>
+              <Input
+                type="password"
+                placeholder={t("Current password", "كلمة المرور الحالية")}
+                value={totpDisablePwd}
+                onChange={v => setTotpDisablePwd(v)}
+                autoFocus
+              />
+              {totpError && <p className="text-sm text-destructive text-center">{totpError}</p>}
+              <div className="flex gap-2">
+                <button onClick={() => { setTotpMode("idle"); setTotpDisablePwd(""); setTotpError(""); }}
+                  className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold hover:bg-muted transition-colors">
+                  {t("Keep 2FA", "الاحتفاظ بـ 2FA")}
+                </button>
+                <button onClick={handleTotpDisable} disabled={totpSaving || !totpDisablePwd}
+                  className="flex-1 py-2.5 bg-destructive text-destructive-foreground rounded-xl text-sm font-semibold hover:bg-destructive/90 transition-colors disabled:opacity-50">
+                  {totpSaving ? t("Disabling…", "جارٍ التعطيل…") : t("Disable", "تعطيل")}
+                </button>
+              </div>
+            </div>
+          )}
+        </SectionCard>
+      )}
 
       {/* ── Active Sessions ──────────────────────────────────────────────── */}
       <SectionCard

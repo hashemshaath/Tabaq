@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useLanguage } from '@/hooks/use-language';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -108,6 +108,47 @@ export function SignInPage() {
   // ── Shared ────────────────────────────────────────────────────────────────
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState<string | null>(null);
+
+  // TOTP / MFA state
+  const [totpPending, setTotpPending]       = useState(false);
+  const [totpTempToken, setTotpTempToken]   = useState('');
+  const [totpCode, setTotpCode]             = useState(['', '', '', '', '', '']);
+  const [useBackupCode, setUseBackupCode]   = useState(false);
+  const [backupCode, setBackupCode]         = useState('');
+  const totpRefs = useRef<Array<HTMLInputElement | null>>([]);
+
+  // Load Google Identity Services script when VITE_GOOGLE_CLIENT_ID is configured
+  useEffect(() => {
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (!clientId || document.getElementById('google-gsi-script')) return;
+    const script = document.createElement('script');
+    script.id = 'google-gsi-script';
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    document.head.appendChild(script);
+  }, []);
+
+  // Load Apple JS SDK when VITE_APPLE_CLIENT_ID is configured
+  useEffect(() => {
+    const clientId = import.meta.env.VITE_APPLE_CLIENT_ID;
+    if (!clientId || document.getElementById('apple-signin-script')) return;
+    const script = document.createElement('script');
+    script.id = 'apple-signin-script';
+    script.src = 'https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js';
+    script.async = true;
+    script.onload = () => {
+      const AppleID = (window as any).AppleID;
+      if (AppleID) {
+        AppleID.auth.init({
+          clientId,
+          scope: 'name email',
+          redirectURI: window.location.origin,
+          usePopup: true,
+        });
+      }
+    };
+    document.head.appendChild(script);
+  }, []);
 
   if (user) { setLocation('/'); return null; }
 
@@ -241,9 +282,86 @@ export function SignInPage() {
         }
         return;
       }
+      // TOTP gate — admin with 2FA enabled
+      if (data.requires_totp && data.temp_token) {
+        setTotpTempToken(data.temp_token);
+        setTotpPending(true);
+        setError(null);
+        return;
+      }
       await finishLogin(data.accessToken ?? data.token, data.user);
     } catch {
       setError(t('Network error. Please try again.', 'خطأ في الشبكة. حاول مرة أخرى.'));
+    } finally { setLoading(false); }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // TOTP verify — exchange temp_token + code for full session
+  // ─────────────────────────────────────────────────────────────────────────
+  async function handleTotpVerify(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    const codeStr = useBackupCode ? backupCode.trim() : totpCode.join('');
+    if (!useBackupCode && codeStr.length < 6) return;
+    setLoading(true);
+    try {
+      const body = useBackupCode
+        ? { temp_token: totpTempToken, backup_code: codeStr }
+        : { temp_token: totpTempToken, code: codeStr };
+      const res  = await fetch(api('/auth/totp/verify'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.message || t('Invalid code. Please try again.', 'الرمز غير صحيح. حاول مجدداً.')); return; }
+      await finishLogin(data.accessToken, data.user);
+    } catch {
+      setError(t('Network error. Please try again.', 'خطأ في الشبكة. حاول مرة أخرى.'));
+    } finally { setLoading(false); }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // OAuth — Google (uses Google Identity Services)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  async function handleGoogleCredential(credential: string) {
+    setLoading(true); setError(null);
+    try {
+      const res  = await fetch(api('/auth/oauth/google'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id_token: credential }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.message || t('Google sign-in failed.', 'فشل تسجيل الدخول بـ Google.')); return; }
+      await finishLogin(data.accessToken, data.user);
+    } catch {
+      setError(t('Network error.', 'خطأ في الشبكة.'));
+    } finally { setLoading(false); }
+  }
+
+  async function handleAppleSignIn() {
+    const AppleID = (window as any).AppleID;
+    if (!AppleID) { setError(t('Apple sign-in not available.', 'تسجيل الدخول بـ Apple غير متاح.')); return; }
+    setLoading(true); setError(null);
+    try {
+      const result = await AppleID.auth.signIn();
+      const identityToken = result?.authorization?.id_token;
+      if (!identityToken) { setError(t('Apple sign-in failed.', 'فشل تسجيل الدخول بـ Apple.')); return; }
+      const appleUser = result?.user ?? undefined;
+      const res = await fetch(api('/auth/oauth/apple'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identity_token: identityToken, user: appleUser }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.message || t('Apple sign-in failed.', 'فشل تسجيل الدخول بـ Apple.')); return; }
+      await finishLogin(data.accessToken, data.user);
+    } catch (err: any) {
+      if (err?.error !== 'popup_closed_by_user') {
+        setError(t('Apple sign-in failed.', 'فشل تسجيل الدخول بـ Apple.'));
+      }
     } finally { setLoading(false); }
   }
 
@@ -490,6 +608,117 @@ export function SignInPage() {
   );
 
   // ─────────────────────────────────────────────────────────────────────────
+  // TOTP step — shown after password login when 2FA is required
+  // ─────────────────────────────────────────────────────────────────────────
+  const totpContent = (
+    <form onSubmit={handleTotpVerify} className="space-y-6">
+      <div className="text-center">
+        <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
+          <ShieldCheck className="w-7 h-7 text-primary" />
+        </div>
+        <h3 className="text-xl font-bold">{t('Two-factor authentication', 'التحقق بخطوتين')}</h3>
+        <p className="text-sm text-muted-foreground mt-1">
+          {useBackupCode
+            ? t('Enter one of your backup codes to continue.', 'أدخل أحد رموز الاسترداد للمتابعة.')
+            : t('Enter the 6-digit code from your authenticator app.', 'أدخل الرمز المكوّن من 6 أرقام من تطبيق المصادقة.')
+          }
+        </p>
+      </div>
+
+      {!useBackupCode ? (
+        <div className="flex justify-center gap-2" dir="ltr">
+          {totpCode.map((digit, i) => (
+            <input
+              key={i}
+              ref={el => { totpRefs.current[i] = el; }}
+              type="tel"
+              inputMode="numeric"
+              maxLength={1}
+              value={digit}
+              autoFocus={i === 0}
+              onChange={e => {
+                const v = e.target.value.replace(/\D/g, '').slice(-1);
+                const next = [...totpCode]; next[i] = v; setTotpCode(next);
+                if (v && i < 5) totpRefs.current[i + 1]?.focus();
+              }}
+              onKeyDown={e => { if (e.key === 'Backspace' && !totpCode[i] && i > 0) totpRefs.current[i - 1]?.focus(); }}
+              className="w-11 h-14 text-center text-xl font-bold rounded-xl border-2 border-input bg-background focus:border-primary focus:outline-none transition-colors"
+            />
+          ))}
+        </div>
+      ) : (
+        <input
+          type="text"
+          value={backupCode}
+          onChange={e => setBackupCode(e.target.value)}
+          placeholder="XXXXX-XXXXX"
+          autoFocus
+          dir="ltr"
+          className="w-full h-12 px-4 rounded-xl border border-input bg-background text-center text-base tracking-widest font-mono focus:border-primary focus:outline-none"
+        />
+      )}
+
+      {error && <p className="text-center text-sm text-destructive">{error}</p>}
+
+      <Button type="submit" className="w-full h-12 rounded-xl font-semibold"
+        disabled={loading || (!useBackupCode && totpCode.join('').length < 6) || (useBackupCode && !backupCode.trim())}>
+        {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : t('Verify', 'تحقق')}
+      </Button>
+
+      <div className="flex items-center justify-between text-sm">
+        <button type="button" className="text-muted-foreground hover:text-foreground transition-colors"
+          onClick={() => { setTotpPending(false); setTotpTempToken(''); setTotpCode(['','','','','','']); setUseBackupCode(false); setBackupCode(''); setError(null); }}>
+          ← {t('Cancel', 'إلغاء')}
+        </button>
+        <button type="button" className="text-primary hover:underline transition-colors"
+          onClick={() => { setUseBackupCode(v => !v); setError(null); }}>
+          {useBackupCode ? t('Use authenticator app', 'استخدام تطبيق المصادقة') : t('Use backup code', 'استخدام رمز الاسترداد')}
+        </button>
+      </div>
+    </form>
+  );
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // OAuth social sign-in buttons
+  // ─────────────────────────────────────────────────────────────────────────
+  const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
+  const APPLE_CLIENT_ID  = import.meta.env.VITE_APPLE_CLIENT_ID  as string | undefined;
+  const showOAuth = !!(GOOGLE_CLIENT_ID || APPLE_CLIENT_ID);
+
+  const oauthButtons = showOAuth && (
+    <div className="space-y-3">
+      {GOOGLE_CLIENT_ID && (
+        <div
+          id="google-signin-btn"
+          ref={el => {
+            if (!el || el.hasChildNodes()) return;
+            const google = (window as any).google;
+            if (!google) return;
+            google.accounts.id.initialize({
+              client_id: GOOGLE_CLIENT_ID,
+              callback: (res: any) => handleGoogleCredential(res.credential),
+            });
+            google.accounts.id.renderButton(el, { theme: 'outline', size: 'large', width: el.offsetWidth || 360 });
+          }}
+        />
+      )}
+      {APPLE_CLIENT_ID && (
+        <button type="button" onClick={handleAppleSignIn} disabled={loading}
+          className="w-full h-12 flex items-center justify-center gap-3 rounded-xl border border-border bg-background hover:bg-muted font-semibold text-sm transition-colors">
+          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+          </svg>
+          {t('Continue with Apple', 'المتابعة بـ Apple')}
+        </button>
+      )}
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border" /></div>
+        <div className="relative flex justify-center text-xs text-muted-foreground bg-background px-3 w-fit mx-auto">{t('or', 'أو')}</div>
+      </div>
+    </div>
+  );
+
+  // ─────────────────────────────────────────────────────────────────────────
   // Main sign-in form content
   // ─────────────────────────────────────────────────────────────────────────
   const mainContent = (
@@ -509,6 +738,9 @@ export function SignInPage() {
           </button>
         ))}
       </div>
+
+      {/* OAuth social buttons — shown above the tab form when credentials are configured */}
+      {oauthButtons}
 
       {/* ── Phone OTP ─────────────────────────────────────────────────── */}
       {(tab === 'phone' || tab === 'email_otp') && (
@@ -698,8 +930,8 @@ export function SignInPage() {
             </div>
           )}
 
-          {/* Content: forgot password flow OR main form */}
-          {forgotOpen ? forgotContent : mainContent}
+          {/* Content: TOTP gate > forgot password flow > main form */}
+          {totpPending ? totpContent : forgotOpen ? forgotContent : mainContent}
 
           {/* Footer links */}
           <div className="mt-8 pt-6 border-t border-border flex flex-col items-center gap-3 text-xs text-muted-foreground">

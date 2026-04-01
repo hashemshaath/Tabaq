@@ -38,6 +38,19 @@ export function verifyToken(token: string): JwtPayload | null {
   }
 }
 
+/** Short-lived JWT (10 min) issued after successful primary auth when TOTP is required. */
+export function signTempToken(userId: number): string {
+  return jwt.sign({ userId, type: "mfa_pending" }, JWT_SECRET!, { expiresIn: "10m" } as jwt.SignOptions);
+}
+
+export function verifyTempToken(token: string): { userId: number } | null {
+  try {
+    const p = jwt.verify(token, JWT_SECRET!) as any;
+    if (p.type !== "mfa_pending") return null;
+    return { userId: p.userId };
+  } catch { return null; }
+}
+
 export function generateOtp(): string {
   return String(crypto.randomInt(100000, 999999));
 }
