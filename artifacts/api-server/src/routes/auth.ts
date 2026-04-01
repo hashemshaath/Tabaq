@@ -1,8 +1,20 @@
 import { Router, type IRouter } from "express";
+import bcrypt from "bcryptjs";
 import { db } from "@workspace/db";
-import { usersTable, otpRequestsTable, emailVerificationTokensTable } from "@workspace/db/schema";
-import { eq, and, isNull, gt, desc, gte } from "drizzle-orm";
-import { signToken, generateOtp, otpExpiresAt } from "../lib/auth.js";
+import { usersTable, otpRequestsTable, emailVerificationTokensTable, refreshTokensTable } from "@workspace/db/schema";
+import { eq, and, isNull, gt, desc, gte, lt } from "drizzle-orm";
+import {
+  signToken,
+  generateOtp,
+  hashOtp,
+  otpExpiresAt,
+  generateRefreshToken,
+  hashRefreshToken,
+  normalizePhone,
+  validateEmail,
+  validatePasswordStrength,
+  REFRESH_TOKEN_EXPIRES_IN_MS,
+} from "../lib/auth.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { authRateLimiter } from "../middleware/rateLimiter.js";
 import { sendOtp, isSmsDevMode } from "../services/smsService.js";
@@ -12,6 +24,9 @@ import crypto from "crypto";
 const router: IRouter = Router();
 
 const IS_DEV = process.env["NODE_ENV"] !== "production";
+const BCRYPT_ROUNDS = 12;
+const FAILED_LOGIN_MAX = 5;
+const LOCK_DURATION_MS = 15 * 60 * 1000;
 
 function calcLevel(points: number): { level: number; levelTitle: string } {
   if (points < 100) return { level: 1, levelTitle: "Food Explorer" };
@@ -21,69 +36,127 @@ function calcLevel(points: number): { level: number; levelTitle: string } {
   return { level: 5, levelTitle: "Master Chef" };
 }
 
-const OTP_RATE_LIMIT_WINDOW_MS = 60 * 1000;
-const OTP_RATE_LIMIT_MAX = 3;
-
-// Verify-attempt throttling: max 5 failed attempts per identifier within 10 min window
-// then lock out for 10 min. Stored in memory (resets on server restart — acceptable for MVP).
-const VERIFY_ATTEMPT_MAX = 5;
-const VERIFY_ATTEMPT_WINDOW_MS = 10 * 60 * 1000;
-
-const verifyAttempts = new Map<string, { count: number; windowStart: number }>();
-
-function checkVerifyAttempt(key: string): { allowed: boolean; remaining: number } {
-  const now = Date.now();
-  const entry = verifyAttempts.get(key);
-
-  if (!entry || now - entry.windowStart > VERIFY_ATTEMPT_WINDOW_MS) {
-    verifyAttempts.set(key, { count: 0, windowStart: now });
-    return { allowed: true, remaining: VERIFY_ATTEMPT_MAX };
-  }
-  const remaining = VERIFY_ATTEMPT_MAX - entry.count;
-  return { allowed: remaining > 0, remaining };
+function generateUserUid(id: number): string {
+  const year = new Date().getFullYear();
+  const suffix = crypto.randomBytes(4).toString("hex").toUpperCase();
+  return `USR-${year}-${String(id).padStart(8, "0")}-${suffix}`;
 }
 
-function recordVerifyFailure(key: string): void {
-  const entry = verifyAttempts.get(key);
-  if (entry) entry.count += 1;
+async function buildTokens(user: typeof usersTable.$inferSelect, deviceInfo?: string) {
+  const uid = user.userUid ?? generateUserUid(user.id);
+  const role: "admin" | "owner" | "user" = user.isAdmin ? "admin" : user.isOwner ? "owner" : "user";
+  const accessToken = signToken({
+    sub: uid,
+    userId: user.id,
+    role,
+    phone: user.phone,
+    email: user.email,
+    isAdmin: user.isAdmin,
+    isOwner: user.isOwner,
+  });
+
+  const rawRefresh = generateRefreshToken();
+  const tokenHash = hashRefreshToken(rawRefresh);
+  const expiresAt = new Date(Date.now() + REFRESH_TOKEN_EXPIRES_IN_MS);
+
+  await db.insert(refreshTokensTable).values({
+    userId: user.id,
+    tokenHash,
+    deviceInfo: deviceInfo ?? null,
+    expiresAt,
+  });
+
+  return { accessToken, refreshToken: rawRefresh };
 }
 
-function clearVerifyAttempts(key: string): void {
-  verifyAttempts.delete(key);
+async function recordLoginSuccess(userId: number, ip: string) {
+  await db.update(usersTable).set({
+    failedLoginCount: 0,
+    lockedUntil: null,
+    lastLoginAt: new Date(),
+    lastLoginIp: ip,
+    updatedAt: new Date(),
+  }).where(eq(usersTable.id, userId));
 }
+
+async function recordLoginFailure(userId: number) {
+  const [user] = await db
+    .select({ failedLoginCount: usersTable.failedLoginCount })
+    .from(usersTable).where(eq(usersTable.id, userId));
+  if (!user) return;
+  const newCount = (user.failedLoginCount ?? 0) + 1;
+  const lockedUntil = newCount >= FAILED_LOGIN_MAX ? new Date(Date.now() + LOCK_DURATION_MS) : null;
+  await db.update(usersTable).set({
+    failedLoginCount: newCount,
+    ...(lockedUntil ? { lockedUntil } : {}),
+    updatedAt: new Date(),
+  }).where(eq(usersTable.id, userId));
+}
+
+function getClientIp(req: import("express").Request): string {
+  const forwarded = req.headers["x-forwarded-for"];
+  if (typeof forwarded === "string") return forwarded.split(",")[0]?.trim() ?? "unknown";
+  return req.socket?.remoteAddress ?? "unknown";
+}
+
+// ── PHONE + OTP ───────────────────────────────────────────────────────────────
 
 router.post("/auth/request-otp", authRateLimiter, async (req, res) => {
   try {
-    const { phone, email } = req.body as { phone?: string; email?: string };
-    if (!phone && !email) {
+    const { phone: rawPhone, email: rawEmail } = req.body as { phone?: string; email?: string };
+    if (!rawPhone && !rawEmail) {
       res.status(400).json({ error: "bad_request", message: "phone or email required" });
       return;
     }
 
-    const windowStart = new Date(Date.now() - OTP_RATE_LIMIT_WINDOW_MS);
+    let phone: string | null = null;
+    let email: string | null = null;
+
+    if (rawPhone) {
+      phone = normalizePhone(rawPhone);
+      if (!phone) {
+        res.status(400).json({
+          error: "invalid_phone",
+          message: "Invalid phone number. Use E.164 format e.g. +966501234567",
+        });
+        return;
+      }
+    }
+
+    if (rawEmail) {
+      if (!validateEmail(rawEmail)) {
+        res.status(400).json({ error: "invalid_email", message: "Invalid email address" });
+        return;
+      }
+      email = rawEmail.trim().toLowerCase();
+    }
+
+    // Rate limit: max 1 resend per 60 seconds per identifier
+    const windowStart60s = new Date(Date.now() - 60 * 1000);
     const recentCondition = phone
-      ? and(eq(otpRequestsTable.phone, phone), gte(otpRequestsTable.createdAt, windowStart))
-      : and(eq(otpRequestsTable.email, email!), gte(otpRequestsTable.createdAt, windowStart));
+      ? and(eq(otpRequestsTable.phone, phone), gte(otpRequestsTable.createdAt, windowStart60s))
+      : and(eq(otpRequestsTable.email, email!), gte(otpRequestsTable.createdAt, windowStart60s));
     const recent = await db.select({ id: otpRequestsTable.id }).from(otpRequestsTable).where(recentCondition);
-    if (recent.length >= OTP_RATE_LIMIT_MAX) {
+    if (recent.length >= 1) {
       res.status(429).json({
         error: "rate_limited",
-        message: "Too many OTP requests. Please wait a minute. / تجاوزت الحد المسموح. يرجى الانتظار دقيقة.",
+        message: "Please wait 60 seconds before requesting a new code. / انتظر 60 ثانية قبل طلب رمز جديد.",
       });
       return;
     }
 
     const code = generateOtp();
+    const otpHash = hashOtp(code);
     const expiresAt = otpExpiresAt();
 
     await db.insert(otpRequestsTable).values({
       phone: phone ?? null,
       email: email ?? null,
-      code,
+      code: "HASHED",
+      otpHash,
       expiresAt,
     });
 
-    // Send real SMS when a phone number is provided and SMS provider is configured
     if (phone) {
       const smsResult = await sendOtp(phone, code);
       if (!smsResult.success) {
@@ -91,7 +164,6 @@ router.post("/auth/request-otp", authRateLimiter, async (req, res) => {
       }
     }
 
-    // In dev/mock mode or email OTP: return the code in the response for testing
     if (isSmsDevMode() || email) {
       req.log.info({ code, channel: phone ? "phone" : "email" }, "OTP generated (dev/email mode)");
       res.json({ message: "OTP sent", devCode: IS_DEV ? code : undefined });
@@ -106,7 +178,7 @@ router.post("/auth/request-otp", authRateLimiter, async (req, res) => {
 
 router.post("/auth/verify-otp", authRateLimiter, async (req, res) => {
   try {
-    const { phone, email, code, nameEn, nameAr, preferredLanguage = "en", cityId } = req.body as {
+    const { phone: rawPhone, email: rawEmail, code, nameEn, nameAr, preferredLanguage = "en", cityId } = req.body as {
       phone?: string;
       email?: string;
       code: string;
@@ -116,50 +188,102 @@ router.post("/auth/verify-otp", authRateLimiter, async (req, res) => {
       cityId?: number;
     };
 
-    if (!code || (!phone && !email) || (phone && email)) {
+    if (!code || (!rawPhone && !rawEmail) || (rawPhone && rawEmail)) {
       res.status(400).json({ error: "bad_request", message: "Provide exactly one of phone or email, plus code" });
       return;
     }
 
-    const otpType: "phone" | "email" = phone ? "phone" : "email";
+    let phone: string | null = null;
+    let email: string | null = null;
 
-    const attemptKey = phone ?? email!;
-    const attempt = checkVerifyAttempt(attemptKey);
-    if (!attempt.allowed) {
-      res.status(429).json({
-        error: "otp_attempt_limit",
-        message: "Too many failed verification attempts. Please request a new code.",
+    if (rawPhone) {
+      phone = normalizePhone(rawPhone);
+      if (!phone) {
+        res.status(400).json({ error: "invalid_phone", message: "Invalid phone number format" });
+        return;
+      }
+    }
+
+    if (rawEmail) {
+      if (!validateEmail(rawEmail)) {
+        res.status(400).json({ error: "invalid_email", message: "Invalid email address" });
+        return;
+      }
+      email = rawEmail.trim().toLowerCase();
+    }
+
+    const otpType: "phone" | "email" = phone ? "phone" : "email";
+    const identifier = phone ?? email!;
+
+    // Check for existing user account lock
+    const existingUser = await db
+      .select({ id: usersTable.id, lockedUntil: usersTable.lockedUntil, failedLoginCount: usersTable.failedLoginCount, userUid: usersTable.userUid, isAdmin: usersTable.isAdmin, isOwner: usersTable.isOwner, phone: usersTable.phone, email: usersTable.email })
+      .from(usersTable)
+      .where(phone ? eq(usersTable.phone, phone) : eq(usersTable.email, email!))
+      .limit(1)
+      .then(r => r[0]);
+
+    if (existingUser?.lockedUntil && existingUser.lockedUntil > new Date()) {
+      const retryAfter = Math.ceil((existingUser.lockedUntil.getTime() - Date.now()) / 1000);
+      res.status(403).json({
+        error: "ACCOUNT_LOCKED",
+        message: "Account temporarily locked due to too many failed attempts.",
+        retry_after: retryAfter,
       });
       return;
     }
 
     const now = new Date();
+    const submittedHash = hashOtp(code);
+
+    // Find the most recent valid (unexpired, unused) OTP
     const [otp] = await db.select().from(otpRequestsTable).where(
       and(
         phone ? eq(otpRequestsTable.phone, phone) : eq(otpRequestsTable.email, email!),
-        eq(otpRequestsTable.code, code),
         isNull(otpRequestsTable.usedAt),
         gt(otpRequestsTable.expiresAt, now),
       )
     ).orderBy(desc(otpRequestsTable.createdAt)).limit(1);
 
     if (!otp) {
-      recordVerifyFailure(attemptKey);
+      if (existingUser) await recordLoginFailure(existingUser.id);
       res.status(401).json({ error: "invalid_otp", message: "Invalid or expired OTP" });
       return;
     }
 
-    await db.update(otpRequestsTable)
-      .set({ usedAt: now })
-      .where(eq(otpRequestsTable.id, otp.id));
+    // Compare hash
+    const storedHash = otp.otpHash ?? "";
+    const hashMatch = storedHash !== "LEGACY" && storedHash === submittedHash;
 
-    clearVerifyAttempts(attemptKey);
+    if (!hashMatch) {
+      // Increment attempts on this specific OTP row
+      const newAttempts = (otp.attempts ?? 0) + 1;
+      if (newAttempts >= 3) {
+        // Void this OTP
+        await db.update(otpRequestsTable).set({ usedAt: now }).where(eq(otpRequestsTable.id, otp.id));
+        if (existingUser) await recordLoginFailure(existingUser.id);
+        res.status(401).json({
+          error: "otp_voided",
+          message: "Too many failed attempts. Please request a new code.",
+        });
+      } else {
+        await db.update(otpRequestsTable).set({ attempts: newAttempts }).where(eq(otpRequestsTable.id, otp.id));
+        if (existingUser) await recordLoginFailure(existingUser.id);
+        res.status(401).json({
+          error: "invalid_otp",
+          message: "Invalid OTP",
+          attemptsRemaining: 3 - newAttempts,
+        });
+      }
+      return;
+    }
 
-    let user = await db.select().from(usersTable).where(
-      phone ? eq(usersTable.phone, phone) : eq(usersTable.email, email!)
-    ).limit(1).then(rows => rows[0]);
+    // Mark OTP as used immediately (prevent replay)
+    await db.update(otpRequestsTable).set({ usedAt: now }).where(eq(otpRequestsTable.id, otp.id));
 
-    if (!user) {
+    let user: typeof usersTable.$inferSelect;
+
+    if (!existingUser) {
       const levelInfo = calcLevel(0);
       const [created] = await db.insert(usersTable).values({
         phone: phone ?? null,
@@ -173,34 +297,301 @@ router.post("/auth/verify-otp", authRateLimiter, async (req, res) => {
         isEmailVerified: otpType === "email",
       }).returning();
       user = created!;
-    } else if (otpType === "email" && !user.isEmailVerified) {
-      const [updated] = await db.update(usersTable)
-        .set({ isEmailVerified: true, updatedAt: new Date() })
-        .where(eq(usersTable.id, user.id))
-        .returning();
-      user = updated!;
+      // Backfill user_uid
+      const uid = generateUserUid(user.id);
+      await db.update(usersTable).set({ userUid: uid }).where(eq(usersTable.id, user.id));
+      user = { ...user, userUid: uid };
+    } else {
+      let updated = existingUser as unknown as typeof usersTable.$inferSelect;
+      if (otpType === "email") {
+        const [u] = await db.update(usersTable)
+          .set({ isEmailVerified: true, updatedAt: new Date() })
+          .where(eq(usersTable.id, existingUser.id))
+          .returning();
+        updated = u!;
+      }
+      user = updated;
     }
 
-    const token = signToken({ userId: user.id, phone: user.phone, email: user.email, isAdmin: user.isAdmin, isOwner: user.isOwner });
+    const ip = getClientIp(req);
+    await recordLoginSuccess(user.id, ip);
 
-    res.cookie("tabaq_token", token, {
+    const deviceInfo = req.headers["user-agent"] ?? undefined;
+    const { accessToken, refreshToken } = await buildTokens(user, typeof deviceInfo === "string" ? deviceInfo : undefined);
+
+    res.cookie("tabaq_token", accessToken, {
       httpOnly: true,
       secure: !IS_DEV,
       sameSite: "strict",
-      maxAge: 30 * 24 * 60 * 60 * 1000,
+      maxAge: 15 * 60 * 1000,
     });
 
-    res.json({ token, user });
+    res.json({ token: accessToken, accessToken, refreshToken, user });
   } catch (err) {
     req.log.error({ err }, "Failed to verify OTP");
     res.status(500).json({ error: "internal_error", message: "Failed to verify OTP" });
   }
 });
 
+// ── EMAIL + PASSWORD ──────────────────────────────────────────────────────────
+
+router.post("/auth/register", authRateLimiter, async (req, res) => {
+  try {
+    const { email: rawEmail, password, nameEn, nameAr, preferredLanguage = "en", cityId } = req.body as {
+      email?: string;
+      password?: string;
+      nameEn?: string;
+      nameAr?: string;
+      preferredLanguage?: string;
+      cityId?: number;
+    };
+
+    if (!rawEmail || !password) {
+      res.status(400).json({ error: "bad_request", message: "email and password are required" });
+      return;
+    }
+
+    if (!validateEmail(rawEmail)) {
+      res.status(400).json({ error: "invalid_email", message: "Invalid email address" });
+      return;
+    }
+
+    const strength = validatePasswordStrength(password);
+    if (!strength.valid) {
+      res.status(400).json({
+        error: "PASSWORD_TOO_WEAK",
+        message: "Password does not meet requirements",
+        requirements: strength.reasons,
+      });
+      return;
+    }
+
+    const email = rawEmail.trim().toLowerCase();
+
+    // App-level uniqueness check (gives a clear error before hitting DB constraint)
+    const [existing] = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(eq(usersTable.email, email))
+      .limit(1);
+
+    if (existing) {
+      res.status(409).json({ error: "EMAIL_ALREADY_EXISTS", message: "An account with this email already exists" });
+      return;
+    }
+
+    const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+    const levelInfo = calcLevel(0);
+
+    const [user] = await db.insert(usersTable).values({
+      email,
+      passwordHash,
+      nameEn: nameEn ?? null,
+      nameAr: nameAr ?? null,
+      preferredLanguage,
+      cityId: cityId ?? null,
+      level: levelInfo.level,
+      levelTitle: levelInfo.levelTitle,
+      isEmailVerified: false,
+    }).returning();
+
+    const uid = generateUserUid(user!.id);
+    await db.update(usersTable).set({ userUid: uid }).where(eq(usersTable.id, user!.id));
+
+    // Generate email verification OTP
+    const code = generateOtp();
+    const otpHash = hashOtp(code);
+    await db.insert(otpRequestsTable).values({
+      email,
+      code: "HASHED",
+      otpHash,
+      expiresAt: otpExpiresAt(),
+    });
+
+    req.log.info({ userId: user!.id, email }, "Registration: email verification OTP generated");
+
+    res.status(201).json({
+      message: "Account created. Please verify your email.",
+      userId: user!.id,
+      ...(IS_DEV ? { devEmailOtp: code } : {}),
+    });
+  } catch (err: unknown) {
+    const pg = err as { code?: string };
+    if (pg?.code === "23505") {
+      res.status(409).json({ error: "EMAIL_ALREADY_EXISTS", message: "An account with this email already exists" });
+      return;
+    }
+    req.log.error({ err }, "Failed to register");
+    res.status(500).json({ error: "internal_error", message: "Failed to register" });
+  }
+});
+
+router.post("/auth/login", authRateLimiter, async (req, res) => {
+  try {
+    const { email: rawEmail, password } = req.body as { email?: string; password?: string };
+
+    if (!rawEmail || !password) {
+      res.status(400).json({ error: "bad_request", message: "email and password are required" });
+      return;
+    }
+
+    if (!validateEmail(rawEmail)) {
+      res.status(400).json({ error: "invalid_email", message: "Invalid email address" });
+      return;
+    }
+
+    const email = rawEmail.trim().toLowerCase();
+
+    const [user] = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.email, email))
+      .limit(1);
+
+    // Always spend time on bcrypt to prevent timing attacks even if user not found
+    const dummyHash = "$2b$12$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ012345";
+    const hashToCompare = user?.passwordHash ?? dummyHash;
+
+    if (!user) {
+      await bcrypt.compare(password, dummyHash);
+      res.status(401).json({ error: "invalid_credentials", message: "Invalid email or password" });
+      return;
+    }
+
+    // Account lock check
+    if (user.lockedUntil && user.lockedUntil > new Date()) {
+      await bcrypt.compare(password, dummyHash); // constant time
+      const retryAfter = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 1000);
+      res.status(403).json({
+        error: "ACCOUNT_LOCKED",
+        message: "Account temporarily locked due to too many failed attempts.",
+        retry_after: retryAfter,
+      });
+      return;
+    }
+
+    if (!user.passwordHash) {
+      res.status(400).json({
+        error: "no_password",
+        message: "This account uses phone/OTP login. Please sign in with your phone number.",
+      });
+      return;
+    }
+
+    const passwordMatch = await bcrypt.compare(password, hashToCompare);
+
+    if (!passwordMatch) {
+      await recordLoginFailure(user.id);
+      res.status(401).json({ error: "invalid_credentials", message: "Invalid email or password" });
+      return;
+    }
+
+    if (!user.isEmailVerified) {
+      res.status(403).json({
+        error: "email_not_verified",
+        message: "Please verify your email before logging in.",
+      });
+      return;
+    }
+
+    const ip = getClientIp(req);
+    await recordLoginSuccess(user.id, ip);
+
+    const deviceInfo = req.headers["user-agent"];
+    const { accessToken, refreshToken } = await buildTokens(user, typeof deviceInfo === "string" ? deviceInfo : undefined);
+
+    res.cookie("tabaq_token", accessToken, {
+      httpOnly: true,
+      secure: !IS_DEV,
+      sameSite: "strict",
+      maxAge: 15 * 60 * 1000,
+    });
+
+    res.json({ token: accessToken, accessToken, refreshToken, user });
+  } catch (err) {
+    req.log.error({ err }, "Failed to login");
+    res.status(500).json({ error: "internal_error", message: "Failed to login" });
+  }
+});
+
+// ── REFRESH TOKEN ─────────────────────────────────────────────────────────────
+
+router.post("/auth/refresh", async (req, res) => {
+  try {
+    const { refreshToken: rawToken } = req.body as { refreshToken?: string };
+
+    // Also accept from Authorization header (Bearer <refreshToken>)
+    const token = rawToken ?? req.headers["x-refresh-token"];
+    if (!token || typeof token !== "string") {
+      res.status(400).json({ error: "bad_request", message: "refreshToken is required" });
+      return;
+    }
+
+    const tokenHash = hashRefreshToken(token);
+    const now = new Date();
+
+    const [record] = await db
+      .select()
+      .from(refreshTokensTable)
+      .where(
+        and(
+          eq(refreshTokensTable.tokenHash, tokenHash),
+          eq(refreshTokensTable.isRevoked, false),
+          gt(refreshTokensTable.expiresAt, now),
+        )
+      )
+      .limit(1);
+
+    if (!record) {
+      res.status(401).json({ error: "invalid_refresh_token", message: "Refresh token is invalid, expired, or already used" });
+      return;
+    }
+
+    // Revoke the old token (rotation)
+    await db
+      .update(refreshTokensTable)
+      .set({ isRevoked: true })
+      .where(eq(refreshTokensTable.id, record.id));
+
+    const [user] = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.id, record.userId))
+      .limit(1);
+
+    if (!user) {
+      res.status(401).json({ error: "user_not_found", message: "User not found" });
+      return;
+    }
+
+    if (user.lockedUntil && user.lockedUntil > now) {
+      const retryAfter = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 1000);
+      res.status(403).json({ error: "ACCOUNT_LOCKED", message: "Account is locked", retry_after: retryAfter });
+      return;
+    }
+
+    const deviceInfo = record.deviceInfo ?? req.headers["user-agent"];
+    const { accessToken, refreshToken: newRefreshToken } = await buildTokens(user, typeof deviceInfo === "string" ? deviceInfo : undefined);
+
+    res.cookie("tabaq_token", accessToken, {
+      httpOnly: true,
+      secure: !IS_DEV,
+      sameSite: "strict",
+      maxAge: 15 * 60 * 1000,
+    });
+
+    res.json({ accessToken, refreshToken: newRefreshToken });
+  } catch (err) {
+    req.log.error({ err }, "Failed to refresh token");
+    res.status(500).json({ error: "internal_error", message: "Failed to refresh token" });
+  }
+});
+
+// ── ME ────────────────────────────────────────────────────────────────────────
+
 router.get("/auth/me", requireAuth, async (req, res) => {
   try {
-    const userId = req.auth!.userId;
-    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.auth!.userId));
     if (!user) {
       res.status(404).json({ error: "not_found", message: "User not found" });
       return;
@@ -212,106 +603,88 @@ router.get("/auth/me", requireAuth, async (req, res) => {
   }
 });
 
-// Email verification — request a verification link (token-based)
+// ── EMAIL VERIFICATION (token-link flow) ─────────────────────────────────────
+
 router.post("/auth/verify-email/request", requireAuth, async (req, res) => {
   try {
     const userId = req.auth!.userId;
     const [user] = await db.select({ id: usersTable.id, email: usersTable.email, isEmailVerified: usersTable.isEmailVerified })
       .from(usersTable).where(eq(usersTable.id, userId));
 
-    if (!user) {
-      res.status(404).json({ error: "not_found", message: "User not found" });
-      return;
-    }
-    if (user.isEmailVerified) {
-      res.status(400).json({ error: "already_verified", message: "Email already verified" });
-      return;
-    }
-    if (!user.email) {
-      res.status(400).json({ error: "no_email", message: "No email address on account" });
-      return;
-    }
+    if (!user) { res.status(404).json({ error: "not_found" }); return; }
+    if (user.isEmailVerified) { res.status(400).json({ error: "already_verified", message: "Email already verified" }); return; }
+    if (!user.email) { res.status(400).json({ error: "no_email", message: "No email address on account" }); return; }
 
     const token = crypto.randomBytes(32).toString("hex");
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-
     await db.insert(emailVerificationTokensTable).values({ userId, token, expiresAt });
 
     const verifyUrl = `${process.env["APP_URL"] ?? "https://tabaq.app"}/verify-email?token=${token}`;
-
     req.log.info({ userId }, "Email verification link generated");
+
     res.json({
       message: "Verification link generated",
       ...(IS_DEV ? { devVerifyUrl: verifyUrl, devToken: token } : {}),
     });
   } catch (err) {
     req.log.error({ err }, "Failed to request email verification");
-    res.status(500).json({ error: "internal_error", message: "Failed to request email verification" });
+    res.status(500).json({ error: "internal_error" });
   }
 });
 
-// Email verification — confirm via token from the link
 router.get("/auth/verify-email/confirm", async (req, res) => {
   try {
     const { token } = req.query as { token?: string };
-    if (!token) {
-      res.status(400).json({ error: "bad_request", message: "token required" });
-      return;
-    }
+    if (!token) { res.status(400).json({ error: "bad_request", message: "token required" }); return; }
 
     const now = new Date();
-    const [record] = await db.select()
-      .from(emailVerificationTokensTable)
-      .where(
-        and(
-          eq(emailVerificationTokensTable.token, token),
-          isNull(emailVerificationTokensTable.usedAt),
-          gt(emailVerificationTokensTable.expiresAt, now),
-        )
-      ).limit(1);
+    const [record] = await db.select().from(emailVerificationTokensTable).where(
+      and(
+        eq(emailVerificationTokensTable.token, token),
+        isNull(emailVerificationTokensTable.usedAt),
+        gt(emailVerificationTokensTable.expiresAt, now),
+      )
+    ).limit(1);
 
     if (!record) {
       res.status(400).json({ error: "invalid_token", message: "Invalid or expired verification link" });
       return;
     }
 
-    await db.update(emailVerificationTokensTable)
-      .set({ usedAt: now })
-      .where(eq(emailVerificationTokensTable.id, record.id));
-
-    const [user] = await db.update(usersTable)
-      .set({ isEmailVerified: true, updatedAt: now })
+    await db.update(emailVerificationTokensTable).set({ usedAt: now }).where(eq(emailVerificationTokensTable.id, record.id));
+    const [user] = await db.update(usersTable).set({ isEmailVerified: true, updatedAt: now })
       .where(eq(usersTable.id, record.userId))
       .returning({ id: usersTable.id, isEmailVerified: usersTable.isEmailVerified, points: usersTable.points });
 
-    if (user) {
-      await awardPoints(record.userId, POINTS.EMAIL_VERIFIED);
-    }
-
+    if (user) await awardPoints(record.userId, POINTS.EMAIL_VERIFIED);
     res.json({ message: "Email verified successfully", userId: record.userId });
   } catch (err) {
     req.log.error({ err }, "Failed to confirm email verification");
-    res.status(500).json({ error: "internal_error", message: "Failed to confirm email verification" });
+    res.status(500).json({ error: "internal_error" });
   }
 });
 
-router.post("/auth/logout", (_req, res) => {
+// ── LOGOUT ────────────────────────────────────────────────────────────────────
+
+router.post("/auth/logout", async (req, res) => {
+  // Revoke refresh token if supplied
+  const rawToken = (req.body as { refreshToken?: string })?.refreshToken;
+  if (rawToken) {
+    const tokenHash = hashRefreshToken(rawToken);
+    await db.update(refreshTokensTable).set({ isRevoked: true }).where(eq(refreshTokensTable.tokenHash, tokenHash)).catch(() => {});
+  }
   res.clearCookie("tabaq_token");
   res.json({ message: "Logged out" });
 });
 
-// GET /auth/me/membership — return user's current gold plan
+// ── MEMBERSHIP ────────────────────────────────────────────────────────────────
+
 router.get("/auth/me/membership", requireAuth, async (req, res) => {
   try {
-    const userId = req.auth!.userId;
     const [user] = await db
       .select({ goldPlan: usersTable.goldPlan, goldBilling: usersTable.goldBilling, goldSince: usersTable.goldSince })
-      .from(usersTable)
-      .where(eq(usersTable.id, userId));
-    if (!user) {
-      res.status(404).json({ error: "not_found" });
-      return;
-    }
+      .from(usersTable).where(eq(usersTable.id, req.auth!.userId));
+    if (!user) { res.status(404).json({ error: "not_found" }); return; }
     res.json({ goldPlan: user.goldPlan ?? null, goldBilling: user.goldBilling ?? null, goldSince: user.goldSince ?? null });
   } catch (err) {
     req.log.error({ err }, "Failed to fetch membership");
@@ -319,23 +692,14 @@ router.get("/auth/me/membership", requireAuth, async (req, res) => {
   }
 });
 
-// PATCH /auth/me/membership — update user's gold plan
 router.patch("/auth/me/membership", requireAuth, async (req, res) => {
   try {
-    const userId = req.auth!.userId;
     const { plan, billing } = req.body as { plan?: string; billing?: string };
-
     const VALID_PLANS = ["gourmet", "elite", null, "explorer"];
     const VALID_BILLING = ["monthly", "annual", null];
 
-    if (!VALID_PLANS.includes(plan ?? null)) {
-      res.status(400).json({ error: "bad_request", message: "Invalid plan" });
-      return;
-    }
-    if (billing !== undefined && !VALID_BILLING.includes(billing ?? null)) {
-      res.status(400).json({ error: "bad_request", message: "Invalid billing cycle" });
-      return;
-    }
+    if (!VALID_PLANS.includes(plan ?? null)) { res.status(400).json({ error: "bad_request", message: "Invalid plan" }); return; }
+    if (billing !== undefined && !VALID_BILLING.includes(billing ?? null)) { res.status(400).json({ error: "bad_request", message: "Invalid billing cycle" }); return; }
 
     const resolvedPlan = (plan === "explorer" || !plan) ? null : plan;
     const resolvedBilling = resolvedPlan ? (billing ?? "annual") : null;
@@ -346,7 +710,7 @@ router.patch("/auth/me/membership", requireAuth, async (req, res) => {
       goldBilling: resolvedBilling,
       goldSince: resolvedSince,
       updatedAt: new Date(),
-    }).where(eq(usersTable.id, userId));
+    }).where(eq(usersTable.id, req.auth!.userId));
 
     res.json({ goldPlan: resolvedPlan, goldBilling: resolvedBilling, goldSince: resolvedSince });
   } catch (err) {

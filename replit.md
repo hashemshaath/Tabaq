@@ -123,6 +123,61 @@ Standardized format `TBQ-{TYPE}-{YEAR}-{PADDED_ID}` across all entities. New typ
 - **Spacing**: 8px grid system, `.section-gap` (48px), `.section-gap-sm` (32px)
 - **Card hover**: `.card-hover` class with translateY(-1px) + shadow transition
 
+## Auth Hardening (April 2026)
+
+### OTP Flow
+- **OTP generation**: `crypto.randomInt(100000, 999999)` — cryptographically secure, not Math.random
+- **OTP storage**: SHA-256 hash stored in `otp_requests.otp_hash`; `code` column set to literal `"HASHED"` — plain-text OTP never persisted
+- **OTP expiry**: hard-coded 5 minutes (removed env-configurable setting that allowed misconfig)
+- **OTP attempt tracking**: `otp_requests.attempts` column; 3 wrong attempts voids the OTP row and blocks further verify attempts on it
+- **Resend rate limit**: max 1 OTP request per 60 seconds per phone/email (enforced via DB count check before insert)
+- **Phone normalization**: `normalizePhone()` in `lib/auth.ts` converts `05XXXXXXXX` → `+96605XXXXXXXX`, validates E.164 format, rejects invalid strings
+- **Replay protection**: `used_at` set immediately on first successful verify; subsequent use of same OTP returns `invalid_otp`
+
+### Email + Password Flow (NEW)
+- `POST /auth/register` — validates email format, enforces password strength (8+ chars, 1 uppercase, 1 number), bcrypt-hashes with cost 12, returns `EMAIL_ALREADY_EXISTS` on collision, generates email OTP for verification (dev mode returns `devEmailOtp`)
+- `POST /auth/login` — email + password, bcrypt compare, constant-time dummy hash for non-existent users (prevents timing attacks), blocks login if `isEmailVerified = false`
+- `PATCH /me/password` — now functional: verifies `currentPassword` against stored hash, validates new password strength, writes new bcrypt hash to DB
+
+### Failed Login Protection
+- `users.failed_login_count` — incremented on every wrong OTP or wrong password
+- `users.locked_until` — set to `NOW() + 15 minutes` after 5 consecutive failures
+- Every `/auth/verify-otp` and `/auth/login` checks `locked_until` first and returns `ACCOUNT_LOCKED` with `retry_after` seconds
+- On successful login: `failed_login_count` reset to 0, `locked_until` cleared
+
+### JWT Hardening
+- Access token expiry: **15 minutes** (was 30 days)
+- JWT payload now includes: `sub` (user_uid), `userId`, `type: "access"`, `role`, `jti` (UUID v4), `iat`, `exp`
+- `jti` claim on every token enables future per-token revocation
+
+### Refresh Token System (NEW)
+- `POST /auth/refresh` — accepts `refreshToken` in body or `x-refresh-token` header
+- **Rotation**: old token revoked atomically, new access + refresh tokens issued
+- **Replay protection**: revoked token reuse returns `invalid_refresh_token`
+- Stored in `refresh_tokens` table: `token_hash` (SHA-256), `user_id`, `device_info`, `expires_at` (30 days), `is_revoked`
+- Logout (`POST /auth/logout`) revokes the supplied refresh token in DB
+
+### User UID
+- `users.user_uid` column added: format `USR-YYYY-XXXXXXXX-HHHHHHHHH` (year, zero-padded id, 8-char hex suffix)
+- Backfilled for all existing users during migration
+- Unique index `users_user_uid_unique` enforced
+- JWT `sub` claim = `user_uid` (not integer ID)
+- `requireAuth` middleware now populates `req.auth.userUid`
+
+### New DB Columns
+- `users`: `user_uid`, `password_hash`, `failed_login_count`, `locked_until`, `last_login_at`, `last_login_ip`
+- `otp_requests`: `otp_hash`, `attempts`
+- New table: `refresh_tokens` (id, user_id, token_hash, device_info, expires_at, is_revoked, created_at)
+
+### New/Modified Files
+- `artifacts/api-server/src/lib/auth.ts` — `generateOtp` (crypto.randomInt), `hashOtp`, `normalizePhone`, `validateEmail`, `validatePasswordStrength`, `generateRefreshToken`, `hashRefreshToken`, new JWT payload interface
+- `artifacts/api-server/src/routes/auth.ts` — fully hardened OTP + email/password + refresh + logout flows
+- `artifacts/api-server/src/middleware/requireAuth.ts` — handles both old and new JWT payload shapes, exposes `userUid`, `role`, `jti` on `req.auth`
+- `artifacts/api-server/src/routes/profile.ts` — `PATCH /me/password` now actually reads, compares, and writes bcrypt hashes
+- `lib/db/src/schema/users.ts` — new columns + `refreshTokensTable`
+
+---
+
 ## Production Readiness Upgrade — 8 Phases (April 2026)
 
 ### Phase 1 — Docker + Production Containerization

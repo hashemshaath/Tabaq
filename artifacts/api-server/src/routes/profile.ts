@@ -466,20 +466,47 @@ router.patch("/me/password", requireAuth, async (req, res) => {
     if (!currentPassword || !newPassword || !confirmPassword) {
       return res.status(400).json({ error: "all_fields_required", message: "All password fields are required." });
     }
-    if (newPassword.length < 8) {
-      return res.status(400).json({ error: "password_too_short", message: "New password must be at least 8 characters." });
-    }
     if (newPassword !== confirmPassword) {
       return res.status(400).json({ error: "passwords_mismatch", message: "New passwords do not match." });
     }
 
-    const [user] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+    const { validatePasswordStrength } = await import("../lib/auth.js");
+    const strength = validatePasswordStrength(newPassword);
+    if (!strength.valid) {
+      return res.status(400).json({
+        error: "PASSWORD_TOO_WEAK",
+        message: "New password does not meet requirements",
+        requirements: strength.reasons,
+      });
+    }
+
+    const [user] = await db
+      .select({ id: usersTable.id, passwordHash: usersTable.passwordHash })
+      .from(usersTable)
+      .where(eq(usersTable.id, userId))
+      .limit(1);
     if (!user) return res.status(404).json({ error: "user_not_found" });
 
-    res.json({ success: true, message: "Password updated successfully." });
+    if (!user.passwordHash) {
+      return res.status(400).json({
+        error: "no_password",
+        message: "This account uses phone/OTP login and does not have a password.",
+      });
+    }
+
+    const { default: bcrypt } = await import("bcryptjs");
+    const currentMatch = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!currentMatch) {
+      return res.status(401).json({ error: "wrong_current_password", message: "Current password is incorrect." });
+    }
+
+    const newHash = await bcrypt.hash(newPassword, 12);
+    await db.update(usersTable).set({ passwordHash: newHash, updatedAt: new Date() }).where(eq(usersTable.id, userId));
+
+    return res.json({ success: true, message: "Password updated successfully." });
   } catch (err) {
     req.log.error({ err }, "Failed to change password");
-    res.status(500).json({ error: "internal_error" });
+    return res.status(500).json({ error: "internal_error" });
   }
 });
 

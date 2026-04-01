@@ -6,10 +6,13 @@ declare global {
     interface Request {
       auth?: {
         userId: number;
+        userUid?: string;
         phone?: string | null;
         email?: string | null;
         isAdmin?: boolean;
         isOwner?: boolean;
+        role?: "user" | "admin" | "owner";
+        jti?: string;
       };
     }
   }
@@ -26,7 +29,16 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
     res.status(401).json({ error: "unauthorized", message: "Invalid or expired token" });
     return;
   }
-  req.auth = { userId: payload.userId, phone: payload.phone, email: payload.email, isAdmin: payload.isAdmin, isOwner: payload.isOwner };
+  req.auth = {
+    userId: payload.userId,
+    userUid: payload.sub,
+    phone: payload.phone,
+    email: payload.email,
+    isAdmin: payload.isAdmin ?? payload.role === "admin",
+    isOwner: payload.isOwner ?? payload.role === "owner",
+    role: payload.role,
+    jti: payload.jti,
+  };
   next();
 }
 
@@ -41,11 +53,21 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction): v
     res.status(401).json({ error: "unauthorized", message: "Invalid or expired token" });
     return;
   }
-  if (!payload.isAdmin) {
+  const isAdmin = payload.isAdmin ?? payload.role === "admin";
+  if (!isAdmin) {
     res.status(403).json({ error: "forbidden", message: "Admin access required" });
     return;
   }
-  req.auth = { userId: payload.userId, phone: payload.phone, email: payload.email, isAdmin: true, isOwner: payload.isOwner };
+  req.auth = {
+    userId: payload.userId,
+    userUid: payload.sub,
+    phone: payload.phone,
+    email: payload.email,
+    isAdmin: true,
+    isOwner: payload.isOwner ?? payload.role === "owner",
+    role: payload.role,
+    jti: payload.jti,
+  };
   next();
 }
 
@@ -54,7 +76,16 @@ export function optionalAuth(req: Request, _res: Response, next: NextFunction): 
   if (token) {
     const payload = verifyToken(token);
     if (payload) {
-      req.auth = { userId: payload.userId, phone: payload.phone, email: payload.email };
+      req.auth = {
+        userId: payload.userId,
+        userUid: payload.sub,
+        phone: payload.phone,
+        email: payload.email,
+        isAdmin: payload.isAdmin ?? payload.role === "admin",
+        isOwner: payload.isOwner ?? payload.role === "owner",
+        role: payload.role,
+        jti: payload.jti,
+      };
     }
   }
   next();

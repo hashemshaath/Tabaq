@@ -5,10 +5,12 @@ import { citiesTable } from "./countries";
 
 export const usersTable = pgTable("users", {
   id: serial("id").primaryKey(),
-  refCode: text("ref_code").unique(), // e.g. TBQ-USR-2026-000001
+  userUid: text("user_uid").unique(),
+  refCode: text("ref_code").unique(),
   phone: text("phone").unique(),
   email: text("email").unique(),
   username: text("username").unique(),
+  passwordHash: text("password_hash"),
   nameEn: text("name_en"),
   nameAr: text("name_ar"),
   avatarUrl: text("avatar_url"),
@@ -25,9 +27,9 @@ export const usersTable = pgTable("users", {
   cityId: integer("city_id").references(() => citiesTable.id),
   isAdmin: boolean("is_admin").default(false).notNull(),
   isOwner: boolean("is_owner").default(false).notNull(),
-  accountType: text("account_type").default("basic").notNull(), // 'basic' | 'professional' | 'chef'
-  goldPlan: text("gold_plan"), // null | 'gourmet' | 'elite'
-  goldBilling: text("gold_billing"), // null | 'monthly' | 'annual'
+  accountType: text("account_type").default("basic").notNull(),
+  goldPlan: text("gold_plan"),
+  goldBilling: text("gold_billing"),
   goldSince: timestamp("gold_since"),
   coverPhotoUrl: text("cover_photo_url"),
   location: text("location"),
@@ -72,6 +74,10 @@ export const usersTable = pgTable("users", {
     pointsEarned: true,
     weeklyDigest: true,
   }),
+  failedLoginCount: integer("failed_login_count").default(0).notNull(),
+  lockedUntil: timestamp("locked_until"),
+  lastLoginAt: timestamp("last_login_at"),
+  lastLoginIp: text("last_login_ip"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -100,7 +106,9 @@ export const otpRequestsTable = pgTable("otp_requests", {
   phone: text("phone"),
   email: text("email"),
   code: text("code").notNull(),
+  otpHash: text("otp_hash"),
   expiresAt: timestamp("expires_at").notNull(),
+  attempts: integer("attempts").default(0).notNull(),
   usedAt: timestamp("used_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -114,45 +122,49 @@ export const emailVerificationTokensTable = pgTable("email_verification_tokens",
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-// Notification preferences per user per type
-// notifType: 'booking_confirmed' | 'booking_cancelled' | 'new_follower' | 'new_review' | 'new_offer' | 'new_dish' | 'new_opening' | 'order_status' | 'points_earned'
-// channels: 'in_app' | 'email' | 'sms' | 'push'
+export const refreshTokensTable = pgTable("refresh_tokens", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id),
+  tokenHash: text("token_hash").notNull().unique(),
+  deviceInfo: text("device_info"),
+  expiresAt: timestamp("expires_at").notNull(),
+  isRevoked: boolean("is_revoked").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const userNotificationPrefsTable = pgTable("user_notification_prefs", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => usersTable.id),
   notifType: text("notif_type").notNull(),
   enabled: boolean("enabled").default(true).notNull(),
-  channels: text("channels").default("in_app").notNull(), // comma-separated
+  channels: text("channels").default("in_app").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (t) => [
   uniqueIndex("user_notif_prefs_unique").on(t.userId, t.notifType),
 ]);
 
-// User interests for personalization
-// interestType: 'cuisine' | 'dish_type' | 'event' | 'opening' | 'offer'
 export const userInterestsTable = pgTable("user_interests", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => usersTable.id),
   interestType: text("interest_type").notNull(),
-  value: text("value").notNull(), // e.g. 'italian', 'desserts', 'grills', 'events'
+  value: text("value").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (t) => [
   uniqueIndex("user_interests_unique").on(t.userId, t.interestType, t.value),
 ]);
 
-// Mute users or restaurants
 export const userMutesTable = pgTable("user_mutes", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => usersTable.id),
-  entityType: text("entity_type").notNull(), // 'user' | 'restaurant'
+  entityType: text("entity_type").notNull(),
   entityId: integer("entity_id").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (t) => [
   uniqueIndex("user_mutes_unique").on(t.userId, t.entityType, t.entityId),
 ]);
 
-export const insertUserSchema = createInsertSchema(usersTable).omit({ id: true, refCode: true, createdAt: true, updatedAt: true });
+export const insertUserSchema = createInsertSchema(usersTable).omit({ id: true, userUid: true, refCode: true, createdAt: true, updatedAt: true });
 export const insertUserFollowSchema = createInsertSchema(userFollowsTable).omit({ id: true, createdAt: true });
 export const insertUserBlockSchema = createInsertSchema(userBlocksTable).omit({ id: true, createdAt: true });
 
@@ -163,6 +175,7 @@ export type UserFollow = typeof userFollowsTable.$inferSelect;
 export type UserBlock = typeof userBlocksTable.$inferSelect;
 export type OtpRequest = typeof otpRequestsTable.$inferSelect;
 export type EmailVerificationToken = typeof emailVerificationTokensTable.$inferSelect;
+export type RefreshToken = typeof refreshTokensTable.$inferSelect;
 export type UserNotificationPref = typeof userNotificationPrefsTable.$inferSelect;
 export type UserInterest = typeof userInterestsTable.$inferSelect;
 export type UserMute = typeof userMutesTable.$inferSelect;
