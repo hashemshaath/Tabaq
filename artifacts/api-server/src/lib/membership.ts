@@ -75,12 +75,17 @@ export async function transitionMembershipStatus(
     .where(eq(membershipsTable.id, membershipId))
     .returning();
 
+  // Write immutable audit record — every field is passed explicitly so the record
+  // is self-contained: entity_type, entity_uid, old_status, new_status, reason,
+  // actor_uid, and a precise transition timestamp are all present on every row.
   await db.insert(membershipAuditLogTable).values({
+    entityType:     "membership",
     membershipId,
-    oldStatus: currentStatus,
+    oldStatus:      currentStatus,
     newStatus,
-    reason: reason ?? null,
-    actorId: actorId ?? null,
+    reason:         reason ?? null,
+    actorId:        actorId ?? null,
+    transitionedAt: now,
   });
 
   // Notify user of status change

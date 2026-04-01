@@ -38,11 +38,15 @@ export const membershipsTable = pgTable("memberships", {
 
 export const membershipAuditLogTable = pgTable("membership_audit_log", {
   id: serial("id").primaryKey(),
+  // entity_type is always "membership"; stored explicitly for audit clarity and future extensibility
+  entityType: text("entity_type").notNull().default("membership"),
   membershipId: integer("membership_id").notNull().references(() => membershipsTable.id),
   oldStatus: text("old_status"),
   newStatus: text("new_status").notNull(),
   reason: text("reason"),
   actorId: integer("actor_id").references(() => usersTable.id),
+  // Precise timestamp of the transition (separate from createdAt so it can never be confused)
+  transitionedAt: timestamp("transitioned_at").defaultNow().notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

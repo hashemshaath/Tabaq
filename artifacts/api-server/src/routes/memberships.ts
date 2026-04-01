@@ -154,10 +154,9 @@ router.post("/memberships/:id/cancel", requireAuth, async (req, res) => {
     if (!membership) {
       return res.status(404).json({ error: "not_found", message: "Membership not found" });
     }
-    if (!["pending", "active", "suspended"].includes(membership.status)) {
-      return res.status(422).json({ error: "invalid_state", message: `Cannot cancel a ${membership.status} membership` });
-    }
 
+    // No manual status guard here — transitionMembershipStatus enforces the allowed-transition
+    // matrix and throws a 422 for invalid moves. The catch block below surfaces that to the caller.
     const cancelled = await transitionMembershipStatus(id, "cancelled", reason ?? "User requested cancellation", userId);
 
     // Clear goldPlan on users table
