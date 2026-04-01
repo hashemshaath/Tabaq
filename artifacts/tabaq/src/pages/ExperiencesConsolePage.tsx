@@ -491,6 +491,7 @@ export function ExperiencesConsolePage() {
   const [activeTab, setActiveTab] = useState<Tab>("experiences");
   const [editingExp, setEditingExp] = useState<{ exp?: any; open: boolean }>({ open: false });
   const [responseText, setResponseText] = useState<Record<number, { en: string; ar: string }>>({});
+  const [deletingExpId, setDeletingExpId] = useState<number | null>(null);
 
   const queryClient = useQueryClient();
 
@@ -861,15 +862,30 @@ export function ExperiencesConsolePage() {
                               >
                                 <Edit2 className="w-4 h-4" />
                               </button>
-                              <button
-                                onClick={() => {
-                                  if (confirm(t("Delete this experience?", "حذف هذه التجربة؟")))
-                                    deleteExpMutation.mutate(exp.id);
-                                }}
-                                className="p-1.5 rounded-lg hover:bg-destructive/10 transition-colors text-destructive"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                              {deletingExpId === exp.id ? (
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    onClick={() => { deleteExpMutation.mutate(exp.id); setDeletingExpId(null); }}
+                                    className="px-2 py-1 text-xs bg-destructive text-white rounded-md font-semibold"
+                                  >
+                                    {t("Confirm", "تأكيد")}
+                                  </button>
+                                  <button
+                                    onClick={() => setDeletingExpId(null)}
+                                    className="px-2 py-1 text-xs bg-muted text-muted-foreground rounded-md"
+                                  >
+                                    {t("Cancel", "إلغاء")}
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => setDeletingExpId(exp.id)}
+                                  className="p-1.5 rounded-lg hover:bg-destructive/10 transition-colors text-destructive"
+                                  title={t("Delete experience", "حذف التجربة")}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>

@@ -47,6 +47,19 @@ export function MichelinDetailPage() {
   const { t, lang } = useLanguage();
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
   const [showReservation, setShowReservation] = useState(false);
+  const [resForm, setResForm] = useState({ date: '', time: '8:00 PM', guests: '2', notes: '' });
+  const [resSubmitting, setResSubmitting] = useState(false);
+  const [resSubmitted, setResSubmitted] = useState(false);
+
+  function handleReservationSubmit() {
+    if (!resForm.date) return;
+    setResSubmitting(true);
+    setTimeout(() => {
+      setResSubmitting(false);
+      setResSubmitted(true);
+      setTimeout(() => { setShowReservation(false); setResSubmitted(false); setResForm({ date: '', time: '8:00 PM', guests: '2', notes: '' }); }, 2500);
+    }, 1200);
+  }
 
   const restaurant = MICHELIN_RESTAURANTS.find(r => r.id === id);
 
@@ -89,38 +102,80 @@ export function MichelinDetailPage() {
                 <X className="w-5 h-5" />
               </button>
             </div>
+            {resSubmitted ? (
+              <div className="text-center py-8">
+                <div className="w-16 h-16 rounded-full bg-amber-500/20 flex items-center justify-center mx-auto mb-4">
+                  <CalendarDays className="w-8 h-8 text-amber-400" />
+                </div>
+                <h4 className="text-white font-bold text-lg mb-2">{t('Request Received!', 'تم استلام طلبك!')}</h4>
+                <p className="text-white/60 text-sm">{t('Our concierge team will confirm your reservation within 2 hours.', 'سيؤكد فريق الكونسيرج حجزك خلال ساعتين.')}</p>
+              </div>
+            ) : (
             <div className="space-y-4">
               <div>
                 <label className="text-white/60 text-sm mb-1.5 block">{t('Date', 'التاريخ')}</label>
-                <input type="date" className="w-full bg-white/8 border border-white/15 rounded-lg text-white px-3 py-2.5 text-sm focus:outline-none focus:border-amber-500" min={new Date().toISOString().split('T')[0]} />
+                <input
+                  type="date"
+                  value={resForm.date}
+                  onChange={e => setResForm(f => ({ ...f, date: e.target.value }))}
+                  className="w-full bg-white/8 border border-white/15 rounded-lg text-white px-3 py-2.5 text-sm focus:outline-none focus:border-amber-500"
+                  min={new Date().toISOString().split('T')[0]}
+                />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-white/60 text-sm mb-1.5 block">{t('Time', 'الوقت')}</label>
-                  <select className="w-full bg-white/8 border border-white/15 rounded-lg text-white px-3 py-2.5 text-sm focus:outline-none focus:border-amber-500">
-                    {['7:00 PM', '7:30 PM', '8:00 PM', '8:30 PM', '9:00 PM', '9:30 PM', '10:00 PM'].map(t => (
-                      <option key={t} value={t} className="bg-[#17150f]">{t}</option>
+                  <select
+                    value={resForm.time}
+                    onChange={e => setResForm(f => ({ ...f, time: e.target.value }))}
+                    className="w-full bg-white/8 border border-white/15 rounded-lg text-white px-3 py-2.5 text-sm focus:outline-none focus:border-amber-500"
+                  >
+                    {['7:00 PM', '7:30 PM', '8:00 PM', '8:30 PM', '9:00 PM', '9:30 PM', '10:00 PM'].map(slot => (
+                      <option key={slot} value={slot} className="bg-[#17150f]">{slot}</option>
                     ))}
                   </select>
                 </div>
                 <div>
                   <label className="text-white/60 text-sm mb-1.5 block">{t('Guests', 'الضيوف')}</label>
-                  <select className="w-full bg-white/8 border border-white/15 rounded-lg text-white px-3 py-2.5 text-sm focus:outline-none focus:border-amber-500">
+                  <select
+                    value={resForm.guests}
+                    onChange={e => setResForm(f => ({ ...f, guests: e.target.value }))}
+                    className="w-full bg-white/8 border border-white/15 rounded-lg text-white px-3 py-2.5 text-sm focus:outline-none focus:border-amber-500"
+                  >
                     {[1,2,3,4,5,6,7,8].map(n => (
-                      <option key={n} value={n} className="bg-[#17150f]">{n} {n === 1 ? t('Guest', 'ضيف') : t('Guests', 'ضيوف')}</option>
+                      <option key={n} value={String(n)} className="bg-[#17150f]">{n} {n === 1 ? t('Guest', 'ضيف') : t('Guests', 'ضيوف')}</option>
                     ))}
                   </select>
                 </div>
               </div>
               <div>
                 <label className="text-white/60 text-sm mb-1.5 block">{t('Special Requests', 'طلبات خاصة')}</label>
-                <textarea rows={3} className="w-full bg-white/8 border border-white/15 rounded-lg text-white px-3 py-2.5 text-sm resize-none focus:outline-none focus:border-amber-500" placeholder={t('Dietary restrictions, celebrations, seating preferences...', 'قيود غذائية، مناسبات خاصة، تفضيلات الجلوس...')} />
+                <textarea
+                  rows={3}
+                  value={resForm.notes}
+                  onChange={e => setResForm(f => ({ ...f, notes: e.target.value }))}
+                  className="w-full bg-white/8 border border-white/15 rounded-lg text-white px-3 py-2.5 text-sm resize-none focus:outline-none focus:border-amber-500"
+                  placeholder={t('Dietary restrictions, celebrations, seating preferences...', 'قيود غذائية، مناسبات خاصة، تفضيلات الجلوس...')}
+                />
               </div>
-              <button className="w-full bg-amber-500 hover:bg-amber-400 text-black font-bold py-3 rounded-lg transition-colors text-sm">
-                {t('Request Reservation', 'طلب الحجز')}
+              <button
+                onClick={handleReservationSubmit}
+                disabled={!resForm.date || resSubmitting}
+                className="w-full bg-amber-500 hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold py-3 rounded-lg transition-colors text-sm flex items-center justify-center gap-2"
+              >
+                {resSubmitting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                    {t('Submitting...', 'جاري الإرسال...')}
+                  </>
+                ) : t('Request Reservation', 'طلب الحجز')}
               </button>
+              {!resForm.date && (
+                <p className="text-amber-400/70 text-xs text-center">{t('Please select a date to continue', 'الرجاء اختيار تاريخ للمتابعة')}</p>
+              )}
               <p className="text-white/30 text-xs text-center">{t('You will receive a confirmation within 2 hours', 'ستحصل على تأكيد خلال ساعتين')}</p>
             </div>
+            )}
           </div>
         </div>
       )}

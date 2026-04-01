@@ -1,5 +1,51 @@
 # Tabaq | طبق — Workspace
 
+## Platform Polish — Session 9 (April 2026)
+
+### Completed Fixes
+
+**MichelinDetailPage — Reservation Form Wired**
+- Reservation modal form was fully static (no state, no handlers)
+- Added state: `resForm` (date, time, guests, notes), `resSubmitting`, `resSubmitted`
+- Submit button now validates date is selected, shows loading spinner, shows success screen
+- Success screen shows check icon + confirmation message; auto-closes after 2.5 seconds
+- Added `handleReservationSubmit()` function with simulated API call (Michelin restaurants are curated static data)
+
+**AdminPanelPage — Menu Delete Wired**
+- Menu-level Delete button previously only called `e.stopPropagation()` — no action
+- Added `deletingMenuId` state and `deleteMenu` mutation (DELETE `/api/menus/:menuId`)
+- Implemented two-step confirmation: first click shows "Confirm"/"Cancel" inline buttons
+- On confirm: mutation fires, menu collapses, query invalidated
+
+**AdminPanelPage — Menu Edit Button**
+- Menu-level Edit button now shows an informational toast directing user to Business Console
+
+**AdminPanelPage — Section Edit Form**
+- Section-level Edit button previously only called `e.stopPropagation()` — no action
+- Added `editingSection` state and `updateSection` mutation (PATCH `/api/menu-sections/:sectionId`)
+- When Edit is clicked, section header replaces with inline form: EN name input, AR name input, Save, Cancel
+- On Save: mutation fires with new names; on success query invalidated and form dismissed
+
+**TabaqGoldPage — Avatar Null Fallback**
+- Real reviews returned by API may have `null` `userAvatarUrl` for users without photos
+- Added `?? \`https://i.pravatar.cc/60?u=${rv.id}\`` fallback to prevent broken image tags
+
+**Restaurant Stories — 12 New Demo Stories Seeded**
+- `restaurant_stories` table was empty (only seeded data from prior sessions existed)
+- Seeded 12 new approved stories spanning restaurants 1–12 with realistic EN/AR captions
+- Included realistic `view_count` and `like_count` values; all set to `approved` with `approved_at = NOW()`
+- FeedPage StoriesStrip and restaurant detail StoriesTab now have content to display
+
+**App.tsx — `/register` Route Added**
+- `SignInPage` had `<Link href="/register">` that 404'd (no route existed)
+- Added `/register` route aliased to `JoinPage` (which redirects to `/signin?mode=register`)
+- Consistent with `/join` pattern already in place
+
+**AdminPanelPage — `toast` Import Added**
+- Added missing `import { toast } from 'sonner'` that was needed for the new menu edit toast
+
+---
+
 ## Platform Polish — Session 8 (April 2026)
 
 ### Completed Fixes

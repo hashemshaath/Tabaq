@@ -458,7 +458,7 @@ export function TabaqGoldPage() {
               }))).map((rv: any) => (
                 <div key={rv.id ?? rv.userNameEn} className="bg-card rounded-2xl border border-border p-5 shadow-sm">
                   <div className="flex items-center gap-3 mb-4">
-                    <img src={rv.userAvatarUrl} alt={lang === 'ar' ? rv.userNameAr : rv.userNameEn} className="w-10 h-10 rounded-full object-cover" />
+                    <img src={rv.userAvatarUrl ?? `https://i.pravatar.cc/60?u=${rv.id}`} alt={lang === 'ar' ? rv.userNameAr : rv.userNameEn} className="w-10 h-10 rounded-full object-cover" />
                     <div>
                       <p className="font-bold text-sm text-foreground">{lang === 'ar' ? rv.userNameAr : rv.userNameEn}</p>
                       <div className="flex items-center gap-1">

@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { StarRating } from '@/components/StarRating';
 import { getAuthHeaders, API_BASE } from '@/lib/api';
 import { useDemoMode } from '@/context/DemoModeContext';
+import { toast } from 'sonner';
 
 // ─── Verifications Admin Tab ──────────────────────────────────────
 function VerificationsAdminTab({ t }: { t: (en: string, ar: string) => string }) {
@@ -871,6 +872,8 @@ function MenuManagementTab({ lang, t }: { lang: string; t: (en: string, ar: stri
   const [expandedSection, setExpandedSection] = useState<number | null>(null);
   const [showDishForm, setShowDishForm] = useState<{ menuId: number; sectionId: number } | null>(null);
   const [dishForm, setDishForm] = useState({ nameEn: '', nameAr: '', price: '', descriptionEn: '', isBestseller: false, isChefChoice: false, isNewItem: false, discountPercentage: '' });
+  const [deletingMenuId, setDeletingMenuId] = useState<number | null>(null);
+  const [editingSection, setEditingSection] = useState<{ id: number; nameEn: string; nameAr: string } | null>(null);
 
   const { data: restData } = useQuery({
     queryKey: ['admin-restaurants-list'],
@@ -906,6 +909,27 @@ function MenuManagementTab({ lang, t }: { lang: string; t: (en: string, ar: stri
       await fetch(`${API_BASE}/api/dishes/${dishId}`, { method: 'DELETE', headers: getAuthHeaders() });
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-menus', restaurantId] }),
+  });
+
+  const deleteMenu = useMutation({
+    mutationFn: async (menuId: number) => {
+      const res = await fetch(`${API_BASE}/api/menus/${menuId}`, { method: 'DELETE', headers: getAuthHeaders() });
+      if (!res.ok) throw new Error('Delete failed');
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-menus', restaurantId] }); setDeletingMenuId(null); setExpandedMenu(null); },
+    onError: () => setDeletingMenuId(null),
+  });
+
+  const updateSection = useMutation({
+    mutationFn: async ({ id, nameEn, nameAr }: { id: number; nameEn: string; nameAr: string }) => {
+      const res = await fetch(`${API_BASE}/api/menu-sections/${id}`, {
+        method: 'PATCH',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ nameEn, nameAr }),
+      });
+      if (!res.ok) throw new Error('Update failed');
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-menus', restaurantId] }); setEditingSection(null); },
   });
 
   const restaurants = restData?.restaurants ?? restData ?? [];
@@ -999,12 +1023,31 @@ function MenuManagementTab({ lang, t }: { lang: string; t: (en: string, ar: stri
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button onClick={e => e.stopPropagation()} className="p-2 hover:bg-secondary rounded-lg text-muted-foreground hover:text-foreground transition-colors">
+                    <button
+                      onClick={e => { e.stopPropagation(); toast.info(t('Manage menus in the Business Console', 'أدر القوائم في وحدة التحكم التجارية')); }}
+                      className="p-2 hover:bg-secondary rounded-lg text-muted-foreground hover:text-foreground transition-colors"
+                      title={t('Edit in Business Console', 'تعديل في وحدة التحكم')}
+                    >
                       <Edit className="w-4 h-4" />
                     </button>
-                    <button onClick={e => e.stopPropagation()} className="p-2 hover:bg-red-50 rounded-lg text-muted-foreground hover:text-red-600 transition-colors">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {deletingMenuId === menu.id ? (
+                      <>
+                        <button onClick={e => { e.stopPropagation(); deleteMenu.mutate(menu.id); }} className="px-2 py-1 text-xs bg-destructive text-white rounded-md font-semibold">
+                          {t('Confirm', 'تأكيد')}
+                        </button>
+                        <button onClick={e => { e.stopPropagation(); setDeletingMenuId(null); }} className="px-2 py-1 text-xs bg-muted text-muted-foreground rounded-md">
+                          {t('Cancel', 'إلغاء')}
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={e => { e.stopPropagation(); setDeletingMenuId(menu.id); }}
+                        className="p-2 hover:bg-red-50 rounded-lg text-muted-foreground hover:text-red-600 transition-colors"
+                        title={t('Delete menu', 'حذف القائمة')}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                     {isExpanded ? <ChevronRight className="w-4 h-4 text-muted-foreground rotate-90 transition-transform" /> : <ChevronRight className="w-4 h-4 text-muted-foreground transition-transform" />}
                   </div>
                 </div>
@@ -1024,6 +1067,33 @@ function MenuManagementTab({ lang, t }: { lang: string; t: (en: string, ar: stri
                       const isSectionExpanded = expandedSection === section.id;
                       return (
                         <div key={section.id}>
+                          {editingSection?.id === section.id ? (
+                            <div className="flex items-center gap-2 px-5 py-3 bg-primary/5 border-b border-primary/20">
+                              <input
+                                value={editingSection.nameEn}
+                                onChange={e => setEditingSection(s => s ? { ...s, nameEn: e.target.value } : s)}
+                                className="flex-1 border border-border rounded-lg px-2 py-1 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary/40"
+                                placeholder="Section name (EN)"
+                              />
+                              <input
+                                value={editingSection.nameAr}
+                                onChange={e => setEditingSection(s => s ? { ...s, nameAr: e.target.value } : s)}
+                                className="flex-1 border border-border rounded-lg px-2 py-1 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary/40"
+                                placeholder="اسم القسم (عربي)"
+                                dir="rtl"
+                              />
+                              <button
+                                onClick={() => updateSection.mutate({ id: editingSection.id, nameEn: editingSection.nameEn, nameAr: editingSection.nameAr })}
+                                disabled={updateSection.isPending}
+                                className="px-2 py-1 text-xs bg-primary text-white rounded-md font-semibold disabled:opacity-50"
+                              >
+                                {t('Save', 'حفظ')}
+                              </button>
+                              <button onClick={() => setEditingSection(null)} className="px-2 py-1 text-xs bg-muted text-muted-foreground rounded-md">
+                                {t('Cancel', 'إلغاء')}
+                              </button>
+                            </div>
+                          ) : (
                           <div
                             className="flex items-center justify-between px-5 py-3 bg-secondary/10 cursor-pointer hover:bg-secondary/20 transition-colors"
                             onClick={() => setExpandedSection(isSectionExpanded ? null : section.id)}
@@ -1040,12 +1110,17 @@ function MenuManagementTab({ lang, t }: { lang: string; t: (en: string, ar: stri
                               >
                                 <Plus className="w-3 h-3" />{t('Add Dish', 'إضافة طبق')}
                               </button>
-                              <button onClick={e => e.stopPropagation()} className="p-1.5 hover:bg-secondary rounded-lg text-muted-foreground">
+                              <button
+                                onClick={e => { e.stopPropagation(); setEditingSection({ id: section.id, nameEn: section.nameEn ?? '', nameAr: section.nameAr ?? '' }); }}
+                                className="p-1.5 hover:bg-secondary rounded-lg text-muted-foreground"
+                                title={t('Rename section', 'تعديل اسم القسم')}
+                              >
                                 <Edit className="w-3.5 h-3.5" />
                               </button>
                               {isSectionExpanded ? <ChevronRight className="w-4 h-4 text-muted-foreground rotate-90" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
                             </div>
                           </div>
+                          )}
 
                           {/* Add Dish Form */}
                           {showDishForm?.sectionId === section.id && (

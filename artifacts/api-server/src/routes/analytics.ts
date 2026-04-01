@@ -9,7 +9,7 @@ import {
   bookingsTable, restaurantsTable, usersTable,
   restaurantFollowsTable, reviewsTable, offersTable, campaignsTable,
 } from "@workspace/db/schema";
-import { eq, and, desc, count, sql, gte, lte } from "drizzle-orm";
+import { eq, and, desc, count, sql, gte, lte, inArray } from "drizzle-orm";
 import { requireAuth } from "../middleware/requireAuth.js";
 
 const router: IRouter = Router();
@@ -109,7 +109,7 @@ router.get("/analytics/restaurant/:id/overview", requireAuth, async (req, res) =
         .from(campaignsTable)
         .where(and(
           eq(campaignsTable.restaurantId, restaurantId),
-          eq(campaignsTable.status, "active"),
+          inArray(campaignsTable.status, ["live", "approved"]),
         ))
         .orderBy(desc(campaignsTable.createdAt))
         .limit(5),

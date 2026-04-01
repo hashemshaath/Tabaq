@@ -310,6 +310,7 @@ export function BusinessConsolePage() {
   // ── Settings editing state ───────────────────────────────────────
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState('');
+  const [deletingDishId, setDeletingDishId] = useState<number | null>(null);
 
   const updateRestaurantMutation = useMutation({
     mutationFn: async (patch: Record<string, string>) => {
@@ -2258,12 +2259,30 @@ export function BusinessConsolePage() {
                                         <div className="flex items-center gap-3 shrink-0">
                                           {dish.price && <span className="text-sm font-bold text-primary">SAR {Number(dish.price).toFixed(0)}</span>}
                                           {(dish.discountPercentage ?? 0) > 0 && <span className="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded-md font-bold">-{dish.discountPercentage}%</span>}
-                                          <button
-                                            onClick={() => { if (confirm(t('Delete this dish?', 'حذف هذا الطبق؟'))) deleteDishMutation.mutate(dish.id); }}
-                                            className="p-1.5 hover:bg-red-50 rounded-lg text-muted-foreground hover:text-red-600 opacity-0 group-hover:opacity-100 transition-all"
-                                          >
-                                            <Trash2 className="w-3.5 h-3.5" />
-                                          </button>
+                                          {deletingDishId === dish.id ? (
+                                            <div className="flex items-center gap-1">
+                                              <button
+                                                onClick={() => { deleteDishMutation.mutate(dish.id); setDeletingDishId(null); }}
+                                                className="px-2 py-0.5 text-xs bg-destructive text-white rounded font-semibold"
+                                              >
+                                                {t("Delete", "حذف")}
+                                              </button>
+                                              <button
+                                                onClick={() => setDeletingDishId(null)}
+                                                className="px-2 py-0.5 text-xs bg-muted text-muted-foreground rounded"
+                                              >
+                                                {t("Cancel", "إلغاء")}
+                                              </button>
+                                            </div>
+                                          ) : (
+                                            <button
+                                              onClick={() => setDeletingDishId(dish.id)}
+                                              className="p-1.5 hover:bg-red-50 rounded-lg text-muted-foreground hover:text-red-600 opacity-0 group-hover:opacity-100 transition-all"
+                                              title={t("Delete dish", "حذف الطبق")}
+                                            >
+                                              <Trash2 className="w-3.5 h-3.5" />
+                                            </button>
+                                          )}
                                         </div>
                                       </div>
                                     ))}

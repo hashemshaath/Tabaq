@@ -147,10 +147,16 @@ function StoryViewer({ stories, startIdx, username, onClose }: {
   );
 }
 
+const EMPTY_STORY_FORM = { restaurantId: '', imageUrl: '', captionEn: '', captionAr: '' };
+
 function UserStoriesBar({ userId, username, isOwn, lang }: { userId: number; username: string; isOwn: boolean; lang: string }) {
   const t = (en: string, ar: string) => lang === 'ar' ? ar : en;
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerStart, setViewerStart] = useState(0);
+  const [showAddStory, setShowAddStory] = useState(false);
+  const [storyForm, setStoryForm] = useState(EMPTY_STORY_FORM);
+  const [submittingStory, setSubmittingStory] = useState(false);
+  const queryClient = useQueryClient();
 
   const { data } = useQuery({
     queryKey: ['user-stories', userId],
@@ -162,7 +168,19 @@ function UserStoriesBar({ userId, username, isOwn, lang }: { userId: number; use
     enabled: !!userId,
   });
 
-  const stories: UserStory[] = (data?.stories ?? []).map((s: any, i: number) => ({
+  const { data: restaurantsData } = useQuery({
+    queryKey: ['restaurants-list-story'],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/api/restaurants?limit=50`);
+      if (!res.ok) return { restaurants: [] };
+      return res.json();
+    },
+    enabled: showAddStory,
+  });
+
+  const restaurantsList: { id: number; nameEn: string }[] = restaurantsData?.restaurants ?? [];
+
+  const stories: UserStory[] = (data?.stories ?? []).map((s: any) => ({
     id: s.id,
     image: Array.isArray(s.mediaUrls) && s.mediaUrls.length > 0 ? s.mediaUrls[0] : 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&q=80',
     caption: s.captionEn ?? '',
@@ -175,6 +193,36 @@ function UserStoriesBar({ userId, username, isOwn, lang }: { userId: number; use
     seen: false,
   }));
 
+  const handleAddStory = async () => {
+    if (!storyForm.restaurantId || !storyForm.imageUrl.trim()) return;
+    setSubmittingStory(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/restaurants/${storyForm.restaurantId}/stories`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({
+          mediaUrls: [storyForm.imageUrl.trim()],
+          mediaType: 'photo',
+          captionEn: storyForm.captionEn || undefined,
+          captionAr: storyForm.captionAr || undefined,
+        }),
+      });
+      if (res.ok) {
+        toast.success(t('Story submitted for review!', 'تم إرسال القصة للمراجعة!'));
+        setStoryForm(EMPTY_STORY_FORM);
+        setShowAddStory(false);
+        queryClient.invalidateQueries({ queryKey: ['user-stories', userId] });
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.message ?? t('Failed to submit story', 'فشل إرسال القصة'));
+      }
+    } catch {
+      toast.error(t('Network error', 'خطأ في الاتصال'));
+    } finally {
+      setSubmittingStory(false);
+    }
+  };
+
   if (!isOwn && stories.length === 0) return null;
 
   return (
@@ -182,7 +230,7 @@ function UserStoriesBar({ userId, username, isOwn, lang }: { userId: number; use
       <div className="mb-4">
         <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-none">
           {isOwn && (
-            <button className="flex flex-col items-center gap-1.5 shrink-0" onClick={() => {}}>
+            <button className="flex flex-col items-center gap-1.5 shrink-0" onClick={() => setShowAddStory(true)}>
               <div className="w-16 h-16 rounded-full border-2 border-dashed border-primary/40 flex items-center justify-center bg-primary/5 hover:bg-primary/10 transition-colors">
                 <Camera className="w-6 h-6 text-primary/60" />
               </div>
@@ -202,6 +250,74 @@ function UserStoriesBar({ userId, username, isOwn, lang }: { userId: number; use
           ))}
         </div>
       </div>
+
+      {showAddStory && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-4">
+          <div className="bg-card rounded-2xl w-full max-w-md shadow-xl p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold text-foreground">{t('Add Food Story', 'إضافة قصة طعام')}</h3>
+              <button onClick={() => { setShowAddStory(false); setStoryForm(EMPTY_STORY_FORM); }} className="p-1.5 hover:bg-accent rounded-lg transition-colors">
+                <X className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">{t('Restaurant *', 'المطعم *')}</label>
+                <select
+                  value={storyForm.restaurantId}
+                  onChange={e => setStoryForm(f => ({ ...f, restaurantId: e.target.value }))}
+                  className="w-full border border-border rounded-xl px-3 py-2.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+                >
+                  <option value="">{t('Select a restaurant…', 'اختر مطعماً…')}</option>
+                  {restaurantsList.map(r => (
+                    <option key={r.id} value={r.id}>{r.nameEn}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">{t('Photo URL *', 'رابط الصورة *')}</label>
+                <input
+                  value={storyForm.imageUrl}
+                  onChange={e => setStoryForm(f => ({ ...f, imageUrl: e.target.value }))}
+                  placeholder="https://images.unsplash.com/..."
+                  className="w-full border border-border rounded-xl px-3 py-2.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-muted-foreground"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">{t('Caption (optional)', 'تعليق (اختياري)')}</label>
+                <input
+                  value={storyForm.captionEn}
+                  onChange={e => setStoryForm(f => ({ ...f, captionEn: e.target.value }))}
+                  placeholder={t('What made this meal special?', 'ما الذي جعل هذه الوجبة مميزة؟')}
+                  className="w-full border border-border rounded-xl px-3 py-2.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-muted-foreground"
+                />
+              </div>
+            </div>
+
+            <p className="text-xs text-muted-foreground">{t('Stories are reviewed by Tabaq before appearing publicly.', 'تتم مراجعة القصص من قِبل طبق قبل ظهورها.')}</p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setShowAddStory(false); setStoryForm(EMPTY_STORY_FORM); }}
+                className="flex-1 py-2.5 rounded-xl border border-border text-sm font-semibold text-muted-foreground hover:bg-accent transition-colors"
+              >
+                {t('Cancel', 'إلغاء')}
+              </button>
+              <button
+                onClick={handleAddStory}
+                disabled={!storyForm.restaurantId || !storyForm.imageUrl.trim() || submittingStory}
+                className="flex-1 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold disabled:opacity-50 hover:bg-primary/90 transition-colors"
+              >
+                {submittingStory ? t('Submitting…', 'جاري الإرسال…') : t('Submit Story', 'إرسال القصة')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {viewerOpen && stories.length > 0 && (
         <StoryViewer stories={stories} startIdx={viewerStart} username={username} onClose={() => setViewerOpen(false)} />
       )}

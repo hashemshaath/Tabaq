@@ -69,6 +69,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/signin" component={SignInPage} />
+      <Route path="/register" component={JoinPage} />
       <Route path="/join" component={JoinPage} />
       <Route>
         <div className="flex flex-col min-h-screen">
