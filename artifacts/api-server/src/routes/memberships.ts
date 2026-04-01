@@ -110,6 +110,19 @@ router.post("/memberships", requireAuth, async (req, res) => {
     // Auto-activate (in production, this happens after payment confirmation)
     const activated = await transitionMembershipStatus(membership!.id, "active", "Subscribed via API");
 
+    // Trigger 4: Membership renewed/activated — confirmation with plan details
+    notifyAsync({
+      userId,
+      type: "membership_renewed",
+      titleEn: "Membership Activated",
+      titleAr: "تم تفعيل الاشتراك",
+      bodyEn: `Your ${plan} membership (${billing}) is now active. Valid until ${endsAt.toLocaleDateString("en-SA")}. Enjoy your benefits!`,
+      bodyAr: `اشتراكك في ${plan} (${billing}) نشط الآن. صالح حتى ${endsAt.toLocaleDateString("ar-SA")}. استمتع بمزاياك!`,
+      refId: membership!.id,
+      refType: "membership",
+      metadata: { plan, billing, amount, endsAt: endsAt.toISOString(), refCode },
+    });
+
     // Sync goldPlan on users table
     await db.update(usersTable).set({
       goldPlan: plan,

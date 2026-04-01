@@ -19,6 +19,7 @@ import { eq, and, desc } from "drizzle-orm";
 import { generateRefCode } from "../lib/refcode.js";
 import { awardPoints, POINTS, logPointsTransaction } from "../lib/points.js";
 import { initiatePayment } from "../lib/paymentGateway.js";
+import { notifyAsync } from "../lib/notify.js";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -130,6 +131,36 @@ class InvoiceService {
             .update(customerInvoicesTable)
             .set({ gatewayResponse: gatewayResult.rawResponse })
             .where(eq(customerInvoicesTable.id, inv!.id));
+        }
+
+        // Trigger 2: Payment successful — notify customer with receipt reference.
+        // Trigger 3: Payment failed  — prompt customer to retry / update payment method.
+        if (userId) {
+          if (gatewayResult.success) {
+            notifyAsync({
+              userId,
+              type: "payment_success",
+              titleEn: "Payment Successful",
+              titleAr: "تمت عملية الدفع بنجاح",
+              bodyEn: `Your payment of ${total} ${currency} was processed successfully. Receipt: ${invoiceRef}.`,
+              bodyAr: `تمت معالجة دفعتك البالغة ${total} ${currency} بنجاح. الفاتورة: ${invoiceRef}.`,
+              refId: orderId,
+              refType: "order",
+              metadata: { invoiceRef, transactionId: gatewayResult.transactionId },
+            });
+          } else {
+            notifyAsync({
+              userId,
+              type: "payment_failed",
+              titleEn: "Payment Failed",
+              titleAr: "فشل الدفع",
+              bodyEn: `Your payment for order #${orderId} could not be processed. Please update your payment method and try again.`,
+              bodyAr: `تعذّر معالجة دفعتك للطلب #${orderId}. يرجى تحديث طريقة الدفع والمحاولة مرة أخرى.`,
+              refId: orderId,
+              refType: "order",
+              metadata: { errorCode: gatewayResult.errorCode },
+            });
+          }
         }
       } catch {
         // Non-critical: gateway call failure should not block order confirmation

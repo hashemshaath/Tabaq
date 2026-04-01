@@ -246,17 +246,18 @@ router.post("/orders", optionalAuth, async (req, res) => {
       });
     }
 
-    // FIX 5: Send order confirmation notification (non-blocking)
+    // Trigger 1: Order confirmed — includes invoice ref so customer can access receipt
     if (userId) {
       notifyAsync({
         userId,
         type: "order_confirmed",
         titleEn: "Order Placed",
         titleAr: "تم تقديم الطلب",
-        bodyEn: `Your order ${order!.orderNumber} has been placed. Estimated time: ${etaMinutes} mins.`,
-        bodyAr: `تم تقديم طلبك ${order!.orderNumber}. الوقت المتوقع: ${etaMinutes} دقيقة.`,
+        bodyEn: `Your order ${order!.orderNumber} has been placed. Estimated time: ${etaMinutes} mins.${invoiceRef ? ` Receipt: ${invoiceRef}.` : ""}`,
+        bodyAr: `تم تقديم طلبك ${order!.orderNumber}. الوقت المتوقع: ${etaMinutes} دقيقة.${invoiceRef ? ` الفاتورة: ${invoiceRef}.` : ""}`,
         refId: order!.id,
         refType: "order",
+        metadata: invoiceRef ? { invoiceRef } : undefined,
       });
     }
 

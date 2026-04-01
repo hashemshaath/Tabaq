@@ -252,6 +252,21 @@ router.patch("/disputes/:id/resolve", requireAdmin, async (req, res) => {
           refundGatewayResponse = refundResult.rawResponse ?? null;
 
           logger.info({ refundResult, disputeId: id }, "Dispute refund processed");
+
+          // Trigger 10: Refund processed — notify customer with exact amount
+          if (dispute.customerId) {
+            notifyAsync({
+              userId: dispute.customerId,
+              type: "refund_processed",
+              titleEn: "Refund Processed",
+              titleAr: "تمت معالجة الاسترداد",
+              bodyEn: `Your refund of ${refundAmount} SAR for order ${dispute.orderNumber} has been processed. It may take 3–5 business days to appear in your account.`,
+              bodyAr: `تمت معالجة استرداد ${refundAmount} ريال للطلب ${dispute.orderNumber}. قد يستغرق ظهوره 3-5 أيام عمل.`,
+              refId: dispute.orderId ?? undefined,
+              refType: "order",
+              metadata: { refundId: refundResult.refundId, amount: refundAmount, disputeId: id },
+            });
+          }
         }
       } catch (refundErr) {
         logger.warn({ refundErr, disputeId: id }, "Refund processing failed during dispute resolution");

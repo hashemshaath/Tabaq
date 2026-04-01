@@ -116,6 +116,19 @@ async function jobMembershipAutoRenewal(): Promise<number> {
     try {
       await transitionMembershipStatus(membership.id, "expired", "End date reached");
       count++;
+
+      // Trigger 5: Membership payment failed / auto-renewal could not complete.
+      // In this simulated flow, expiry = renewal failure (no active payment method on file).
+      notifyAsync({
+        userId: membership.userId,
+        type: "membership_failed",
+        titleEn: "Membership Expired — Renewal Failed",
+        titleAr: "انتهى الاشتراك — فشل التجديد",
+        bodyEn: `Your ${membership.plan} membership has expired. Please update your payment method and renew to continue enjoying your benefits.`,
+        bodyAr: `انتهت صلاحية اشتراكك في ${membership.plan}. يرجى تحديث طريقة الدفع وتجديد الاشتراك للاستمرار في الاستمتاع بمزاياك.`,
+        refId: membership.id,
+        refType: "membership",
+      });
     } catch (err) {
       logger.warn({ err, membershipId: membership.id }, "Failed to expire membership");
     }
