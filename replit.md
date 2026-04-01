@@ -1115,6 +1115,30 @@ Rich mock data for all 6 new sections: MOCK_CHECK_INS (5 visits), MOCK_REVIEWS (
 - Audit actions added: `SESSION_REVOKED`, `ALL_SESSIONS_REVOKED`.
 - `parseDeviceLabel(ua)` helper in sessions.ts maps User-Agent strings to friendly names (iPhone, Android phone, Chrome, Firefox, Safari, curl, Postman, etc.).
 
+## Security Settings UI (April 2026)
+
+### AccountPage — Security tab rebuilt with live data
+
+| Card | Before | After |
+|---|---|---|
+| Change Password | ✅ existed (via `PATCH /me/password`) | Updated to call new `POST /auth/password/change` endpoint |
+| Sign-in Methods | Hardcoded "OTP via Phone" badge | **Dynamic** — fetches `/auth/me` and shows badges for each active method: Phone OTP, Email OTP, Password, PIN |
+| PIN / Passcode | ❌ missing | **New** — full set/change/remove flow with 4-digit PIN boxes; calls `/auth/passcode/set` and `DELETE /auth/passcode` |
+| Active Sessions | Static "Current Device" placeholder | **Live** — fetches `/auth/sessions`; shows device icon, IP, time ago; individual revoke (×) button per session; "Sign Out Everywhere" button |
+
+### Security improvement — `/auth/me` response
+- Raw `passwordHash` and `passcodeHash` bcrypt strings are now **stripped** from the response
+- Replaced with computed boolean flags: `hasPassword: boolean`, `hasPasscode: boolean`
+- Sensitive fields also stripped: `passcodeFailedAttempts`, `passcodeLockedUntil`
+
+### UX details
+- `PinBoxes` component: 4 auto-advancing password-type inputs matching the OTP box style
+- `getDeviceFingerprint()`: generates a persistent UUID (stored in localStorage) used for passcode registration
+- `timeAgo()`: bilingual relative time (EN: "5m ago" / AR: "منذ 5 دقيقة")
+- `deviceIcon()`: maps device label to Smartphone / Tablet / Laptop / Wifi icon
+- Session rows marked "Current" (first in list = most recent) — that session's revoke button is hidden
+- "Sign Out Everywhere" only shown when more than one session exists
+
 ---
 
 ### Scratchpad

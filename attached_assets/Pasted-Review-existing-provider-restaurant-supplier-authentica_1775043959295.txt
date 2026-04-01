@@ -1,0 +1,96 @@
+Review existing provider/restaurant/supplier authentication.
+
+Providers are businesses, not consumers. Their auth must be separate and more secure.
+
+If provider auth does not exist at all: build it.
+If it exists partially: extend it without breaking what works.
+
+PROVIDER REGISTRATION (multi-step, must be resumable):
+The registration saves progress at each step so provider can continue later.
+
+Step 1 — Contact Verification:
+POST /api/v1/auth/provider/register/start
+  Body: { email, phone, preferred_contact: "email" | "phone" }
+  Action: send OTP to chosen contact, create a pending provider record with status = DRAFT
+  Generate PRV-... UID immediately and return it (used to track registration progress)
+  Response: { provider_uid, otp_sent_to }
+
+POST /api/v1/auth/provider/register/verify-otp
+  Body: { provider_uid, otp }
+  Action: verify OTP, mark contact as verified, set password in next step
+  Response: { verified: true, next_step: "set_password" }
+
+Step 2 — Set Password:
+POST /api/v1/auth/provider/register/set-password
+  Body: { provider_uid, password, confirm_password }
+  Validation: min 10 chars, 1 uppercase, 1 number, 1 special char (stricter than customer)
+  Action: hash with bcrypt cost 12, store, mark step as complete
+  Response: { next_step: "business_details" }
+
+Step 3 — Business Details:
+POST /api/v1/auth/provider/register/business-details
+  Body: { provider_uid, business_name_ar, business_name_en, business_type,
+          commercial_reg_number, tax_reg_number, city, country }
+  Action: save to providers table, mark step complete
+  Response: { next_step: "documents" }
+
+Step 4 — Document Upload:
+POST /api/v1/auth/provider/register/upload-documents
+  Body: multipart/form-data — commercial_reg_doc, tax_cert, owner_id_doc
+  Action: upload to storage, store URLs in provider_documents table
+  Mark status = PENDING_REVIEW
+  Notify admin (via existing notification service) of new provider application
+  Response: { status: "PENDING_REVIEW", message: "Application submitted for review" }
+
+PROVIDER LOGIN:
+POST /api/v1/auth/provider/login
+  Body: { email, password }
+  Action:
+  1. Find provider by email
+  2. Check status: if PENDING_REVIEW → return ACCOUNT_PENDING_REVIEW
+                   if REJECTED → return ACCOUNT_REJECTED with reason
+                   if SUSPENDED → return ACCOUNT_SUSPENDED with reason
+                   if ACTIVE → proceed
+  3. Verify password
+  4. If financial operation flag is needed: check 2fa_enabled
+  5. Issue JWT with type: "provider", role: provider's role, provider_uid in payload
+
+PROVIDER 2FA (for sensitive operations):
+POST /api/v1/auth/provider/2fa/send
+  Auth: requires provider JWT
+  Action: send OTP to provider's verified phone/email
+  Used before: approving payouts, changing bank details, creating commissions
+
+POST /api/v1/auth/provider/2fa/verify
+  Auth: requires provider JWT
+  Body: { otp }
+  Action: verify OTP, issue a short-lived elevated_token (JWT, 30 minutes, scope: "financial")
+  Response: { elevated_token }
+  Financial endpoints check for this elevated_token in addition to normal JWT
+
+PROVIDER STAFF INVITE:
+POST /api/v1/auth/provider/invite-staff
+  Auth: requires provider JWT with role = OWNER or MANAGER
+  Body: { email, role: "MANAGER" | "CASHIER" | "VIEWER" }
+  Action: generate invite token (24h TTL), send email with setup link
+  Create a pending staff record: STF-... UID, linked to provider_uid
+
+POST /api/v1/auth/provider/staff/accept-invite
+  Body: { invite_token, name, password }
+  Action: verify token, create staff account, link to provider
+  Response: JWT for staff member
+
+DATABASE — providers table must have:
+provider_uid (PRV-...), email, phone, password_hash,
+business_name_ar, business_name_en, business_type,
+commercial_reg_number, tax_reg_number,
+status (DRAFT | PENDING_REVIEW | ACTIVE | SUSPENDED | REJECTED | CLOSED),
+rejection_reason, suspended_reason, verified_at, verified_by,
+two_fa_enabled, failed_login_count, locked_until,
+created_at, updated_at
+
+DATABASE — provider_staff table:
+stf_uid (STF-...), provider_uid, email, name, password_hash,
+role (OWNER | MANAGER | CASHIER | VIEWER),
+status (ACTIVE | INACTIVE | INVITED),
+last_login_at, created_at

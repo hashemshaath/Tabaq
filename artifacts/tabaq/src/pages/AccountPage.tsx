@@ -12,7 +12,8 @@ import {
   LogOut, Instagram, Link2, MessageCircle, ChevronDown, ChevronUp,
   Heart, Bookmark, Award, Gift, HelpCircle, Phone, Volume2, VolumeX,
   UserX, Settings, Palette, Languages, CreditCard, X, Plus, Minus,
-  Info, ExternalLink, Moon, Sun, Monitor,
+  Info, ExternalLink, Moon, Sun, Monitor, Clock, RefreshCw,
+  Laptop, Tablet, Wifi, Hash, KeyRound, Fingerprint, ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/utils";
@@ -348,41 +349,211 @@ function PersonalInfoSection({ user, lang, t, qc }: { user: any; lang: string; t
 // ─────────────────────────────────────────────────────────────────────────────
 // SECURITY SECTION
 // ─────────────────────────────────────────────────────────────────────────────
-function SecuritySection({ lang, t, logout }: { lang: string; t: (en: string, ar: string) => string; logout: () => void }) {
-  const [current, setCurrent] = useState("");
-  const [newPwd, setNewPwd] = useState("");
-  const [confirm, setConfirm] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState("");
+// ─── helpers used only by SecuritySection ────────────────────────────────────
+function getDeviceFingerprint(): string {
+  const key = "tabaq_dfp";
+  let fp = localStorage.getItem(key);
+  if (!fp) { fp = crypto.randomUUID(); localStorage.setItem(key, fp); }
+  return fp;
+}
 
-  const handleSave = async () => {
-    if (!current || !newPwd || !confirm) { setError(t("All fields required", "جميع الحقول مطلوبة")); return; }
-    if (newPwd.length < 8) { setError(t("Password must be at least 8 characters", "كلمة المرور يجب أن تكون 8 أحرف على الأقل")); return; }
-    if (newPwd !== confirm) { setError(t("Passwords don't match", "كلمتا المرور غير متطابقتين")); return; }
-    setSaving(true); setError(""); setSaved(false);
+function timeAgo(dateStr: string, lang: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const m = Math.floor(diff / 60000);
+  const h = Math.floor(m / 60);
+  const d = Math.floor(h / 24);
+  if (lang === "ar") {
+    if (m < 1) return "الآن";
+    if (m < 60) return `منذ ${m} دقيقة`;
+    if (h < 24) return `منذ ${h} ساعة`;
+    return `منذ ${d} يوم`;
+  }
+  if (m < 1) return "just now";
+  if (m < 60) return `${m}m ago`;
+  if (h < 24) return `${h}h ago`;
+  return `${d}d ago`;
+}
+
+function deviceIcon(device: string): React.ReactElement {
+  const d = device.toLowerCase();
+  if (d.includes("iphone") || d.includes("android phone")) return <Smartphone className="w-5 h-5 text-primary" />;
+  if (d.includes("ipad") || d.includes("tablet")) return <Tablet className="w-5 h-5 text-primary" />;
+  if (d.includes("curl") || d.includes("postman")) return <Wifi className="w-5 h-5 text-muted-foreground" />;
+  return <Laptop className="w-5 h-5 text-primary" />;
+}
+
+// 4-digit PIN input boxes (reusable within SecuritySection)
+function PinBoxes({ pin, onChange, refs }: {
+  pin: string[];
+  onChange: (i: number, v: string) => void;
+  refs: React.MutableRefObject<Array<HTMLInputElement | null>>;
+}) {
+  return (
+    <div className="flex justify-center gap-3" dir="ltr">
+      {pin.map((digit, i) => (
+        <input
+          key={i}
+          ref={el => { refs.current[i] = el; }}
+          type="password"
+          inputMode="numeric"
+          maxLength={1}
+          value={digit}
+          autoFocus={i === 0}
+          onChange={e => {
+            const v = e.target.value.replace(/\D/g, "").slice(-1);
+            const next = [...pin]; next[i] = v; onChange(i, v);
+            if (v && i < 3) refs.current[i + 1]?.focus();
+          }}
+          onKeyDown={e => { if (e.key === "Backspace" && !pin[i] && i > 0) refs.current[i - 1]?.focus(); }}
+          className="w-14 h-16 text-center text-2xl font-bold rounded-xl border-2 border-input bg-background focus:border-primary focus:outline-none transition-colors"
+        />
+      ))}
+    </div>
+  );
+}
+
+function SecuritySection({ lang, t, logout }: { lang: string; t: (en: string, ar: string) => string; logout: () => void }) {
+  const qc = useQueryClient();
+  const isAr = lang === "ar";
+
+  // ── Change Password ────────────────────────────────────────────────────────
+  const [current, setCurrent] = useState("");
+  const [newPwd, setNewPwd]   = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [pwdSaving, setPwdSaving] = useState(false);
+  const [pwdSaved,  setPwdSaved]  = useState(false);
+  const [pwdError,  setPwdError]  = useState("");
+
+  const handleChangePwd = async () => {
+    if (!current || !newPwd || !confirm) { setPwdError(t("All fields required", "جميع الحقول مطلوبة")); return; }
+    if (newPwd.length < 8) { setPwdError(t("Password must be at least 8 characters", "كلمة المرور يجب أن تكون 8 أحرف على الأقل")); return; }
+    if (newPwd !== confirm) { setPwdError(t("Passwords don't match", "كلمتا المرور غير متطابقتين")); return; }
+    setPwdSaving(true); setPwdError(""); setPwdSaved(false);
     try {
-      const res = await fetch(`${API_BASE}/api/me/password`, {
-        method: "PATCH",
+      const res = await fetch(`${API_BASE}/api/auth/password/change`, {
+        method: "POST",
         headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-        body: JSON.stringify({ currentPassword: current, newPassword: newPwd, confirmPassword: confirm }),
+        body: JSON.stringify({ current_password: current, new_password: newPwd }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.message ?? t("Failed to update", "فشل التحديث")); return; }
-      setSaved(true); setCurrent(""); setNewPwd(""); setConfirm("");
-      setTimeout(() => setSaved(false), 3000);
-    } catch { setError(t("Network error", "خطأ في الاتصال")); }
-    finally { setSaving(false); }
+      if (!res.ok) { setPwdError(data.message ?? t("Failed to update", "فشل التحديث")); return; }
+      setPwdSaved(true); setCurrent(""); setNewPwd(""); setConfirm("");
+      setTimeout(() => setPwdSaved(false), 3000);
+    } catch { setPwdError(t("Network error", "خطأ في الاتصال")); }
+    finally { setPwdSaving(false); }
   };
 
+  // ── Fetch user profile (to check password/passcode status) ────────────────
+  const { data: meData } = useQuery({
+    queryKey: ["auth-me"],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/api/auth/me`, { headers: getAuthHeaders() });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    staleTime: 30000,
+  });
+  const userProfile = meData?.user ?? null;
+  const hasPassword = !!userProfile?.hasPassword;
+  const hasPasscode = !!userProfile?.hasPasscode;
+
+  // ── Fetch sessions ─────────────────────────────────────────────────────────
+  const { data: sessionsData, isLoading: sessionsLoading } = useQuery({
+    queryKey: ["auth-sessions"],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/api/auth/sessions`, { headers: getAuthHeaders() });
+      if (!res.ok) return { sessions: [] };
+      return res.json();
+    },
+    staleTime: 15000,
+    refetchOnWindowFocus: true,
+  });
+  const sessions: Array<{
+    id: number; device: string; ip_address: string | null;
+    last_active: string; created_at: string; expires_at: string; is_current: boolean;
+  }> = sessionsData?.sessions ?? [];
+
+  const revokeOne = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`${API_BASE}/api/auth/sessions/${id}`, { method: "DELETE", headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Failed");
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["auth-sessions"] }),
+  });
+
+  const revokeAll = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`${API_BASE}/api/auth/sessions`, { method: "DELETE", headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Failed");
+    },
+    onSuccess: () => { logout(); },
+  });
+
+  // ── Passcode management ────────────────────────────────────────────────────
+  type PasscodeMode = "idle" | "set" | "change" | "remove";
+  type PinStep = "enter" | "confirm";
+  const [pinMode, setPinMode]     = useState<PasscodeMode>("idle");
+  const [pinStep, setPinStep]     = useState<PinStep>("enter");
+  const [pin1, setPin1]           = useState(["", "", "", ""]);
+  const [pin2, setPin2]           = useState(["", "", "", ""]);
+  const [pinError, setPinError]   = useState("");
+  const [pinSaving, setPinSaving] = useState(false);
+  const pin1Refs = useRef<Array<HTMLInputElement | null>>([]);
+  const pin2Refs = useRef<Array<HTMLInputElement | null>>([]);
+
+  const resetPinState = () => {
+    setPinMode("idle"); setPinStep("enter"); setPin1(["", "", "", ""]); setPin2(["", "", "", ""]); setPinError("");
+  };
+
+  const handlePinNext = () => {
+    if (pin1.join("").length < 4) { setPinError(t("Enter all 4 digits", "أدخل الأرقام الأربعة")); return; }
+    setPinStep("confirm"); setPinError(""); setTimeout(() => pin2Refs.current[0]?.focus(), 50);
+  };
+
+  const handlePinSave = async () => {
+    const p1 = pin1.join(""), p2 = pin2.join("");
+    if (p1 !== p2) { setPinError(t("PINs don't match. Try again.", "الأرقام غير متطابقة. حاول مجدداً.")); setPin2(["", "", "", ""]); setTimeout(() => pin2Refs.current[0]?.focus(), 50); return; }
+    setPinSaving(true); setPinError("");
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/passcode/set`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({ passcode: p1, device_fingerprint: getDeviceFingerprint(), device_info: navigator.userAgent }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setPinError(data.message ?? t("Failed to set PIN", "فشل تعيين الرقم السري")); return; }
+      qc.invalidateQueries({ queryKey: ["auth-me"] });
+      resetPinState();
+    } catch { setPinError(t("Network error", "خطأ في الاتصال")); }
+    finally { setPinSaving(false); }
+  };
+
+  const handlePinRemove = async () => {
+    setPinSaving(true); setPinError("");
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/passcode`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({ device_fingerprint: getDeviceFingerprint() }),
+      });
+      if (!res.ok) { const d = await res.json(); setPinError(d.message ?? t("Failed", "فشل")); return; }
+      qc.invalidateQueries({ queryKey: ["auth-me"] });
+      resetPinState();
+    } catch { setPinError(t("Network error", "خطأ في الاتصال")); }
+    finally { setPinSaving(false); }
+  };
+
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6">
+
+      {/* ── Change Password ─────────────────────────────────────────────── */}
       <SectionCard title="Change Password" titleAr="تغيير كلمة المرور" lang={lang}>
         <div className="space-y-4">
           <FormField label="Current Password" labelAr="كلمة المرور الحالية" lang={lang}>
             <Input value={current} onChange={setCurrent} type="password" placeholder="••••••••" />
           </FormField>
-          <FormField label="New Password" labelAr="كلمة المرور الجديدة" lang={lang} hint="At least 8 characters" hintAr="8 أحرف على الأقل">
+          <FormField label="New Password" labelAr="كلمة المرور الجديدة" lang={lang} hint="Min 8 chars, 1 uppercase, 1 number" hintAr="8 أحرف على الأقل، حرف كبير، ورقم">
             <Input value={newPwd} onChange={setNewPwd} type="password" placeholder="••••••••" />
           </FormField>
           <FormField label="Confirm New Password" labelAr="تأكيد كلمة المرور الجديدة" lang={lang}>
@@ -390,43 +561,258 @@ function SecuritySection({ lang, t, logout }: { lang: string; t: (en: string, ar
           </FormField>
         </div>
         <div className="mt-4">
-          <SaveBar saving={saving} saved={saved} error={error} onSave={handleSave} lang={lang} />
+          <SaveBar saving={pwdSaving} saved={pwdSaved} error={pwdError} onSave={handleChangePwd} lang={lang} />
         </div>
       </SectionCard>
 
-      <SectionCard title="Authentication" titleAr="طريقة المصادقة" desc="Your account security method" descAr="طريقة أمان حسابك" lang={lang}>
-        <div className="space-y-3">
-          <div className="flex items-center gap-3 p-4 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-xl">
-            <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/50 rounded-full flex items-center justify-center shrink-0">
-              <Smartphone className="w-5 h-5 text-emerald-600" />
+      {/* ── Sign-in Methods ─────────────────────────────────────────────── */}
+      <SectionCard title="Sign-in Methods" titleAr="طرق تسجيل الدخول" desc="Active ways to access your account" descAr="الطرق النشطة للوصول إلى حسابك" lang={lang}>
+        <div className="space-y-2">
+          {userProfile?.phone && (
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800">
+              <Smartphone className="w-4 h-4 text-emerald-600 shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-200">{t("Phone OTP", "رمز التحقق عبر الهاتف")}</p>
+                <p className="text-xs text-emerald-600 dark:text-emerald-400">{userProfile.phone}</p>
+              </div>
+              <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
+            </div>
+          )}
+          {userProfile?.email && (
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+              <Mail className="w-4 h-4 text-blue-600 shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-blue-800 dark:text-blue-200">{t("Email OTP", "رمز التحقق عبر البريد")}</p>
+                <p className="text-xs text-blue-600 dark:text-blue-400">{userProfile.email}</p>
+              </div>
+              <ShieldCheck className="w-4 h-4 text-blue-500 shrink-0" />
+            </div>
+          )}
+          {hasPassword && (
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800">
+              <KeyRound className="w-4 h-4 text-violet-600 shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-violet-800 dark:text-violet-200">{t("Password", "كلمة المرور")}</p>
+                <p className="text-xs text-violet-600 dark:text-violet-400">{t("Password login enabled", "تسجيل الدخول بكلمة مرور مفعّل")}</p>
+              </div>
+              <ShieldCheck className="w-4 h-4 text-violet-500 shrink-0" />
+            </div>
+          )}
+          {hasPasscode && (
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
+              <Fingerprint className="w-4 h-4 text-orange-600 shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-orange-800 dark:text-orange-200">{t("PIN / Passcode", "رمز PIN")}</p>
+                <p className="text-xs text-orange-600 dark:text-orange-400">{t("Quick PIN login enabled", "تسجيل الدخول السريع بـ PIN مفعّل")}</p>
+              </div>
+              <ShieldCheck className="w-4 h-4 text-orange-500 shrink-0" />
+            </div>
+          )}
+          {!userProfile && (
+            <div className="h-10 bg-muted/50 rounded-xl animate-pulse" />
+          )}
+        </div>
+      </SectionCard>
+
+      {/* ── Passcode / PIN ───────────────────────────────────────────────── */}
+      <SectionCard
+        title={hasPasscode ? "PIN / Passcode" : "Set Up PIN"}
+        titleAr={hasPasscode ? "رمز PIN" : "إعداد رمز PIN"}
+        desc={hasPasscode ? "Quick 4-digit login for this device" : "Add a 4-digit PIN for fast sign-in"}
+        descAr={hasPasscode ? "تسجيل دخول سريع بـ 4 أرقام لهذا الجهاز" : "أضف رمز PIN من 4 أرقام لتسجيل الدخول السريع"}
+        lang={lang}
+      >
+        {pinMode === "idle" && (
+          <div className="space-y-3">
+            {!hasPasscode ? (
+              <button
+                onClick={() => { setPinMode("set"); setPinStep("enter"); }}
+                className="w-full flex items-center justify-between px-4 py-3.5 rounded-xl border border-dashed border-border hover:border-primary/50 hover:bg-primary/5 transition-colors group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Hash className="w-4 h-4 text-primary" />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-sm font-semibold text-foreground">{t("Set up PIN", "إعداد رمز PIN")}</p>
+                    <p className="text-xs text-muted-foreground">{t("4-digit quick login", "تسجيل دخول سريع بـ 4 أرقام")}</p>
+                  </div>
+                </div>
+                <ChevronRight className={`w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors ${isAr ? "rotate-180" : ""}`} />
+              </button>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex items-center gap-3 p-3 bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-900 rounded-xl">
+                  <Fingerprint className="w-5 h-5 text-orange-500 shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold">{t("PIN is active", "رمز PIN نشط")}</p>
+                    <p className="text-xs text-muted-foreground">{t("4-digit quick login enabled for this device", "تسجيل الدخول السريع مفعّل لهذا الجهاز")}</p>
+                  </div>
+                  <CheckCircle2 className="w-4 h-4 text-orange-500 shrink-0" />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => { setPinMode("change"); setPinStep("enter"); }}
+                    className="flex items-center justify-center gap-2 py-2.5 px-3 text-sm font-semibold border border-border rounded-xl hover:bg-muted transition-colors"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    {t("Change PIN", "تغيير PIN")}
+                  </button>
+                  <button
+                    onClick={() => setPinMode("remove")}
+                    className="flex items-center justify-center gap-2 py-2.5 px-3 text-sm font-semibold border border-destructive/40 text-destructive rounded-xl hover:bg-destructive/5 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    {t("Remove PIN", "إزالة PIN")}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {(pinMode === "set" || pinMode === "change") && (
+          <div className="space-y-5">
+            <div className="text-center">
+              <p className="text-sm font-semibold text-foreground">
+                {pinStep === "enter"
+                  ? t(pinMode === "set" ? "Choose a 4-digit PIN" : "Enter your new PIN", pinMode === "set" ? "اختر رمز PIN من 4 أرقام" : "أدخل رمز PIN الجديد")
+                  : t("Confirm your PIN", "أكد رمز PIN")
+                }
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {pinStep === "enter"
+                  ? t("You'll use this for quick sign-in", "ستستخدمه لتسجيل الدخول السريع")
+                  : t("Enter the same PIN again", "أدخل نفس الرمز مرة أخرى")
+                }
+              </p>
+            </div>
+            <PinBoxes
+              pin={pinStep === "enter" ? pin1 : pin2}
+              onChange={(i, v) => {
+                if (pinStep === "enter") { const n = [...pin1]; n[i] = v; setPin1(n); }
+                else { const n = [...pin2]; n[i] = v; setPin2(n); }
+              }}
+              refs={pinStep === "enter" ? pin1Refs : pin2Refs}
+            />
+            {pinError && <p className="text-center text-sm text-destructive">{pinError}</p>}
+            <div className="flex gap-2">
+              <button onClick={resetPinState} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold hover:bg-muted transition-colors">
+                {t("Cancel", "إلغاء")}
+              </button>
+              {pinStep === "enter" ? (
+                <button onClick={handlePinNext} className="flex-1 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors" disabled={pin1.join("").length < 4}>
+                  {t("Next", "التالي")}
+                </button>
+              ) : (
+                <button onClick={handlePinSave} disabled={pinSaving || pin2.join("").length < 4}
+                  className="flex-1 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50">
+                  {pinSaving ? t("Saving…", "جارٍ الحفظ…") : t("Save PIN", "حفظ PIN")}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {pinMode === "remove" && (
+          <div className="space-y-4 text-center">
+            <div className="w-14 h-14 rounded-full bg-destructive/10 flex items-center justify-center mx-auto">
+              <Trash2 className="w-6 h-6 text-destructive" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-200">{t("OTP via Phone", "رمز التحقق عبر الهاتف")}</p>
-              <p className="text-xs text-emerald-600 dark:text-emerald-400">{t("Your account uses phone number verification — already secure!", "حسابك يستخدم التحقق برقم الهاتف — آمن بالفعل!")}</p>
+              <p className="font-semibold">{t("Remove PIN?", "إزالة رمز PIN؟")}</p>
+              <p className="text-xs text-muted-foreground mt-1">{t("You won't be able to use PIN login on this device.", "لن تتمكن من استخدام رمز PIN لتسجيل الدخول على هذا الجهاز.")}</p>
             </div>
-            <CheckCircle2 className="w-5 h-5 text-emerald-500 ms-auto shrink-0" />
+            {pinError && <p className="text-sm text-destructive">{pinError}</p>}
+            <div className="flex gap-2">
+              <button onClick={resetPinState} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold hover:bg-muted transition-colors">
+                {t("Keep PIN", "الاحتفاظ بـ PIN")}
+              </button>
+              <button onClick={handlePinRemove} disabled={pinSaving}
+                className="flex-1 py-2.5 bg-destructive text-destructive-foreground rounded-xl text-sm font-semibold hover:bg-destructive/90 transition-colors disabled:opacity-50">
+                {pinSaving ? t("Removing…", "جارٍ الإزالة…") : t("Remove", "إزالة")}
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </SectionCard>
 
-      <SectionCard title="Active Session" titleAr="الجلسة النشطة" desc="Where you're currently signed in" descAr="أين أنت مسجل الدخول حالياً" lang={lang}>
-        <div className="flex items-center gap-3 p-4 border border-border rounded-xl bg-muted/30">
-          <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center shrink-0">
-            <Monitor className="w-5 h-5 text-primary" />
+      {/* ── Active Sessions ──────────────────────────────────────────────── */}
+      <SectionCard
+        title="Active Sessions"
+        titleAr="الجلسات النشطة"
+        desc="Devices currently signed in to your account"
+        descAr="الأجهزة المسجّلة الدخول حالياً"
+        lang={lang}
+      >
+        {sessionsLoading ? (
+          <div className="space-y-3">
+            {[1, 2].map(i => <div key={i} className="h-16 bg-muted/50 rounded-xl animate-pulse" />)}
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-foreground">{t("Current Device", "الجهاز الحالي")}</p>
-            <p className="text-xs text-muted-foreground">{t("This device · Active now", "هذا الجهاز · نشط الآن")}</p>
+        ) : sessions.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-4">{t("No active sessions", "لا توجد جلسات نشطة")}</p>
+        ) : (
+          <div className="space-y-2">
+            {sessions.map((s, idx) => (
+              <div key={s.id} className={`flex items-center gap-3 p-3 rounded-xl border ${idx === 0 ? "bg-primary/5 border-primary/20" : "border-border bg-muted/20"}`}>
+                <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center shrink-0">
+                  {deviceIcon(s.device)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold text-foreground truncate">{s.device}</p>
+                    {idx === 0 && (
+                      <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full whitespace-nowrap">
+                        {t("Current", "الحالي")}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    {s.ip_address && <span className="flex items-center gap-1"><Globe className="w-3 h-3" />{s.ip_address}</span>}
+                    <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{timeAgo(s.last_active, lang)}</span>
+                  </div>
+                </div>
+                {idx !== 0 && (
+                  <button
+                    onClick={() => revokeOne.mutate(s.id)}
+                    disabled={revokeOne.isPending}
+                    className="shrink-0 p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+                    title={t("Revoke", "إلغاء")}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            ))}
           </div>
-          <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">{t("Active", "نشط")}</span>
+        )}
+
+        <div className="mt-4 space-y-2">
+          <button
+            onClick={() => qc.invalidateQueries({ queryKey: ["auth-sessions"] })}
+            className="w-full flex items-center justify-center gap-2 py-2.5 border border-border text-foreground font-semibold text-sm rounded-xl hover:bg-muted transition-colors"
+          >
+            <RefreshCw className="w-4 h-4" />
+            {t("Refresh", "تحديث")}
+          </button>
+          {sessions.length > 1 && (
+            <button
+              onClick={() => revokeAll.mutate()}
+              disabled={revokeAll.isPending}
+              className="w-full flex items-center justify-center gap-2 py-2.5 border border-destructive/40 text-destructive font-semibold text-sm rounded-xl hover:bg-destructive/5 transition-colors disabled:opacity-50"
+            >
+              <LogOut className="w-4 h-4" />
+              {revokeAll.isPending ? t("Signing out…", "جارٍ تسجيل الخروج…") : t("Sign Out Everywhere", "تسجيل الخروج من كل الأجهزة")}
+            </button>
+          )}
+          <button
+            onClick={logout}
+            className="w-full flex items-center justify-center gap-2 py-2.5 border border-destructive/40 text-destructive font-semibold text-sm rounded-xl hover:bg-destructive/5 transition-colors"
+          >
+            <LogOut className="w-4 h-4" />
+            {t("Sign Out", "تسجيل الخروج")}
+          </button>
         </div>
-        <button
-          onClick={logout}
-          className="mt-4 w-full flex items-center justify-center gap-2 py-2.5 border border-destructive/40 text-destructive font-semibold text-sm rounded-xl hover:bg-destructive/5 transition-colors"
-        >
-          <LogOut className="w-4 h-4" />
-          {t("Sign Out", "تسجيل الخروج")}
-        </button>
       </SectionCard>
     </div>
   );

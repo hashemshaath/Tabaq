@@ -1,0 +1,57 @@
+Review any existing OAuth integration in the codebase.
+
+Add Google OAuth 2.0 and Apple Sign-In. Both follow the same pattern:
+Mobile app handles the OAuth flow and sends the ID token to the server.
+The server verifies the token and creates/links the account.
+
+This is the mobile-first (token verification) pattern — not the web redirect pattern.
+
+GOOGLE OAUTH:
+POST /api/v1/auth/oauth/google
+  Body: { id_token }  — Google ID token from mobile SDK
+  Action:
+  1. Verify id_token using Google's public keys
+     Use: https://oauth2.googleapis.com/tokeninfo?id_token={token}
+     Or use 'google-auth-library' package
+  2. Extract: google_id, email, name, picture from verified token
+  3. Check if user exists by google_id → if yes, login (issue JWT)
+  4. Check if user exists by email → if yes, link google_id to existing account, then login
+  5. If new user: create account with:
+     user_uid = USR-..., google_id, email, display_name = name from Google,
+     profile_picture = picture from Google, email_verified = true,
+     account_status = ACTIVE (no OTP needed since Google already verified email)
+  6. Issue JWT + refresh token
+  Response: { access_token, refresh_token, user_uid, is_new_user: boolean }
+
+APPLE SIGN-IN:
+POST /api/v1/auth/oauth/apple
+  Body: { identity_token, authorization_code, user?: { name, email } }
+  Note: Apple only sends name and email on FIRST login. Store them immediately.
+  Action:
+  1. Verify identity_token against Apple's public keys
+     Use 'apple-signin-auth' package or manual JWT verification with Apple's JWKS
+  2. Extract: apple_id (sub claim), email (if provided)
+  3. Same account lookup and creation logic as Google
+  4. Store apple_id on user record
+  5. Issue JWT + refresh token
+
+DATABASE — add to users table if missing:
+- google_id VARCHAR(100) UNIQUE (nullable)
+- apple_id VARCHAR(100) UNIQUE (nullable)
+- profile_picture_url VARCHAR(500)
+- auth_providers JSONB DEFAULT '[]'  — tracks which providers are linked: ["email","google","apple","phone"]
+
+ACCOUNT LINKING:
+- A user can have multiple auth providers linked to one account
+- If user tries to OAuth with email that already has email+password account:
+  Auto-link the OAuth provider to existing account (do not create duplicate)
+  Return is_new_user: false
+
+ENVIRONMENT VARIABLES NEEDED (add to .env.example):
+GOOGLE_CLIENT_ID=
+APPLE_CLIENT_ID=
+APPLE_TEAM_ID=
+APPLE_KEY_ID=
+APPLE_PRIVATE_KEY=
+
+Do not break existing login flows. OAuth is additive.

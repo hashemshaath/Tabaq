@@ -691,7 +691,15 @@ router.get("/auth/me", requireAuth, async (req, res) => {
       res.status(404).json({ error: "not_found", message: "User not found" });
       return;
     }
-    res.json({ user });
+    // Strip sensitive fields; expose computed boolean flags instead
+    const { passwordHash, passcodeHash, passcodeFailedAttempts, passcodeLockedUntil, ...safeUser } = user;
+    res.json({
+      user: {
+        ...safeUser,
+        hasPassword: !!passwordHash,
+        hasPasscode: !!passcodeHash,
+      },
+    });
   } catch (err) {
     req.log.error({ err }, "Failed to fetch /me");
     res.status(500).json({ error: "internal_error", message: "Failed to fetch user" });
