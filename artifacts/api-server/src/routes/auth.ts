@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import bcrypt from "bcryptjs";
 import { db } from "@workspace/db";
 import { usersTable, otpRequestsTable, emailVerificationTokensTable, refreshTokensTable } from "@workspace/db/schema";
-import { eq, and, isNull, gt, desc, gte, lt } from "drizzle-orm";
+import { eq, and, isNull, gt, desc, gte, sql } from "drizzle-orm";
 import {
   signToken,
   generateOtp,
@@ -13,6 +13,8 @@ import {
   normalizePhone,
   validateEmail,
   validatePasswordStrength,
+  validateUsername,
+  classifyIdentifier,
   REFRESH_TOKEN_EXPIRES_IN_MS,
 } from "../lib/auth.js";
 import { requireAuth } from "../middleware/requireAuth.js";
@@ -178,19 +180,39 @@ router.post("/auth/request-otp", authRateLimiter, async (req, res) => {
 
 router.post("/auth/verify-otp", authRateLimiter, async (req, res) => {
   try {
-    const { phone: rawPhone, email: rawEmail, code, nameEn, nameAr, preferredLanguage = "en", cityId } = req.body as {
+    const { phone: rawPhone, email: rawEmail, code, nameEn, nameAr, displayName, preferredLanguage = "en", cityId, username: rawUsername } = req.body as {
       phone?: string;
       email?: string;
       code: string;
       nameEn?: string;
       nameAr?: string;
+      displayName?: string;
       preferredLanguage?: string;
       cityId?: number;
+      username?: string;
     };
 
     if (!code || (!rawPhone && !rawEmail) || (rawPhone && rawEmail)) {
       res.status(400).json({ error: "bad_request", message: "Provide exactly one of phone or email, plus code" });
       return;
+    }
+
+    // Validate and normalize optional username
+    let otpNormalizedUsername: string | null = null;
+    if (rawUsername) {
+      const uv = validateUsername(rawUsername);
+      if (!uv.valid) {
+        res.status(400).json({ error: "INVALID_USERNAME", message: uv.reason });
+        return;
+      }
+      otpNormalizedUsername = rawUsername.trim().toLowerCase();
+      const [existingUname] = await db.select({ id: usersTable.id }).from(usersTable)
+        .where(sql`LOWER(${usersTable.username}) = ${otpNormalizedUsername}`)
+        .limit(1);
+      if (existingUname) {
+        res.status(409).json({ error: "USERNAME_TAKEN", message: "Username is already taken" });
+        return;
+      }
     }
 
     let phone: string | null = null;
@@ -288,6 +310,8 @@ router.post("/auth/verify-otp", authRateLimiter, async (req, res) => {
       const [created] = await db.insert(usersTable).values({
         phone: phone ?? null,
         email: email ?? null,
+        username: otpNormalizedUsername,
+        displayName: displayName?.trim() ?? null,
         nameEn: nameEn ?? null,
         nameAr: nameAr ?? null,
         preferredLanguage,
@@ -337,13 +361,15 @@ router.post("/auth/verify-otp", authRateLimiter, async (req, res) => {
 
 router.post("/auth/register", authRateLimiter, async (req, res) => {
   try {
-    const { email: rawEmail, password, nameEn, nameAr, preferredLanguage = "en", cityId } = req.body as {
+    const { email: rawEmail, password, nameEn, nameAr, displayName, preferredLanguage = "en", cityId, username: rawUsername } = req.body as {
       email?: string;
       password?: string;
       nameEn?: string;
       nameAr?: string;
+      displayName?: string;
       preferredLanguage?: string;
       cityId?: number;
+      username?: string;
     };
 
     if (!rawEmail || !password) {
@@ -368,6 +394,24 @@ router.post("/auth/register", authRateLimiter, async (req, res) => {
 
     const email = rawEmail.trim().toLowerCase();
 
+    // Validate and normalize username if provided
+    let normalizedUsername: string | null = null;
+    if (rawUsername) {
+      const uv = validateUsername(rawUsername);
+      if (!uv.valid) {
+        res.status(400).json({ error: "INVALID_USERNAME", message: uv.reason });
+        return;
+      }
+      normalizedUsername = rawUsername.trim().toLowerCase();
+      const [existingUname] = await db.select({ id: usersTable.id }).from(usersTable)
+        .where(sql`LOWER(${usersTable.username}) = ${normalizedUsername}`)
+        .limit(1);
+      if (existingUname) {
+        res.status(409).json({ error: "USERNAME_TAKEN", message: "Username is already taken" });
+        return;
+      }
+    }
+
     // App-level uniqueness check (gives a clear error before hitting DB constraint)
     const [existing] = await db
       .select({ id: usersTable.id })
@@ -386,6 +430,8 @@ router.post("/auth/register", authRateLimiter, async (req, res) => {
     const [user] = await db.insert(usersTable).values({
       email,
       passwordHash,
+      username: normalizedUsername,
+      displayName: displayName?.trim() ?? null,
       nameEn: nameEn ?? null,
       nameAr: nameAr ?? null,
       preferredLanguage,
@@ -428,25 +474,45 @@ router.post("/auth/register", authRateLimiter, async (req, res) => {
 
 router.post("/auth/login", authRateLimiter, async (req, res) => {
   try {
-    const { email: rawEmail, password } = req.body as { email?: string; password?: string };
+    // Accept identifier (generic) or email (legacy field name) interchangeably
+    const rawIdentifier: string = ((req.body as Record<string, unknown>).identifier as string)
+      || ((req.body as Record<string, unknown>).email as string)
+      || "";
+    const { password } = req.body as { password?: string };
 
-    if (!rawEmail || !password) {
-      res.status(400).json({ error: "bad_request", message: "email and password are required" });
+    if (!rawIdentifier || !password) {
+      res.status(400).json({ error: "bad_request", message: "email (or username/phone) and password are required" });
       return;
     }
 
-    if (!validateEmail(rawEmail)) {
-      res.status(400).json({ error: "invalid_email", message: "Invalid email address" });
-      return;
+    const identifierType = classifyIdentifier(rawIdentifier);
+
+    // Resolve user via one of three lookup strategies
+    let user: typeof usersTable.$inferSelect | undefined;
+
+    if (identifierType === "email") {
+      if (!validateEmail(rawIdentifier)) {
+        res.status(400).json({ error: "invalid_email", message: "Invalid email address" });
+        return;
+      }
+      const email = rawIdentifier.trim().toLowerCase();
+      [user] = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
+
+    } else if (identifierType === "phone") {
+      const phone = normalizePhone(rawIdentifier.trim());
+      if (!phone) {
+        res.status(400).json({ error: "invalid_phone", message: "Invalid phone number format" });
+        return;
+      }
+      [user] = await db.select().from(usersTable).where(eq(usersTable.phone, phone)).limit(1);
+
+    } else {
+      // Username — case-insensitive lookup via the partial LOWER() index
+      const username = rawIdentifier.trim().toLowerCase();
+      [user] = await db.select().from(usersTable)
+        .where(sql`LOWER(${usersTable.username}) = ${username}`)
+        .limit(1);
     }
-
-    const email = rawEmail.trim().toLowerCase();
-
-    const [user] = await db
-      .select()
-      .from(usersTable)
-      .where(eq(usersTable.email, email))
-      .limit(1);
 
     // Always spend time on bcrypt to prevent timing attacks even if user not found
     const dummyHash = "$2b$12$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ012345";
@@ -454,7 +520,7 @@ router.post("/auth/login", authRateLimiter, async (req, res) => {
 
     if (!user) {
       await bcrypt.compare(password, dummyHash);
-      res.status(401).json({ error: "invalid_credentials", message: "Invalid email or password" });
+      res.status(401).json({ error: "invalid_credentials", message: "Invalid credentials" });
       return;
     }
 
@@ -511,6 +577,33 @@ router.post("/auth/login", authRateLimiter, async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "Failed to login");
     res.status(500).json({ error: "internal_error", message: "Failed to login" });
+  }
+});
+
+// ── CHECK USERNAME AVAILABILITY ────────────────────────────────────────────────
+
+router.post("/auth/check-username", async (req, res) => {
+  try {
+    const { username } = req.body as { username?: string };
+    const trimmed = (username ?? "").trim();
+
+    const validation = validateUsername(trimmed);
+    if (!validation.valid) {
+      res.json({ available: false, reason: validation.reason });
+      return;
+    }
+
+    const normalizedLower = trimmed.toLowerCase();
+    const [existing] = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(sql`LOWER(${usersTable.username}) = ${normalizedLower}`)
+      .limit(1);
+
+    res.json({ available: !existing, reason: existing ? "Username is already taken" : null });
+  } catch (err) {
+    req.log.error({ err }, "Failed to check username");
+    res.status(500).json({ error: "internal_error", message: "Failed to check username availability" });
   }
 });
 

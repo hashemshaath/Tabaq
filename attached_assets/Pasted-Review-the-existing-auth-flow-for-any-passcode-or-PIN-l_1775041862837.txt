@@ -1,0 +1,50 @@
+Review the existing auth flow for any passcode or PIN logic.
+
+Add a 6-digit passcode system for mobile users (used after first successful login).
+
+HOW IT WORKS:
+1. User logs in for the first time (via phone OTP or email+password)
+2. After successful login, the app prompts: "Set a passcode for faster login"
+3. User sets 6-digit PIN → sent to server → hashed and stored
+4. On subsequent app opens: user enters passcode only (no OTP needed)
+5. "Forgot passcode" → triggers phone OTP re-verification → allows passcode reset
+
+DATABASE — add to users table if missing:
+- passcode_hash VARCHAR(100)         — bcrypt hash of PIN
+- passcode_set_at TIMESTAMP
+- passcode_failed_attempts SMALLINT DEFAULT 0
+- passcode_locked_until TIMESTAMP
+
+NEW ENDPOINTS:
+POST /api/v1/auth/passcode/set
+  Auth: requires valid JWT (user must already be logged in)
+  Body: { passcode: "123456" }
+  Validation: exactly 6 digits, not sequential (123456), not repeated (111111)
+  Action: bcrypt hash with cost 10, store in passcode_hash, reset failed_attempts
+  Response: { success: true }
+
+POST /api/v1/auth/passcode/login
+  Body: { user_uid, passcode, device_fingerprint }
+  Action:
+  1. Find user by user_uid
+  2. Check passcode_locked_until — if locked, return PASSCODE_LOCKED with retry_after
+  3. bcrypt.compare(passcode, passcode_hash)
+  4. If wrong: increment failed_attempts, if >= 5 → set locked_until = NOW() + 10 minutes
+  5. If correct: reset failed_attempts, issue JWT + refresh token (same as normal login)
+  Response: same JWT response structure as existing login
+  Rate limit: max 10 attempts per minute per user_uid (Redis)
+
+POST /api/v1/auth/passcode/reset
+  Body: { user_uid, otp, new_passcode }
+  Action: verify OTP (reuse existing OTP verification), then update passcode_hash
+  This is the "forgot passcode" flow
+
+DELETE /api/v1/auth/passcode
+  Auth: requires valid JWT
+  Action: set passcode_hash = null (disables passcode login for this user)
+
+IMPORTANT: Passcode login is only valid when:
+- User has a verified phone number
+- Passcode was set within the last 90 days (prompt re-setup after 90 days)
+- The device_fingerprint matches a previously seen device for this user
+  If new device: require full phone OTP login first, then allow passcode setup

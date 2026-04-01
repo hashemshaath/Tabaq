@@ -169,6 +169,32 @@ Standardized format `TBQ-{TYPE}-{YEAR}-{PADDED_ID}` across all entities. New typ
 - `otp_requests`: `otp_hash`, `attempts`
 - New table: `refresh_tokens` (id, user_id, token_hash, device_info, expires_at, is_revoked, created_at)
 
+## Username Login Extension (April 2026)
+
+### Multi-Identifier Login
+- `POST /auth/login` now accepts `email` **or** `identifier` field containing an email, phone, or username
+- Detection order: `@` present → email path; digits-only with optional `+` prefix → phone path; anything else → username path
+- Username lookup is case-insensitive via `LOWER(username)` SQL (using the partial index `idx_users_username`)
+- Backward-compatible: existing callers sending `{ email: "user@..." }` continue to work unchanged
+
+### Username Validation Rules (corrected)
+- Regex: `/^[a-zA-Z0-9_-]{3,30}$/` — letters, numbers, underscores, hyphens ONLY (dots are NOT allowed)
+- Reserved words: admin, tabaq, support, api (plus common platform paths)
+- Stored lowercase; lookup is case-insensitive
+- Single source of truth: `validateUsername()` exported from `lib/auth.ts`; `routes/username.ts` imports it
+
+### New Endpoint: `POST /auth/check-username`
+Returns `{ available: boolean, reason: string | null }` — validates format, checks reserved words, then queries DB
+
+### Username on Registration
+- `POST /auth/register` and `POST /auth/verify-otp` both accept optional `{ username, displayName }` params
+- `USERNAME_TAKEN` 409 returned on collision before DB insert
+
+### New DB Columns (Username Extension)
+- `users.display_name` (text, nullable) — free-form display name separate from `name_en` / `name_ar`
+- `users.username` — existing column; old `users_username_unique` constraint replaced with partial case-insensitive index:
+  `CREATE UNIQUE INDEX idx_users_username ON users(LOWER(username)) WHERE username IS NOT NULL`
+
 ### New/Modified Files
 - `artifacts/api-server/src/lib/auth.ts` — `generateOtp` (crypto.randomInt), `hashOtp`, `normalizePhone`, `validateEmail`, `validatePasswordStrength`, `generateRefreshToken`, `hashRefreshToken`, new JWT payload interface
 - `artifacts/api-server/src/routes/auth.ts` — fully hardened OTP + email/password + refresh + logout flows

@@ -78,3 +78,33 @@ export function validatePasswordStrength(password: string): { valid: boolean; re
   if (!/[0-9]/.test(password)) reasons.push("at least 1 number");
   return { valid: reasons.length === 0, reasons };
 }
+
+const RESERVED_USERNAMES = new Set([
+  "admin", "tabaq", "support", "api", "help", "app", "www", "mail",
+  "user", "users", "profile", "settings", "dashboard", "billing",
+  "terms", "privacy", "about", "contact", "blog", "feed", "search",
+  "signin", "signup", "logout", "partners", "legal",
+]);
+
+const USERNAME_REGEX = /^[a-zA-Z0-9_-]{3,30}$/;
+
+export function validateUsername(username: string): { valid: boolean; reason?: string } {
+  if (!username) return { valid: false, reason: "Username is required" };
+  if (!USERNAME_REGEX.test(username)) {
+    if (username.length < 3) return { valid: false, reason: "Must be at least 3 characters" };
+    if (username.length > 30) return { valid: false, reason: "Must be 30 characters or fewer" };
+    return { valid: false, reason: "Only letters, numbers, underscores, and hyphens allowed" };
+  }
+  if (RESERVED_USERNAMES.has(username.toLowerCase())) {
+    return { valid: false, reason: "This username is reserved" };
+  }
+  return { valid: true };
+}
+
+export function classifyIdentifier(raw: string): "email" | "phone" | "username" {
+  const trimmed = raw.trim();
+  if (trimmed.includes("@")) return "email";
+  const cleaned = trimmed.replace(/[\s\-\(\)\.]/g, "");
+  if (/^\+?[0-9]{7,15}$/.test(cleaned)) return "phone";
+  return "username";
+}
