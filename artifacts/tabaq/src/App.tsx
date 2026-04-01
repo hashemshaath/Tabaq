@@ -99,6 +99,9 @@ function Router() {
               <Route path="/console">
                 <ProtectedRoute requireOwner><BusinessConsolePage /></ProtectedRoute>
               </Route>
+              <Route path="/business">
+                <ProtectedRoute requireOwner><BusinessConsolePage /></ProtectedRoute>
+              </Route>
               <Route path="/dashboard">
                 <ProtectedRoute><UserDashboardPage /></ProtectedRoute>
               </Route>

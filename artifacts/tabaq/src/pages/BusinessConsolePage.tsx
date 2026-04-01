@@ -164,7 +164,7 @@ export function BusinessConsolePage() {
   const { data: crmCustomers, isLoading: crmCustomersLoading } = useQuery({
     queryKey: ['crm-customers', RESTAURANT_ID, crmSegment],
     queryFn: async () => {
-      const url = `/api/analytics/restaurant/${RESTAURANT_ID}/customers${crmSegment !== 'all' ? `?segment=${crmSegment}` : ''}`;
+      const url = `${API_BASE}/api/analytics/restaurant/${RESTAURANT_ID}/customers${crmSegment !== 'all' ? `?segment=${crmSegment}` : ''}`;
       const res = await fetch(url, { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
@@ -266,6 +266,72 @@ export function BusinessConsolePage() {
       queryClient.invalidateQueries({ queryKey: ['admin-offers'] });
     },
   });
+
+  // ── Menu tab state ──────────────────────────────────────────────
+  const [menuExpandedMenu, setMenuExpandedMenu] = useState<number | null>(null);
+  const [menuExpandedSection, setMenuExpandedSection] = useState<number | null>(null);
+  const [menuShowDishForm, setMenuShowDishForm] = useState<{ sectionId: number } | null>(null);
+  const [menuDishForm, setMenuDishForm] = useState({ nameEn: '', nameAr: '', price: '', descriptionEn: '', isBestseller: false, isChefChoice: false, isNewItem: false, discountPercentage: '' });
+
+  const { data: menuData, isLoading: menuLoading, refetch: refetchMenus } = useQuery({
+    queryKey: ['console-menus', RESTAURANT_ID],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/api/restaurants/${RESTAURANT_ID}/menus`, { headers: getAuthHeaders() });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!RESTAURANT_ID && activeTab === 'menu',
+  });
+
+  const consoleMenus: any[] = menuData?.menus ?? menuData ?? [];
+
+  const createDishMutation = useMutation({
+    mutationFn: async ({ sectionId, data }: { sectionId: number; data: object }) => {
+      const res = await fetch(`${API_BASE}/api/menu-sections/${sectionId}/dishes`, {
+        method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error('Failed to add dish');
+      return res.json();
+    },
+    onSuccess: () => {
+      refetchMenus();
+      setMenuShowDishForm(null);
+      setMenuDishForm({ nameEn: '', nameAr: '', price: '', descriptionEn: '', isBestseller: false, isChefChoice: false, isNewItem: false, discountPercentage: '' });
+    },
+  });
+
+  const deleteDishMutation = useMutation({
+    mutationFn: async (dishId: number) => {
+      await fetch(`${API_BASE}/api/dishes/${dishId}`, { method: 'DELETE', headers: getAuthHeaders() });
+    },
+    onSuccess: () => refetchMenus(),
+  });
+
+  // ── Settings editing state ───────────────────────────────────────
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [editingValue, setEditingValue] = useState('');
+
+  const updateRestaurantMutation = useMutation({
+    mutationFn: async (patch: Record<string, string>) => {
+      const res = await fetch(`${API_BASE}/api/restaurants/${RESTAURANT_ID}`, {
+        method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify(patch),
+      });
+      if (!res.ok) throw new Error('Failed to update');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['me-restaurant'] });
+      setEditingField(null);
+      toast.success(t('Restaurant info updated', 'تم تحديث بيانات المطعم'));
+    },
+    onError: () => toast.error(t('Update failed', 'فشل التحديث')),
+  });
+
+  const MENU_TYPE_COLORS: Record<string, string> = {
+    regular: 'bg-blue-100 text-blue-700', kids: 'bg-yellow-100 text-yellow-700',
+    drinks: 'bg-cyan-100 text-cyan-700', desserts: 'bg-pink-100 text-pink-700',
+    catering: 'bg-orange-100 text-orange-700', home_kitchen: 'bg-green-100 text-green-700',
+  };
 
   const tabs: { id: ConsoleTab; labelEn: string; labelAr: string; icon: React.ElementType }[] = [
     { id: 'overview', labelEn: 'Overview', labelAr: 'نظرة عامة', icon: BarChart3 },
@@ -511,13 +577,13 @@ export function BusinessConsolePage() {
               <p className="text-sm font-semibold text-foreground">{t('Redeem Voucher', 'تحقق من القسيمة')}</p>
             </button>
             {[
-              { icon: CalendarDays, labelEn: 'Manage Availability', labelAr: 'إدارة التوفر', color: 'bg-green-50 text-green-600' },
-              { icon: MessageSquare, labelEn: 'Reviews', labelAr: 'التقييمات', color: 'bg-amber-50 text-amber-600' },
-              { icon: Utensils, labelEn: 'Update Menu', labelAr: 'تحديث القائمة', color: 'bg-purple-50 text-purple-600' },
+              { icon: CalendarDays, labelEn: 'Manage Bookings', labelAr: 'إدارة الحجوزات', color: 'bg-green-50 text-green-600', tab: 'bookings' as ConsoleTab },
+              { icon: MessageSquare, labelEn: 'Reviews', labelAr: 'التقييمات', color: 'bg-amber-50 text-amber-600', tab: 'reviews' as ConsoleTab },
+              { icon: Utensils, labelEn: 'Update Menu', labelAr: 'تحديث القائمة', color: 'bg-purple-50 text-purple-600', tab: 'menu' as ConsoleTab },
             ].map(action => {
               const Icon = action.icon;
               return (
-                <button key={action.labelEn} className="flex flex-col items-center gap-3 p-5 bg-card border border-border rounded-2xl hover:border-primary/30 hover:shadow-md transition-all text-center">
+                <button key={action.labelEn} onClick={() => setActiveTab(action.tab)} className="flex flex-col items-center gap-3 p-5 bg-card border border-border rounded-2xl hover:border-primary/30 hover:shadow-md transition-all text-center">
                   <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${action.color}`}>
                     <Icon className="w-6 h-6" />
                   </div>
@@ -2047,13 +2113,172 @@ export function BusinessConsolePage() {
 
         {/* Menu Tab */}
         {activeTab === 'menu' && (
-          <div className="text-center py-20">
-            <div className="w-16 h-16 bg-secondary rounded-3xl flex items-center justify-center mx-auto mb-4">
-              <Utensils className="w-8 h-8 text-muted-foreground" />
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-foreground">{t('Menu Management', 'إدارة القائمة')}</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">{t('Manage your menu sections and dishes', 'أدر أقسام قائمتك وأطباقك')}</p>
+              </div>
+              {myRestaurant && (
+                <Link href={`/restaurants/${RESTAURANT_ID}`}>
+                  <Button variant="outline" size="sm" className="gap-2">
+                    <Eye className="w-4 h-4" />
+                    {t('View Live Menu', 'عرض القائمة المباشرة')}
+                  </Button>
+                </Link>
+              )}
             </div>
-            <h3 className="text-xl font-bold text-foreground mb-2">{t('Menu Management', 'إدارة القائمة')}</h3>
-            <p className="text-muted-foreground mb-6">{t('Add, edit, and manage your menu items and categories.', 'أضف وعدّل وأدر عناصر القائمة والفئات.')}</p>
-            <Button>{t('Manage Menu', 'إدارة القائمة')}</Button>
+
+            {menuLoading && (
+              <div className="space-y-3">
+                {[1,2,3].map(i => <div key={i} className="h-16 bg-muted animate-pulse rounded-2xl" />)}
+              </div>
+            )}
+
+            {!menuLoading && consoleMenus.length === 0 && (
+              <div className="text-center py-16 bg-card border border-dashed border-border rounded-2xl">
+                <Utensils className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
+                <p className="font-semibold text-foreground">{t('No menus found', 'لا توجد قوائم')}</p>
+                <p className="text-sm text-muted-foreground mt-1">{t('Contact support to add menus to your restaurant', 'تواصل مع الدعم لإضافة قوائم لمطعمك')}</p>
+              </div>
+            )}
+
+            {!menuLoading && consoleMenus.length > 0 && (
+              <div className="space-y-4">
+                {consoleMenus.map((menu: any) => {
+                  const sections = menu.sections ?? [];
+                  const isExpanded = menuExpandedMenu === menu.id;
+                  const menuColor = MENU_TYPE_COLORS[menu.type] ?? 'bg-gray-100 text-gray-700';
+                  const totalDishes = sections.reduce((sum: number, s: any) => sum + (s.items?.length ?? 0), 0);
+                  return (
+                    <div key={menu.id} className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
+                      <div
+                        className="flex items-center justify-between p-4 cursor-pointer hover:bg-secondary/20 transition-colors"
+                        onClick={() => setMenuExpandedMenu(isExpanded ? null : menu.id)}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
+                            <Utensils className="w-5 h-5 text-primary" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="font-bold text-foreground">{lang === 'ar' ? menu.nameAr : menu.nameEn}</p>
+                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${menuColor}`}>{menu.type}</span>
+                              {!menu.isActive && <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-semibold">{t('Inactive', 'غير نشط')}</span>}
+                            </div>
+                            <p className="text-xs text-muted-foreground">{sections.length} {t('sections', 'أقسام')} · {totalDishes} {t('dishes', 'أطباق')}</p>
+                          </div>
+                        </div>
+                        <ChevronRight className={`w-4 h-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                      </div>
+
+                      {isExpanded && (
+                        <div className="border-t border-border divide-y divide-border">
+                          {sections.length === 0 ? (
+                            <div className="p-8 text-center text-sm text-muted-foreground">{t('No sections in this menu', 'لا توجد أقسام في هذه القائمة')}</div>
+                          ) : sections.map((section: any) => {
+                            const items = section.items ?? [];
+                            const isSectionExpanded = menuExpandedSection === section.id;
+                            return (
+                              <div key={section.id}>
+                                <div
+                                  className="flex items-center justify-between px-5 py-3 bg-secondary/10 cursor-pointer hover:bg-secondary/20 transition-colors"
+                                  onClick={() => setMenuExpandedSection(isSectionExpanded ? null : section.id)}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-2 h-2 bg-primary rounded-full" />
+                                    <p className="font-semibold text-foreground text-sm">{lang === 'ar' ? section.nameAr : section.nameEn}</p>
+                                    <span className="text-xs text-muted-foreground">({items.length} {t('items', 'عناصر')})</span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    <button
+                                      onClick={e => { e.stopPropagation(); setMenuShowDishForm({ sectionId: section.id }); setMenuExpandedSection(section.id); }}
+                                      className="flex items-center gap-1 text-xs text-primary font-semibold hover:bg-primary/10 px-2 py-1 rounded-lg transition-colors"
+                                    >
+                                      <Plus className="w-3 h-3" />{t('Add Dish', 'إضافة طبق')}
+                                    </button>
+                                    <ChevronRight className={`w-4 h-4 text-muted-foreground transition-transform ${isSectionExpanded ? 'rotate-90' : ''}`} />
+                                  </div>
+                                </div>
+
+                                {menuShowDishForm?.sectionId === section.id && (
+                                  <div className="px-5 py-4 bg-primary/5 border-b border-primary/10">
+                                    <p className="text-sm font-bold text-foreground mb-3">{t('Add New Dish', 'إضافة طبق جديد')}</p>
+                                    <div className="grid grid-cols-2 gap-3 mb-3">
+                                      <input value={menuDishForm.nameEn} onChange={e => setMenuDishForm(f => ({...f, nameEn: e.target.value}))} placeholder={t('Name (English)', 'الاسم (إنجليزي)')} className="border border-border rounded-xl px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                                      <input value={menuDishForm.nameAr} onChange={e => setMenuDishForm(f => ({...f, nameAr: e.target.value}))} placeholder={t('Name (Arabic)', 'الاسم (عربي)')} className="border border-border rounded-xl px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30" dir="rtl" />
+                                      <input value={menuDishForm.price} onChange={e => setMenuDishForm(f => ({...f, price: e.target.value}))} placeholder={t('Price (SAR)', 'السعر (ريال)')} type="number" className="border border-border rounded-xl px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                                      <input value={menuDishForm.discountPercentage} onChange={e => setMenuDishForm(f => ({...f, discountPercentage: e.target.value}))} placeholder={t('Discount %', 'نسبة الخصم %')} type="number" className="border border-border rounded-xl px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                                    </div>
+                                    <input value={menuDishForm.descriptionEn} onChange={e => setMenuDishForm(f => ({...f, descriptionEn: e.target.value}))} placeholder={t('Description (optional)', 'الوصف (اختياري)')} className="w-full border border-border rounded-xl px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 mb-3" />
+                                    <div className="flex gap-4 mb-3">
+                                      {[{key:'isBestseller', labelEn:'Bestseller', labelAr:'الأكثر مبيعاً'},{key:'isChefChoice', labelEn:"Chef's Choice", labelAr:'اختيار الشيف'},{key:'isNewItem', labelEn:'New Item', labelAr:'جديد'}].map(badge => (
+                                        <label key={badge.key} className="flex items-center gap-1.5 text-xs font-medium cursor-pointer">
+                                          <input type="checkbox" checked={(menuDishForm as any)[badge.key]} onChange={e => setMenuDishForm(f => ({...f, [badge.key]: e.target.checked}))} className="rounded" />
+                                          {t(badge.labelEn, badge.labelAr)}
+                                        </label>
+                                      ))}
+                                    </div>
+                                    <div className="flex gap-2">
+                                      <button
+                                        onClick={() => createDishMutation.mutate({ sectionId: section.id, data: { nameEn: menuDishForm.nameEn, nameAr: menuDishForm.nameAr, price: menuDishForm.price ? Number(menuDishForm.price) : undefined, descriptionEn: menuDishForm.descriptionEn || undefined, isBestseller: menuDishForm.isBestseller, isChefChoice: menuDishForm.isChefChoice, isNewItem: menuDishForm.isNewItem, discountPercentage: menuDishForm.discountPercentage ? Number(menuDishForm.discountPercentage) : undefined } })}
+                                        disabled={!menuDishForm.nameEn || createDishMutation.isPending}
+                                        className="bg-primary text-primary-foreground px-4 py-2 rounded-xl text-sm font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors flex items-center gap-2"
+                                      >
+                                        {createDishMutation.isPending ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                                        {t('Add Dish', 'إضافة')}
+                                      </button>
+                                      <button onClick={() => setMenuShowDishForm(null)} className="px-4 py-2 rounded-xl text-sm font-semibold border border-border hover:bg-secondary transition-colors">
+                                        {t('Cancel', 'إلغاء')}
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {isSectionExpanded && (
+                                  <div className="divide-y divide-border/50">
+                                    {items.length === 0 ? (
+                                      <div className="px-8 py-4 text-xs text-muted-foreground">{t('No dishes in this section yet. Add your first dish above.', 'لا توجد أطباق في هذا القسم بعد.')}</div>
+                                    ) : items.map((dish: any) => (
+                                      <div key={dish.id} className="flex items-center gap-4 px-8 py-3 hover:bg-secondary/10 group transition-colors">
+                                        {dish.imageUrl
+                                          ? <img src={dish.imageUrl} alt={dish.nameEn} className="w-10 h-10 rounded-lg object-cover shrink-0" />
+                                          : <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center shrink-0"><Utensils className="w-4 h-4 text-muted-foreground" /></div>
+                                        }
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex items-center gap-2 flex-wrap">
+                                            <p className="text-sm font-semibold text-foreground">{lang === 'ar' ? dish.nameAr : dish.nameEn}</p>
+                                            {dish.isBestseller && <span className="text-[9px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-md font-bold">{t('Bestseller', 'الأكثر مبيعاً')}</span>}
+                                            {dish.isChefChoice && <span className="text-[9px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-md font-bold">{t("Chef's Choice", 'اختيار الشيف')}</span>}
+                                            {dish.isNewItem && <span className="text-[9px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-md font-bold">{t('New', 'جديد')}</span>}
+                                            {!dish.isAvailable && <span className="text-[9px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded-md font-bold">{t('Unavailable', 'غير متاح')}</span>}
+                                          </div>
+                                          <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{dish.descriptionEn ?? dish.descriptionAr ?? '—'}</p>
+                                        </div>
+                                        <div className="flex items-center gap-3 shrink-0">
+                                          {dish.price && <span className="text-sm font-bold text-primary">SAR {Number(dish.price).toFixed(0)}</span>}
+                                          {(dish.discountPercentage ?? 0) > 0 && <span className="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded-md font-bold">-{dish.discountPercentage}%</span>}
+                                          <button
+                                            onClick={() => { if (confirm(t('Delete this dish?', 'حذف هذا الطبق؟'))) deleteDishMutation.mutate(dish.id); }}
+                                            className="p-1.5 hover:bg-red-50 rounded-lg text-muted-foreground hover:text-red-600 opacity-0 group-hover:opacity-100 transition-all"
+                                          >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                          </button>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
@@ -2318,38 +2543,55 @@ export function BusinessConsolePage() {
           <div className="space-y-6 max-w-2xl">
             <h2 className="text-xl font-bold text-foreground">{t('Restaurant Settings', 'إعدادات المطعم')}</h2>
             {[
-              {
-                labelEn: 'Restaurant Name (English)',
-                labelAr: 'اسم المطعم (إنجليزي)',
-                value: myRestaurant?.nameEn ?? t('Not set', 'غير محدد'),
-              },
-              {
-                labelEn: 'Restaurant Name (Arabic)',
-                labelAr: 'اسم المطعم (عربي)',
-                value: myRestaurant?.nameAr ?? t('Not set', 'غير محدد'),
-              },
-              {
-                labelEn: 'Phone Number',
-                labelAr: 'رقم الهاتف',
-                value: myRestaurant?.phone ?? t('Not set', 'غير محدد'),
-              },
-              {
-                labelEn: 'Address',
-                labelAr: 'العنوان',
-                value: myRestaurant?.address ?? t('Not set', 'غير محدد'),
-              },
-              {
-                labelEn: 'Website',
-                labelAr: 'الموقع الإلكتروني',
-                value: myRestaurant?.website ?? t('Not set', 'غير محدد'),
-              },
+              { key: 'nameEn', labelEn: 'Restaurant Name (English)', labelAr: 'اسم المطعم (إنجليزي)', value: myRestaurant?.nameEn, inputType: 'text' },
+              { key: 'nameAr', labelEn: 'Restaurant Name (Arabic)', labelAr: 'اسم المطعم (عربي)', value: myRestaurant?.nameAr, inputType: 'text', dir: 'rtl' },
+              { key: 'phone', labelEn: 'Phone Number', labelAr: 'رقم الهاتف', value: myRestaurant?.phone, inputType: 'tel' },
+              { key: 'address', labelEn: 'Address', labelAr: 'العنوان', value: myRestaurant?.address, inputType: 'text' },
+              { key: 'website', labelEn: 'Website', labelAr: 'الموقع الإلكتروني', value: myRestaurant?.website, inputType: 'url' },
             ].map(field => (
-              <div key={field.labelEn} className="bg-card border border-border rounded-2xl p-4 flex items-center justify-between gap-4">
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs text-muted-foreground font-medium mb-0.5">{lang === 'ar' ? field.labelAr : field.labelEn}</p>
-                  <p className="font-semibold text-foreground truncate">{field.value}</p>
-                </div>
-                <Button size="sm" variant="outline" className="shrink-0">{t('Edit', 'تعديل')}</Button>
+              <div key={field.key} className="bg-card border border-border rounded-2xl p-4">
+                {editingField === field.key ? (
+                  <div className="space-y-3">
+                    <p className="text-xs text-muted-foreground font-medium">{lang === 'ar' ? field.labelAr : field.labelEn}</p>
+                    <input
+                      type={field.inputType}
+                      dir={(field as any).dir}
+                      value={editingValue}
+                      onChange={e => setEditingValue(e.target.value)}
+                      autoFocus
+                      className="w-full border border-border rounded-xl px-3 py-2.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 font-semibold"
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        disabled={updateRestaurantMutation.isPending}
+                        onClick={() => updateRestaurantMutation.mutate({ [field.key]: editingValue })}
+                        className="gap-1.5"
+                      >
+                        {updateRestaurantMutation.isPending ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                        {t('Save', 'حفظ')}
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => setEditingField(null)}>
+                        {t('Cancel', 'إلغاء')}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs text-muted-foreground font-medium mb-0.5">{lang === 'ar' ? field.labelAr : field.labelEn}</p>
+                      <p className="font-semibold text-foreground truncate">{field.value ?? <span className="text-muted-foreground font-normal italic">{t('Not set', 'غير محدد')}</span>}</p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="shrink-0"
+                      onClick={() => { setEditingField(field.key); setEditingValue(field.value ?? ''); }}
+                    >
+                      {t('Edit', 'تعديل')}
+                    </Button>
+                  </div>
+                )}
               </div>
             ))}
             {myRestaurant?.refCode && (

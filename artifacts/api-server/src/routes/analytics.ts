@@ -92,7 +92,7 @@ router.get("/analytics/restaurant/:id/overview", requireAuth, async (req, res) =
       // Reviews stats
       db.select({
         count: count(),
-        avgRating: sql<number>`round(avg(${reviewsTable.rating})::numeric, 2)`,
+        avgRating: sql<number>`round(avg(${reviewsTable.ratingOverall})::numeric, 2)`,
       })
         .from(reviewsTable)
         .where(eq(reviewsTable.restaurantId, restaurantId)),

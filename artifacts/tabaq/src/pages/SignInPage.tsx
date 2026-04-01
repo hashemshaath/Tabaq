@@ -22,7 +22,7 @@ type ForgotStep = 'email' | 'otp' | 'new_password' | 'done';
 // ─────────────────────────────────────────────────────────────────────────────
 function roleDestination(user: any): string {
   if (user?.isAdmin) return '/admin';
-  if (user?.isOwner) return '/business';
+  if (user?.isOwner) return '/console';
   return '/';
 }
 

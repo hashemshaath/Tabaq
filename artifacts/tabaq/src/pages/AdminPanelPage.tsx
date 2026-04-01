@@ -1767,6 +1767,73 @@ export function AdminPanelPage() {
 
   const pendingProviderCount = (expProvidersData?.providers as any[])?.filter((p: any) => p.status === 'pending')?.length ?? 0;
 
+  // ── Platform Settings ────────────────────────────────────────────
+  const [platformSettingsEditing, setPlatformSettingsEditing] = useState<Record<string, string>>({});
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [settingsSaved, setSettingsSaved] = useState(false);
+
+  const { data: platformSettingsData, refetch: refetchPlatformSettings } = useQuery({
+    queryKey: ['admin-platform-settings'],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/api/admin/platform-settings`, { headers: getAuthHeaders() });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: activeTab === 'settings',
+    staleTime: 30000,
+  });
+
+  const platformSettings: any[] = platformSettingsData?.settings ?? [];
+  const platformSettingsGrouped: Record<string, any[]> = {};
+  for (const s of platformSettings) {
+    const cat = s.category ?? 'general';
+    if (!platformSettingsGrouped[cat]) platformSettingsGrouped[cat] = [];
+    platformSettingsGrouped[cat].push(s);
+  }
+
+  const savePlatformSettings = async () => {
+    if (!Object.keys(platformSettingsEditing).length) return;
+    setSettingsSaving(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/platform-settings`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ settings: platformSettingsEditing }),
+      });
+      if (res.ok) {
+        setPlatformSettingsEditing({});
+        setSettingsSaved(true);
+        refetchPlatformSettings();
+        setTimeout(() => setSettingsSaved(false), 3000);
+      }
+    } finally {
+      setSettingsSaving(false);
+    }
+  };
+
+  // ── Points Rules save mutation ────────────────────────────────────
+  const savePointsRules = useMutation({
+    mutationFn: async () => {
+      const settings: Record<string, string> = {
+        'points.referralSignup': String(pointsRules.referralSignup),
+        'points.referredBonus': String(pointsRules.referredBonus),
+        'points.reviewWritten': String(pointsRules.reviewWritten),
+        'points.bookingMade': String(pointsRules.bookingMade),
+        'points.voucherPurchased': String(pointsRules.voucherPurchased),
+        'points.dailyMaxPoints': String(pointsRules.dailyMaxPoints),
+        'points.pointExpireDays': String(pointsRules.pointExpireDays),
+        'points.minRedemption': String(pointsRules.minRedemption),
+      };
+      const res = await fetch(`${API_BASE}/api/admin/platform-settings`, {
+        method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify({ settings }),
+      });
+      if (!res.ok) throw new Error('Failed to save');
+      return res.json();
+    },
+    onSuccess: () => {},
+    onError: () => {},
+  });
+
   const navItems: { id: AdminTab; label: string; icon: React.ElementType; badge?: number; group?: string }[] = [
     { id: 'overview', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'review-queue', label: 'Review Queue', icon: CheckSquare, badge: undefined },
@@ -3072,10 +3139,12 @@ export function AdminPanelPage() {
                       <p className="text-xs text-muted-foreground mt-0.5">Configure how points are earned and redeemed</p>
                     </div>
                     <button
-                      onClick={() => alert('Points rules saved! (Connected to API in production)')}
-                      className="text-xs font-semibold text-white bg-primary px-3 py-1.5 rounded-lg hover:bg-primary/90 transition-colors"
+                      onClick={() => savePointsRules.mutate()}
+                      disabled={savePointsRules.isPending}
+                      className="text-xs font-semibold text-white bg-primary px-3 py-1.5 rounded-lg hover:bg-primary/90 disabled:opacity-60 transition-colors flex items-center gap-1.5"
                     >
-                      Save Rules
+                      {savePointsRules.isPending ? <RefreshCw className="w-3 h-3 animate-spin" /> : savePointsRules.isSuccess ? <CheckCircle2 className="w-3 h-3" /> : null}
+                      {savePointsRules.isSuccess ? 'Saved!' : 'Save Rules'}
                     </button>
                   </div>
                   <div className="p-4 space-y-3">
@@ -3377,7 +3446,9 @@ export function AdminPanelPage() {
               </div>
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-bold">Pending Transactions</h3>
-                <Button onClick={() => { alert('Settlement batch creation requires backend batch processing support.'); }}>Create Settlement Batch</Button>
+                <Button variant="outline" onClick={() => { window.open('mailto:settlements@tabaq.sa?subject=Settlement+Batch+Request', '_blank'); }} className="gap-2">
+                  <Send className="w-4 h-4" /> Request Settlement Batch
+                </Button>
               </div>
               <div className="bg-card border border-border rounded-2xl overflow-hidden">
                 <table className="w-full text-sm text-start">
@@ -3920,6 +3991,130 @@ export function AdminPanelPage() {
                       className="w-full px-3 py-2 rounded-xl border border-input bg-background text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/20"
                     />
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── PLATFORM SETTINGS ── */}
+          {activeTab === 'settings' && (
+            <div className="space-y-6 max-w-3xl">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-bold text-foreground">Platform Settings</h2>
+                  <p className="text-sm text-muted-foreground mt-0.5">Configure global platform behaviour, integrations, and SEO</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  {settingsSaved && (
+                    <span className="flex items-center gap-1.5 text-sm text-green-700 font-semibold bg-green-50 border border-green-200 px-3 py-1.5 rounded-xl">
+                      <CheckCircle2 className="w-4 h-4" /> Saved!
+                    </span>
+                  )}
+                  <Button
+                    onClick={savePlatformSettings}
+                    disabled={settingsSaving || !Object.keys(platformSettingsEditing).length}
+                    className="gap-2"
+                  >
+                    {settingsSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />}
+                    Save Changes {Object.keys(platformSettingsEditing).length > 0 && `(${Object.keys(platformSettingsEditing).length})`}
+                  </Button>
+                </div>
+              </div>
+
+              {platformSettings.length === 0 && (
+                <div className="grid gap-4">
+                  {[1,2,3].map(i => <div key={i} className="h-20 bg-muted animate-pulse rounded-2xl" />)}
+                </div>
+              )}
+
+              {Object.entries(platformSettingsGrouped).map(([category, settings]) => {
+                const CATEGORY_LABELS: Record<string, { label: string; icon: React.ElementType; desc: string }> = {
+                  general: { label: 'General', icon: Settings, desc: 'Core platform settings' },
+                  analytics: { label: 'Analytics', icon: BarChart3, desc: 'Tracking & analytics integration keys' },
+                  smtp: { label: 'Email (SMTP)', icon: Send, desc: 'Outbound email server configuration' },
+                  sms: { label: 'SMS', icon: Bell, desc: 'SMS provider credentials' },
+                  firebase: { label: 'Firebase', icon: Zap, desc: 'Firebase/push notification config' },
+                  seo: { label: 'SEO & Meta', icon: Globe, desc: 'Search engine optimization defaults' },
+                  maps: { label: 'Maps', icon: MapPin, desc: 'Google Maps API configuration' },
+                };
+                const meta = CATEGORY_LABELS[category] ?? { label: category, icon: Settings, desc: '' };
+                const Icon = meta.icon;
+                return (
+                  <div key={category} className="bg-card border border-border rounded-2xl overflow-hidden">
+                    <div className="px-5 py-4 border-b border-border bg-secondary/20 flex items-center gap-3">
+                      <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+                        <Icon className="w-4 h-4 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-bold text-foreground text-sm">{meta.label}</p>
+                        <p className="text-xs text-muted-foreground">{meta.desc}</p>
+                      </div>
+                    </div>
+                    <div className="divide-y divide-border">
+                      {(settings as any[]).map((setting: any) => {
+                        const fieldKey = setting.key.includes('.') ? setting.key.split('.').slice(1).join('.') : setting.key;
+                        const currentValue = platformSettingsEditing[setting.key] ?? setting.value ?? '';
+                        const isDirty = setting.key in platformSettingsEditing;
+                        return (
+                          <div key={setting.key} className={`flex items-center gap-4 px-5 py-3.5 ${isDirty ? 'bg-primary/5' : ''}`}>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <p className="text-xs font-mono text-muted-foreground">{fieldKey}</p>
+                                {setting.isSecret && (
+                                  <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-semibold">SECRET</span>
+                                )}
+                                {isDirty && (
+                                  <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-semibold">MODIFIED</span>
+                                )}
+                              </div>
+                              <input
+                                type={setting.isSecret ? 'password' : 'text'}
+                                value={currentValue}
+                                onChange={e => setPlatformSettingsEditing(prev => ({ ...prev, [setting.key]: e.target.value }))}
+                                placeholder={setting.isSecret ? '••••••••' : `Enter ${fieldKey}...`}
+                                className="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/20"
+                              />
+                            </div>
+                            {isDirty && (
+                              <button
+                                onClick={() => setPlatformSettingsEditing(prev => { const next = {...prev}; delete next[setting.key]; return next; })}
+                                className="p-1.5 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                                title="Revert"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Demo Mode Toggle */}
+              <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                <div className="px-5 py-4 border-b border-border bg-secondary/20 flex items-center gap-3">
+                  <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
+                    <Activity className="w-4 h-4 text-amber-600" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-foreground text-sm">Demo Mode</p>
+                    <p className="text-xs text-muted-foreground">Toggle demo mode for the platform</p>
+                  </div>
+                </div>
+                <div className="px-5 py-4 flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Demo Mode {isDemoMode ? 'Active' : 'Inactive'}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">When active, the platform shows a demo banner and uses seeded data</p>
+                  </div>
+                  <button
+                    onClick={toggleDemoMode}
+                    className={`relative rounded-full transition-all duration-300 ${isDemoMode ? 'bg-primary' : 'bg-muted'}`}
+                    style={{ width: 44, height: 24 }}
+                  >
+                    <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-all duration-300 ${isDemoMode ? 'start-[22px]' : 'start-0.5'}`} />
+                  </button>
                 </div>
               </div>
             </div>
