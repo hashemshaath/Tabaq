@@ -62,6 +62,21 @@ export const ordersTable = pgTable("orders", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// ─── Order Status Audit Log ───────────────────────────────────────────────────
+// Immutable record of every order status transition.
+// Written by transitionOrderStatus() — never update or delete rows here.
+
+export const orderStatusLogTable = pgTable("order_status_log", {
+  id:            serial("id").primaryKey(),
+  orderId:       integer("order_id").notNull().references(() => ordersTable.id),
+  orderNumber:   text("order_number").notNull(),
+  oldStatus:     text("old_status").notNull(),
+  newStatus:     text("new_status").notNull(),
+  reason:        text("reason"),
+  actorId:       integer("actor_id"),  // user who triggered; null = system/cron
+  transitionedAt: timestamp("transitioned_at").defaultNow().notNull(),
+});
+
 export const insertOrderSchema = createInsertSchema(ordersTable).omit({ id: true, createdAt: true, updatedAt: true });
 
 export type InsertOrder = z.infer<typeof insertOrderSchema>;

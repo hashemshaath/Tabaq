@@ -14,14 +14,14 @@ import {
   customerInvoicesTable,
   transactionsTable,
   contractsTable,
+  ordersTable,
 } from "@workspace/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { generateRefCode } from "../lib/refcode.js";
-import { awardPoints, POINTS, logPointsTransaction } from "../lib/points.js";
 import { initiatePayment } from "../lib/paymentGateway.js";
 import { notifyAsync } from "../lib/notify.js";
 
-// Must stay in sync with POINTS_PER_SAR in routes/orders.ts
+// Redemption rate: 100 points = 1 SAR. Must stay in sync with routes/orders.ts.
 const POINTS_PER_SAR = 100;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -248,19 +248,96 @@ class InvoiceService {
       }
     }
 
-    // 3. Award loyalty points proportional to spend (10 pts per 100 SAR)
-    if (userId) {
-      const pointsEarned = Math.max(1, Math.floor(total / 10));
-      try {
-        await awardPoints(userId, pointsEarned);
-        await logPointsTransaction(userId, "order_placed", pointsEarned, orderId, "order",
-          `Earned ${pointsEarned} pts for order #${orderId}`);
-      } catch {
-        // Non-critical: points failure should not block the order
-      }
-    }
+    // NOTE: Loyalty points are awarded when the order reaches COMPLETED status
+    // (inside transitionOrderStatus), not on placement. This prevents earning
+    // points on orders that are later cancelled.
 
     return { invoiceRef };
+  }
+
+  /**
+   * Create an invoice for an order that already exists but has no invoice yet.
+   * Used as a safety net by transitionOrderStatus on CONFIRMED when the initial
+   * POST /orders invoice creation failed (network error, DB contention, etc.).
+   *
+   * Unlike processOrder, this method:
+   *   - Does NOT call the payment gateway (the charge already happened at placement)
+   *   - Does NOT award points (awarded on COMPLETED by transitionOrderStatus)
+   *   - Is idempotent — returns the existing ref if one already exists
+   */
+  async createInvoiceIfMissing(orderId: number): Promise<string | null> {
+    const [order] = await db
+      .select()
+      .from(ordersTable)
+      .where(eq(ordersTable.id, orderId))
+      .limit(1);
+
+    if (!order) return null;
+    if (order.customerInvoiceRef) return order.customerInvoiceRef; // already exists
+
+    const rawItems = (order.items ?? []) as Array<{
+      nameEn?: string; nameAr?: string; qty?: number; price?: number;
+    }>;
+
+    const lineItems = rawItems.map(item => ({
+      description:   item.nameEn ?? "Item",
+      descriptionAr: item.nameAr ?? "عنصر",
+      qty:           item.qty ?? 1,
+      unitPrice:     item.price ?? 0,
+      total:         (item.qty ?? 1) * (item.price ?? 0),
+    }));
+
+    // Add points credit line if points were used
+    const pointsUsed      = order.pointsUsed ?? 0;
+    const pointsMonetaryValue = parseFloat(order.pointsMonetaryValue ?? "0");
+    if (pointsUsed > 0) {
+      lineItems.push({
+        description:   `Points Redeemed (${pointsUsed} pts @ ${POINTS_PER_SAR} pts/SAR)`,
+        descriptionAr: `نقاط مستردة (${pointsUsed} نقطة بمعدل ${POINTS_PER_SAR} نقطة/ريال)`,
+        qty: 1,
+        unitPrice: -pointsMonetaryValue,
+        total:     -pointsMonetaryValue,
+      });
+    }
+
+    const [inv] = await db
+      .insert(customerInvoicesTable)
+      .values({
+        refCode:                 "PENDING",
+        userId:                  order.userId ?? undefined,
+        restaurantId:            order.restaurantId ?? undefined,
+        source:                  "order",
+        orderId,
+        lineItems,
+        subtotal:                order.subtotal,
+        discountAmount:          order.discountAmount ?? "0",
+        deliveryFee:             order.deliveryFee ?? "0",
+        taxAmount:               order.taxAmount ?? "0",
+        taxRate:                 order.taxRate ?? "0",
+        taxName:                 order.taxName ?? "VAT",
+        total:                   order.total,
+        currency:                order.currency,
+        paymentMethod:           order.paymentMethod ?? null,
+        promoCode:               order.promoCode ?? null,
+        pointsUsed,
+        pointsMonetaryValue:     String(pointsMonetaryValue),
+        remainingAmountCharged:  order.total,
+        status:                  "paid",
+      })
+      .returning();
+
+    const invoiceRef = generateRefCode("CINV", inv!.id);
+
+    await db.update(customerInvoicesTable)
+      .set({ refCode: invoiceRef })
+      .where(eq(customerInvoicesTable.id, inv!.id));
+
+    // Update the order to record the invoice ref
+    await db.update(ordersTable)
+      .set({ customerInvoiceRef: invoiceRef })
+      .where(eq(ordersTable.id, orderId));
+
+    return invoiceRef;
   }
 
   /**

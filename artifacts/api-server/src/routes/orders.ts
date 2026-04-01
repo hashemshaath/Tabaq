@@ -440,30 +440,9 @@ router.patch("/orders/:orderNumber/status", requireAuth, async (req, res) => {
       return res.status(403).json({ error: "forbidden", message: "Only the restaurant owner can update order status" });
     }
 
+    // transitionOrderStatus handles all side effects: audit log, notifications,
+    // points refund on cancellation, and gateway refund for card payments.
     const updated = await transitionOrderStatus(orderNumber, status, { reason, actorId: userId });
-
-    // Refund any points that were redeemed for this order.
-    // Runs only once per cancellation because a second PATCH to "cancelled" would throw
-    // a 422 invalid-transition before reaching here.
-    if (status === "cancelled" && order.pointsUsed && order.pointsUsed > 0 && order.userId) {
-      const pointsToRefund = order.pointsUsed;
-      const monetary = Math.round((pointsToRefund / POINTS_PER_SAR) * 100) / 100;
-
-      awardPoints(order.userId, pointsToRefund)
-        .then(() =>
-          logPointsTransaction(
-            order.userId!,
-            "admin_grant",
-            pointsToRefund,
-            order.id,
-            "order",
-            `Refund of ${pointsToRefund} pts (${monetary} SAR) for cancelled order ${orderNumber}`,
-          ),
-        )
-        .catch((err) =>
-          req.log.warn({ err, orderId: order.id }, "Points refund failed for cancelled order — manual reconciliation needed"),
-        );
-    }
 
     res.json({ order: updated });
   } catch (err: any) {

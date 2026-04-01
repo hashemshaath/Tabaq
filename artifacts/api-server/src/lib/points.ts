@@ -13,7 +13,8 @@ export const POINTS = {
 type PointsAction =
   | "review_written" | "booking_made" | "voucher_purchased" | "review_liked"
   | "email_verified" | "referral_signup" | "referral_converted"
-  | "profile_completed" | "admin_grant" | "redemption" | "order_placed";
+  | "profile_completed" | "admin_grant" | "redemption" | "order_placed"
+  | "order_completed";  // awarded when an order reaches COMPLETED status
 
 function calcLevel(points: number): { level: number; levelTitle: string } {
   if (points < 100)   return { level: 1, levelTitle: "Food Explorer" };

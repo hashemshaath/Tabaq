@@ -24,6 +24,7 @@ import {
 import { and, eq, lt, sql, lte, gte, inArray } from "drizzle-orm";
 import { logger } from "./logger.js";
 import { transitionMembershipStatus } from "./membership.js";
+import { transitionOrderStatus } from "./orderStatus.js";
 import { notifyAsync } from "./notify.js";
 import { initiatePayment } from "./paymentGateway.js";
 
@@ -199,25 +200,42 @@ async function jobMembershipExpiryWarning(): Promise<number> {
 }
 
 async function jobAbandonedOrderCleanup(): Promise<number> {
-  // Cancel orders that have been "placed" for more than 30 minutes without confirmation
+  // Cancel orders that have been "placed" for more than 30 minutes without confirmation.
+  // Routed through transitionOrderStatus so the audit log is written, points are
+  // refunded, and gateway refunds are triggered exactly like any other cancellation.
+
   const cutoff = new Date(Date.now() - 30 * 60 * 1000);
 
-  const result = await db
-    .update(ordersTable)
-    .set({ status: "cancelled", updatedAt: new Date() })
+  const candidates = await db
+    .select({ orderNumber: ordersTable.orderNumber })
+    .from(ordersTable)
     .where(
       and(
         eq(ordersTable.status, "placed"),
         lt(ordersTable.createdAt, cutoff),
       ),
     )
-    .returning({ id: ordersTable.id });
+    .limit(100);  // safety cap — cron runs every 6 h
 
-  if (result.length > 0) {
-    logger.info({ count: result.length }, "Abandoned orders cleaned up");
+  let count = 0;
+  for (const order of candidates) {
+    try {
+      await transitionOrderStatus(
+        order.orderNumber,
+        "cancelled",
+        { reason: "Abandoned order — no payment confirmation within 30 minutes" },
+      );
+      count++;
+    } catch (err) {
+      logger.error({ err, orderNumber: order.orderNumber }, "Failed to cancel abandoned order");
+    }
   }
 
-  return result.length;
+  if (count > 0) {
+    logger.info({ count }, "Abandoned orders cleaned up");
+  }
+
+  return count;
 }
 
 async function jobCommissionBatchCalculation(): Promise<number> {
@@ -280,60 +298,58 @@ async function jobFailedPaymentRetry(): Promise<number> {
       const newRetryCount = order.paymentRetryCount + 1;
 
       if (result.success) {
-        // Payment went through — confirm the order and reset retry counter
+        // Payment went through — route through state machine so audit log is written
+        // and all CONFIRMED side effects (invoice safety-net, notification) fire.
+        await transitionOrderStatus(
+          order.orderNumber,
+          "confirmed",
+          { reason: `Payment retry #${newRetryCount} succeeded` },
+        );
+
+        // Persist updated retry count separately (transitionOrderStatus handles status only)
         await db
           .update(ordersTable)
-          .set({
-            status:            "confirmed",
-            paymentRetryCount: newRetryCount,
-            updatedAt:         now,
-          })
+          .set({ paymentRetryCount: newRetryCount, updatedAt: now })
           .where(eq(ordersTable.id, order.id));
-
-        if (order.userId) {
-          notifyAsync({
-            userId:  order.userId,
-            type:    "payment_success",
-            titleEn: "Payment Successful",
-            titleAr: "تمت عملية الدفع بنجاح",
-            bodyEn:  `Your payment for order ${order.orderNumber} was processed successfully on retry #${newRetryCount}.`,
-            bodyAr:  `تمت معالجة دفعتك للطلب ${order.orderNumber} بنجاح في المحاولة رقم ${newRetryCount}.`,
-            refId:   order.id,
-            refType: "order",
-          });
-        }
 
         logger.info({ orderId: order.id, attempt: newRetryCount }, "Payment retry succeeded");
       } else {
-        // Payment failed again — increment counter; cancel if cap reached
+        // Payment failed again — increment counter; cancel via state machine if cap reached
         const isFinal = newRetryCount >= MAX_PAYMENT_RETRIES;
 
+        if (isFinal) {
+          // Route through state machine so audit log, points refund, and gateway
+          // refund side effects all fire, plus the cancellation notification.
+          await transitionOrderStatus(
+            order.orderNumber,
+            "cancelled",
+            {
+              reason: `Payment retry cap reached after ${MAX_PAYMENT_RETRIES} attempts — please re-place with a different payment method`,
+            },
+          );
+        } else {
+          // Status stays "placed" — no state transition; just update the counter
+          // and notify the customer that we will retry again later.
+          if (order.userId) {
+            notifyAsync({
+              userId:  order.userId,
+              type:    "payment_failed",
+              titleEn: "Payment Retry Failed",
+              titleAr: "فشلت إعادة محاولة الدفع",
+              bodyEn:  `Payment retry #${newRetryCount} for order ${order.orderNumber} failed. We will try again automatically. Error: ${result.errorCode ?? "unknown"}.`,
+              bodyAr:  `فشلت إعادة محاولة الدفع #${newRetryCount} للطلب ${order.orderNumber}. سنحاول مرة أخرى تلقائيًا.`,
+              refId:   order.id,
+              refType: "order",
+              metadata: { attempt: newRetryCount, errorCode: result.errorCode },
+            });
+          }
+        }
+
+        // Persist updated retry count (the state-machine doesn't manage this field)
         await db
           .update(ordersTable)
-          .set({
-            status:            isFinal ? "cancelled" : "placed",
-            paymentRetryCount: newRetryCount,
-            updatedAt:         now,
-          })
+          .set({ paymentRetryCount: newRetryCount, updatedAt: now })
           .where(eq(ordersTable.id, order.id));
-
-        if (order.userId) {
-          notifyAsync({
-            userId:  order.userId,
-            type:    "payment_failed",
-            titleEn: isFinal ? "Order Cancelled — Payment Failed" : "Payment Retry Failed",
-            titleAr: isFinal ? "تم إلغاء الطلب — فشل الدفع" : "فشلت إعادة محاولة الدفع",
-            bodyEn:  isFinal
-              ? `Your order ${order.orderNumber} has been cancelled after ${MAX_PAYMENT_RETRIES} failed payment attempts. Please re-place your order with a different payment method.`
-              : `Payment retry #${newRetryCount} for order ${order.orderNumber} failed. We will try again automatically. Error: ${result.errorCode ?? "unknown"}.`,
-            bodyAr:  isFinal
-              ? `تم إلغاء طلبك ${order.orderNumber} بعد ${MAX_PAYMENT_RETRIES} محاولات دفع فاشلة. يرجى إعادة الطلب بطريقة دفع مختلفة.`
-              : `فشلت إعادة محاولة الدفع #${newRetryCount} للطلب ${order.orderNumber}. سنحاول مرة أخرى تلقائيًا.`,
-            refId:   order.id,
-            refType: "order",
-            metadata: { attempt: newRetryCount, errorCode: result.errorCode },
-          });
-        }
 
         logger.warn(
           { orderId: order.id, attempt: newRetryCount, isFinal, errorCode: result.errorCode },
