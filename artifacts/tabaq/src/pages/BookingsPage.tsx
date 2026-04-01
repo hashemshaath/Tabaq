@@ -529,7 +529,7 @@ function QuickBookPanel({
     try {
       const r = await fetch(`${API_BASE}/api/bookings`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           restaurantId: Number(restaurantId),
           date: dateKey,
@@ -550,7 +550,7 @@ function QuickBookPanel({
     if (!restaurantId || !time) return;
     await fetch(`${API_BASE}/api/waitlist`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+      headers: getAuthHeaders(),
       body: JSON.stringify({ restaurantId: Number(restaurantId), date: dateKey, time, partySize }),
     });
     setJoinedWaitlist(true);

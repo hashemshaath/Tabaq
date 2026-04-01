@@ -121,7 +121,7 @@ function RefundModal({ voucher, onClose, lang, t }: {
     try {
       const res = await fetch(`${API_BASE}/api/vouchers/${voucher.id}/refund-request`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ reason, details }),
       });
       if (!res.ok) {

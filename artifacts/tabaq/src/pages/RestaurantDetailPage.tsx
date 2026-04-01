@@ -615,7 +615,7 @@ export function RestaurantDetailPage() {
     setShowFollowMenu(false);
     await fetch(`${API_BASE}/api/restaurants/${numericId}/follow`, {
       method: 'PATCH',
-      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify({ followType: type }),
     });
   };

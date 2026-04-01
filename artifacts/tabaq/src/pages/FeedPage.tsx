@@ -478,6 +478,7 @@ function PeopleYouMayKnowCard({ t, lang }: { t: (en: string, ar: string) => stri
               </p>
               <p className="text-xs text-muted-foreground truncate">
                 {person.levelTitle ?? t('Food Enthusiast', 'عاشق الطعام')}
+                {person.reviewCount > 0 && <span className="ms-1 opacity-70">· {person.reviewCount} {t('reviews', 'تقييم')}</span>}
               </p>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">

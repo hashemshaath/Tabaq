@@ -113,7 +113,7 @@ function OrderAgainSection() {
   const { data: ordersData } = useQuery({
     queryKey: ['my-orders-reorder'],
     queryFn: async () => {
-      const res = await fetch('/api/orders', { headers: getAuthHeaders(), credentials: 'include' });
+      const res = await fetch('/api/orders', { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json() as Promise<{ orders: Array<{ items: ReorderItem[] }> }>;
     },

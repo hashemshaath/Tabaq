@@ -39,7 +39,7 @@ function VerificationsAdminTab({ t }: { t: (en: string, ar: string) => string })
     mutationFn: async ({ id, status }: { id: number; status: 'approved' | 'rejected' }) => {
       const r = await fetch(`/api/admin/verification-requests/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ status, noteFromAdmin: reviewNote[id] ?? '' }),
       });
       if (!r.ok) throw new Error('Failed');
@@ -245,7 +245,7 @@ function AdminSeoTab({ t }: { t: (en: string, ar: string) => string }) {
     try {
       const r = await fetch('/api/admin/seo/settings', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ path: editingPage, ...pageForm }),
       });
       if (r.ok) { setSaveMsg('Saved!'); refetchSettings(); setTimeout(() => setSaveMsg(''), 2000); }
@@ -670,7 +670,7 @@ function BlogManagementTab({ t }: { t: (en: string, ar: string) => string }) {
   const { data: categories = [] } = useQuery({
     queryKey: ['admin-blog-categories'],
     queryFn: async () => {
-      const r = await fetch(`${API_BASE}/api/blog/categories`, { credentials: 'include' });
+      const r = await fetch(`${API_BASE}/api/blog/categories`, { headers: getAuthHeaders() });
       return r.ok ? r.json() : [];
     },
   });
@@ -678,7 +678,7 @@ function BlogManagementTab({ t }: { t: (en: string, ar: string) => string }) {
   const { data: allPosts = [], isLoading } = useQuery({
     queryKey: ['admin-blog-posts'],
     queryFn: async () => {
-      const r = await fetch(`${API_BASE}/api/admin/blog/posts?limit=100`, { credentials: 'include', headers: getAuthHeaders() });
+      const r = await fetch(`${API_BASE}/api/admin/blog/posts?limit=100`, { headers: getAuthHeaders() });
       return r.ok ? r.json() : [];
     },
   });
@@ -686,7 +686,7 @@ function BlogManagementTab({ t }: { t: (en: string, ar: string) => string }) {
 
   const deleteMut = useMutation({
     mutationFn: async (id: number) => {
-      const r = await fetch(`${API_BASE}/api/blog/posts/${id}`, { method: 'DELETE', headers: getAuthHeaders(), credentials: 'include' });
+      const r = await fetch(`${API_BASE}/api/blog/posts/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
       if (!r.ok) throw new Error('Delete failed');
     },
     onSuccess: () => {
@@ -702,8 +702,7 @@ function BlogManagementTab({ t }: { t: (en: string, ar: string) => string }) {
     try {
       await fetch(`${API_BASE}/api/blog/posts`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           titleEn: form.titleEn,
           titleAr: form.titleAr,
@@ -894,7 +893,7 @@ function MenuManagementTab({ lang, t }: { lang: string; t: (en: string, ar: stri
     mutationFn: async ({ sectionId, data }: { sectionId: number; data: object }) => {
       const res = await fetch(`/api/menu-sections/${sectionId}/dishes`, {
         method: 'POST',
-        headers: { ...(getAuthHeaders()), 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify(data),
       });
       return res.json();
@@ -1166,7 +1165,7 @@ function StoriesManagementTab({ t }: { t: (en: string, ar: string) => string }) 
     try {
       const res = await fetch(`/api/admin/stories/${storyId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ status: action }),
       });
       if (res.ok) {

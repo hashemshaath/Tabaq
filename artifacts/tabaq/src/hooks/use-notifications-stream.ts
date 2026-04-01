@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { API_BASE, getToken } from '@/lib/api';
+import { API_BASE, getAuthHeaders } from '@/lib/api';
 
 interface NotificationsStreamState {
   unreadCount: number;
@@ -22,7 +22,7 @@ export function useNotificationsStream(enabled: boolean): NotificationsStreamSta
     if (!mountedRef.current) return;
     try {
       const res = await fetch(`${API_BASE}/api/notifications/unread-count`, {
-        credentials: 'include',
+        headers: getAuthHeaders(),
       });
       if (res.ok) {
         const data = await res.json();

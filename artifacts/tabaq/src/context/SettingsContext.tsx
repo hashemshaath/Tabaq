@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
-import { API_BASE } from '@/lib/api';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { API_BASE, getAuthHeaders } from '@/lib/api';
 
 export interface AnalyticsSettings {
   googleAnalyticsId: string;
@@ -198,29 +198,12 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [isDirty, setIsDirty] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const tokenRef = useRef<string | null>(null);
-
-  // Load auth token from cookie/localStorage for API calls
-  useEffect(() => {
-    try {
-      const cookies = document.cookie.split(';');
-      const tokenCookie = cookies.find(c => c.trim().startsWith('tabaq_token='));
-      if (tokenCookie) {
-        tokenRef.current = tokenCookie.split('=')[1]?.trim() ?? null;
-      }
-    } catch {}
-  }, []);
-
   // Fetch settings from API on mount
   useEffect(() => {
     const load = async () => {
       try {
-        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-        if (tokenRef.current) headers['Authorization'] = `Bearer ${tokenRef.current}`;
-
         const res = await fetch(`${API_BASE}/api/admin/platform-settings`, {
-          headers,
-          credentials: 'include',
+          headers: getAuthHeaders(),
         });
 
         if (res.ok) {
@@ -273,13 +256,9 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const saveAll = useCallback(async () => {
     setSaveError(null);
     try {
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (tokenRef.current) headers['Authorization'] = `Bearer ${tokenRef.current}`;
-
       const res = await fetch(`${API_BASE}/api/admin/platform-settings`, {
         method: 'PUT',
-        headers,
-        credentials: 'include',
+        headers: getAuthHeaders(),
         body: JSON.stringify({ settings: settingsToFlat(settings) }),
       });
 

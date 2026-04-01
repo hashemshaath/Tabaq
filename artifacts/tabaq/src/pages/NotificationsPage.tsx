@@ -120,7 +120,7 @@ function NotificationPrefsPanel({
 
       const res = await fetch(`${API_BASE}/api/notifications/preferences`, {
         method: 'PATCH',
-        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ updates }),
       });
       if (!res.ok) throw new Error('Failed');
@@ -318,7 +318,7 @@ function InterestsPanel({ open, onClose, token }: { open: boolean; onClose: () =
 
       const res = await fetch(`${API_BASE}/api/me/interests`, {
         method: 'PUT',
-        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ interests: selected }),
       });
       if (!res.ok) throw new Error('Failed');
@@ -419,7 +419,7 @@ export default function NotificationsPage() {
     queryKey: ['notifications', token],
     queryFn: async () => {
       const res = await fetch(`${API_BASE}/api/notifications`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        headers: getAuthHeaders(),
       });
       if (!res.ok) return null;
       return res.json();

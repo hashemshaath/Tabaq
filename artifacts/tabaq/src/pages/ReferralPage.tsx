@@ -108,7 +108,7 @@ export function ReferralPage() {
       if (!user) throw new Error('not_auth');
       const res = await fetch(`${API_BASE}/api/referrals/use`, {
         method: 'POST',
-        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+        headers: getAuthHeaders(),
         body: JSON.stringify({ referralCode: code, newUserId: user.id }),
       });
       const body = await res.json();

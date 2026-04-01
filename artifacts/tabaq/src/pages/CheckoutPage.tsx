@@ -145,7 +145,7 @@ export function CheckoutPage() {
       const restaurantId = items[0]?.restaurantId ?? null;
       const res = await fetch(`${API_BASE}/api/orders`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           restaurantId,
           items: items.map(i => ({

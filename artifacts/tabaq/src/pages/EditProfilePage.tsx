@@ -173,7 +173,7 @@ export function EditProfilePage() {
 
       const r = await fetch(`${API_BASE}/api/me/profile`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        headers: getAuthHeaders(),
         body: JSON.stringify(payload),
       });
       if (!r.ok) {

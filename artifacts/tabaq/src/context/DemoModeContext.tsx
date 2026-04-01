@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { API_BASE } from '@/lib/api';
+import { API_BASE, getAuthHeaders } from '@/lib/api';
 const CACHE_KEY = 'tabaq_demo_mode';
 
 interface DemoModeContextValue {
@@ -19,9 +19,7 @@ export function DemoModeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/platform-settings/public`, {
-          credentials: 'include',
-        });
+        const res = await fetch(`${API_BASE}/api/platform-settings/public`);
         if (res.ok) {
           const data = await res.json();
           const value = data.settings?.['demo_mode'] === 'true';
@@ -42,17 +40,9 @@ export function DemoModeProvider({ children }: { children: React.ReactNode }) {
     try { localStorage.setItem(CACHE_KEY, String(enabled)); } catch {}
 
     try {
-      const cookies = document.cookie.split(';');
-      const tokenCookie = cookies.find(c => c.trim().startsWith('tabaq_token='));
-      const token = tokenCookie?.split('=')[1]?.trim();
-
       await fetch(`${API_BASE}/api/admin/platform-settings`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-        },
-        credentials: 'include',
+        headers: getAuthHeaders(),
         body: JSON.stringify({ settings: { demo_mode: String(enabled) } }),
       });
     } catch {

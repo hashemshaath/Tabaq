@@ -187,7 +187,7 @@ export function TabaqGoldPage() {
     try {
       const r = await fetch(`${API_BASE}/api/auth/me/membership`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ plan: upgradeModal.plan.id, billing: upgradeModal.billing }),
       });
       if (!r.ok) throw new Error('upgrade_failed');

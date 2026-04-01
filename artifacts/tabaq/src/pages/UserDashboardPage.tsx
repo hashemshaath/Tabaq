@@ -245,7 +245,7 @@ function PersonalInfoForm() {
     try {
       const res = await fetch(`${API_BASE}/api/me/profile`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ nameEn: nameEn.trim(), nameAr: nameAr.trim(), email: email.trim(), bio: bio.trim() }),
       });
       const data = await res.json();

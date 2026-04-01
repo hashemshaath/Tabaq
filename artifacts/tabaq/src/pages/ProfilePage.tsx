@@ -523,7 +523,7 @@ export function ProfilePage() {
 
   const queryClient = useQueryClient();
   const userId = authUser?.id ?? 0;
-  const authHeaders = token ? { Authorization: `Bearer ${token}` } : undefined;
+  const authHeaders = getAuthHeaders();
 
   const { data, isLoading, refetch: refetchUser } = useGetUser(userId, {
     query: { queryKey: getGetUserQueryKey(userId), enabled: !!authUser },
@@ -531,7 +531,7 @@ export function ProfilePage() {
 
   const { data: activityData } = useGetUserActivity(userId, undefined, {
     query: { queryKey: getGetUserActivityQueryKey(userId, undefined), enabled: !!authUser && tab === "activity" },
-    request: authHeaders ? { headers: authHeaders } : undefined,
+    request: { headers: authHeaders },
   });
 
   const { data: followersData } = useGetUserFollowers(userId, {
