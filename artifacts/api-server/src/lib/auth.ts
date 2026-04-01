@@ -101,6 +101,24 @@ export function validateUsername(username: string): { valid: boolean; reason?: s
   return { valid: true };
 }
 
+export function signResetToken(userId: number, userUid: string): string {
+  return jwt.sign(
+    { sub: userUid, userId, type: "password_reset" },
+    JWT_SECRET!,
+    { expiresIn: "10m" } as jwt.SignOptions,
+  );
+}
+
+export function verifyResetToken(token: string): { userId: number; userUid: string } | null {
+  try {
+    const payload = jwt.verify(token, JWT_SECRET!) as { userId: number; type: string; sub: string };
+    if (payload.type !== "password_reset") return null;
+    return { userId: payload.userId, userUid: payload.sub };
+  } catch {
+    return null;
+  }
+}
+
 export function classifyIdentifier(raw: string): "email" | "phone" | "username" {
   const trimmed = raw.trim();
   if (trimmed.includes("@")) return "email";

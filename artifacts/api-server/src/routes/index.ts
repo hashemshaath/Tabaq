@@ -40,6 +40,7 @@ import adminSettingsRouter from "./admin-settings.js";
 import aiRouter from "./ai-admin.js";
 import uploadRouter from "./upload.js";
 import passcodeRouter from "./passcode.js";
+import passwordResetRouter from "./password-reset.js";
 
 const router: IRouter = Router();
 
@@ -84,5 +85,6 @@ router.use(adminSettingsRouter);
 router.use(aiRouter);
 router.use(uploadRouter);
 router.use(passcodeRouter);
+router.use(passwordResetRouter);
 
 export default router;

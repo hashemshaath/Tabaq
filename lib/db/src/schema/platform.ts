@@ -1,4 +1,4 @@
-import { pgTable, serial, text, boolean, timestamp, integer, jsonb, numeric } from "drizzle-orm/pg-core";
+import { pgTable, serial, bigserial, text, boolean, timestamp, integer, jsonb, numeric } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -87,3 +87,17 @@ export const insertPlatformSettingSchema = createInsertSchema(platformSettingsTa
 
 export type PlatformSetting = typeof platformSettingsTable.$inferSelect;
 export type InsertPlatformSetting = z.infer<typeof insertPlatformSettingSchema>;
+
+// ─── Audit Logs ───────────────────────────────────────────────────────────────
+
+export const auditLogsTable = pgTable("audit_logs", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  action: text("action").notNull(),
+  actorUid: text("actor_uid"),
+  actorId: integer("actor_id"),
+  ipAddress: text("ip_address"),
+  meta: jsonb("meta"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type AuditLog = typeof auditLogsTable.$inferSelect;

@@ -1069,6 +1069,35 @@ Rich mock data for all 6 new sections: MOCK_CHECK_INS (5 visits), MOCK_REVIEWS (
 - Fix: `slugify(text, idx)` now falls back to `heading-${idx}` when the ASCII result is 1 char or fewer
 - `parseHeadings()` and `injectHeadingIds()` both pass a sequential `idx` counter to guarantee unique IDs for Arabic headings
 
+## Password Reset & Change Flow (April 2026)
+
+### New Endpoints — `POST /api/auth/password/*`
+
+| Endpoint | Auth | Description |
+|---|---|---|
+| `POST /auth/password/forgot` | Public | Send OTP to email. Rate-limited: 3/hour per email (DB-level). Always returns safe "check your email" response (no user enumeration). Dev mode returns `devCode`. |
+| `POST /auth/password/forgot-via-phone` | Public | Send OTP via SMS. Same rate-limit and safe-response pattern. |
+| `POST /auth/password/verify-otp` | Public | Accepts `{email,otp}` or `{phone,otp}`. Verifies hash; 3-attempt lockout voids OTP. On success issues a 10-minute `reset_token` JWT (`type: "password_reset"`). |
+| `POST /auth/password/reset` | reset_token | Accepts `{reset_token, new_password}`. Validates token type + expiry; validates password strength; updates hash; revokes **all** refresh tokens for the user; sends confirmation email. |
+| `POST /auth/password/change` | Bearer JWT | Accepts `{current_password, new_password}`. Verifies current password; validates strength; updates hash; revokes all refresh tokens; sends confirmation email; writes `PASSWORD_CHANGED` audit log. |
+
+### Infrastructure Added
+
+- **`lib/audit.ts`** — `logAudit()` helper writing to `audit_logs` table. Actions: `PASSWORD_RESET_REQUESTED`, `PASSWORD_RESET_OTP_VERIFIED`, `PASSWORD_RESET_COMPLETED`, `PASSWORD_CHANGED`.
+- **`audit_logs` DB table** — schema in `lib/db/src/schema/platform.ts` (`auditLogsTable`). Indexed on `actor_uid` and `created_at`.
+- **`services/emailService.ts`** — `sendEmail()` with dev-mode console logging + SMTP from `platform_settings`. Templates: `passwordResetOtpEmail(otp, lang)` and `passwordChangedEmail(lang)` (bilingual EN/AR).
+- **`lib/auth.ts`** — `signResetToken(userId, userUid)` (10-min JWT) and `verifyResetToken(token)` (checks `type === "password_reset"`).
+- **nodemailer** — installed in `artifacts/api-server`.
+
+### Security Properties
+- OTP hash stored (not plaintext); lookup uses hash comparison.
+- OTP expiry: 10 minutes; voided after 3 failed attempts.
+- Per-email / per-phone rate limit: 3 OTPs per hour (enforced in DB).
+- Reset token is single-use (stateless JWT — 10-min TTL).
+- All refresh tokens revoked on successful reset (forces re-login on all devices).
+
+---
+
 ### Scratchpad
 - **All 8 restaurants** have stories (13 total, all `status=approved`)
 - **Experiences**: 10 seeded across all 5 Saudi cities (Riyadh×4, Jeddah×2, Dammam×1, Makkah×1, Madinah×1 + bonus Diriyah)
