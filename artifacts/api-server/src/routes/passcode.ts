@@ -13,6 +13,7 @@ import {
   verifyOtpBcrypt,
   REFRESH_TOKEN_EXPIRES_IN_MS,
 } from "../lib/auth.js";
+import { createSession } from "../lib/session.js";
 
 const router = Router();
 
@@ -67,16 +68,7 @@ async function buildPasscodeTokens(
   user: typeof usersTable.$inferSelect,
   deviceInfo?: string,
 ) {
-  const rawRefreshToken = generateRefreshToken();
-  const tokenHash = hashRefreshToken(rawRefreshToken);
-  const expiresAt = new Date(Date.now() + REFRESH_TOKEN_EXPIRES_IN_MS);
-
-  await db.insert(refreshTokensTable).values({
-    userId: user.id,
-    tokenHash,
-    deviceInfo: deviceInfo ?? null,
-    expiresAt,
-  });
+  const { rawRefreshToken } = await createSession(user.id, { deviceInfo });
 
   const accessToken = signToken({
     sub: user.userUid ?? String(user.id),

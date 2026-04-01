@@ -44,6 +44,7 @@ import passwordResetRouter from "./password-reset.js";
 import sessionsRouter from "./sessions.js";
 import { oauthRouter } from "./oauth.js";
 import { totpRouter } from "./totp.js";
+import uidLookupRouter from "./uid-lookup.js";
 
 const router: IRouter = Router();
 
@@ -92,5 +93,6 @@ router.use(passwordResetRouter);
 router.use(sessionsRouter);
 router.use(oauthRouter);
 router.use(totpRouter);
+router.use(uidLookupRouter);
 
 export default router;

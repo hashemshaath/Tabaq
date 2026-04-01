@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import bcrypt from "bcryptjs";
-import { db } from "@workspace/db";
+import { db, registerUid } from "@workspace/db";
 import { usersTable, otpRequestsTable, emailVerificationTokensTable, refreshTokensTable } from "@workspace/db/schema";
 import { eq, and, isNull, gt, desc, gte, sql } from "drizzle-orm";
 import {
@@ -23,6 +23,7 @@ import { requireAuth } from "../middleware/requireAuth.js";
 import { authRateLimiter } from "../middleware/rateLimiter.js";
 import { sendOtp, isSmsDevMode } from "../services/smsService.js";
 import { awardPoints, POINTS } from "../lib/points.js";
+import { createSession } from "../lib/session.js";
 import crypto from "crypto";
 
 const router: IRouter = Router();
@@ -48,7 +49,12 @@ function generateUserUid(id: number): string {
 }
 
 async function buildTokens(user: typeof usersTable.$inferSelect, deviceInfo?: string, ipAddress?: string) {
-  const uid = user.userUid ?? generateUserUid(user.id);
+  let uid = user.userUid;
+  if (!uid) {
+    uid = generateUserUid(user.id);
+    await db.update(usersTable).set({ userUid: uid }).where(eq(usersTable.id, user.id));
+    await registerUid(uid, "USER", "active");
+  }
   const role: "admin" | "owner" | "user" = user.isAdmin ? "admin" : user.isOwner ? "owner" : "user";
   const accessToken = signToken({
     sub: uid,
@@ -60,19 +66,9 @@ async function buildTokens(user: typeof usersTable.$inferSelect, deviceInfo?: st
     isOwner: user.isOwner,
   });
 
-  const rawRefresh = generateRefreshToken();
-  const tokenHash = hashRefreshToken(rawRefresh);
-  const expiresAt = new Date(Date.now() + REFRESH_TOKEN_EXPIRES_IN_MS);
+  const { rawRefreshToken } = await createSession(user.id, { deviceInfo, ipAddress });
 
-  await db.insert(refreshTokensTable).values({
-    userId: user.id,
-    tokenHash,
-    deviceInfo: deviceInfo ?? null,
-    ipAddress: ipAddress ?? null,
-    expiresAt,
-  });
-
-  return { accessToken, refreshToken: rawRefresh };
+  return { accessToken, refreshToken: rawRefreshToken };
 }
 
 async function recordLoginSuccess(userId: number, ip: string) {
@@ -383,6 +379,7 @@ router.post("/auth/verify-otp", authRateLimiter, async (req, res) => {
       const uid = generateUserUid(user.id);
       await db.update(usersTable).set({ userUid: uid }).where(eq(usersTable.id, user.id));
       user = { ...user, userUid: uid };
+      await registerUid(uid, "USER", "active");
     } else {
       let updated = existingUser as unknown as typeof usersTable.$inferSelect;
       if (otpType === "email") {
@@ -501,6 +498,7 @@ router.post("/auth/register", authRateLimiter, async (req, res) => {
 
     const uid = generateUserUid(user!.id);
     await db.update(usersTable).set({ userUid: uid }).where(eq(usersTable.id, user!.id));
+    await registerUid(uid, "USER", "active");
 
     // Generate email verification OTP
     const code = generateOtp();

@@ -1,8 +1,9 @@
 import { Router, type IRouter } from "express";
-import { db } from "@workspace/db";
+import { db, registerUid } from "@workspace/db";
 import { usersTable, userFollowsTable, userBlocksTable, reviewsTable, bookingsTable, restaurantsTable, pointsTransactionsTable } from "@workspace/db/schema";
 import { eq, and, sql, desc, gte, ne, notExists, type SQL } from "drizzle-orm";
 import { requireAuth, optionalAuth } from "../middleware/requireAuth.js";
+import crypto from "crypto";
 
 const router: IRouter = Router();
 
@@ -14,6 +15,12 @@ function calcLevel(points: number): { level: number; levelTitle: string; nextLev
   return { level: 5, levelTitle: "Master Chef", nextLevelPoints: 10000 };
 }
 
+function generateUserUid(id: number): string {
+  const year = new Date().getFullYear();
+  const suffix = crypto.randomBytes(4).toString("hex").toUpperCase();
+  return `USR-${year}-${String(id).padStart(8, "0")}-${suffix}`;
+}
+
 router.post("/users", async (req, res) => {
   try {
     const { phone, email, nameEn, nameAr, preferredLanguage = "en", cityId } = req.body;
@@ -22,7 +29,10 @@ router.post("/users", async (req, res) => {
       phone, email, nameEn, nameAr, preferredLanguage, cityId,
       level: levelInfo.level, levelTitle: levelInfo.levelTitle,
     }).returning();
-    res.status(201).json(user);
+    const uid = generateUserUid(user!.id);
+    await db.update(usersTable).set({ userUid: uid }).where(eq(usersTable.id, user!.id));
+    await registerUid(uid, "USER", "active");
+    res.status(201).json({ ...user, userUid: uid });
   } catch (err) {
     req.log.error({ err }, "Failed to create user");
     res.status(500).json({ error: "internal_error", message: "Failed to create user" });
