@@ -1917,7 +1917,7 @@ export function ProfilePage() {
                       <p className="text-sm font-medium text-foreground">{t("Points History", "سجل النقاط")}</p>
                       <p className="text-xs text-muted-foreground">{user.points} {t("total points earned", "نقطة مكتسبة")}</p>
                     </div>
-                    <Link href="/profile/points">
+                    <Link href="/dashboard">
                       <Button size="sm" variant="outline" className="rounded-xl gap-1">
                         {t("View", "عرض")} <ChevronRight className="w-3.5 h-3.5" />
                       </Button>
@@ -1928,7 +1928,7 @@ export function ProfilePage() {
                       <p className="text-sm font-medium text-foreground">{t("Referral Programme", "برنامج الإحالة")}</p>
                       <p className="text-xs text-muted-foreground">{t("Invite friends and earn bonus points", "ادعُ الأصدقاء واكسب نقاطًا إضافية")}</p>
                     </div>
-                    <Link href="/referrals">
+                    <Link href="/referral">
                       <Button size="sm" variant="outline" className="rounded-xl gap-1">
                         <Gift className="w-3.5 h-3.5" />{t("Invite", "دعوة")}
                       </Button>

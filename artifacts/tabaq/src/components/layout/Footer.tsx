@@ -7,10 +7,10 @@ import {
 } from 'lucide-react';
 
 const SOCIAL_LINKS = [
-  { icon: Instagram, href: '#', label: 'Instagram' },
-  { icon: Twitter, href: '#', label: 'Twitter/X' },
-  { icon: Facebook, href: '#', label: 'Facebook' },
-  { icon: Youtube, href: '#', label: 'YouTube' },
+  { icon: Instagram, href: 'https://instagram.com/tabaqsa', label: 'Instagram' },
+  { icon: Twitter, href: 'https://x.com/tabaqsa', label: 'Twitter/X' },
+  { icon: Facebook, href: 'https://facebook.com/tabaqsa', label: 'Facebook' },
+  { icon: Youtube, href: 'https://youtube.com/@tabaqsa', label: 'YouTube' },
 ];
 
 export function Footer() {
@@ -63,6 +63,8 @@ export function Footer() {
                   key={label}
                   href={href}
                   aria-label={label}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="w-8 h-8 rounded-lg bg-white/10 hover:bg-primary flex items-center justify-center text-white/60 hover:text-white transition-all duration-200"
                 >
                   <Icon className="w-4 h-4" />

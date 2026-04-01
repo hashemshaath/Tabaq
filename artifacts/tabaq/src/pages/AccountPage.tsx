@@ -2049,7 +2049,7 @@ export function AccountPage() {
         <div className="text-center">
           <User className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-foreground mb-2">{t("Sign in required", "تسجيل الدخول مطلوب")}</h2>
-          <Link href="/sign-in"><Button>{t("Sign In", "تسجيل الدخول")}</Button></Link>
+          <Link href="/signin"><Button>{t("Sign In", "تسجيل الدخول")}</Button></Link>
         </div>
       </div>
     );

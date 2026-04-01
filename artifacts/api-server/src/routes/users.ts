@@ -49,6 +49,7 @@ router.get("/users/suggested", optionalAuth, async (req, res) => {
         id: usersTable.id,
         nameEn: usersTable.nameEn,
         nameAr: usersTable.nameAr,
+        username: usersTable.username,
         avatarUrl: usersTable.avatarUrl,
         isVerified: usersTable.isVerified,
         level: usersTable.level,
@@ -57,6 +58,7 @@ router.get("/users/suggested", optionalAuth, async (req, res) => {
         isPrivate: usersTable.isPrivate,
       })
       .from(usersTable)
+      .where(sql`name_en IS NOT NULL AND name_en != ''`)
       .orderBy(desc(usersTable.points))
       .limit(50);
 

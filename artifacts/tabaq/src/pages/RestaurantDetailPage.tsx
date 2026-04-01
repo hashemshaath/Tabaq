@@ -14,7 +14,7 @@ import {
   useListRestaurants,
   getGetRestaurantQueryKey,
 } from '@workspace/api-client-react';
-import { useParams, Link } from 'wouter';
+import { useParams, Link, useSearch } from 'wouter';
 import { InlineReviewComposer } from '@/components/InlineReviewComposer';
 import { ReviewCard } from '@/components/ReviewCard';
 import { MenuTab } from '@/components/MenuTab';
@@ -537,7 +537,14 @@ export function RestaurantDetailPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const searchString = useSearch();
+  const initialTab = (() => {
+    const params = new URLSearchParams(searchString);
+    const t = params.get('tab') as Tab | null;
+    const valid: Tab[] = ['overview', 'menu', 'book', 'reviews', 'photos', 'info', 'stories'];
+    return t && valid.includes(t) ? t : 'overview';
+  })();
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followType, setFollowType] = useState<string>('all');
   const [showFollowMenu, setShowFollowMenu] = useState(false);

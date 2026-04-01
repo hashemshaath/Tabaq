@@ -149,7 +149,7 @@ function ReservationCard({ booking, lang, t }: { booking: Booking; lang: string;
       </div>
       <div className="border-t border-gray-100 px-4 sm:px-5 py-3 bg-gray-50 flex items-center gap-2 flex-wrap">
         {(booking.status === 'completed') && (
-          <Link href={`/restaurants/${booking.restaurantId}#reviews`}>
+          <Link href={`/restaurants/${booking.restaurantId}?tab=reviews`}>
             <button className="flex items-center gap-1.5 px-4 py-2 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl text-sm font-semibold hover:bg-amber-100 transition-colors">
               <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
               {t('Rate Your Visit', 'قيّم زيارتك')}
@@ -262,7 +262,7 @@ function OrderCard({ order, lang, t, onReorder, reordering }: {
       </div>
       <div className="border-t border-gray-100 px-4 sm:px-5 py-3 bg-gray-50 flex items-center gap-2 flex-wrap">
         {order.status === 'delivered' && !order.rated && (
-          <Link href={`/restaurants/${order.restaurantId}#reviews`}>
+          <Link href={`/restaurants/${order.restaurantId}?tab=reviews`}>
             <button className="flex items-center gap-1.5 px-4 py-2 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl text-sm font-semibold hover:bg-amber-100 transition-colors">
               <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
               {t('Rate Your Experience', 'قيّم تجربتك')}
@@ -457,7 +457,7 @@ export function OrdersPage() {
                 </div>
                 <h3 className="font-bold text-gray-900 mb-2">{t('Sign in to see your reservations', 'سجّل دخولك لرؤية حجوزاتك')}</h3>
                 <p className="text-gray-500 text-sm mb-6">{t('Your table bookings will appear here once you sign in.', 'ستظهر حجوزاتك هنا بعد تسجيل الدخول.')}</p>
-                <Link href="/sign-in">
+                <Link href="/signin">
                   <button className="bg-primary text-white font-semibold px-6 py-2.5 rounded-full text-sm hover:bg-primary/90 transition-colors">{t('Sign In', 'تسجيل الدخول')}</button>
                 </Link>
               </div>
@@ -522,7 +522,7 @@ export function OrdersPage() {
                 </div>
                 <h3 className="font-bold text-gray-900 mb-2">{t('Sign in to see your orders', 'سجّل دخولك لرؤية طلباتك')}</h3>
                 <p className="text-gray-500 text-sm mb-6">{t('Your food orders will appear here once you sign in.', 'ستظهر طلبات طعامك هنا بعد تسجيل الدخول.')}</p>
-                <Link href="/sign-in">
+                <Link href="/signin">
                   <button className="bg-primary text-white font-semibold px-6 py-2.5 rounded-full text-sm hover:bg-primary/90 transition-colors">{t('Sign In', 'تسجيل الدخول')}</button>
                 </Link>
               </div>

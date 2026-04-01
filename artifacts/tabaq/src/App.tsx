@@ -106,7 +106,6 @@ function Router() {
               </Route>
               <Route path="/partners" component={PartnerLandingPage} />
               <Route path="/partners/register" component={ProviderRegistrationPage} />
-              <Route path="/providers/register" component={ProviderRegistrationPage} />
               <Route path="/console/experiences">
                 <ProtectedRoute requireOwner><ExperiencesConsolePage /></ProtectedRoute>
               </Route>

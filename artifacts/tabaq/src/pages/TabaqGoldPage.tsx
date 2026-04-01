@@ -163,7 +163,7 @@ export function TabaqGoldPage() {
   const activePlan: PlanId = (membershipData?.goldPlan as PlanId | null) ?? 'explorer';
 
   function handleUpgrade(plan: Plan, currentBilling: BillingCycle) {
-    if (!user) { setLocation('/sign-in'); return; }
+    if (!user) { setLocation('/signin'); return; }
     setUpgraded(false);
     setUpgradeError(null);
     setUpgradeModal({ plan, billing: currentBilling });
