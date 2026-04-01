@@ -20,6 +20,24 @@ export interface JwtPayload {
   isOwner?: boolean;
 }
 
+export interface ProviderJwtPayload {
+  sub: string;
+  providerUid: string;
+  type: "provider";
+  providerRole: "OWNER" | "MANAGER" | "STAFF";
+  jti: string;
+  email?: string | null;
+  staffUid?: string | null;
+}
+
+export interface ElevatedTokenPayload {
+  sub: string;
+  providerUid: string;
+  type: "elevated";
+  scope: "financial";
+  jti: string;
+}
+
 export function signToken(payload: Omit<JwtPayload, "jti" | "type"> & { jti?: string; type?: string }): string {
   const fullPayload: JwtPayload = {
     ...payload,
@@ -142,6 +160,55 @@ export function verifyResetToken(token: string): { userId: number; userUid: stri
   } catch {
     return null;
   }
+}
+
+export function signProviderToken(payload: Omit<ProviderJwtPayload, "jti" | "type"> & { jti?: string }): string {
+  const fullPayload: ProviderJwtPayload = {
+    ...payload,
+    type: "provider",
+    jti: payload.jti ?? crypto.randomUUID(),
+  };
+  return jwt.sign(fullPayload, JWT_SECRET!, { expiresIn: ACCESS_TOKEN_EXPIRES_IN } as jwt.SignOptions);
+}
+
+export function signElevatedToken(providerUid: string, sub: string): string {
+  const fullPayload: ElevatedTokenPayload = {
+    sub,
+    providerUid,
+    type: "elevated",
+    scope: "financial",
+    jti: crypto.randomUUID(),
+  };
+  return jwt.sign(fullPayload, JWT_SECRET!, { expiresIn: "30m" } as jwt.SignOptions);
+}
+
+export function verifyProviderToken(token: string): ProviderJwtPayload | null {
+  try {
+    const payload = jwt.verify(token, JWT_SECRET!) as ProviderJwtPayload;
+    if (payload.type !== "provider") return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+export function verifyElevatedToken(token: string): ElevatedTokenPayload | null {
+  try {
+    const payload = jwt.verify(token, JWT_SECRET!) as ElevatedTokenPayload;
+    if (payload.type !== "elevated" || payload.scope !== "financial") return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+export function validateProviderPasswordStrength(password: string): { valid: boolean; reasons: string[] } {
+  const reasons: string[] = [];
+  if (password.length < 10) reasons.push("at least 10 characters");
+  if (!/[A-Z]/.test(password)) reasons.push("at least 1 uppercase letter");
+  if (!/[0-9]/.test(password)) reasons.push("at least 1 number");
+  if (!/[^A-Za-z0-9]/.test(password)) reasons.push("at least 1 special character");
+  return { valid: reasons.length === 0, reasons };
 }
 
 export function classifyIdentifier(raw: string): "email" | "phone" | "username" {

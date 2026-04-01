@@ -25,3 +25,4 @@ export * from "./conversations";
 export * from "./messages";
 export * from "./uid-registry";
 export * from "./admin";
+export * from "./providers";
