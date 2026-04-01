@@ -1,0 +1,218 @@
+You are a senior authentication architect and product UX engineer.
+
+Your task is to deeply audit and rebuild the CURRENT authentication and sign-in system safely and professionally, because there are major login and registration issues.
+
+CRITICAL PROBLEMS TO FIX:
+1. When logging in with the admin email using OTP, it incorrectly opens the user dashboard instead of the admin dashboard.
+2. Email + password login is not working correctly.
+3. Registration and authentication flows are broken and inconsistent.
+4. The current /signin page is weak and needs a full professional redesign.
+5. Restaurant / provider accounts require a different login model because they are multi-user business accounts.
+
+CRITICAL RULES:
+- Rebuild the authentication system properly, but keep compatibility with the current platform where possible.
+- Do NOT leave mixed logic between admin, user, and provider roles.
+- Do NOT route users to the wrong dashboard.
+- Ensure proper role-based authentication and role-based redirection.
+- Build a clean, secure, scalable authentication architecture.
+
+--------------------------------------------------
+PHASE 1: FULL AUTH AUDIT
+--------------------------------------------------
+
+First audit the current login, registration, and OTP flows:
+
+- Inspect all auth logic
+- Inspect role detection logic
+- Inspect dashboard redirection logic
+- Inspect email/password login flow
+- Inspect OTP login flow
+- Inspect session creation and token storage
+- Inspect route guards and middleware
+- Inspect registration flow for users and providers
+- Inspect whether admin, user, and provider accounts are mixed incorrectly
+
+Identify all issues clearly before rebuilding.
+
+--------------------------------------------------
+PHASE 2: ROLE-BASED AUTHENTICATION REBUILD
+--------------------------------------------------
+
+Rebuild the authentication architecture properly with distinct account types:
+
+1. USER ACCOUNT
+- Standard user login
+- Can log in with:
+  - mobile + OTP
+  - email + password
+- Redirect only to user dashboard/profile areas
+
+2. ADMIN ACCOUNT
+- Admin login must be isolated logically
+- Can log in with:
+  - email + OTP
+  - email + password
+- Must always redirect to admin dashboard only
+- Must never open user dashboard
+
+3. PROVIDER / RESTAURANT ACCOUNT
+- This is a business multi-user account
+- Login must be based on:
+  - restaurant/commercial identity number first
+  - then employee email
+- Because provider accounts can have multiple staff/users
+- Build this as a multi-user organization login flow
+- Redirect only to provider dashboard
+
+Ensure strict separation between:
+- authentication logic
+- permissions
+- dashboards
+- onboarding flows
+
+--------------------------------------------------
+PHASE 3: SIGN-IN PAGE REDESIGN
+--------------------------------------------------
+
+Redesign the /signin page completely to a world-class professional standard.
+
+Requirements:
+- Premium, modern, trusted design
+- Clear distinction between:
+  - User login
+  - Admin login
+  - Restaurant / Provider login
+- Elegant layout
+- Modern typography
+- Excellent spacing and hierarchy
+- Responsive across desktop/mobile
+- Arabic RTL and English LTR support
+- Professional tabs/cards/sections for login type
+- Clear error/success states
+- Professional OTP input UX
+- Strong trust and premium visual style
+- Design quality should feel like a global product
+
+Do a full redesign, not a small edit.
+
+--------------------------------------------------
+PHASE 4: REGISTRATION SYSTEM REBUILD
+--------------------------------------------------
+
+Rebuild registration flows professionally:
+
+1. User Registration
+- mobile verification
+- optional email verification
+- proper validation
+- profile creation
+
+2. Admin Access
+- controlled, not public standard registration
+- secure role handling
+
+3. Provider / Restaurant Registration
+- organization-based registration
+- restaurant identity/commercial number required
+- then authorized employee email
+- support multi-user provider accounts
+- proper team/member structure
+- approval and onboarding readiness
+
+--------------------------------------------------
+PHASE 5: LOGIN METHODS
+--------------------------------------------------
+
+Support and fix all login methods:
+
+- Email + Password
+- Email + OTP
+- Mobile + OTP
+- Provider identity number + employee email
+- Session persistence
+- Logout
+- Forgot password
+- Reset password
+- OTP resend
+- Rate limiting for auth endpoints
+- Proper validation and anti-abuse protection
+
+--------------------------------------------------
+PHASE 6: DASHBOARD ROUTING FIX
+--------------------------------------------------
+
+Fix role-based routing completely:
+
+- Admin → admin dashboard only
+- User → user dashboard only
+- Provider/Restaurant → provider dashboard only
+
+Ensure:
+- no wrong redirects
+- no shared ambiguous routing
+- no mixed dashboard logic
+- route guards enforce access correctly
+
+--------------------------------------------------
+PHASE 7: SECURITY IMPROVEMENTS
+--------------------------------------------------
+
+Add or improve:
+- rate limiting on login and OTP
+- session validation
+- role validation
+- secure token handling
+- password hashing validation
+- device/session tracking if possible
+- proper logout and session invalidation
+
+--------------------------------------------------
+PHASE 8: UX / ERROR HANDLING
+--------------------------------------------------
+
+Improve all login and registration states:
+- loading state
+- invalid credentials messages
+- OTP expired
+- OTP invalid
+- account not found
+- unauthorized role
+- provider employee not linked
+- clear Arabic + English messages
+- no confusing or technical error text for users
+
+--------------------------------------------------
+PHASE 9: CODE REFACTOR
+--------------------------------------------------
+
+Clean and refactor auth code:
+- remove duplicated auth logic
+- separate role-based auth services
+- remove dead code
+- standardize sign-in / sign-up / OTP / password reset architecture
+- ensure maintainability and scalability
+
+--------------------------------------------------
+PHASE 10: FINAL VALIDATION
+--------------------------------------------------
+
+Test all scenarios:
+
+1. Admin login with OTP → opens admin dashboard only
+2. Admin login with password → works correctly
+3. User login with OTP → opens user dashboard only
+4. User login with email/password → works correctly
+5. Provider login with restaurant identity + employee email → opens provider dashboard only
+6. Registration works correctly for each account type
+7. Forgot password works
+8. Reset password works
+9. OTP resend works
+10. No mixed role or mixed dashboard behavior remains
+
+FINAL OUTPUT:
+Provide a report including:
+1. Root causes found
+2. What auth flows were rebuilt
+3. What routing issues were fixed
+4. What UI/UX improvements were made to /signin
+5. What remains recommended for future improvement

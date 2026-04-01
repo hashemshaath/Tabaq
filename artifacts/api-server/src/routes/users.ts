@@ -59,7 +59,12 @@ router.get("/users/suggested", optionalAuth, async (req, res) => {
         reviewCount: sql<number>`(SELECT COUNT(*) FROM reviews WHERE reviews.user_id = ${usersTable.id})`,
       })
       .from(usersTable)
-      .where(sql`name_en IS NOT NULL AND name_en != '' AND username IS NOT NULL`)
+      .where(sql`
+        name_en IS NOT NULL AND name_en != ''
+        AND username IS NOT NULL AND username != ''
+        AND is_admin = false
+        AND is_owner = false
+      `)
       .orderBy(desc(usersTable.points))
       .limit(50);
 

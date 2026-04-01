@@ -141,9 +141,9 @@ const TEAM = [
 ];
 
 const STATS = [
-  { valueEn: '2,400+', valueAr: '+٢٤٠٠', labelEn: 'Partner Restaurants', labelAr: 'مطعم شريك', icon: Utensils },
-  { valueEn: '18 Cities', valueAr: '١٨ مدينة', labelEn: 'Across Saudi Arabia', labelAr: 'في أنحاء المملكة', icon: Globe },
-  { valueEn: '1.2M+', valueAr: '+١.٢ مليون', labelEn: 'Registered Foodies', labelAr: 'مسجل في المنصة', icon: Users },
+  { valueEn: '49+', valueAr: '+٤٩', labelEn: 'Partner Restaurants', labelAr: 'مطعم شريك', icon: Utensils },
+  { valueEn: '9 Cities', valueAr: '٩ مدن', labelEn: 'Across Saudi Arabia', labelAr: 'في أنحاء المملكة', icon: Globe },
+  { valueEn: '50K+', valueAr: '+٥٠ ألف', labelEn: 'Registered Foodies', labelAr: 'مسجل في المنصة', icon: Users },
   { valueEn: '4.8★', valueAr: '★٤.٨', labelEn: 'Average App Rating', labelAr: 'متوسط تقييم التطبيق', icon: Star },
 ];
 

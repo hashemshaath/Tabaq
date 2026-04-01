@@ -1,26 +1,33 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useLanguage } from '@/hooks/use-language';
 import { useAuth } from '@/context/AuthContext';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Link, useLocation } from 'wouter';
 import {
-  Phone, Mail, KeyRound, Loader2, ChevronRight, ArrowLeft,
-  CheckCircle2, Lock, Eye, EyeOff, User, RotateCcw, ShieldCheck,
+  Phone, Mail, Lock, Eye, EyeOff, Loader2, ArrowLeft,
+  ChevronRight, RotateCcw, CheckCircle2, ShieldCheck,
+  Building2, User, ShieldAlert,
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Types
-// ─────────────────────────────────────────────────────────────────────────────
-type AuthTab   = 'phone' | 'email_otp' | 'password';
-type OtpStep   = 'identifier' | 'otp';
-type ForgotStep = 'email' | 'otp' | 'new_password' | 'done';
-
 const BASE = import.meta.env.BASE_URL ?? '/';
 function api(path: string) { return `${BASE}api${path}`; }
 
+type AccountMode = 'user' | 'restaurant' | 'admin';
+type UserLoginTab = 'phone' | 'email_otp' | 'password';
+type OtpStep = 'identifier' | 'otp';
+type ForgotStep = 'email' | 'otp' | 'new_password' | 'done';
+
 // ─────────────────────────────────────────────────────────────────────────────
-// OTP boxes sub-component
+// Role-aware redirect helper
+// ─────────────────────────────────────────────────────────────────────────────
+function roleDestination(user: any): string {
+  if (user?.isAdmin) return '/admin';
+  if (user?.isOwner) return '/business';
+  return '/';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// OTP digit boxes
 // ─────────────────────────────────────────────────────────────────────────────
 function OtpBoxes({ otp, onChange, onKeyDown, onPaste, refs }: {
   otp: string[];
@@ -30,7 +37,7 @@ function OtpBoxes({ otp, onChange, onKeyDown, onPaste, refs }: {
   refs: React.MutableRefObject<Array<HTMLInputElement | null>>;
 }) {
   return (
-    <div className="flex justify-center gap-3" dir="ltr" onPaste={onPaste}>
+    <div className="flex justify-center gap-2.5" dir="ltr" onPaste={onPaste}>
       {otp.map((digit, i) => (
         <input
           key={i}
@@ -41,7 +48,7 @@ function OtpBoxes({ otp, onChange, onKeyDown, onPaste, refs }: {
           value={digit}
           onChange={e => onChange(i, e.target.value)}
           onKeyDown={e => onKeyDown(i, e)}
-          className="w-12 h-14 text-center text-2xl font-bold rounded-xl border-2 border-input bg-background focus:border-primary focus:outline-none transition-colors"
+          className="w-12 h-14 text-center text-2xl font-bold rounded-xl border-2 border-slate-200 bg-white focus:border-primary focus:outline-none transition-all shadow-sm"
           autoFocus={i === 0}
         />
       ))}
@@ -50,25 +57,105 @@ function OtpBoxes({ otp, onChange, onKeyDown, onPaste, refs }: {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Dev hint banner
+// Dev hint
 // ─────────────────────────────────────────────────────────────────────────────
-function DevBanner({ code, label }: { code: string; label: string }) {
+function DevBanner({ code }: { code: string }) {
   return (
-    <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 text-center">
-      <p className="text-xs text-amber-700 font-medium mb-1">{label}</p>
-      <p className="text-3xl font-bold tracking-[0.3em] text-amber-700">{code}</p>
+    <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-center">
+      <p className="text-xs text-amber-600 font-medium mb-1">Dev mode — OTP code</p>
+      <p className="text-2xl font-bold tracking-[0.4em] text-amber-700">{code}</p>
     </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Error banner
+// Error / Success banners
 // ─────────────────────────────────────────────────────────────────────────────
 function ErrorBanner({ msg }: { msg: string }) {
   return (
-    <div className="bg-destructive/10 border border-destructive/20 rounded-xl px-4 py-3 text-sm text-destructive text-center">
-      {msg}
+    <div className="flex items-start gap-2.5 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">
+      <ShieldAlert className="shrink-0 mt-0.5 w-4 h-4" />
+      <span>{msg}</span>
     </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Account Mode Selector
+// ─────────────────────────────────────────────────────────────────────────────
+function AccountModeSelector({ mode, onChange, lang }: {
+  mode: AccountMode;
+  onChange: (m: AccountMode) => void;
+  lang: string;
+}) {
+  const modes: { key: AccountMode; icon: React.ReactNode; en: string; ar: string; desc_en: string; desc_ar: string }[] = [
+    { key: 'user',       icon: <User className="w-4 h-4" />,       en: 'Customer',   ar: 'عميل',       desc_en: 'Discover & book restaurants', desc_ar: 'اكتشف المطاعم وابحث' },
+    { key: 'restaurant', icon: <Building2 className="w-4 h-4" />,  en: 'Restaurant', ar: 'مطعم',       desc_en: 'Manage your business',        desc_ar: 'أدر منشأتك التجارية' },
+    { key: 'admin',      icon: <ShieldCheck className="w-4 h-4" />, en: 'Admin',     ar: 'مسؤول',     desc_en: 'Platform administration',     desc_ar: 'إدارة المنصة' },
+  ];
+  return (
+    <div className="grid grid-cols-3 gap-2 p-1 bg-slate-100 rounded-2xl">
+      {modes.map(m => (
+        <button
+          key={m.key}
+          type="button"
+          onClick={() => onChange(m.key)}
+          className={`flex flex-col items-center gap-1 py-3 px-2 rounded-xl text-center transition-all text-xs font-medium ${
+            mode === m.key
+              ? 'bg-white shadow-md text-primary'
+              : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'
+          }`}
+        >
+          <span className={mode === m.key ? 'text-primary' : 'text-slate-400'}>{m.icon}</span>
+          <span className="font-semibold">{lang === 'ar' ? m.ar : m.en}</span>
+          <span className={`text-[10px] leading-tight ${mode === m.key ? 'text-slate-500' : 'text-slate-400'}`}>
+            {lang === 'ar' ? m.desc_ar : m.desc_en}
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Input wrapper
+// ─────────────────────────────────────────────────────────────────────────────
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-sm font-medium text-slate-700">{label}</label>
+      {children}
+    </div>
+  );
+}
+
+function TextInput({ icon, ...props }: { icon?: React.ReactNode } & React.InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <div className="relative">
+      {icon && (
+        <span className="absolute start-3.5 top-1/2 -translate-y-1/2 text-slate-400">{icon}</span>
+      )}
+      <input
+        {...props}
+        className={`w-full h-12 rounded-xl border-2 border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:border-primary focus:outline-none transition-all text-sm ${icon ? 'ps-10' : 'ps-4'} pe-4 ${props.className ?? ''}`}
+      />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Primary button
+// ─────────────────────────────────────────────────────────────────────────────
+function PrimaryBtn({ loading, children, ...props }: { loading?: boolean } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button
+      type="submit"
+      disabled={loading || props.disabled}
+      {...props}
+      className="w-full h-12 rounded-xl bg-primary text-white font-semibold text-sm flex items-center justify-center gap-2 hover:bg-primary/90 active:scale-[0.98] transition-all disabled:opacity-60 shadow-sm"
+    >
+      {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : children}
+    </button>
   );
 }
 
@@ -80,124 +167,119 @@ export function SignInPage() {
   const { login, user } = useAuth();
   const [, setLocation] = useLocation();
 
-  // ── OTP login state ───────────────────────────────────────────────────────
-  const [tab, setTab]         = useState<AuthTab>('phone');
-  const [otpStep, setOtpStep] = useState<OtpStep>('identifier');
+  // ── Account mode ──────────────────────────────────────────────────────────
+  const [mode, setMode] = useState<AccountMode>('user');
+
+  // ── User login tabs ───────────────────────────────────────────────────────
+  const [userTab, setUserTab] = useState<UserLoginTab>('phone');
+
+  // ── OTP state ─────────────────────────────────────────────────────────────
   const [identifier, setIdentifier] = useState('');
-  const [otp, setOtp]         = useState(['', '', '', '', '', '']);
-  const [devCode, setDevCode] = useState<string | null>(null);
+  const [otp, setOtp]               = useState(['', '', '', '', '', '']);
+  const [otpStep, setOtpStep]       = useState<OtpStep>('identifier');
+  const [devCode, setDevCode]       = useState<string | null>(null);
   const otpRefs = useRef<Array<HTMLInputElement | null>>([]);
 
-  // ── Password login state ──────────────────────────────────────────────────
-  const [pwdIdentifier, setPwdIdentifier] = useState('');
-  const [password, setPassword]           = useState('');
-  const [showPassword, setShowPassword]   = useState(false);
+  // ── Password state ────────────────────────────────────────────────────────
+  const [pwdEmail, setPwdEmail]       = useState('');
+  const [password, setPassword]       = useState('');
+  const [showPwd, setShowPwd]         = useState(false);
 
-  // ── Forgot password state ─────────────────────────────────────────────────
-  const [forgotOpen, setForgotOpen]         = useState(false);
-  const [forgotStep, setForgotStep]         = useState<ForgotStep>('email');
-  const [forgotEmail, setForgotEmail]       = useState('');
-  const [forgotOtp, setForgotOtp]           = useState(['', '', '', '', '', '']);
-  const [forgotDevCode, setForgotDevCode]   = useState<string | null>(null);
-  const [resetToken, setResetToken]         = useState('');
-  const [newPassword, setNewPassword]       = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showNewPwd, setShowNewPwd]         = useState(false);
+  // ── Forgot password ───────────────────────────────────────────────────────
+  const [forgotOpen, setForgotOpen]       = useState(false);
+  const [forgotStep, setForgotStep]       = useState<ForgotStep>('email');
+  const [forgotEmail, setForgotEmail]     = useState('');
+  const [forgotOtp, setForgotOtp]         = useState(['', '', '', '', '', '']);
+  const [forgotDevCode, setForgotDevCode] = useState<string | null>(null);
+  const [resetToken, setResetToken]       = useState('');
+  const [newPwd, setNewPwd]               = useState('');
+  const [confirmPwd, setConfirmPwd]       = useState('');
+  const [showNewPwd, setShowNewPwd]       = useState(false);
   const forgotOtpRefs = useRef<Array<HTMLInputElement | null>>([]);
 
   // ── Shared ────────────────────────────────────────────────────────────────
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
-  // TOTP / MFA state
-  const [totpPending, setTotpPending]       = useState(false);
-  const [totpTempToken, setTotpTempToken]   = useState('');
-  const [totpCode, setTotpCode]             = useState(['', '', '', '', '', '']);
-  const [useBackupCode, setUseBackupCode]   = useState(false);
-  const [backupCode, setBackupCode]         = useState('');
-  const totpRefs = useRef<Array<HTMLInputElement | null>>([]);
+  // ─── Clear state on mode switch ───────────────────────────────────────────
+  function switchMode(m: AccountMode) {
+    setMode(m);
+    setError(null);
+    setSuccess(null);
+    setIdentifier('');
+    setOtp(['', '', '', '', '', '']);
+    setOtpStep('identifier');
+    setDevCode(null);
+    setPwdEmail('');
+    setPassword('');
+    setForgotOpen(false);
+  }
 
-  // Load Google Identity Services script when VITE_GOOGLE_CLIENT_ID is configured
+  function switchUserTab(tab: UserLoginTab) {
+    setUserTab(tab);
+    setError(null);
+    setIdentifier('');
+    setOtp(['', '', '', '', '', '']);
+    setOtpStep('identifier');
+    setDevCode(null);
+  }
+
+  // ─── Redirect already-authenticated users by role ─────────────────────────
   useEffect(() => {
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    if (!clientId || document.getElementById('google-gsi-script')) return;
-    const script = document.createElement('script');
-    script.id = 'google-gsi-script';
-    script.src = 'https://accounts.google.com/gsi/client';
-    script.async = true;
-    document.head.appendChild(script);
-  }, []);
-
-  // Load Apple JS SDK when VITE_APPLE_CLIENT_ID is configured
-  useEffect(() => {
-    const clientId = import.meta.env.VITE_APPLE_CLIENT_ID;
-    if (!clientId || document.getElementById('apple-signin-script')) return;
-    const script = document.createElement('script');
-    script.id = 'apple-signin-script';
-    script.src = 'https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js';
-    script.async = true;
-    script.onload = () => {
-      const AppleID = (window as any).AppleID;
-      if (AppleID) {
-        AppleID.auth.init({
-          clientId,
-          scope: 'name email',
-          redirectURI: window.location.origin,
-          usePopup: true,
-        });
-      }
-    };
-    document.head.appendChild(script);
-  }, []);
-
-  // Redirect authenticated users — must be in useEffect to avoid render-time setState
-  useEffect(() => {
-    if (user) setLocation('/');
+    if (user) setLocation(roleDestination(user));
   }, [user, setLocation]);
   if (user) return null;
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Helpers
+  // OTP helpers
   // ─────────────────────────────────────────────────────────────────────────
-  const resetOtp = () => { setOtp(['', '', '', '', '', '']); };
-  const resetForgotOtp = () => { setForgotOtp(['', '', '', '', '', '']); };
-
   function handleOtpChange(arr: string[], setArr: (v: string[]) => void, refs: React.MutableRefObject<Array<HTMLInputElement | null>>, i: number, value: string) {
     const digit = value.replace(/\D/g, '').slice(-1);
-    const next = [...arr];
-    next[i] = digit;
-    setArr(next);
+    const next = [...arr]; next[i] = digit; setArr(next);
     if (digit && i < 5) refs.current[i + 1]?.focus();
   }
-
   function handleOtpKeyDown(arr: string[], refs: React.MutableRefObject<Array<HTMLInputElement | null>>, i: number, e: React.KeyboardEvent) {
     if (e.key === 'Backspace' && !arr[i] && i > 0) refs.current[i - 1]?.focus();
   }
-
   function handleOtpPaste(setArr: (v: string[]) => void, refs: React.MutableRefObject<Array<HTMLInputElement | null>>, e: React.ClipboardEvent) {
     const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
     if (pasted.length === 6) { setArr(pasted.split('')); refs.current[5]?.focus(); }
     e.preventDefault();
   }
 
-  async function finishLogin(token: string, userData: object) {
+  // ─────────────────────────────────────────────────────────────────────────
+  // Core: finish login — role-aware redirect
+  // ─────────────────────────────────────────────────────────────────────────
+  async function finishLogin(token: string, userData: any, expectedMode?: AccountMode) {
+    // Validate role matches selected account type
+    if (expectedMode === 'admin' && !userData?.isAdmin) {
+      setError(t('This account does not have admin access.', 'هذا الحساب لا يمتلك صلاحيات الإدارة.'));
+      return;
+    }
+    if (expectedMode === 'restaurant' && !userData?.isOwner && !userData?.isAdmin) {
+      setError(t('This account is not linked to a restaurant. Please use the Customer login.', 'هذا الحساب غير مرتبط بمطعم. يرجى استخدام تسجيل دخول العملاء.'));
+      return;
+    }
+
     login(token, userData);
+
+    // Apply pending referral silently
     const pendingRef = localStorage.getItem('tabaq_referral_code');
     if (pendingRef) {
-      try {
-        await fetch(api('/referrals/use'), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ referralCode: pendingRef }),
-        });
-      } catch { /* silent */ }
+      fetch(api('/referrals/use'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ referralCode: pendingRef }),
+      }).catch(() => {});
       localStorage.removeItem('tabaq_referral_code');
     }
-    setLocation('/');
+
+    setLocation(roleDestination(userData));
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // OTP login — send code
+  // OTP flow — send
   // ─────────────────────────────────────────────────────────────────────────
   async function handleSendOtp(e: React.FormEvent) {
     e.preventDefault();
@@ -205,172 +287,81 @@ export function SignInPage() {
     if (!identifier.trim()) return;
     setLoading(true);
     try {
-      const body = tab === 'email_otp'
-        ? { email: identifier.trim() }
-        : { phone: identifier.trim() };
+      const body = userTab === 'email_otp' ? { email: identifier.trim() } : { phone: identifier.trim() };
       const res  = await fetch(api('/auth/request-otp'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.message || t('Something went wrong', 'حدث خطأ ما')); return; }
+      if (!res.ok) { setError(data.message || t('Something went wrong.', 'حدث خطأ ما.')); return; }
       if (data.devCode) setDevCode(data.devCode);
       setOtpStep('otp');
-    } catch {
-      setError(t('Network error. Please try again.', 'خطأ في الشبكة. حاول مرة أخرى.'));
-    } finally { setLoading(false); }
+    } catch { setError(t('Network error. Please try again.', 'خطأ في الشبكة. حاول مرة أخرى.')); }
+    finally { setLoading(false); }
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // OTP login — verify code
+  // OTP flow — verify
   // ─────────────────────────────────────────────────────────────────────────
   async function handleVerifyOtp(e: React.FormEvent) {
     e.preventDefault();
     const code = otp.join('');
     if (code.length < 6) return;
-    setError(null);
-    setLoading(true);
+    setError(null); setLoading(true);
     try {
-      const body = tab === 'email_otp'
-        ? { email: identifier.trim(), code }
-        : { phone: identifier.trim(), code };
+      const body = userTab === 'email_otp' ? { email: identifier.trim(), code } : { phone: identifier.trim(), code };
       const res  = await fetch(api('/auth/verify-otp'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) {
         if (data.error === 'otp_attempt_limit') {
-          setError(t('Too many failed attempts. Please request a new code.', 'محاولات فاشلة كثيرة. يرجى طلب رمز جديد.'));
-          setOtpStep('identifier'); resetOtp(); setDevCode(null);
+          setOtpStep('identifier'); setOtp(['', '', '', '', '', '']); setDevCode(null);
+          setError(t('Too many attempts. Request a new code.', 'محاولات كثيرة. اطلب رمزاً جديداً.'));
         } else {
-          setError(data.message || t('Invalid code', 'رمز غير صحيح'));
+          setError(data.message || t('Invalid code.', 'رمز غير صحيح.'));
         }
         return;
       }
-      await finishLogin(data.token ?? data.accessToken, data.user);
-    } catch {
-      setError(t('Network error. Please try again.', 'خطأ في الشبكة. حاول مرة أخرى.'));
-    } finally { setLoading(false); }
+      await finishLogin(data.token ?? data.accessToken, data.user, 'user');
+    } catch { setError(t('Network error. Please try again.', 'خطأ في الشبكة. حاول مرة أخرى.')); }
+    finally { setLoading(false); }
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Password login
+  // Password login — handles user / restaurant / admin
   // ─────────────────────────────────────────────────────────────────────────
   async function handlePasswordLogin(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!pwdIdentifier.trim() || !password) return;
+    if (!pwdEmail.trim() || !password) return;
     setLoading(true);
     try {
-      const id = pwdIdentifier.trim();
+      const id = pwdEmail.trim();
       const body = id.includes('@')
         ? { email: id, password }
-        : id.match(/^\+?\d/)
-          ? { phone: id, password }
-          : { username: id, password };
+        : id.match(/^\+?\d/) ? { phone: id, password } : { username: id, password };
 
       const res  = await fetch(api('/auth/login'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) {
-        if (data.error === 'ACCOUNT_LOCKED') {
-          setError(t(`Account locked. Try again in ${Math.ceil((data.retry_after ?? 300) / 60)} minutes.`, `الحساب مقفل. حاول بعد ${Math.ceil((data.retry_after ?? 300) / 60)} دقيقة.`));
-        } else {
-          setError(data.message || t('Invalid credentials', 'بيانات الدخول غير صحيحة'));
-        }
+        const msg = data.error === 'ACCOUNT_LOCKED'
+          ? t(`Account locked. Try again in ${Math.ceil((data.retry_after ?? 300) / 60)} minutes.`,
+              `الحساب مقفل. حاول بعد ${Math.ceil((data.retry_after ?? 300) / 60)} دقيقة.`)
+          : data.error === 'no_password'
+          ? t('This account uses OTP login. Use the code method instead.', 'هذا الحساب يستخدم رمز OTP. استخدم طريقة الرمز.')
+          : data.message || t('Invalid credentials.', 'بيانات الدخول غير صحيحة.');
+        setError(msg);
         return;
       }
-      // TOTP gate — admin with 2FA enabled
-      if (data.requires_totp && data.temp_token) {
-        setTotpTempToken(data.temp_token);
-        setTotpPending(true);
-        setError(null);
-        return;
-      }
-      await finishLogin(data.accessToken ?? data.token, data.user);
-    } catch {
-      setError(t('Network error. Please try again.', 'خطأ في الشبكة. حاول مرة أخرى.'));
-    } finally { setLoading(false); }
+      await finishLogin(data.accessToken ?? data.token, data.user, mode);
+    } catch { setError(t('Network error. Please try again.', 'خطأ في الشبكة. حاول مرة أخرى.')); }
+    finally { setLoading(false); }
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // TOTP verify — exchange temp_token + code for full session
-  // ─────────────────────────────────────────────────────────────────────────
-  async function handleTotpVerify(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    const codeStr = useBackupCode ? backupCode.trim() : totpCode.join('');
-    if (!useBackupCode && codeStr.length < 6) return;
-    setLoading(true);
-    try {
-      const body = useBackupCode
-        ? { temp_token: totpTempToken, backup_code: codeStr }
-        : { temp_token: totpTempToken, code: codeStr };
-      const res  = await fetch(api('/auth/totp/verify'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-      if (!res.ok) { setError(data.message || t('Invalid code. Please try again.', 'الرمز غير صحيح. حاول مجدداً.')); return; }
-      await finishLogin(data.accessToken, data.user);
-    } catch {
-      setError(t('Network error. Please try again.', 'خطأ في الشبكة. حاول مرة أخرى.'));
-    } finally { setLoading(false); }
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // OAuth — Google (uses Google Identity Services)
-  // ─────────────────────────────────────────────────────────────────────────
-
-  async function handleGoogleCredential(credential: string) {
-    setLoading(true); setError(null);
-    try {
-      const res  = await fetch(api('/auth/oauth/google'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id_token: credential }),
-      });
-      const data = await res.json();
-      if (!res.ok) { setError(data.message || t('Google sign-in failed.', 'فشل تسجيل الدخول بـ Google.')); return; }
-      await finishLogin(data.accessToken, data.user);
-    } catch {
-      setError(t('Network error.', 'خطأ في الشبكة.'));
-    } finally { setLoading(false); }
-  }
-
-  async function handleAppleSignIn() {
-    const AppleID = (window as any).AppleID;
-    if (!AppleID) { setError(t('Apple sign-in not available.', 'تسجيل الدخول بـ Apple غير متاح.')); return; }
-    setLoading(true); setError(null);
-    try {
-      const result = await AppleID.auth.signIn();
-      const identityToken = result?.authorization?.id_token;
-      if (!identityToken) { setError(t('Apple sign-in failed.', 'فشل تسجيل الدخول بـ Apple.')); return; }
-      const appleUser = result?.user ?? undefined;
-      const res = await fetch(api('/auth/oauth/apple'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identity_token: identityToken, user: appleUser }),
-      });
-      const data = await res.json();
-      if (!res.ok) { setError(data.message || t('Apple sign-in failed.', 'فشل تسجيل الدخول بـ Apple.')); return; }
-      await finishLogin(data.accessToken, data.user);
-    } catch (err: any) {
-      if (err?.error !== 'popup_closed_by_user') {
-        setError(t('Apple sign-in failed.', 'فشل تسجيل الدخول بـ Apple.'));
-      }
-    } finally { setLoading(false); }
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Forgot password — step 1: send OTP to email
+  // Forgot password flow
   // ─────────────────────────────────────────────────────────────────────────
   async function handleForgotSendOtp(e: React.FormEvent) {
     e.preventDefault();
@@ -379,174 +370,129 @@ export function SignInPage() {
     setLoading(true);
     try {
       const res  = await fetch(api('/auth/password/forgot'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: forgotEmail.trim().toLowerCase() }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.message || t('Something went wrong', 'حدث خطأ ما')); return; }
+      if (!res.ok) { setError(data.message || t('Something went wrong.', 'حدث خطأ ما.')); return; }
       if (data.devCode) setForgotDevCode(data.devCode);
       setForgotStep('otp');
-    } catch {
-      setError(t('Network error. Please try again.', 'خطأ في الشبكة. حاول مرة أخرى.'));
-    } finally { setLoading(false); }
+    } catch { setError(t('Network error. Please try again.', 'خطأ في الشبكة. حاول مرة أخرى.')); }
+    finally { setLoading(false); }
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Forgot password — step 2: verify OTP → get reset_token
-  // ─────────────────────────────────────────────────────────────────────────
   async function handleForgotVerifyOtp(e: React.FormEvent) {
     e.preventDefault();
     const code = forgotOtp.join('');
     if (code.length < 6) return;
-    setError(null);
-    setLoading(true);
+    setError(null); setLoading(true);
     try {
       const res  = await fetch(api('/auth/password/verify-otp'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: forgotEmail.trim().toLowerCase(), otp: code }),
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.message || t('Invalid or expired code', 'رمز غير صحيح أو منتهي الصلاحية'));
-        if (data.error === 'otp_voided') { resetForgotOtp(); setForgotStep('email'); }
+        setError(data.message || t('Invalid or expired code.', 'رمز غير صحيح أو منتهي الصلاحية.'));
+        if (data.error === 'otp_voided') { setForgotOtp(['', '', '', '', '', '']); setForgotStep('email'); }
         return;
       }
       setResetToken(data.reset_token);
       setForgotStep('new_password');
-    } catch {
-      setError(t('Network error. Please try again.', 'خطأ في الشبكة. حاول مرة أخرى.'));
-    } finally { setLoading(false); }
+    } catch { setError(t('Network error. Please try again.', 'خطأ في الشبكة. حاول مرة أخرى.')); }
+    finally { setLoading(false); }
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Forgot password — step 3: set new password
-  // ─────────────────────────────────────────────────────────────────────────
   async function handleForgotReset(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (newPassword !== confirmPassword) {
-      setError(t("Passwords don't match", 'كلمتا المرور غير متطابقتين'));
-      return;
-    }
-    if (newPassword.length < 8) {
-      setError(t('Password must be at least 8 characters', 'يجب أن تكون كلمة المرور 8 أحرف على الأقل'));
-      return;
-    }
+    if (newPwd !== confirmPwd) { setError(t('Passwords do not match.', 'كلمتا المرور غير متطابقتين.')); return; }
+    if (newPwd.length < 8) { setError(t('Password must be at least 8 characters.', 'يجب أن تكون كلمة المرور 8 أحرف على الأقل.')); return; }
     setLoading(true);
     try {
       const res  = await fetch(api('/auth/password/reset'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reset_token: resetToken, new_password: newPassword }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reset_token: resetToken, new_password: newPwd }),
       });
       const data = await res.json();
-      if (!res.ok) {
-        setError(data.message || (data.requirements ? data.requirements.join(', ') : t('Password reset failed', 'فشل إعادة تعيين كلمة المرور')));
-        return;
-      }
+      if (!res.ok) { setError(data.message || t('Reset failed.', 'فشل إعادة التعيين.')); return; }
       setForgotStep('done');
-    } catch {
-      setError(t('Network error. Please try again.', 'خطأ في الشبكة. حاول مرة أخرى.'));
-    } finally { setLoading(false); }
-  }
-
-  function openForgot() {
-    setForgotOpen(true);
-    setForgotStep('email');
-    setForgotEmail(pwdIdentifier.includes('@') ? pwdIdentifier : '');
-    setForgotDevCode(null);
-    resetForgotOtp();
-    setResetToken('');
-    setNewPassword('');
-    setConfirmPassword('');
-    setError(null);
-  }
-
-  function closeForgot() {
-    setForgotOpen(false);
-    setError(null);
-  }
-
-  function switchTab(t: AuthTab) {
-    setTab(t);
-    setOtpStep('identifier');
-    setIdentifier('');
-    resetOtp();
-    setDevCode(null);
-    setError(null);
-    setForgotOpen(false);
+    } catch { setError(t('Network error. Please try again.', 'خطأ في الشبكة. حاول مرة أخرى.')); }
+    finally { setLoading(false); }
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Render helpers
+  // Render: Forgot password overlay
   // ─────────────────────────────────────────────────────────────────────────
-  const isRtl = lang === 'ar';
-
-  const TABS: { id: AuthTab; icon: React.ElementType; en: string; ar: string }[] = [
-    { id: 'phone',     icon: Phone, en: 'Phone',    ar: 'هاتف' },
-    { id: 'email_otp', icon: Mail,  en: 'Email OTP', ar: 'بريد + OTP' },
-    { id: 'password',  icon: Lock,  en: 'Password',  ar: 'كلمة المرور' },
-  ];
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Forgot Password overlay content
-  // ─────────────────────────────────────────────────────────────────────────
-  const forgotContent = (
-    <div className="space-y-5">
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-1">
-        <button
-          type="button"
-          onClick={forgotStep === 'done' ? closeForgot : () => {
-            if (forgotStep === 'email') closeForgot();
-            else if (forgotStep === 'otp') { setForgotStep('email'); setError(null); resetForgotOtp(); }
-            else if (forgotStep === 'new_password') { setForgotStep('otp'); setError(null); }
-          }}
-          className="text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ArrowLeft className={`w-5 h-5 ${isRtl ? 'rotate-180' : ''}`} />
-        </button>
-        <div>
-          <h3 className="text-lg font-bold">
-            {forgotStep === 'email'       && t('Reset your password', 'إعادة تعيين كلمة المرور')}
-            {forgotStep === 'otp'         && t('Check your email', 'تحقق من بريدك الإلكتروني')}
-            {forgotStep === 'new_password'&& t('Set new password', 'تعيين كلمة مرور جديدة')}
-            {forgotStep === 'done'        && t('Password reset!', 'تم إعادة التعيين!')}
-          </h3>
-          <p className="text-xs text-muted-foreground">
-            {forgotStep === 'email'        && t('Enter the email linked to your account', 'أدخل البريد الإلكتروني المرتبط بحسابك')}
-            {forgotStep === 'otp'          && t(`We sent a 6-digit code to ${forgotEmail}`, `أرسلنا رمزاً من 6 أرقام إلى ${forgotEmail}`)}
-            {forgotStep === 'new_password' && t('Choose a strong new password', 'اختر كلمة مرور جديدة قوية')}
-            {forgotStep === 'done'         && t('Your password has been updated. You can sign in now.', 'تم تحديث كلمة المرور. يمكنك تسجيل الدخول الآن.')}
-          </p>
+  function renderForgot() {
+    if (forgotStep === 'done') {
+      return (
+        <div className="flex flex-col items-center gap-4 py-8 text-center">
+          <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center">
+            <CheckCircle2 className="w-7 h-7 text-green-600" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-slate-900">{t('Password reset!', 'تم إعادة تعيين كلمة المرور!')}</h3>
+            <p className="text-sm text-slate-500 mt-1">{t('You can now sign in with your new password.', 'يمكنك الآن تسجيل الدخول بكلمة المرور الجديدة.')}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => { setForgotOpen(false); setForgotStep('email'); setForgotEmail(''); setForgotOtp(['', '', '', '', '', '']); setNewPwd(''); setConfirmPwd(''); }}
+            className="text-sm font-semibold text-primary hover:underline"
+          >
+            {t('Back to sign in', 'العودة لتسجيل الدخول')}
+          </button>
         </div>
-      </div>
-
-      {/* Step: email */}
-      {forgotStep === 'email' && (
-        <form onSubmit={handleForgotSendOtp} className="space-y-4">
-          <Input
-            type="email"
-            placeholder="you@example.com"
-            value={forgotEmail}
-            onChange={e => setForgotEmail(e.target.value)}
-            className="h-12 rounded-xl"
-            dir="ltr"
-            autoFocus
-          />
+      );
+    }
+    if (forgotStep === 'new_password') {
+      return (
+        <form onSubmit={handleForgotReset} className="flex flex-col gap-4">
+          <div className="text-center">
+            <h3 className="font-semibold text-slate-900">{t('Set new password', 'تعيين كلمة مرور جديدة')}</h3>
+            <p className="text-sm text-slate-500 mt-1">{t('Choose a strong password of at least 8 characters.', 'اختر كلمة مرور قوية من 8 أحرف على الأقل.')}</p>
+          </div>
           {error && <ErrorBanner msg={error} />}
-          <Button type="submit" className="w-full h-12 rounded-xl font-semibold" disabled={loading || !forgotEmail.trim()}>
-            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : t('Send Reset Code', 'إرسال رمز الاسترداد')}
-          </Button>
+          <Field label={t('New password', 'كلمة المرور الجديدة')}>
+            <div className="relative">
+              <TextInput
+                icon={<Lock className="w-4 h-4" />}
+                type={showNewPwd ? 'text' : 'password'}
+                value={newPwd}
+                onChange={e => setNewPwd(e.target.value)}
+                placeholder={t('Minimum 8 characters', '8 أحرف على الأقل')}
+                required
+              />
+              <button type="button" onClick={() => setShowNewPwd(p => !p)} className="absolute end-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                {showNewPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </Field>
+          <Field label={t('Confirm password', 'تأكيد كلمة المرور')}>
+            <TextInput
+              icon={<Lock className="w-4 h-4" />}
+              type="password"
+              value={confirmPwd}
+              onChange={e => setConfirmPwd(e.target.value)}
+              placeholder={t('Repeat password', 'أعد كلمة المرور')}
+              required
+            />
+          </Field>
+          <PrimaryBtn loading={loading}>{t('Reset password', 'إعادة تعيين')}</PrimaryBtn>
         </form>
-      )}
-
-      {/* Step: OTP */}
-      {forgotStep === 'otp' && (
-        <form onSubmit={handleForgotVerifyOtp} className="space-y-4">
-          {forgotDevCode && <DevBanner code={forgotDevCode} label={t('Dev mode — your reset OTP:', 'وضع التطوير — رمز الاسترداد:')} />}
+      );
+    }
+    if (forgotStep === 'otp') {
+      return (
+        <form onSubmit={handleForgotVerifyOtp} className="flex flex-col gap-4">
+          <div className="text-center">
+            <h3 className="font-semibold text-slate-900">{t('Check your email', 'تحقق من بريدك')}</h3>
+            <p className="text-sm text-slate-500 mt-1">
+              {t(`We sent a code to ${forgotEmail}`, `أرسلنا رمزاً إلى ${forgotEmail}`)}
+            </p>
+          </div>
+          {forgotDevCode && <DevBanner code={forgotDevCode} />}
+          {error && <ErrorBanner msg={error} />}
           <OtpBoxes
             otp={forgotOtp}
             onChange={(i, v) => handleOtpChange(forgotOtp, setForgotOtp, forgotOtpRefs, i, v)}
@@ -554,397 +500,380 @@ export function SignInPage() {
             onPaste={e => handleOtpPaste(setForgotOtp, forgotOtpRefs, e)}
             refs={forgotOtpRefs}
           />
-          {error && <ErrorBanner msg={error} />}
-          <Button type="submit" className="w-full h-12 rounded-xl font-semibold" disabled={loading || forgotOtp.join('').length < 6}>
-            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : t('Verify Code', 'التحقق من الرمز')}
-          </Button>
-          <button type="button" onClick={() => { setForgotStep('email'); resetForgotOtp(); setForgotDevCode(null); setError(null); }}
-            className="w-full text-sm text-muted-foreground hover:text-foreground text-center py-1 transition-colors">
-            {t('← Resend or change email', '← إعادة الإرسال أو تغيير البريد')}
-          </button>
+          <PrimaryBtn loading={loading}>{t('Verify code', 'تحقق من الرمز')}</PrimaryBtn>
         </form>
-      )}
+      );
+    }
+    return (
+      <form onSubmit={handleForgotSendOtp} className="flex flex-col gap-4">
+        <div className="text-center">
+          <h3 className="font-semibold text-slate-900">{t('Reset your password', 'إعادة تعيين كلمة المرور')}</h3>
+          <p className="text-sm text-slate-500 mt-1">{t("Enter your account email and we'll send a verification code.", 'أدخل بريدك الإلكتروني وسنرسل لك رمز التحقق.')}</p>
+        </div>
+        {error && <ErrorBanner msg={error} />}
+        <Field label={t('Email address', 'البريد الإلكتروني')}>
+          <TextInput
+            icon={<Mail className="w-4 h-4" />}
+            type="email"
+            value={forgotEmail}
+            onChange={e => setForgotEmail(e.target.value)}
+            placeholder="email@example.com"
+            required
+          />
+        </Field>
+        <PrimaryBtn loading={loading}>{t('Send reset code', 'إرسال رمز الاستعادة')}</PrimaryBtn>
+        <button type="button" onClick={() => { setForgotOpen(false); setError(null); }} className="text-sm text-slate-500 hover:text-slate-700 text-center">
+          {t('Back to sign in', 'العودة لتسجيل الدخول')}
+        </button>
+      </form>
+    );
+  }
 
-      {/* Step: new password */}
-      {forgotStep === 'new_password' && (
-        <form onSubmit={handleForgotReset} className="space-y-4">
+  // ─────────────────────────────────────────────────────────────────────────
+  // Render: Password form (shared by all modes)
+  // ─────────────────────────────────────────────────────────────────────────
+  function renderPasswordForm(showForgot = true) {
+    return (
+      <form onSubmit={handlePasswordLogin} className="flex flex-col gap-4">
+        {error && <ErrorBanner msg={error} />}
+        <Field label={t('Email address', 'البريد الإلكتروني')}>
+          <TextInput
+            icon={<Mail className="w-4 h-4" />}
+            type="email"
+            value={pwdEmail}
+            onChange={e => { setPwdEmail(e.target.value); setError(null); }}
+            placeholder="email@example.com"
+            required
+            autoFocus
+          />
+        </Field>
+        <Field label={t('Password', 'كلمة المرور')}>
           <div className="relative">
-            <Input
-              type={showNewPwd ? 'text' : 'password'}
-              placeholder={t('New password', 'كلمة المرور الجديدة')}
-              value={newPassword}
-              onChange={e => setNewPassword(e.target.value)}
-              className="h-12 rounded-xl pr-11"
-              autoFocus
+            <TextInput
+              icon={<Lock className="w-4 h-4" />}
+              type={showPwd ? 'text' : 'password'}
+              value={password}
+              onChange={e => { setPassword(e.target.value); setError(null); }}
+              placeholder={t('Your password', 'كلمة المرور')}
+              required
             />
-            <button type="button" onClick={() => setShowNewPwd(v => !v)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-              {showNewPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            <button type="button" onClick={() => setShowPwd(p => !p)} className="absolute end-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+              {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
           </div>
-          <Input
-            type={showNewPwd ? 'text' : 'password'}
-            placeholder={t('Confirm new password', 'تأكيد كلمة المرور الجديدة')}
-            value={confirmPassword}
-            onChange={e => setConfirmPassword(e.target.value)}
-            className="h-12 rounded-xl"
-          />
-          <p className="text-xs text-muted-foreground">{t('Min 8 characters, 1 uppercase, 1 number', 'الحد الأدنى 8 أحرف، حرف كبير، ورقم واحد')}</p>
-          {error && <ErrorBanner msg={error} />}
-          <Button type="submit" className="w-full h-12 rounded-xl font-semibold" disabled={loading || !newPassword || !confirmPassword}>
-            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : t('Reset Password', 'إعادة تعيين كلمة المرور')}
-          </Button>
-        </form>
-      )}
-
-      {/* Step: done */}
-      {forgotStep === 'done' && (
-        <div className="text-center space-y-4 py-4">
-          <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto">
-            <CheckCircle2 className="w-8 h-8 text-green-600" />
+        </Field>
+        {showForgot && (
+          <div className="flex justify-end -mt-1">
+            <button type="button" onClick={() => { setForgotOpen(true); setError(null); setForgotEmail(pwdEmail); }} className="text-xs text-primary hover:underline font-medium">
+              {t('Forgot password?', 'نسيت كلمة المرور؟')}
+            </button>
           </div>
-          <Button onClick={() => { closeForgot(); switchTab('password'); }} className="w-full h-12 rounded-xl font-semibold">
-            {t('Sign in with new password', 'تسجيل الدخول بالكلمة الجديدة')}
-          </Button>
-        </div>
-      )}
-    </div>
-  );
+        )}
+        <PrimaryBtn loading={loading}>
+          <span>{t('Sign in', 'تسجيل الدخول')}</span>
+          <ChevronRight className="w-4 h-4" />
+        </PrimaryBtn>
+      </form>
+    );
+  }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // TOTP step — shown after password login when 2FA is required
+  // Render: User OTP form
   // ─────────────────────────────────────────────────────────────────────────
-  const totpContent = (
-    <form onSubmit={handleTotpVerify} className="space-y-6">
-      <div className="text-center">
-        <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
-          <ShieldCheck className="w-7 h-7 text-primary" />
-        </div>
-        <h3 className="text-xl font-bold">{t('Two-factor authentication', 'التحقق بخطوتين')}</h3>
-        <p className="text-sm text-muted-foreground mt-1">
-          {useBackupCode
-            ? t('Enter one of your backup codes to continue.', 'أدخل أحد رموز الاسترداد للمتابعة.')
-            : t('Enter the 6-digit code from your authenticator app.', 'أدخل الرمز المكوّن من 6 أرقام من تطبيق المصادقة.')
-          }
-        </p>
-      </div>
+  function renderUserOtpForm() {
+    if (otpStep === 'otp') {
+      return (
+        <form onSubmit={handleVerifyOtp} className="flex flex-col gap-4">
+          <div className="text-center">
+            <p className="text-sm text-slate-500">
+              {t(`Code sent to ${identifier}`, `تم إرسال رمز إلى ${identifier}`)}
+            </p>
+          </div>
+          {devCode && <DevBanner code={devCode} />}
+          {error && <ErrorBanner msg={error} />}
+          <OtpBoxes
+            otp={otp}
+            onChange={(i, v) => handleOtpChange(otp, setOtp, otpRefs, i, v)}
+            onKeyDown={(i, e) => handleOtpKeyDown(otp, otpRefs, i, e)}
+            onPaste={e => handleOtpPaste(setOtp, otpRefs, e)}
+            refs={otpRefs}
+          />
+          <PrimaryBtn loading={loading}>{t('Verify & sign in', 'تحقق وادخل')}</PrimaryBtn>
+          <button type="button" onClick={() => { setOtpStep('identifier'); setOtp(['', '', '', '', '', '']); setDevCode(null); setError(null); }}
+            className="flex items-center justify-center gap-1.5 text-sm text-slate-500 hover:text-slate-700">
+            <RotateCcw className="w-3.5 h-3.5" /> {t('Change number / Resend', 'تغيير أو إعادة إرسال')}
+          </button>
+        </form>
+      );
+    }
+    const isEmail = userTab === 'email_otp';
+    return (
+      <form onSubmit={handleSendOtp} className="flex flex-col gap-4">
+        {error && <ErrorBanner msg={error} />}
+        <Field label={isEmail ? t('Email address', 'البريد الإلكتروني') : t('Mobile number', 'رقم الجوال')}>
+          <TextInput
+            icon={isEmail ? <Mail className="w-4 h-4" /> : <Phone className="w-4 h-4" />}
+            type={isEmail ? 'email' : 'tel'}
+            value={identifier}
+            onChange={e => { setIdentifier(e.target.value); setError(null); }}
+            placeholder={isEmail ? 'email@example.com' : '+966 5X XXX XXXX'}
+            dir="ltr"
+            required
+            autoFocus
+          />
+        </Field>
+        <PrimaryBtn loading={loading}>
+          <span>{t('Send code', 'إرسال رمز التحقق')}</span>
+          <ChevronRight className="w-4 h-4" />
+        </PrimaryBtn>
+      </form>
+    );
+  }
 
-      {!useBackupCode ? (
-        <div className="flex justify-center gap-2" dir="ltr">
-          {totpCode.map((digit, i) => (
-            <input
-              key={i}
-              ref={el => { totpRefs.current[i] = el; }}
-              type="tel"
-              inputMode="numeric"
-              maxLength={1}
-              value={digit}
-              autoFocus={i === 0}
-              onChange={e => {
-                const v = e.target.value.replace(/\D/g, '').slice(-1);
-                const next = [...totpCode]; next[i] = v; setTotpCode(next);
-                if (v && i < 5) totpRefs.current[i + 1]?.focus();
-              }}
-              onKeyDown={e => { if (e.key === 'Backspace' && !totpCode[i] && i > 0) totpRefs.current[i - 1]?.focus(); }}
-              className="w-11 h-14 text-center text-xl font-bold rounded-xl border-2 border-input bg-background focus:border-primary focus:outline-none transition-colors"
-            />
+  // ─────────────────────────────────────────────────────────────────────────
+  // Render: User panel (tabs: phone | email_otp | password)
+  // ─────────────────────────────────────────────────────────────────────────
+  function renderUserPanel() {
+    const tabs: { key: UserLoginTab; icon: React.ReactNode; label_en: string; label_ar: string }[] = [
+      { key: 'phone',     icon: <Phone className="w-3.5 h-3.5" />, label_en: 'Mobile',   label_ar: 'جوال' },
+      { key: 'email_otp', icon: <Mail  className="w-3.5 h-3.5" />, label_en: 'Email OTP', label_ar: 'بريد + رمز' },
+      { key: 'password',  icon: <Lock  className="w-3.5 h-3.5" />, label_en: 'Password',  label_ar: 'كلمة مرور' },
+    ];
+    return (
+      <div className="flex flex-col gap-5">
+        {/* Login method tabs */}
+        <div className="flex gap-1 p-1 bg-slate-100 rounded-xl">
+          {tabs.map(tab => (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => switchUserTab(tab.key)}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-semibold transition-all ${
+                userTab === tab.key ? 'bg-white shadow text-primary' : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              {tab.icon}
+              {lang === 'ar' ? tab.label_ar : tab.label_en}
+            </button>
           ))}
         </div>
-      ) : (
-        <input
-          type="text"
-          value={backupCode}
-          onChange={e => setBackupCode(e.target.value)}
-          placeholder="XXXXX-XXXXX"
-          autoFocus
-          dir="ltr"
-          className="w-full h-12 px-4 rounded-xl border border-input bg-background text-center text-base tracking-widest font-mono focus:border-primary focus:outline-none"
-        />
-      )}
-
-      {error && <p className="text-center text-sm text-destructive">{error}</p>}
-
-      <Button type="submit" className="w-full h-12 rounded-xl font-semibold"
-        disabled={loading || (!useBackupCode && totpCode.join('').length < 6) || (useBackupCode && !backupCode.trim())}>
-        {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : t('Verify', 'تحقق')}
-      </Button>
-
-      <div className="flex items-center justify-between text-sm">
-        <button type="button" className="text-muted-foreground hover:text-foreground transition-colors"
-          onClick={() => { setTotpPending(false); setTotpTempToken(''); setTotpCode(['','','','','','']); setUseBackupCode(false); setBackupCode(''); setError(null); }}>
-          ← {t('Cancel', 'إلغاء')}
-        </button>
-        <button type="button" className="text-primary hover:underline transition-colors"
-          onClick={() => { setUseBackupCode(v => !v); setError(null); }}>
-          {useBackupCode ? t('Use authenticator app', 'استخدام تطبيق المصادقة') : t('Use backup code', 'استخدام رمز الاسترداد')}
-        </button>
+        {userTab === 'password' ? renderPasswordForm(true) : renderUserOtpForm()}
+        <div className="text-center text-sm text-slate-500">
+          {t("Don't have an account?", 'ليس لديك حساب؟')}{' '}
+          <Link href="/register" className="text-primary font-semibold hover:underline">
+            {t('Register', 'سجّل الآن')}
+          </Link>
+        </div>
       </div>
-    </form>
-  );
+    );
+  }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // OAuth social sign-in buttons
+  // Render: Restaurant panel
   // ─────────────────────────────────────────────────────────────────────────
-  const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
-  const APPLE_CLIENT_ID  = import.meta.env.VITE_APPLE_CLIENT_ID  as string | undefined;
-  const showOAuth = !!(GOOGLE_CLIENT_ID || APPLE_CLIENT_ID);
-
-  const oauthButtons = showOAuth && (
-    <div className="space-y-3">
-      {GOOGLE_CLIENT_ID && (
-        <div
-          id="google-signin-btn"
-          ref={el => {
-            if (!el || el.hasChildNodes()) return;
-            const google = (window as any).google;
-            if (!google) return;
-            google.accounts.id.initialize({
-              client_id: GOOGLE_CLIENT_ID,
-              callback: (res: any) => handleGoogleCredential(res.credential),
-            });
-            google.accounts.id.renderButton(el, { theme: 'outline', size: 'large', width: el.offsetWidth || 360 });
-          }}
-        />
-      )}
-      {APPLE_CLIENT_ID && (
-        <button type="button" onClick={handleAppleSignIn} disabled={loading}
-          className="w-full h-12 flex items-center justify-center gap-3 rounded-xl border border-border bg-background hover:bg-muted font-semibold text-sm transition-colors">
-          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
-          </svg>
-          {t('Continue with Apple', 'المتابعة بـ Apple')}
-        </button>
-      )}
-      <div className="relative">
-        <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border" /></div>
-        <div className="relative flex justify-center text-xs text-muted-foreground bg-background px-3 w-fit mx-auto">{t('or', 'أو')}</div>
-      </div>
-    </div>
-  );
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Main sign-in form content
-  // ─────────────────────────────────────────────────────────────────────────
-  const mainContent = (
-    <div className="space-y-5">
-      {/* Tab bar */}
-      <div className="flex rounded-2xl border border-border overflow-hidden">
-        {TABS.map(({ id, icon: Icon, en, ar }) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => switchTab(id)}
-            className={`flex-1 py-3 text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 transition-colors
-              ${tab === id ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}
-          >
-            <Icon className="w-4 h-4" />
-            {lang === 'ar' ? ar : en}
-          </button>
-        ))}
-      </div>
-
-      {/* OAuth social buttons — shown above the tab form when credentials are configured */}
-      {oauthButtons}
-
-      {/* ── Phone OTP ─────────────────────────────────────────────────── */}
-      {(tab === 'phone' || tab === 'email_otp') && (
-        <>
-          {otpStep === 'identifier' ? (
-            <form onSubmit={handleSendOtp} className="space-y-4">
-              <div>
-                <label className="text-sm font-semibold mb-2 block">
-                  {tab === 'phone' ? t('Phone Number', 'رقم الهاتف') : t('Email Address', 'عنوان البريد الإلكتروني')}
-                </label>
-                <Input
-                  type={tab === 'email_otp' ? 'email' : 'tel'}
-                  placeholder={tab === 'email_otp' ? 'you@example.com' : '+966 5X XXX XXXX'}
-                  value={identifier}
-                  onChange={e => setIdentifier(e.target.value)}
-                  className="h-12 rounded-xl"
-                  autoFocus
-                  dir="ltr"
-                />
-              </div>
-              {error && <ErrorBanner msg={error} />}
-              <Button type="submit" className="w-full h-12 rounded-xl font-semibold" disabled={loading || !identifier.trim()}>
-                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
-                  <span className="flex items-center gap-2">
-                    {t('Send Verification Code', 'إرسال رمز التحقق')}
-                    <ChevronRight className={`w-5 h-5 ${isRtl ? 'rotate-180' : ''}`} />
-                  </span>
-                )}
-              </Button>
-            </form>
-          ) : (
-            <form onSubmit={handleVerifyOtp} className="space-y-4">
-              {devCode && <DevBanner code={devCode} label={t('Dev mode — your OTP:', 'وضع التطوير — رمزك:')} />}
-              <OtpBoxes
-                otp={otp}
-                onChange={(i, v) => handleOtpChange(otp, setOtp, otpRefs, i, v)}
-                onKeyDown={(i, e) => handleOtpKeyDown(otp, otpRefs, i, e)}
-                onPaste={e => handleOtpPaste(setOtp, otpRefs, e)}
-                refs={otpRefs}
-              />
-              {error && <ErrorBanner msg={error} />}
-              <Button type="submit" className="w-full h-12 rounded-xl font-semibold" disabled={loading || otp.join('').length < 6}>
-                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
-                  <span className="flex items-center gap-2">
-                    <CheckCircle2 className="w-5 h-5" />
-                    {t('Verify & Sign In', 'تحقق وتسجيل الدخول')}
-                  </span>
-                )}
-              </Button>
-              <button type="button" onClick={() => { setOtpStep('identifier'); resetOtp(); setDevCode(null); setError(null); }}
-                className="w-full text-sm text-muted-foreground hover:text-foreground text-center py-1 transition-colors">
-                {t('← Change contact info', '← تغيير معلومات الاتصال')}
-              </button>
-            </form>
-          )}
-        </>
-      )}
-
-      {/* ── Password login ─────────────────────────────────────────────── */}
-      {tab === 'password' && (
-        <form onSubmit={handlePasswordLogin} className="space-y-4">
-          <div>
-            <label className="text-sm font-semibold mb-2 block">
-              {t('Email or username', 'البريد الإلكتروني أو اسم المستخدم')}
-            </label>
-            <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                type="text"
-                placeholder={t('Email, username, or phone', 'البريد أو اسم المستخدم أو الهاتف')}
-                value={pwdIdentifier}
-                onChange={e => setPwdIdentifier(e.target.value)}
-                className="h-12 rounded-xl pl-10"
-                autoFocus
-                dir="ltr"
-                autoComplete="username"
-              />
-            </div>
+  function renderRestaurantPanel() {
+    return (
+      <div className="flex flex-col gap-5">
+        <div className="flex items-start gap-3 bg-orange-50 border border-orange-200 rounded-xl p-3.5">
+          <Building2 className="w-5 h-5 text-orange-500 shrink-0 mt-0.5" />
+          <div className="text-sm">
+            <p className="font-semibold text-orange-800">
+              {t('Restaurant / Business Account', 'حساب مطعم أو منشأة تجارية')}
+            </p>
+            <p className="text-orange-600 mt-0.5 text-xs">
+              {t('Sign in with the owner email linked to your restaurant on Tabaq.', 'سجّل الدخول بالبريد الإلكتروني للمالك المرتبط بمطعمك في طبق.')}
+            </p>
           </div>
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-semibold">{t('Password', 'كلمة المرور')}</label>
-              <button type="button" onClick={openForgot}
-                className="text-xs text-primary hover:underline font-medium">
-                {t('Forgot password?', 'نسيت كلمة المرور؟')}
-              </button>
-            </div>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                type={showPassword ? 'text' : 'password'}
-                placeholder="••••••••"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                className="h-12 rounded-xl pl-10 pr-11"
-                autoComplete="current-password"
-              />
-              <button type="button" onClick={() => setShowPassword(v => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-          </div>
-          {error && <ErrorBanner msg={error} />}
-          <Button type="submit" className="w-full h-12 rounded-xl font-semibold" disabled={loading || !pwdIdentifier.trim() || !password}>
-            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
-              <span className="flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5" />
-                {t('Sign In', 'تسجيل الدخول')}
-              </span>
-            )}
-          </Button>
-        </form>
-      )}
-    </div>
-  );
+        </div>
+        {renderPasswordForm(true)}
+        <div className="text-center text-sm text-slate-500">
+          {t('Want to list your restaurant?', 'تريد تسجيل مطعمك؟')}{' '}
+          <Link href="/partners/register" className="text-primary font-semibold hover:underline">
+            {t('Apply here', 'قدّم طلبك')}
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Page layout
+  // Render: Admin panel
+  // ─────────────────────────────────────────────────────────────────────────
+  function renderAdminPanel() {
+    return (
+      <div className="flex flex-col gap-5">
+        <div className="flex items-start gap-3 bg-slate-800 rounded-xl p-3.5">
+          <ShieldCheck className="w-5 h-5 text-slate-300 shrink-0 mt-0.5" />
+          <div className="text-sm">
+            <p className="font-semibold text-white">{t('Tabaq Admin Access', 'دخول مسؤولي طبق')}</p>
+            <p className="text-slate-400 mt-0.5 text-xs">
+              {t('Restricted to authorized administrators only.', 'مخصص للمسؤولين المعتمدين فقط.')}
+            </p>
+          </div>
+        </div>
+        {renderPasswordForm(false)}
+      </div>
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Left branding panel content
+  // ─────────────────────────────────────────────────────────────────────────
+  const brandingContent = {
+    user: {
+      headline_en: 'Discover Saudi Arabia\'s finest dining',
+      headline_ar: 'اكتشف أرقى تجارب الطعام في المملكة',
+      sub_en: 'Book tables, earn rewards, follow critics — all in one place.',
+      sub_ar: 'احجز طاولات، اكسب نقاطاً، وتابع نقّاد الطعام — كل شيء في مكان واحد.',
+      stats: [
+        { n: '500+', en: 'Restaurants', ar: 'مطعم' },
+        { n: '50K+', en: 'Reviews', ar: 'تقييم' },
+        { n: '10K+', en: 'Bookings', ar: 'حجز' },
+      ],
+    },
+    restaurant: {
+      headline_en: 'Grow your restaurant with Tabaq',
+      headline_ar: 'طوّر مطعمك مع طبق',
+      sub_en: 'Manage reservations, showcase your menu, and reach thousands of food lovers.',
+      sub_ar: 'أدر الحجوزات، اعرض قائمتك، وتواصل مع آلاف المهتمين بالطعام.',
+      stats: [
+        { n: '49',   en: 'Partner restaurants', ar: 'مطعم شريك' },
+        { n: '12',   en: 'Cities',              ar: 'مدينة' },
+        { n: '10K+', en: 'Monthly bookings',    ar: 'حجز شهري' },
+      ],
+    },
+    admin: {
+      headline_en: 'Tabaq Platform Administration',
+      headline_ar: 'إدارة منصة طبق',
+      sub_en: 'Secure access to the platform control panel for authorized administrators.',
+      sub_ar: 'وصول آمن إلى لوحة التحكم للمسؤولين المعتمدين.',
+      stats: [
+        { n: '49',   en: 'Restaurants', ar: 'مطعم' },
+        { n: '9',    en: 'Users',       ar: 'مستخدم' },
+        { n: '100%', en: 'Uptime',      ar: 'تشغيل مستمر' },
+      ],
+    },
+  };
+  const branding = brandingContent[mode];
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Root render
   // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-background flex" dir={isRtl ? 'rtl' : 'ltr'}>
-      {/* Left decorative panel */}
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
-        <img
-          src="https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=1200&h=900&fit=crop"
-          alt="Fine dining"
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/80 via-primary/60 to-black/70" />
-        <div className="relative z-10 flex flex-col justify-center px-16 text-white">
-          <Link href="/" className="flex items-center gap-3 mb-12 group">
-            <ArrowLeft className="w-5 h-5 opacity-70 group-hover:opacity-100 transition-opacity" />
-            <span className="text-sm opacity-70 group-hover:opacity-100 transition-opacity">{t('Back to home', 'العودة للرئيسية')}</span>
-          </Link>
-          <h1 className="text-5xl font-extrabold mb-4 leading-tight">
-            {t('Welcome to Tabaq', 'مرحباً بك في طبق')}
+    <div className="min-h-screen flex" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+
+      {/* ── Left / Top branding panel ──────────────────────────────────────── */}
+      <div className={`hidden lg:flex lg:flex-col lg:justify-between lg:w-[44%] xl:w-[42%] p-10 xl:p-14 relative overflow-hidden
+        ${mode === 'admin' ? 'bg-slate-900' : 'bg-gradient-to-br from-[#1a0a00] via-[#3d1000] to-[#e23744]'}`}>
+
+        {/* Background pattern */}
+        <div className="absolute inset-0 opacity-10"
+          style={{ backgroundImage: 'radial-gradient(circle at 20% 80%, #e23744 0%, transparent 50%), radial-gradient(circle at 80% 20%, #ff8c00 0%, transparent 50%)' }} />
+
+        {/* Logo */}
+        <div className="relative z-10 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-lg">
+            <span className="text-white font-bold text-lg">ط</span>
+          </div>
+          <span className="text-white font-bold text-xl tracking-wide">Tabaq | طبق</span>
+        </div>
+
+        {/* Headline */}
+        <div className="relative z-10">
+          <h1 className="text-3xl xl:text-4xl font-bold text-white leading-tight mb-4">
+            {lang === 'ar' ? branding.headline_ar : branding.headline_en}
           </h1>
-          <p className="text-xl text-white/80 leading-relaxed mb-10">
-            {t("Saudi Arabia's #1 dining discovery and booking platform.", 'منصة اكتشاف وحجز المطاعم الأولى في المملكة.')}
+          <p className="text-white/70 text-base leading-relaxed mb-10">
+            {lang === 'ar' ? branding.sub_ar : branding.sub_en}
           </p>
-          <div className="space-y-4">
-            {[
-              { icon: '🍽️', en: 'Book tables at top restaurants', ar: 'احجز طاولات في أفضل المطاعم' },
-              { icon: '⭐', en: 'Share reviews and earn points', ar: 'شارك تقييماتك واكسب نقاطاً' },
-              { icon: '🎫', en: 'Get exclusive vouchers & offers', ar: 'احصل على قسائم وعروض حصرية' },
-            ].map((item, i) => (
-              <div key={i} className="flex items-center gap-3 text-white/90">
-                <span className="text-2xl">{item.icon}</span>
-                <span className="text-base">{lang === 'ar' ? item.ar : item.en}</span>
+
+          {/* Stats */}
+          <div className="grid grid-cols-3 gap-4">
+            {branding.stats.map((s, i) => (
+              <div key={i} className="bg-white/10 rounded-2xl p-4 backdrop-blur-sm">
+                <div className="text-2xl font-bold text-white">{s.n}</div>
+                <div className="text-xs text-white/60 mt-1">{lang === 'ar' ? s.ar : s.en}</div>
               </div>
             ))}
           </div>
-          {/* Restaurant partner link on desktop panel */}
-          <div className="mt-12 pt-8 border-t border-white/20">
-            <p className="text-white/60 text-sm mb-3">{t('Are you a restaurant owner?', 'هل أنت صاحب مطعم؟')}</p>
-            <Link href="/partners"
-              className="inline-flex items-center gap-2 text-white font-semibold text-sm hover:text-white/80 transition-colors border border-white/30 rounded-xl px-4 py-2 hover:bg-white/10">
-              <RotateCcw className="w-4 h-4" />
-              {t('Partner with Tabaq →', 'انضم كشريك في طبق ←')}
-            </Link>
-          </div>
+        </div>
+
+        {/* Trust badges */}
+        <div className="relative z-10 flex items-center gap-2 flex-wrap">
+          {[
+            { en: '🔒 Secure & encrypted', ar: '🔒 آمن ومشفّر' },
+            { en: '🇸🇦 Made for Saudi Arabia', ar: '🇸🇦 صُنع للمملكة' },
+          ].map((b, i) => (
+            <span key={i} className="text-xs text-white/50 bg-white/10 rounded-full px-3 py-1">
+              {lang === 'ar' ? b.ar : b.en}
+            </span>
+          ))}
         </div>
       </div>
 
-      {/* Right form panel */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 lg:px-16">
-        <div className="w-full max-w-md">
-          {/* Mobile back link */}
-          <Link href="/" className="lg:hidden flex items-center gap-2 text-muted-foreground hover:text-foreground mb-8 text-sm transition-colors">
+      {/* ── Right form panel ───────────────────────────────────────────────── */}
+      <div className="flex-1 flex flex-col min-h-screen bg-white">
+
+        {/* Top bar */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <Link href="/" className="flex items-center gap-2 text-slate-500 hover:text-slate-700 text-sm transition-colors lg:hidden">
+            <ArrowLeft className="w-4 h-4" />
+            {t('Home', 'الرئيسية')}
+          </Link>
+          <div className="lg:hidden flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
+              <span className="text-white font-bold text-sm">ط</span>
+            </div>
+            <span className="font-bold text-slate-900">طبق</span>
+          </div>
+          <Link href="/" className="hidden lg:flex items-center gap-2 text-slate-500 hover:text-slate-700 text-sm transition-colors">
             <ArrowLeft className="w-4 h-4" />
             {t('Back to home', 'العودة للرئيسية')}
           </Link>
+          <span className="text-xs text-slate-400">{t("Saudi Arabia's #1 dining platform", 'منصة الطعام الأولى في المملكة')}</span>
+        </div>
 
-          {/* Header */}
-          {!forgotOpen && (
-            <div className="mb-8">
-              <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mb-3">
-                {tab === 'phone'     && <Phone className="w-6 h-6 text-primary" />}
-                {tab === 'email_otp' && <Mail  className="w-6 h-6 text-primary" />}
-                {tab === 'password'  && <Lock  className="w-6 h-6 text-primary" />}
-              </div>
-              <h2 className="text-3xl font-bold text-foreground">{t('Sign in', 'تسجيل الدخول')}</h2>
-              <p className="text-muted-foreground mt-1 text-sm">
-                {t("New here? We'll create your account automatically.", 'هنا للمرة الأولى؟ سننشئ حسابك تلقائياً.')}
+        {/* Form area */}
+        <div className="flex-1 flex items-center justify-center px-6 py-10">
+          <div className="w-full max-w-md">
+
+            {/* Heading */}
+            <div className="mb-8 text-center lg:text-start">
+              <h2 className="text-2xl font-bold text-slate-900">
+                {t('Welcome back', 'أهلاً بعودتك')}
+              </h2>
+              <p className="text-slate-500 mt-1.5 text-sm">
+                {t('Sign in to your Tabaq account', 'سجّل الدخول إلى حسابك في طبق')}
               </p>
             </div>
-          )}
 
-          {/* Content: TOTP gate > forgot password flow > main form */}
-          {totpPending ? totpContent : forgotOpen ? forgotContent : mainContent}
+            {/* Forgot password overlay */}
+            {forgotOpen ? (
+              <div className="flex flex-col gap-5">
+                {renderForgot()}
+              </div>
+            ) : (
+              <div className="flex flex-col gap-6">
+                {/* Account type selector */}
+                <AccountModeSelector mode={mode} onChange={switchMode} lang={lang} />
 
-          {/* Footer links */}
-          <div className="mt-8 pt-6 border-t border-border flex flex-col items-center gap-3 text-xs text-muted-foreground">
-            <p>{t('By continuing, you agree to our Terms of Service and Privacy Policy.', 'بالمتابعة، توافق على شروط الخدمة وسياسة الخصوصية.')}</p>
-            <Link href="/partners"
-              className="flex items-center gap-2 text-primary font-medium hover:underline text-sm">
-              {t('Restaurant owner? Register your business →', 'صاحب مطعم؟ سجّل مطعمك ←')}
-            </Link>
+                {/* Form by mode */}
+                {mode === 'user'       && renderUserPanel()}
+                {mode === 'restaurant' && renderRestaurantPanel()}
+                {mode === 'admin'      && renderAdminPanel()}
+              </div>
+            )}
           </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-slate-100 text-center">
+          <p className="text-xs text-slate-400">
+            {t('By signing in you agree to the', 'بتسجيل الدخول فإنك توافق على')}{' '}
+            <a href="#" className="text-primary hover:underline">{t('Terms of Service', 'شروط الخدمة')}</a>
+            {' '}{t('and', 'و')}{' '}
+            <a href="#" className="text-primary hover:underline">{t('Privacy Policy', 'سياسة الخصوصية')}</a>
+          </p>
         </div>
       </div>
     </div>

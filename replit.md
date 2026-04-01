@@ -1,5 +1,44 @@
 # Tabaq | طبق — Workspace
 
+## Platform Hardening — Session 7 (April 2026)
+
+### Authentication System Rebuild (/signin)
+- **SignInPage.tsx fully rebuilt** (953 → 660 lines, cleaner architecture)
+- **Three account modes**: Customer (عميل) / Restaurant (مطعم) / Admin (مسؤول)
+- **Role-aware redirect**: `finishLogin()` now uses `roleDestination(user)` → admin→`/admin`, owner→`/business`, user→`/`
+- **Admin tab**: Email+password only, dark security notice panel, no forgot-password shown
+- **Restaurant tab**: Email+password only, orange info notice with partner link
+- **Customer tab**: Three sub-tabs: Phone OTP | Email OTP | Password
+- **Role validation**: Login from Admin tab rejects non-admins with proper error; Restaurant tab rejects non-owners
+- **Already-logged-in redirect** also uses role-based routing (was always `/`)
+- **Left branding panel**: Dynamic content changes based on selected account mode (user/restaurant/admin stats)
+- **Trust badges, stats, full bilingual RTL/LTR** support
+
+### Catering Packages — 15 packages seeded
+- All 8 catering/buffet menus now have packages: Najd Village (2), Nakheel Palace (2), The Grill House (1+), Casa Levant, Maestro Italian, Spice Route India, Sushi Hana, Café Bateel
+- `/api/catering/packages` returns all 15 packages with restaurant info, images, pricing, included dishes
+- CateringPage now shows "15 باقة متاحة" with full package cards
+
+### Suggested Users API Fix (T006)
+- `/api/users/suggested` now excludes `is_admin=true` and `is_owner=true` accounts
+- Also excludes users with empty usernames — only real food community members appear
+- Returns 6 high-quality profiles: Faisal (7200pts), Khalid (5900pts), Sara (4100pts), Noura (3800pts), Lama (1450pts), Abdullah (980pts)
+
+### TabaqGold Page — Real Testimonials (T004)
+- Reviews query (`/api/reviews?sort=rating`) returns 3 five-star reviews from DB
+- Real testimonials from Faisal Al-Otaibi (Nakheel Palace), Noura Al-Rashid (Najd Village), Sara Al-Mousa (Café Bateel)
+- Fallback TESTIMONIALS updated to use pravatar URLs matching actual DB users (img=47, img=12, img=31)
+
+### StaticPage / About — Realistic Stats (T005)
+- Stats fixed: 2,400+ → **49+** partner restaurants, 18 Cities → **9 Cities**, 1.2M+ → **50K+** registered foodies
+
+### Demo Accounts (from Session 6)
+- admin@tabaq.sa / Tabaq@Admin2026 (is_admin=true → /admin)
+- owner@tabaq.sa / Tabaq@Owner2026 (is_owner=true → /business)
+- demo@tabaq.sa / Tabaq@User2026 (regular user → /)
+
+---
+
 ## Restaurant Data Enrichment — Session 6 (April 2026)
 
 ### Logo URLs for All Restaurants
