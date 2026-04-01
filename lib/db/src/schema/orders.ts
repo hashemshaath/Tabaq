@@ -7,6 +7,8 @@ import { restaurantsTable } from "./restaurants";
 export const orderStatusEnum = pgEnum("order_status", [
   "placed", "confirmed", "preparing", "out_for_delivery", "ready_for_pickup",
   "delivered", "cancelled", "completed", "disputed",
+  "return_requested",  // customer has requested a return on a completed order
+  "returned",          // return approved; credit note issued
 ]);
 
 export const orderModeEnum = pgEnum("order_mode", [

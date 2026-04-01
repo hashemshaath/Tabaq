@@ -527,6 +527,16 @@ router.post("/vouchers/:voucherId/redeem", requireAuth, async (req, res) => {
   try {
     const voucherId = parseInt(req.params["voucherId"] as string, 10);
     const userId = req.auth!.userId;
+    // amountToRedeem: optional partial redemption amount (must be ≤ remaining_balance).
+    // When omitted the full remaining balance is consumed.
+    const amountToRedeem: number | null = req.body?.amountToRedeem != null
+      ? parseFloat(req.body.amountToRedeem)
+      : null;
+
+    if (amountToRedeem !== null && (isNaN(amountToRedeem) || amountToRedeem <= 0)) {
+      res.status(400).json({ error: "bad_request", message: "amountToRedeem must be a positive number" });
+      return;
+    }
 
     const [existing] = await db.select({
       id: vouchersTable.id,
@@ -534,6 +544,8 @@ router.post("/vouchers/:voucherId/redeem", requireAuth, async (req, res) => {
       restaurantId: vouchersTable.restaurantId,
       status: vouchersTable.status,
       validUntil: vouchersTable.validUntil,
+      remainingBalance: vouchersTable.remainingBalance,
+      redeemedAmount: vouchersTable.redeemedAmount,
     }).from(vouchersTable).where(eq(vouchersTable.id, voucherId));
 
     if (!existing) {
@@ -542,12 +554,10 @@ router.post("/vouchers/:voucherId/redeem", requireAuth, async (req, res) => {
     }
 
     // Redemption is a restaurant-side (POS) action — only the restaurant owner can mark a voucher as used.
-    // The customer presents the voucher code to the restaurant; the restaurant confirms/scans it.
     const [restaurant] = await db.select({ ownerId: restaurantsTable.ownerId })
       .from(restaurantsTable).where(eq(restaurantsTable.id, existing.restaurantId));
 
     const isRestaurantOwner = restaurant?.ownerId === userId;
-
     if (!isRestaurantOwner) {
       res.status(403).json({ error: "forbidden", message: "Only the restaurant owner can redeem vouchers" });
       return;
@@ -564,8 +574,31 @@ router.post("/vouchers/:voucherId/redeem", requireAuth, async (req, res) => {
       return;
     }
 
-    const [voucher] = await db.update(vouchersTable)
-      .set({ status: "used", redeemedAt: new Date() })
+    const currentBalance = parseFloat(String(existing.remainingBalance ?? 0));
+    const currentRedeemed = parseFloat(String(existing.redeemedAmount ?? 0));
+    const toRedeem = amountToRedeem !== null ? amountToRedeem : currentBalance;
+
+    if (toRedeem > currentBalance + 0.001) {
+      res.status(400).json({
+        error:   "bad_request",
+        message: `amountToRedeem (${toRedeem}) exceeds remaining balance (${currentBalance.toFixed(2)})`,
+      });
+      return;
+    }
+
+    const newBalance   = Math.max(0, currentBalance - toRedeem);
+    const newRedeemed  = currentRedeemed + toRedeem;
+    const fullyUsed    = newBalance < 0.001;
+    const newStatus    = fullyUsed ? "used" : "active";
+
+    const [voucher] = await db
+      .update(vouchersTable)
+      .set({
+        remainingBalance: String(newBalance.toFixed(2)),
+        redeemedAmount:   String(newRedeemed.toFixed(2)),
+        status:           newStatus as any,
+        ...(fullyUsed ? { redeemedAt: new Date() } : {}),
+      })
       .where(and(eq(vouchersTable.id, voucherId), eq(vouchersTable.status, "active")))
       .returning();
 
@@ -574,10 +607,17 @@ router.post("/vouchers/:voucherId/redeem", requireAuth, async (req, res) => {
       return;
     }
 
-    // Notification stub: in production, trigger an event to the notification service
-    req.log.info({ voucherId, userId }, "NOTIFY: voucher redeemed — send confirmation to owner");
+    req.log.info(
+      { voucherId, userId, amountRedeemed: toRedeem, remainingBalance: newBalance, fullyUsed },
+      fullyUsed ? "Voucher fully redeemed" : "Voucher partially redeemed — balance preserved",
+    );
 
-    res.json({ ...voucher, message: "Voucher successfully redeemed" });
+    res.json({
+      ...voucher,
+      amountRedeemed:   toRedeem,
+      remainingBalance: newBalance,
+      message: fullyUsed ? "Voucher fully redeemed" : `Voucher partially redeemed. Remaining balance: ${newBalance.toFixed(2)}`,
+    });
   } catch (err) {
     req.log.error({ err }, "Failed to redeem voucher");
     res.status(500).json({ error: "internal_error", message: "Failed to redeem voucher" });

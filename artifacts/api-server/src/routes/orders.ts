@@ -418,14 +418,15 @@ router.patch("/orders/:orderNumber/status", requireAuth, async (req, res) => {
   try {
     const { orderNumber } = req.params;
     const { status, reason } = req.body;
-    const userId = req.auth!.userId;
+    const userId  = req.auth!.userId;
+    const isAdmin = req.auth!.isAdmin === true;
 
     if (!status) {
       return res.status(400).json({ error: "bad_request", message: "status is required" });
     }
 
     // Verify caller is the restaurant owner or order owner (for cancellations).
-    // Also fetch pointsUsed so we can refund them if the order is cancelled.
+    // Admins bypass all owner checks so they can move orders to any allowed state.
     const [order] = await db
       .select({
         id:          ordersTable.id,
@@ -451,11 +452,11 @@ router.patch("/orders/:orderNumber/status", requireAuth, async (req, res) => {
       isRestaurantOwner = restaurant?.ownerId === userId;
     }
 
-    // Only restaurant owners can confirm/prepare/dispatch; order owners can only cancel
-    if (status === "cancelled" && !isOrderOwner && !isRestaurantOwner) {
+    // Only restaurant owners (or admins) can advance status; order owners can only cancel.
+    if (status === "cancelled" && !isOrderOwner && !isRestaurantOwner && !isAdmin) {
       return res.status(403).json({ error: "forbidden", message: "You can only cancel your own orders" });
     }
-    if (status !== "cancelled" && !isRestaurantOwner) {
+    if (status !== "cancelled" && !isRestaurantOwner && !isAdmin) {
       return res.status(403).json({ error: "forbidden", message: "Only the restaurant owner can update order status" });
     }
 

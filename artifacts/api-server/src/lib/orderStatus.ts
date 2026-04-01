@@ -29,11 +29,15 @@
 import { db } from "@workspace/db";
 import {
   ordersTable, orderStatusLogTable, customerInvoicesTable, disputesTable,
+  pointsTransactionsTable,
 } from "@workspace/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { notifyAsync } from "./notify.js";
 import { logger } from "./logger.js";
-import { awardPoints, logPointsTransaction } from "./points.js";
+import {
+  awardPoints, logPointsTransaction,
+  promotePointsToRedeemable, cancelPendingPoints,
+} from "./points.js";
 import { processRefund } from "./paymentGateway.js";
 import { generateRefCode } from "./refcode.js";
 
@@ -42,26 +46,29 @@ import { generateRefCode } from "./refcode.js";
 export type OrderStatus =
   | "placed" | "confirmed" | "preparing"
   | "out_for_delivery" | "ready_for_pickup"
-  | "delivered" | "cancelled" | "completed" | "disputed";
+  | "delivered" | "cancelled" | "completed" | "disputed"
+  | "return_requested" | "returned";
 
 const ALLOWED_TRANSITIONS: Record<string, OrderStatus[]> = {
-  placed:           ["confirmed", "cancelled"],
-  confirmed:        ["preparing", "cancelled"],
-  preparing:        ["out_for_delivery", "ready_for_pickup", "cancelled"],
-  out_for_delivery: ["delivered"],
-  ready_for_pickup: ["delivered"],
-  delivered:        ["completed", "disputed"],
-  completed:        ["disputed"],
-  cancelled:        [],
-  // disputed exits to "completed" once the dispute is resolved — the resolve
-  // endpoint sets the final dispute record status (resolved_refund / resolved_no_refund)
-  // and then calls transitionOrderStatus to record the outcome on the order.
-  disputed:         ["completed"],
+  placed:            ["confirmed", "cancelled"],
+  confirmed:         ["preparing", "cancelled"],
+  preparing:         ["out_for_delivery", "ready_for_pickup", "cancelled"],
+  out_for_delivery:  ["delivered"],
+  ready_for_pickup:  ["delivered"],
+  delivered:         ["completed", "disputed"],
+  completed:         ["disputed", "return_requested"],
+  cancelled:         [],
+  // disputed exits to "completed" once the dispute is resolved.
+  disputed:          ["completed"],
+  // customer opens a return; admin approves (→ returned) or rejects (→ completed)
+  return_requested:  ["returned", "completed"],
+  returned:          [],
 };
 
 export interface TransitionMeta {
-  reason?:  string;
-  actorId?: number;
+  reason?:       string;
+  actorId?:      number;
+  refundAmount?: number;  // used by RETURNED side-effect for partial/full refund
 }
 
 // Points rate: 100 points = 1 SAR  (10 pts per 10 SAR = 10 pts / SAR)
@@ -212,12 +219,33 @@ async function sideEffects(
 
   if (newStatus === "confirmed" && !order.customerInvoiceRef) {
     try {
-      // Lazy import to avoid module-level circular dependency risk
       const { invoiceService } = await import("../services/invoiceService.js");
       await invoiceService.createInvoiceIfMissing(order.id);
       logger.info({ orderId: order.id }, "Safety-net invoice created on CONFIRMED transition");
     } catch (err) {
       logger.warn({ err, orderId: order.id }, "Safety-net invoice creation failed on CONFIRMED — manual action needed");
+    }
+  }
+
+  // ── CONFIRMED: create provisional (pending) loyalty points record ──────────
+  // We log the record now — with status "pending" — so auditors can see what
+  // was expected.  The user's balance is NOT incremented yet.  At COMPLETED,
+  // promotePointsToRedeemable() flips the record to "redeemable" and actually
+  // credits the balance.  If the order is cancelled, cancelPendingPoints()
+  // marks the record "cancelled" without any balance change.
+
+  if (newStatus === "confirmed" && userId) {
+    const orderTotal   = parseFloat(order.total);
+    const pointsEarned = Math.max(1, Math.floor(orderTotal / POINTS_EARN_RATE));
+    try {
+      await logPointsTransaction(
+        userId, "order_completed", pointsEarned, order.id, "order",
+        `Pending ${pointsEarned} pts for order ${orderNumber} — redeemable on completion`,
+        "pending",
+      );
+      logger.info({ orderId: order.id, pointsEarned }, "Pending loyalty points record created on CONFIRMED");
+    } catch (err) {
+      logger.warn({ err, orderId: order.id }, "Pending points creation on CONFIRMED failed — will fall back on COMPLETED");
     }
   }
 
@@ -262,44 +290,56 @@ async function sideEffects(
     }
   }
 
-  // ── COMPLETED: award loyalty points ───────────────────────────────────────
-  // Points are earned when the order is completed (received by the customer),
-  // not when it is placed — this prevents earning points on orders that are
-  // later cancelled. Rate: 10 pts per 100 SAR spent.
+  // ── COMPLETED: promote pending loyalty points to redeemable ───────────────
+  // At CONFIRMED we created a "pending" record.  Now that the order is done,
+  // promote it to "redeemable" and actually credit the user's balance.
   //
-  // Skip when transitioning from "disputed" — the order was already completed
-  // before the dispute was raised, meaning points were already awarded.
+  // Skip when transitioning from "disputed" (points already awarded when the
+  // order first reached COMPLETED).  Also skip for return_requested → completed
+  // rejections; those are not fresh completions.
 
-  if (newStatus === "completed" && userId && currentStatus !== "disputed") {
-    const orderTotal  = parseFloat(order.total);
-    const pointsEarned = Math.max(1, Math.floor(orderTotal / POINTS_EARN_RATE));
+  if (
+    newStatus === "completed" && userId &&
+    currentStatus !== "disputed" && currentStatus !== "return_requested"
+  ) {
+    const orderTotal   = parseFloat(order.total);
+    const fallbackPts  = Math.max(1, Math.floor(orderTotal / POINTS_EARN_RATE));
     try {
-      await awardPoints(userId, pointsEarned);
-      await logPointsTransaction(
-        userId, "order_completed", pointsEarned, order.id, "order",
-        `Earned ${pointsEarned} pts for completed order ${orderNumber} (${orderTotal} ${order.currency})`,
+      await promotePointsToRedeemable(
+        userId, order.id, fallbackPts,
+        `Earned pts for completed order ${orderNumber} (${orderTotal} ${order.currency})`,
       );
-      logger.info({ orderId: order.id, pointsEarned }, "Loyalty points awarded on COMPLETED");
+      logger.info({ orderId: order.id }, "Loyalty points promoted to redeemable on COMPLETED");
     } catch (err) {
-      logger.warn({ err, orderId: order.id }, "Points award on COMPLETED failed — manual reconciliation needed");
+      logger.warn({ err, orderId: order.id }, "Points promotion on COMPLETED failed — manual reconciliation needed");
     }
   }
 
-  // ── CANCELLED: refund redeemed points ─────────────────────────────────────
-  // If the customer redeemed points at checkout, return them.
+  // ── CANCELLED: void pending points & refund redeemed points ───────────────
 
-  if (newStatus === "cancelled" && userId && order.pointsUsed && order.pointsUsed > 0) {
-    const pointsToRefund = order.pointsUsed;
-    const monetary = Math.round((pointsToRefund / POINTS_PER_SAR_REDEEM) * 100) / 100;
+  if (newStatus === "cancelled") {
+    // 1. Cancel any pending (not-yet-redeemable) points for this order
     try {
-      await awardPoints(userId, pointsToRefund);
-      await logPointsTransaction(
-        userId, "admin_grant", pointsToRefund, order.id, "order",
-        `Refund of ${pointsToRefund} pts (${monetary} SAR) for cancelled order ${orderNumber}`,
-      );
-      logger.info({ orderId: order.id, pointsToRefund }, "Points refunded on CANCELLED");
+      await cancelPendingPoints(order.id);
+      logger.info({ orderId: order.id }, "Pending loyalty points cancelled on CANCELLED");
     } catch (err) {
-      logger.warn({ err, orderId: order.id }, "Points refund on CANCELLED failed — manual reconciliation needed");
+      logger.warn({ err, orderId: order.id }, "cancelPendingPoints on CANCELLED failed");
+    }
+
+    // 2. If the customer redeemed points at checkout, refund them
+    if (userId && order.pointsUsed && order.pointsUsed > 0) {
+      const pointsToRefund = order.pointsUsed;
+      const monetary = Math.round((pointsToRefund / POINTS_PER_SAR_REDEEM) * 100) / 100;
+      try {
+        await awardPoints(userId, pointsToRefund);
+        await logPointsTransaction(
+          userId, "admin_grant", pointsToRefund, order.id, "order",
+          `Refund of ${pointsToRefund} pts (${monetary} SAR) for cancelled order ${orderNumber}`,
+        );
+        logger.info({ orderId: order.id, pointsToRefund }, "Points refunded on CANCELLED");
+      } catch (err) {
+        logger.warn({ err, orderId: order.id }, "Points refund on CANCELLED failed — manual reconciliation needed");
+      }
     }
   }
 
@@ -351,5 +391,76 @@ async function sideEffects(
     } catch (err) {
       logger.warn({ err, orderId: order.id }, "Gateway refund on CANCELLED failed — manual action needed");
     }
+  }
+
+  // ── RETURNED: create credit note + deduct proportional loyalty points ──────
+  // Triggered when an admin approves a return (return_requested → returned).
+  //   1. Create a credit note invoice for the refund amount.
+  //   2. Deduct the proportional points that were earned on this order.
+  //   3. Notify the customer.
+
+  if (newStatus === "returned" && userId) {
+    const orderTotal   = parseFloat(order.total);
+    const refundAmount = meta?.refundAmount ?? orderTotal;
+
+    // 1. Credit note
+    try {
+      const { invoiceService } = await import("../services/invoiceService.js");
+      const creditRef = await invoiceService.createCreditNote({
+        orderId:            order.id,
+        userId,
+        restaurantId:       order.restaurantId ?? null,
+        refundAmount,
+        currency:           order.currency,
+        reason:             meta?.reason ?? "Return approved",
+        originalInvoiceRef: order.customerInvoiceRef ?? "",
+      });
+      logger.info({ orderId: order.id, creditRef }, "Credit note created on RETURNED");
+    } catch (err) {
+      logger.warn({ err, orderId: order.id }, "Credit note creation on RETURNED failed — manual action needed");
+    }
+
+    // 2. Deduct proportional points earned on this order
+    try {
+      const [earnedRecord] = await db
+        .select({ id: pointsTransactionsTable.id, points: pointsTransactionsTable.points })
+        .from(pointsTransactionsTable)
+        .where(
+          and(
+            eq(pointsTransactionsTable.userId, userId),
+            eq(pointsTransactionsTable.refId, order.id),
+            eq(pointsTransactionsTable.refType, "order"),
+            eq(pointsTransactionsTable.status, "redeemable"),
+          ),
+        )
+        .limit(1);
+
+      if (earnedRecord && earnedRecord.points > 0) {
+        const ratio           = Math.min(1, refundAmount / orderTotal);
+        const pointsToDeduct  = Math.floor(earnedRecord.points * ratio);
+        if (pointsToDeduct > 0) {
+          await awardPoints(userId, -pointsToDeduct);
+          await logPointsTransaction(
+            userId, "order_returned", -pointsToDeduct, order.id, "order",
+            `Points deducted for return of order ${orderNumber} (${refundAmount} ${order.currency})`,
+          );
+          logger.info({ orderId: order.id, pointsToDeduct }, "Loyalty points deducted on RETURNED");
+        }
+      }
+    } catch (err) {
+      logger.warn({ err, orderId: order.id }, "Points deduction on RETURNED failed — manual reconciliation needed");
+    }
+
+    // 3. Notify
+    notifyAsync({
+      userId,
+      type:    "order_returned",
+      titleEn: "Return Approved",
+      titleAr: "تمت الموافقة على الإرجاع",
+      bodyEn:  `Your return for order ${orderNumber} has been approved. A refund of ${refundAmount} ${order.currency} will be processed.`,
+      bodyAr:  `تمت الموافقة على إرجاع طلبك ${orderNumber}. سيتم معالجة استرداد ${refundAmount} ${order.currency}.`,
+      refId:   order.id,
+      refType: "order",
+    });
   }
 }

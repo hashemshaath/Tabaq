@@ -47,6 +47,35 @@ Each run is logged to `cron_logs` table.
 
 ---
 
+## Backend Audit Round 2 (All 6 Fixes — April 2026)
+
+### A1: Admin bypass on order status PATCH
+`PATCH /orders/:orderNumber/status` now accepts `isAdmin` tokens from any user, not just the restaurant owner. Non-admin outsiders still get 403. File: `routes/orders.ts`.
+
+### A2: Mock gateway rawResponse
+`mockInitPayment()` now returns `rawResponse: { transactionId, gateway, amount, currency, orderId, timestamp }`. Pre-existing invoices remain null (expected). File: `lib/paymentGateway.ts`.
+
+### A3: Return flow
+Three new endpoints in `routes/returns.ts`:
+- `POST /api/orders/:orderNumber/return` — customer opens return (completed → return_requested)
+- `POST /api/orders/:orderNumber/return/approve` — admin/owner approves (return_requested → returned). Side effects: credit note (`TBQ-CRDN-*`) + proportional points deduction.
+- `POST /api/orders/:orderNumber/return/reject` — admin/owner rejects (return_requested → completed)
+State machine in `lib/orderStatus.ts` updated: `completed→return_requested`, `return_requested→returned|completed`.
+
+### A4: Barcode + ZATCA QR on invoices
+`invoiceService.getByRef()` now augments response with `barcode` (= refCode) and `qrCode` (ZATCA Phase-1 TLV Base64). ZATCA utility: `lib/zatca.ts` — `generateZatcaQr({ sellerName, vatRegNumber, timestamp, totalAmount, vatAmount })`.
+
+### A5: Partial voucher redemption
+`POST /vouchers/:id/redeem` accepts optional `amountToRedeem`. If < remaining_balance: decrements balance, keeps `status=active`. If ≥ remaining_balance: sets `status=used`. File: `routes/offers.ts`.
+
+### A6: Points pending/redeemable lifecycle
+`lib/points.ts` extended: `logPointsTransaction(..., status: PointsStatus)`, `promotePointsToRedeemable()`, `cancelPendingPoints()`.
+- CONFIRMED: pending points record created (balance unchanged)
+- COMPLETED: `promotePointsToRedeemable()` → status=redeemable, balance credited
+- CANCELLED: `cancelPendingPoints()` → status=cancelled, no balance change
+
+---
+
 ## Financial Architecture (Centralized Invoice System)
 
 ### Central Invoice Service (`artifacts/api-server/src/services/invoiceService.ts`)
@@ -54,9 +83,10 @@ Single service used by ALL financial flows. Never create invoice logic elsewhere
 
 - `invoiceService.processOrder(params)` — creates customer invoice, logs financial transaction, awards loyalty points
 - `invoiceService.processBooking(params)` — creates booking receipt
-- `invoiceService.getByRef(refCode)` — fetch by ref code
+- `invoiceService.getByRef(refCode)` — fetch by ref code, includes `barcode` + `qrCode` (ZATCA TLV)
 - `invoiceService.getForUser(userId)` — list user's invoices
 - `invoiceService.voidInvoice(refCode)` / `refundInvoice(refCode)` — lifecycle management
+- `invoiceService.createCreditNote(params)` — credit note for approved returns (source=return, status=credit, ref=TBQ-CRDN-*)
 
 ### Customer Invoices (`customer_invoices` table)
 User-facing receipts for every paid transaction. Separate from B2B settlement invoices (`invoices` table).

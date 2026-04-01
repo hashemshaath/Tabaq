@@ -15,6 +15,15 @@ export const pointsActionEnum = pgEnum("points_action", [
   "admin_grant",
   "redemption",
   "order_placed",
+  "order_completed",  // awarded (pending→redeemable) when order reaches COMPLETED
+  "order_returned",   // deducted proportionally when return is approved
+]);
+
+export const pointsStatusEnum = pgEnum("points_status", [
+  "pending",     // created at CONFIRMED; not yet counted in balance
+  "redeemable",  // promoted at COMPLETED; counted in balance
+  "expired",     // swept by cron (points_expiry_check)
+  "cancelled",   // order cancelled before COMPLETED; no balance change
 ]);
 
 export const referralStatusEnum = pgEnum("referral_status", [
@@ -33,6 +42,7 @@ export const pointsTransactionsTable = pgTable("points_transactions", {
   description: text("description"),
   refId: integer("ref_id"),
   refType: text("ref_type"),
+  status: pointsStatusEnum("status").default("redeemable").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

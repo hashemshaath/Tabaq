@@ -35,6 +35,7 @@ import seoRouter from "./seo.js";
 import ordersRouter from "./orders.js";
 import disputesRouter from "./disputes.js";
 import membershipsRouter from "./memberships.js";
+import returnsRouter from "./returns.js";
 
 const router: IRouter = Router();
 
@@ -74,5 +75,6 @@ router.use(seoRouter);
 router.use(ordersRouter);
 router.use(disputesRouter);
 router.use(membershipsRouter);
+router.use(returnsRouter);
 
 export default router;

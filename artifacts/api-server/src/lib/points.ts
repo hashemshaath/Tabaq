@@ -1,6 +1,6 @@
 import { db } from "@workspace/db";
 import { usersTable, reviewsTable, pointsTransactionsTable } from "@workspace/db/schema";
-import { eq, sql, count, avg } from "drizzle-orm";
+import { eq, sql, count, avg, and } from "drizzle-orm";
 
 export const POINTS = {
   REVIEW_WRITTEN: 20,
@@ -10,11 +10,14 @@ export const POINTS = {
   EMAIL_VERIFIED: 15,
 } as const;
 
-type PointsAction =
+export type PointsAction =
   | "review_written" | "booking_made" | "voucher_purchased" | "review_liked"
   | "email_verified" | "referral_signup" | "referral_converted"
   | "profile_completed" | "admin_grant" | "redemption" | "order_placed"
-  | "order_completed";  // awarded when an order reaches COMPLETED status
+  | "order_completed"   // awarded (pending→redeemable) when order reaches COMPLETED
+  | "order_returned";   // deducted proportionally on return approval
+
+export type PointsStatus = "pending" | "redeemable" | "expired" | "cancelled";
 
 function calcLevel(points: number): { level: number; levelTitle: string } {
   if (points < 100)   return { level: 1, levelTitle: "Food Explorer" };
@@ -27,12 +30,6 @@ function calcLevel(points: number): { level: number; levelTitle: string } {
   return { level: 8, levelTitle: "Grand Master Chef" };
 }
 
-/**
- * Credibility score (0–100) based on:
- * - Number of reviews written (up to 40 pts): min(reviewCount / 25 * 40, 40)
- * - Average rating consistency (up to 30 pts): lower std dev = more credible
- * - Like-to-review ratio (up to 30 pts): measures whether reviews are useful
- */
 async function computeCredibilityScore(userId: number): Promise<number> {
   const [stats] = await db
     .select({
@@ -81,7 +78,11 @@ export async function awardPoints(userId: number, amount: number): Promise<numbe
 
 /**
  * Write an entry to the points audit log.
- * Must be called AFTER awardPoints so balanceAfter is accurate.
+ *
+ * @param status - "redeemable" (default) for final records; "pending" for
+ *   provisional records created at CONFIRMED — these do NOT change the user's
+ *   balance (balanceAfter = current balance unchanged).  They are promoted to
+ *   "redeemable" by promotePointsToRedeemable() at COMPLETED.
  */
 export async function logPointsTransaction(
   userId: number,
@@ -90,6 +91,7 @@ export async function logPointsTransaction(
   refId?: number,
   refType?: string,
   description?: string,
+  status: PointsStatus = "redeemable",
 ): Promise<void> {
   const [user] = await db
     .select({ points: usersTable.points })
@@ -107,6 +109,7 @@ export async function logPointsTransaction(
     description: description ?? null,
     refId: refId ?? null,
     refType: refType ?? null,
+    status,
   });
 }
 
@@ -120,7 +123,64 @@ export async function awardAndLog(
   refId?: number,
   refType?: string,
   description?: string,
+  status: PointsStatus = "redeemable",
 ): Promise<void> {
   await awardPoints(userId, amount);
-  await logPointsTransaction(userId, action, amount, refId, refType, description);
+  await logPointsTransaction(userId, action, amount, refId, refType, description, status);
+}
+
+/**
+ * Promote a pending points record (created at CONFIRMED) to redeemable.
+ * Awards the points to the user and updates the record's status + balanceAfter.
+ *
+ * Falls back to creating a fresh redeemable record if no pending entry exists
+ * (handles orders confirmed before the pending-points system was deployed).
+ */
+export async function promotePointsToRedeemable(
+  userId: number,
+  orderId: number,
+  fallbackPoints: number,
+  description?: string,
+): Promise<void> {
+  const [pending] = await db
+    .select()
+    .from(pointsTransactionsTable)
+    .where(
+      and(
+        eq(pointsTransactionsTable.userId, userId),
+        eq(pointsTransactionsTable.refId, orderId),
+        eq(pointsTransactionsTable.refType, "order"),
+        eq(pointsTransactionsTable.status, "pending"),
+      ),
+    )
+    .limit(1);
+
+  if (pending) {
+    const newBalance = await awardPoints(pending.userId, pending.points);
+    await db
+      .update(pointsTransactionsTable)
+      .set({ status: "redeemable", balanceAfter: newBalance })
+      .where(eq(pointsTransactionsTable.id, pending.id));
+  } else {
+    await awardAndLog(
+      userId, fallbackPoints, "order_completed", orderId, "order", description, "redeemable",
+    );
+  }
+}
+
+/**
+ * Cancel all pending points records for an order.
+ * Called on CANCELLED to void provisional points without any balance change.
+ */
+export async function cancelPendingPoints(orderId: number): Promise<void> {
+  await db
+    .update(pointsTransactionsTable)
+    .set({ status: "cancelled" })
+    .where(
+      and(
+        eq(pointsTransactionsTable.refId, orderId),
+        eq(pointsTransactionsTable.refType, "order"),
+        eq(pointsTransactionsTable.status, "pending"),
+      ),
+    );
 }

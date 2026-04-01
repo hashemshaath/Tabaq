@@ -63,7 +63,20 @@ const GATEWAY = (process.env["PAYMENT_GATEWAY"] ?? "mock").toLowerCase();
 async function mockInitPayment(params: PaymentInitParams): Promise<PaymentInitResult> {
   const transactionId = `MOCK-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
   logger.info({ transactionId, amount: params.amount, orderId: params.orderId }, "MOCK payment initiated");
-  return { success: true, transactionId };
+  return {
+    success: true,
+    transactionId,
+    // rawResponse must be present so that invoice_service can persist it and
+    // CANCELLED side effects can extract transactionId for gateway refunds.
+    rawResponse: {
+      transactionId,
+      gateway:   "mock",
+      amount:    params.amount,
+      currency:  params.currency ?? "SAR",
+      orderId:   params.orderId,
+      timestamp: Date.now(),
+    },
+  };
 }
 
 async function mockVerifyPayment(transactionId: string): Promise<PaymentVerifyResult> {

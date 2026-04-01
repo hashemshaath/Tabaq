@@ -139,11 +139,12 @@ export const invoicesTable = pgTable("invoices", {
 // User-facing receipts generated for every paid transaction (orders, bookings, etc.)
 
 export const customerInvoiceStatusEnum = pgEnum("customer_invoice_status", [
-  "paid", "refunded", "void"
+  "paid", "refunded", "void", "credit"  // "credit" = credit note / return
 ]);
 
 export const customerInvoiceSourceEnum = pgEnum("customer_invoice_source", [
-  "order", "booking", "voucher_purchase", "experience_booking", "membership"
+  "order", "booking", "voucher_purchase", "experience_booking", "membership",
+  "return",  // credit note issued when a return is approved
 ]);
 
 export const customerInvoicesTable = pgTable("customer_invoices", {

@@ -20,6 +20,7 @@ import { eq, and, desc } from "drizzle-orm";
 import { generateRefCode } from "../lib/refcode.js";
 import { initiatePayment } from "../lib/paymentGateway.js";
 import { notifyAsync } from "../lib/notify.js";
+import { generateZatcaQr, ZATCA_DEFAULTS } from "../lib/zatca.js";
 
 // Redemption rate: 100 points = 1 SAR. Must stay in sync with routes/orders.ts.
 const POINTS_PER_SAR = 100;
@@ -393,14 +394,86 @@ class InvoiceService {
 
   /**
    * Retrieve a customer invoice by its refCode.
+   * Augments the record with:
+   *   barcode  — the refCode itself (scannable at restaurant POS)
+   *   qrCode   — ZATCA Phase-1 TLV Base64 QR string (required on Saudi invoices)
    */
-  async getByRef(refCode: string): Promise<typeof customerInvoicesTable.$inferSelect | null> {
+  async getByRef(refCode: string): Promise<(typeof customerInvoicesTable.$inferSelect & {
+    barcode: string;
+    qrCode: string;
+  }) | null> {
     const [inv] = await db
       .select()
       .from(customerInvoicesTable)
       .where(eq(customerInvoicesTable.refCode, refCode))
       .limit(1);
-    return inv ?? null;
+
+    if (!inv) return null;
+
+    const qrCode = generateZatcaQr({
+      sellerName:   ZATCA_DEFAULTS.SELLER_NAME,
+      vatRegNumber: ZATCA_DEFAULTS.VAT_REG_NUMBER,
+      timestamp:    inv.createdAt ?? new Date(),
+      totalAmount:  inv.total,
+      vatAmount:    inv.taxAmount ?? "0",
+    });
+
+    return { ...inv, barcode: inv.refCode, qrCode };
+  }
+
+  /**
+   * Create a credit note invoice for an approved return.
+   * Source is "return", status is "credit".
+   * Returns the generated refCode (e.g. TBQ-CRDN-2026-000001).
+   */
+  async createCreditNote(params: {
+    orderId:             number;
+    userId:              number | null;
+    restaurantId:        number | null;
+    refundAmount:        number;
+    currency:            string;
+    reason:              string;
+    originalInvoiceRef?: string;
+  }): Promise<string> {
+    const { orderId, userId, restaurantId, refundAmount, currency, reason } = params;
+
+    const [inv] = await db
+      .insert(customerInvoicesTable)
+      .values({
+        refCode:          "PENDING",
+        userId:           userId ?? undefined,
+        restaurantId:     restaurantId ?? undefined,
+        source:           "return",
+        orderId,
+        lineItems: [
+          {
+            description:   `Credit Note — Return: ${reason}`,
+            descriptionAr: `إشعار دائن — إرجاع: ${reason}`,
+            qty:       1,
+            unitPrice: -refundAmount,
+            total:     -refundAmount,
+          },
+        ],
+        subtotal:          String((-refundAmount).toFixed(2)),
+        discountAmount:    "0",
+        deliveryFee:       "0",
+        taxAmount:         "0",
+        taxRate:           "0",
+        taxName:           "VAT",
+        total:             String((-refundAmount).toFixed(2)),
+        currency,
+        paymentMethod:     "refund",
+        status:            "credit",
+      })
+      .returning();
+
+    const creditRef = generateRefCode("CRDN", inv!.id);
+    await db
+      .update(customerInvoicesTable)
+      .set({ refCode: creditRef })
+      .where(eq(customerInvoicesTable.id, inv!.id));
+
+    return creditRef;
   }
 
   /**
