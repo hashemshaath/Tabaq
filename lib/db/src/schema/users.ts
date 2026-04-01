@@ -192,6 +192,27 @@ export const userDevicesTable = pgTable("user_devices", {
   uniqueIndex("user_devices_unique").on(t.userId, t.deviceFingerprint),
 ]);
 
+export const sessionsTable = pgTable("sessions", {
+  sesUid: varchar("ses_uid", { length: 64 }).primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  userUid: text("user_uid").references(() => usersTable.userUid, { onDelete: "cascade" }),
+  userType: text("user_type").default("USER").notNull(),
+  refreshTokenHash: text("refresh_token_hash").notNull().unique(),
+  prevRefreshTokenHash: text("prev_refresh_token_hash"),
+  deviceFingerprint: text("device_fingerprint"),
+  deviceName: text("device_name"),
+  deviceOs: text("device_os"),
+  appVersion: text("app_version"),
+  ipAddress: text("ip_address"),
+  locationCountry: text("location_country"),
+  locationCity: text("location_city"),
+  isRevoked: boolean("is_revoked").default(false).notNull(),
+  flaggedSuspicious: boolean("flagged_suspicious").default(false).notNull(),
+  lastUsedAt: timestamp("last_used_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+});
+
 export const insertUserSchema = createInsertSchema(usersTable).omit({ id: true, userUid: true, refCode: true, createdAt: true, updatedAt: true });
 export const insertUserFollowSchema = createInsertSchema(userFollowsTable).omit({ id: true, createdAt: true });
 export const insertUserBlockSchema = createInsertSchema(userBlocksTable).omit({ id: true, createdAt: true });
@@ -208,3 +229,5 @@ export type UserNotificationPref = typeof userNotificationPrefsTable.$inferSelec
 export type UserInterest = typeof userInterestsTable.$inferSelect;
 export type UserMute = typeof userMutesTable.$inferSelect;
 export type UserDevice = typeof userDevicesTable.$inferSelect;
+export type Session = typeof sessionsTable.$inferSelect;
+export type InsertSession = typeof sessionsTable.$inferInsert;

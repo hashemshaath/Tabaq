@@ -1,8 +1,8 @@
 import { Router, type IRouter } from "express";
 import bcrypt from "bcryptjs";
 import { db, registerUid } from "@workspace/db";
-import { usersTable, otpRequestsTable, emailVerificationTokensTable, refreshTokensTable } from "@workspace/db/schema";
-import { eq, and, isNull, gt, desc, gte, sql } from "drizzle-orm";
+import { usersTable, otpRequestsTable, emailVerificationTokensTable, refreshTokensTable, sessionsTable, userDevicesTable } from "@workspace/db/schema";
+import { eq, and, isNull, gt, desc, gte, sql, or } from "drizzle-orm";
 import {
   signToken,
   signTempToken,
@@ -12,26 +12,38 @@ import {
   otpExpiresAt,
   generateRefreshToken,
   hashRefreshToken,
+  signRefreshToken,
+  verifyRefreshToken,
+  signSuspiciousToken,
+  verifySuspiciousToken,
   normalizePhone,
   validateEmail,
   validatePasswordStrength,
   validateUsername,
   classifyIdentifier,
   REFRESH_TOKEN_EXPIRES_IN_MS,
+  BCRYPT_SALT_ROUNDS,
+  OTP_EXPIRY_MINUTES,
+  OTP_MAX_ATTEMPTS,
 } from "../lib/auth.js";
 import { requireAuth } from "../middleware/requireAuth.js";
-import { authRateLimiter } from "../middleware/rateLimiter.js";
+import { authRateLimiter, loginRateLimiter, registerRateLimiter, otpRateLimiter, forgotPasswordRateLimiter } from "../middleware/rateLimiter.js";
+import { requestLogger } from "../middleware/requestLogger.js";
+import { inputSanitizer } from "../middleware/inputSanitizer.js";
 import { sendOtp, isSmsDevMode } from "../services/smsService.js";
 import { awardPoints, POINTS } from "../lib/points.js";
-import { createSession } from "../lib/session.js";
+import { createSession, computeDeviceFingerprint, revokeAllUserSessions, generateSessionUid } from "../lib/session.js";
+import { notifyAsync } from "../lib/notify.js";
 import crypto from "crypto";
 import { OAuth2Client } from "google-auth-library";
 import appleSignin from "apple-signin-auth";
 
 const router: IRouter = Router();
 
+router.use(requestLogger);
+router.use(inputSanitizer);
+
 const IS_DEV = process.env["NODE_ENV"] !== "production";
-const BCRYPT_ROUNDS = 12;
 const FAILED_LOGIN_MAX = 5;
 const LOCK_DURATION_MS = 15 * 60 * 1000;
 
@@ -50,17 +62,179 @@ function generateUserUid(id: number): string {
   return `USR-${year}-${timestamp}-${suffix}`;
 }
 
-async function buildTokens(user: typeof usersTable.$inferSelect, deviceInfo?: string, ipAddress?: string) {
+interface BuildTokensOptions {
+  deviceInfo?: string;
+  ipAddress?: string;
+  appVersion?: string;
+  locationCountry?: string;
+  locationCity?: string;
+  skipSuspiciousCheck?: boolean;
+}
+
+class SuspiciousLoginError extends Error {
+  constructor(public readonly tempToken: string) {
+    super("Suspicious login detected: new country");
+    this.name = "SuspiciousLoginError";
+  }
+}
+
+const COUNTRY_TIMEZONES: Record<string, string> = {
+  SA: "Asia/Riyadh",
+  AE: "Asia/Dubai",
+  KW: "Asia/Kuwait",
+  BH: "Asia/Bahrain",
+  QA: "Asia/Qatar",
+  OM: "Asia/Muscat",
+  JO: "Asia/Amman",
+  EG: "Africa/Cairo",
+  GB: "Europe/London",
+  US: "America/New_York",
+  DE: "Europe/Berlin",
+  FR: "Europe/Paris",
+  TR: "Europe/Istanbul",
+  IN: "Asia/Kolkata",
+  PK: "Asia/Karachi",
+  NG: "Africa/Lagos",
+  MA: "Africa/Casablanca",
+};
+
+function getLocalHour(timezone: string): number {
+  try {
+    const formatted = new Intl.DateTimeFormat("en-US", {
+      hour: "numeric",
+      hour12: false,
+      timeZone: timezone,
+    }).format(new Date());
+    return parseInt(formatted, 10);
+  } catch {
+    return new Date().getUTCHours();
+  }
+}
+
+async function checkSuspiciousLogin(
+  userId: number,
+  deviceFingerprint: string,
+  locationCountry: string | undefined,
+): Promise<{ isSuspiciousCountry: boolean; isNewDevice: boolean; isOffHours: boolean }> {
+  const [lastSession] = await db
+    .select({ locationCountry: sessionsTable.locationCountry, createdAt: sessionsTable.createdAt })
+    .from(sessionsTable)
+    .where(and(eq(sessionsTable.userId, userId), eq(sessionsTable.isRevoked, false)))
+    .orderBy(desc(sessionsTable.createdAt))
+    .limit(1);
+
+  const isSuspiciousCountry = !!(
+    lastSession &&
+    lastSession.locationCountry &&
+    locationCountry &&
+    lastSession.locationCountry !== locationCountry
+  );
+
+  const [existingDevice] = await db
+    .select({ id: userDevicesTable.id })
+    .from(userDevicesTable)
+    .where(and(eq(userDevicesTable.userId, userId), eq(userDevicesTable.deviceFingerprint, deviceFingerprint)))
+    .limit(1);
+
+  const isNewDevice = !existingDevice;
+
+  const timezone = locationCountry ? (COUNTRY_TIMEZONES[locationCountry] ?? null) : null;
+  const localHour = timezone ? getLocalHour(timezone) : new Date().getUTCHours();
+  const isCurrentlyOffHours = localHour >= 2 && localHour < 5;
+
+  // Only flag off-hours if this is the user's FIRST off-hours login.
+  // Check if any prior session was created during the 2–5am window in the user's timezone.
+  let isOffHours = false;
+  if (isCurrentlyOffHours) {
+    if (timezone) {
+      const [priorOffHours] = await db
+        .select({ sesUid: sessionsTable.sesUid })
+        .from(sessionsTable)
+        .where(
+          and(
+            eq(sessionsTable.userId, userId),
+            sql`EXTRACT(HOUR FROM (${sessionsTable.createdAt} AT TIME ZONE ${timezone})) >= 2`,
+            sql`EXTRACT(HOUR FROM (${sessionsTable.createdAt} AT TIME ZONE ${timezone})) < 5`,
+          ),
+        )
+        .limit(1);
+      isOffHours = !priorOffHours;
+    } else {
+      // No timezone info — fall back to first-ever off-hours heuristic (UTC)
+      const [priorOffHours] = await db
+        .select({ sesUid: sessionsTable.sesUid })
+        .from(sessionsTable)
+        .where(
+          and(
+            eq(sessionsTable.userId, userId),
+            sql`EXTRACT(HOUR FROM ${sessionsTable.createdAt}) >= 2`,
+            sql`EXTRACT(HOUR FROM ${sessionsTable.createdAt}) < 5`,
+          ),
+        )
+        .limit(1);
+      isOffHours = !priorOffHours;
+    }
+  }
+
+  return { isSuspiciousCountry, isNewDevice, isOffHours };
+}
+
+async function buildTokens(user: typeof usersTable.$inferSelect, options?: BuildTokensOptions) {
+  const { deviceInfo, ipAddress, appVersion, locationCountry, locationCity } = options ?? {};
+
   let uid = user.userUid;
   if (!uid) {
     uid = generateUserUid(user.id);
     await db.update(usersTable).set({ userUid: uid }).where(eq(usersTable.id, user.id));
     await registerUid(uid, "USER", "active");
   }
+
+  const sesUid = generateSessionUid();
   const role: "admin" | "owner" | "user" = user.isAdmin ? "admin" : user.isOwner ? "owner" : "user";
+
+  const deviceFingerprint = computeDeviceFingerprint(deviceInfo, ipAddress);
+
+  let flaggedSuspicious = false;
+  if (!options?.skipSuspiciousCheck) {
+    const { isSuspiciousCountry, isNewDevice, isOffHours } = await checkSuspiciousLogin(
+      user.id,
+      deviceFingerprint,
+      locationCountry,
+    );
+
+    if (isSuspiciousCountry) {
+      notifyAsync({
+        userId: user.id,
+        type: "SUSPICIOUS_LOGIN",
+        titleEn: "Suspicious Login Detected",
+        titleAr: "تم اكتشاف دخول مريب",
+        bodyEn: `A login was detected from a new country: ${locationCountry}. If this was not you, please secure your account.`,
+        bodyAr: `تم اكتشاف دخول من دولة جديدة: ${locationCountry}. إذا لم تكن أنت، يرجى تأمين حسابك.`,
+      });
+      const tempToken = signSuspiciousToken(user.id, { deviceInfo, ipAddress, appVersion, locationCountry, locationCity });
+      throw new SuspiciousLoginError(tempToken);
+    }
+
+    if (isNewDevice) {
+      notifyAsync({
+        userId: user.id,
+        type: "NEW_DEVICE_LOGIN",
+        titleEn: "New Device Login",
+        titleAr: "تسجيل دخول من جهاز جديد",
+        bodyEn: "A new device was used to log into your account. If this was not you, please secure your account.",
+        bodyAr: "تم استخدام جهاز جديد لتسجيل الدخول إلى حسابك. إذا لم تكن أنت، يرجى تأمين حسابك.",
+      });
+    }
+
+    if (isOffHours) {
+      flaggedSuspicious = true;
+    }
+  }
+
   const accessToken = signToken({
     sub: uid,
     userId: user.id,
+    sesUid,
     role,
     phone: user.phone,
     email: user.email,
@@ -68,7 +242,16 @@ async function buildTokens(user: typeof usersTable.$inferSelect, deviceInfo?: st
     isOwner: user.isOwner,
   });
 
-  const { rawRefreshToken } = await createSession(user.id, { deviceInfo, ipAddress });
+  const { rawRefreshToken } = await createSession(user.id, {
+    sesUid,
+    userUid: uid,
+    deviceInfo,
+    ipAddress,
+    appVersion,
+    locationCountry,
+    locationCity,
+    flaggedSuspicious,
+  });
 
   return { accessToken, refreshToken: rawRefreshToken };
 }
@@ -106,7 +289,7 @@ function getClientIp(req: import("express").Request): string {
 // ── PHONE + OTP ───────────────────────────────────────────────────────────────
 
 // Spec-aligned alias: POST /auth/register/phone → send OTP, returns { otp_sent: true }
-router.post("/auth/register/phone", authRateLimiter, async (req, res) => {
+router.post("/auth/register/phone", otpRateLimiter, async (req, res) => {
   try {
     const { phone: rawPhone } = req.body as { phone?: string };
     if (!rawPhone) {
@@ -153,7 +336,7 @@ router.post("/auth/register/phone", authRateLimiter, async (req, res) => {
   }
 });
 
-router.post("/auth/request-otp", authRateLimiter, async (req, res) => {
+router.post("/auth/request-otp", otpRateLimiter, async (req, res) => {
   try {
     const { phone: rawPhone, email: rawEmail } = req.body as { phone?: string; email?: string };
     if (!rawPhone && !rawEmail) {
@@ -228,7 +411,7 @@ router.post("/auth/request-otp", authRateLimiter, async (req, res) => {
   }
 });
 
-router.post("/auth/verify-otp", authRateLimiter, async (req, res) => {
+router.post("/auth/verify-otp", otpRateLimiter, async (req, res) => {
   try {
     const { phone: rawPhone, email: rawEmail, code, nameEn, nameAr, displayName, preferredLanguage = "en", cityId, username: rawUsername } = req.body as {
       phone?: string;
@@ -336,7 +519,7 @@ router.post("/auth/verify-otp", authRateLimiter, async (req, res) => {
     if (!hashMatch) {
       // Increment attempts on this specific OTP row
       const newAttempts = (otp.attempts ?? 0) + 1;
-      if (newAttempts >= 3) {
+      if (newAttempts >= OTP_MAX_ATTEMPTS) {
         // Void this OTP
         await db.update(otpRequestsTable).set({ usedAt: now }).where(eq(otpRequestsTable.id, otp.id));
         if (existingUser) await recordLoginFailure(existingUser.id);
@@ -350,7 +533,7 @@ router.post("/auth/verify-otp", authRateLimiter, async (req, res) => {
         res.status(401).json({
           error: "invalid_otp",
           message: "Invalid OTP",
-          attemptsRemaining: 3 - newAttempts,
+          attemptsRemaining: OTP_MAX_ATTEMPTS - newAttempts,
         });
       }
       return;
@@ -398,16 +581,45 @@ router.post("/auth/verify-otp", authRateLimiter, async (req, res) => {
     await recordLoginSuccess(user.id, ip);
 
     const deviceInfo = req.headers["user-agent"] ?? undefined;
-    const { accessToken, refreshToken } = await buildTokens(user, typeof deviceInfo === "string" ? deviceInfo : undefined, ip);
+    const appVersion = req.headers["x-app-version"] as string | undefined;
+    const locationCountry = req.headers["x-country-code"] as string | undefined;
+    try {
+      const { accessToken, refreshToken } = await buildTokens(user, {
+        deviceInfo: typeof deviceInfo === "string" ? deviceInfo : undefined,
+        ipAddress: ip,
+        appVersion,
+        locationCountry,
+      });
 
-    res.cookie("tabaq_token", accessToken, {
-      httpOnly: true,
-      secure: !IS_DEV,
-      sameSite: "strict",
-      maxAge: 15 * 60 * 1000,
-    });
+      res.cookie("tabaq_token", accessToken, {
+        httpOnly: true,
+        secure: !IS_DEV,
+        sameSite: "strict",
+        maxAge: 15 * 60 * 1000,
+      });
 
-    res.json({ token: accessToken, access_token: accessToken, refresh_token: refreshToken, user_uid: user.userUid, accessToken, refreshToken, user });
+      res.json({ token: accessToken, access_token: accessToken, refresh_token: refreshToken, user_uid: user.userUid, accessToken, refreshToken, user });
+    } catch (tokenErr) {
+      if (tokenErr instanceof SuspiciousLoginError) {
+        const newOtpCode = generateOtp();
+        const newOtpHash = await hashOtpBcrypt(newOtpCode);
+        await db.insert(otpRequestsTable).values({
+          phone: phone ?? null,
+          email: email ?? null,
+          otpHash: newOtpHash,
+          expiresAt: otpExpiresAt(),
+        });
+        if (phone) sendOtp(phone, newOtpCode).catch(() => {});
+        res.status(202).json({
+          requires_otp: true,
+          suspicious_reason: "new_country",
+          temp_token: tokenErr.tempToken,
+          ...(IS_DEV ? { devCode: newOtpCode } : {}),
+        });
+        return;
+      }
+      throw tokenErr;
+    }
   } catch (err) {
     req.log.error({ err }, "Failed to verify OTP");
     res.status(500).json({ error: "internal_error", message: "Failed to verify OTP" });
@@ -416,7 +628,7 @@ router.post("/auth/verify-otp", authRateLimiter, async (req, res) => {
 
 // ── EMAIL + PASSWORD ──────────────────────────────────────────────────────────
 
-router.post("/auth/register", authRateLimiter, async (req, res) => {
+router.post("/auth/register", registerRateLimiter, async (req, res) => {
   try {
     const { email: rawEmail, password, nameEn, nameAr, displayName, preferredLanguage = "en", cityId, username: rawUsername } = req.body as {
       email?: string;
@@ -481,7 +693,7 @@ router.post("/auth/register", authRateLimiter, async (req, res) => {
       return;
     }
 
-    const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+    const passwordHash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
     const levelInfo = calcLevel(0);
 
     const [user] = await db.insert(usersTable).values({
@@ -514,9 +726,22 @@ router.post("/auth/register", authRateLimiter, async (req, res) => {
 
     req.log.info({ userId: user!.id, email }, "Registration: email verification OTP generated");
 
+    // Create session immediately so the client can act as an authenticated (unverified) user
+    const registeredUser = { ...user!, userUid: uid };
+    const tokens = await buildTokens(registeredUser, {
+      deviceInfo: req.headers["x-device-info"] as string | undefined,
+      ipAddress: req.ip,
+      appVersion: req.headers["x-app-version"] as string | undefined,
+      locationCountry: req.headers["x-country-code"] as string | undefined,
+      locationCity: req.headers["x-city"] as string | undefined,
+      skipSuspiciousCheck: true,
+    });
+
     res.status(201).json({
       message: "Account created. Please verify your email.",
       userId: user!.id,
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
       ...(IS_DEV ? { devEmailOtp: code } : {}),
     });
   } catch (err: unknown) {
@@ -530,7 +755,7 @@ router.post("/auth/register", authRateLimiter, async (req, res) => {
   }
 });
 
-router.post("/auth/login", authRateLimiter, async (req, res) => {
+router.post("/auth/login", loginRateLimiter, async (req, res) => {
   try {
     // Accept identifier (generic) or email (legacy field name) interchangeably
     const rawIdentifier: string = ((req.body as Record<string, unknown>).identifier as string)
@@ -630,16 +855,47 @@ router.post("/auth/login", authRateLimiter, async (req, res) => {
     }
 
     const deviceInfo = req.headers["user-agent"];
-    const { accessToken, refreshToken } = await buildTokens(user, typeof deviceInfo === "string" ? deviceInfo : undefined, ip);
+    const appVersion = req.headers["x-app-version"] as string | undefined;
+    const locationCountry = req.headers["x-country-code"] as string | undefined;
+    try {
+      const { accessToken, refreshToken } = await buildTokens(user, {
+        deviceInfo: typeof deviceInfo === "string" ? deviceInfo : undefined,
+        ipAddress: ip,
+        appVersion,
+        locationCountry,
+      });
 
-    res.cookie("tabaq_token", accessToken, {
-      httpOnly: true,
-      secure: !IS_DEV,
-      sameSite: "strict",
-      maxAge: 15 * 60 * 1000,
-    });
+      res.cookie("tabaq_token", accessToken, {
+        httpOnly: true,
+        secure: !IS_DEV,
+        sameSite: "strict",
+        maxAge: 15 * 60 * 1000,
+      });
 
-    res.json({ token: accessToken, accessToken, refreshToken, user });
+      res.json({ token: accessToken, accessToken, refreshToken, user });
+    } catch (tokenErr) {
+      if (tokenErr instanceof SuspiciousLoginError) {
+        const newOtpCode = generateOtp();
+        const newOtpHash = await hashOtpBcrypt(newOtpCode);
+        const userEmail = user.email;
+        const userPhone = user.phone;
+        await db.insert(otpRequestsTable).values({
+          phone: userPhone ?? null,
+          email: userEmail ?? null,
+          otpHash: newOtpHash,
+          expiresAt: otpExpiresAt(),
+        });
+        if (userPhone) sendOtp(userPhone, newOtpCode).catch(() => {});
+        res.status(202).json({
+          requires_otp: true,
+          suspicious_reason: "new_country",
+          temp_token: tokenErr.tempToken,
+          ...(IS_DEV ? { devCode: newOtpCode } : {}),
+        });
+        return;
+      }
+      throw tokenErr;
+    }
   } catch (err) {
     req.log.error({ err }, "Failed to login");
     res.status(500).json({ error: "internal_error", message: "Failed to login" });
@@ -679,53 +935,74 @@ router.post("/auth/refresh", async (req, res) => {
   try {
     const { refreshToken: rawToken } = req.body as { refreshToken?: string };
 
-    // Also accept from Authorization header (Bearer <refreshToken>)
     const token = rawToken ?? req.headers["x-refresh-token"];
     if (!token || typeof token !== "string") {
       res.status(400).json({ error: "bad_request", message: "refreshToken is required" });
       return;
     }
 
-    const tokenHash = hashRefreshToken(token);
-    const now = new Date();
-
-    // First look up the token regardless of revocation state — detect reuse attacks
-    const [record] = await db
-      .select()
-      .from(refreshTokensTable)
-      .where(
-        and(
-          eq(refreshTokensTable.tokenHash, tokenHash),
-          gt(refreshTokensTable.expiresAt, now),
-        )
-      )
-      .limit(1);
-
-    if (!record) {
-      res.status(401).json({ error: "invalid_refresh_token", message: "Refresh token is invalid or expired" });
+    const jwtPayload = verifyRefreshToken(token);
+    if (!jwtPayload) {
+      res.status(401).json({ error: "invalid_refresh_token", message: "Refresh token signature is invalid" });
       return;
     }
 
-    // If this token was already used/revoked, it's a reuse attack — revoke all sessions
-    if (record.isRevoked) {
-      await db
-        .update(refreshTokensTable)
-        .set({ isRevoked: true })
-        .where(eq(refreshTokensTable.userId, record.userId));
+    const tokenHash = hashRefreshToken(token);
+    const now = new Date();
+
+    // Primary lookup: find session by current refresh_token_hash
+    const [sessionByCurrent] = await db
+      .select()
+      .from(sessionsTable)
+      .where(eq(sessionsTable.refreshTokenHash, tokenHash))
+      .limit(1);
+
+    if (sessionByCurrent) {
+      // Cross-validate sesUid from JWT payload to catch any token/session mismatch
+      if (sessionByCurrent.sesUid !== jwtPayload.sesUid) {
+        await revokeAllUserSessions(jwtPayload.userId);
+        res.status(401).json({ error: "TOKEN_REUSED", message: "Refresh token has already been used. All sessions have been revoked for security." });
+        return;
+      }
+
+      // Session intentionally revoked (logout) — hash matches, session is revoked
+      if (sessionByCurrent.isRevoked) {
+        res.status(401).json({ error: "session_revoked", message: "Session has been revoked. Please log in again." });
+        return;
+      }
+
+      // Valid session with matching hash — continue with rotation below using sessionByCurrent
+    } else {
+      // Hash not found as current — check if it's a previous hash (theft: already-rotated token replayed)
+      const [sessionByPrev] = await db
+        .select()
+        .from(sessionsTable)
+        .where(eq(sessionsTable.prevRefreshTokenHash, tokenHash))
+        .limit(1);
+
+      if (sessionByPrev) {
+        await revokeAllUserSessions(sessionByPrev.userId);
+        res.status(401).json({ error: "TOKEN_REUSED", message: "Refresh token has already been used. All sessions have been revoked for security." });
+        return;
+      }
+
+      // Hash found in neither current nor prev — older replay or session cleaned up
+      await revokeAllUserSessions(jwtPayload.userId);
       res.status(401).json({ error: "TOKEN_REUSED", message: "Refresh token has already been used. All sessions have been revoked for security." });
       return;
     }
 
-    // Revoke the old token (rotation) and stamp last_used_at
-    await db
-      .update(refreshTokensTable)
-      .set({ isRevoked: true, lastUsedAt: now })
-      .where(eq(refreshTokensTable.id, record.id));
+    const session = sessionByCurrent;
+
+    if (session.expiresAt <= now) {
+      res.status(401).json({ error: "invalid_refresh_token", message: "Refresh token has expired" });
+      return;
+    }
 
     const [user] = await db
       .select()
       .from(usersTable)
-      .where(eq(usersTable.id, record.userId))
+      .where(eq(usersTable.id, session.userId))
       .limit(1);
 
     if (!user) {
@@ -739,9 +1016,134 @@ router.post("/auth/refresh", async (req, res) => {
       return;
     }
 
-    const deviceInfo = record.deviceInfo ?? req.headers["user-agent"];
-    const ip = getClientIp(req);
-    const { accessToken, refreshToken: newRefreshToken } = await buildTokens(user, typeof deviceInfo === "string" ? deviceInfo : undefined, ip);
+    // Issue new access token using the SAME sesUid (session continuity)
+    let uid = user.userUid;
+    if (!uid) {
+      uid = generateUserUid(user.id);
+      await db.update(usersTable).set({ userUid: uid }).where(eq(usersTable.id, user.id));
+    }
+    const role: "admin" | "owner" | "user" = user.isAdmin ? "admin" : user.isOwner ? "owner" : "user";
+    const newAccessToken = signToken({
+      sub: uid,
+      userId: user.id,
+      sesUid: session.sesUid,
+      role,
+      phone: user.phone,
+      email: user.email,
+      isAdmin: user.isAdmin,
+      isOwner: user.isOwner,
+    });
+
+    // Generate new refresh token (JWT) and rotate in-place
+    const newRawRefreshToken = signRefreshToken(session.sesUid, user.id);
+    const newTokenHash = hashRefreshToken(newRawRefreshToken);
+    const newExpiresAt = new Date(Date.now() + REFRESH_TOKEN_EXPIRES_IN_MS);
+
+    await db
+      .update(sessionsTable)
+      .set({
+        prevRefreshTokenHash: tokenHash,
+        refreshTokenHash: newTokenHash,
+        lastUsedAt: now,
+        expiresAt: newExpiresAt,
+        ipAddress: getClientIp(req),
+      })
+      .where(eq(sessionsTable.sesUid, session.sesUid));
+
+    res.cookie("tabaq_token", newAccessToken, {
+      httpOnly: true,
+      secure: !IS_DEV,
+      sameSite: "strict",
+      maxAge: 15 * 60 * 1000,
+    });
+
+    res.json({ accessToken: newAccessToken, refreshToken: newRawRefreshToken });
+  } catch (err) {
+    req.log.error({ err }, "Failed to refresh token");
+    res.status(500).json({ error: "internal_error", message: "Failed to refresh token" });
+  }
+});
+
+// ── CONFIRM SUSPICIOUS LOGIN ───────────────────────────────────────────────────
+
+router.post("/auth/confirm-suspicious", loginRateLimiter, async (req, res) => {
+  try {
+    const { temp_token: tempToken, code } = req.body as { temp_token?: string; code?: string };
+
+    if (!tempToken || !code) {
+      res.status(400).json({ error: "bad_request", message: "temp_token and code are required" });
+      return;
+    }
+
+    const payload = verifySuspiciousToken(tempToken);
+    if (!payload) {
+      res.status(401).json({ error: "invalid_token", message: "Verification token is invalid or expired" });
+      return;
+    }
+
+    const { userId, deviceInfo, ipAddress, appVersion, locationCountry, locationCity } = payload;
+
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+    if (!user) {
+      res.status(401).json({ error: "user_not_found", message: "User not found" });
+      return;
+    }
+
+    const now = new Date();
+
+    const identifier = user.phone
+      ? eq(otpRequestsTable.phone, user.phone)
+      : user.email
+        ? eq(otpRequestsTable.email, user.email)
+        : null;
+
+    if (!identifier) {
+      res.status(400).json({ error: "no_identifier", message: "No phone or email on account" });
+      return;
+    }
+
+    const [otp] = await db
+      .select()
+      .from(otpRequestsTable)
+      .where(and(identifier, isNull(otpRequestsTable.usedAt), gt(otpRequestsTable.expiresAt, now)))
+      .orderBy(desc(otpRequestsTable.createdAt))
+      .limit(1);
+
+    if (!otp) {
+      res.status(401).json({ error: "invalid_otp", message: "Code is invalid or expired. Please request a new one." });
+      return;
+    }
+
+    const storedHash = otp.otpHash ?? "";
+    let hashMatch = false;
+    if (storedHash.startsWith("$2")) {
+      hashMatch = await verifyOtpBcrypt(code, storedHash);
+    } else {
+      hashMatch = storedHash === crypto.createHash("sha256").update(code).digest("hex");
+    }
+
+    if (!hashMatch) {
+      const newAttempts = (otp.attempts ?? 0) + 1;
+      if (newAttempts >= OTP_MAX_ATTEMPTS) {
+        await db.update(otpRequestsTable).set({ usedAt: now }).where(eq(otpRequestsTable.id, otp.id));
+        res.status(401).json({ error: "OTP_VOID", message: "Too many failed attempts. Please request a new code." });
+      } else {
+        await db.update(otpRequestsTable).set({ attempts: newAttempts }).where(eq(otpRequestsTable.id, otp.id));
+        res.status(401).json({ error: "invalid_otp", message: "Invalid code", attemptsRemaining: OTP_MAX_ATTEMPTS - newAttempts });
+      }
+      return;
+    }
+
+    await db.update(otpRequestsTable).set({ usedAt: now }).where(eq(otpRequestsTable.id, otp.id));
+
+    const { accessToken, refreshToken } = await buildTokens(user, {
+      deviceInfo,
+      ipAddress,
+      appVersion,
+      locationCountry,
+      locationCity,
+      skipSuspiciousCheck: true,
+    });
 
     res.cookie("tabaq_token", accessToken, {
       httpOnly: true,
@@ -750,10 +1152,15 @@ router.post("/auth/refresh", async (req, res) => {
       maxAge: 15 * 60 * 1000,
     });
 
-    res.json({ accessToken, refreshToken: newRefreshToken });
+    res.json({
+      token: accessToken,
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      user_uid: user.userUid,
+    });
   } catch (err) {
-    req.log.error({ err }, "Failed to refresh token");
-    res.status(500).json({ error: "internal_error", message: "Failed to refresh token" });
+    req.log.error({ err }, "Failed to confirm suspicious login");
+    res.status(500).json({ error: "internal_error", message: "Failed to confirm login" });
   }
 });
 
@@ -844,12 +1251,14 @@ router.get("/auth/verify-email/confirm", async (req, res) => {
 
 // ── LOGOUT ────────────────────────────────────────────────────────────────────
 
-router.post("/auth/logout", async (req, res) => {
-  // Revoke refresh token if supplied
-  const rawToken = (req.body as { refreshToken?: string })?.refreshToken;
-  if (rawToken) {
-    const tokenHash = hashRefreshToken(rawToken);
-    await db.update(refreshTokensTable).set({ isRevoked: true }).where(eq(refreshTokensTable.tokenHash, tokenHash)).catch(() => {});
+router.post("/auth/logout", requireAuth, async (req, res) => {
+  const sesUid = req.auth!.sesUid;
+  if (sesUid) {
+    await db
+      .update(sessionsTable)
+      .set({ isRevoked: true, lastUsedAt: new Date() })
+      .where(eq(sessionsTable.sesUid, sesUid))
+      .catch(() => {});
   }
   res.clearCookie("tabaq_token");
   res.json({ message: "Logged out" });
@@ -948,7 +1357,13 @@ router.post("/auth/oauth/google", authRateLimiter, async (req, res) => {
       isNewUser = true;
     }
 
-    const { accessToken, refreshToken } = await buildTokens(user, deviceInfo, ip);
+    const locationCountry = req.headers["x-country-code"] as string | undefined;
+    const { accessToken, refreshToken } = await buildTokens(user, {
+      deviceInfo: typeof deviceInfo === "string" ? deviceInfo : undefined,
+      ipAddress: ip,
+      locationCountry,
+      skipSuspiciousCheck: isNewUser,
+    });
 
     res.json({
       access_token: accessToken,
@@ -1074,7 +1489,13 @@ router.post("/auth/oauth/apple", authRateLimiter, async (req, res) => {
       isNewUser = true;
     }
 
-    const { accessToken, refreshToken } = await buildTokens(user, deviceInfo, ip);
+    const locationCountry = req.headers["x-country-code"] as string | undefined;
+    const { accessToken, refreshToken } = await buildTokens(user, {
+      deviceInfo: typeof deviceInfo === "string" ? deviceInfo : undefined,
+      ipAddress: ip,
+      locationCountry,
+      skipSuspiciousCheck: isNewUser,
+    });
 
     res.json({
       access_token: accessToken,

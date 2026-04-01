@@ -2,6 +2,7 @@ import express, { type Express, type Request, type Response, type NextFunction }
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
+import helmet from "helmet";
 import path from "path";
 import { fileURLToPath } from "url";
 import router from "./routes/index.js";
@@ -16,6 +17,8 @@ const app: Express = express();
 if (process.env["TRUST_PROXY"] === "true") {
   app.set("trust proxy", 1);
 }
+
+app.use(helmet());
 
 app.use(
   pinoHttp({

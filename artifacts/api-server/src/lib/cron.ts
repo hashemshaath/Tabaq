@@ -19,10 +19,11 @@ import cron from "node-cron";
 import { db } from "@workspace/db";
 import {
   usersTable, ordersTable, membershipsTable, cronLogsTable,
-  pointsTransactionsTable,
+  pointsTransactionsTable, sessionsTable,
 } from "@workspace/db/schema";
-import { and, eq, lt, sql, lte, gte, inArray } from "drizzle-orm";
+import { and, eq, lt, sql, lte, gte, inArray, or } from "drizzle-orm";
 import { logger } from "./logger.js";
+import { SESSION_CLEANUP_CRON } from "./auth.js";
 import { transitionMembershipStatus } from "./membership.js";
 import { transitionOrderStatus } from "./orderStatus.js";
 import { notifyAsync } from "./notify.js";
@@ -366,6 +367,26 @@ async function jobFailedPaymentRetry(): Promise<number> {
   return retried;
 }
 
+async function jobSessionCleanup(): Promise<number> {
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+  const result = await db
+    .delete(sessionsTable)
+    .where(
+      or(
+        lt(sessionsTable.expiresAt, thirtyDaysAgo),
+        and(
+          eq(sessionsTable.isRevoked, true),
+          lt(sessionsTable.lastUsedAt, thirtyDaysAgo),
+        ),
+      ),
+    );
+
+  const count = (result as unknown as { rowCount?: number }).rowCount ?? 0;
+  logger.info({ count }, "Session cleanup: deleted expired/revoked sessions");
+  return count;
+}
+
 // ─── Scheduler Registration ───────────────────────────────────────────────────
 
 const JOBS: Array<{ name: string; schedule: string; fn: () => Promise<number> }> = [
@@ -375,6 +396,7 @@ const JOBS: Array<{ name: string; schedule: string; fn: () => Promise<number> }>
   { name: "commission_batch_calculation", schedule: "0 5 1 * *",   fn: jobCommissionBatchCalculation },
   { name: "abandoned_order_cleanup",      schedule: "0 */6 * * *", fn: jobAbandonedOrderCleanup },
   { name: "failed_payment_retry",         schedule: "0 */4 * * *", fn: jobFailedPaymentRetry },
+  { name: "session_cleanup",              schedule: SESSION_CLEANUP_CRON, fn: jobSessionCleanup },
 ];
 
 let started = false;

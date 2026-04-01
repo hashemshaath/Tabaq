@@ -31,7 +31,9 @@ export type NotifType =
   | "voucher_expiring"
   | "refund_processed"
   | "dispute_opened"
-  | "dispute_resolved";
+  | "dispute_resolved"
+  | "SUSPICIOUS_LOGIN"
+  | "NEW_DEVICE_LOGIN";
 
 export interface NotifPayload {
   userId: number;

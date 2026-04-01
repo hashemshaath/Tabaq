@@ -1,11 +1,11 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
-import rateLimit from "express-rate-limit";
 import { db } from "@workspace/db";
 import { usersTable, otpRequestsTable, refreshTokensTable } from "@workspace/db/schema";
 import { eq, and, isNull, gt, gte, desc, lt } from "drizzle-orm";
 import { requireAuth } from "../middleware/requireAuth.js";
+import { forgotPasswordRateLimiter } from "../middleware/rateLimiter.js";
 import {
   generateOtp,
   hashOtpBcrypt,
@@ -28,16 +28,6 @@ const OTP_EXPIRY_MINUTES = 10;
 const RATE_LIMIT_WINDOW_HOURS = 1;
 const RATE_LIMIT_MAX_PER_WINDOW = 3;
 
-// ── Rate limiter for forgot-password: 3/hour per IP ──────────────────────────
-// DB-level per-email enforcement is inside each handler below.
-const forgotRateLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  max: 10,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: "Too many password reset requests. Please wait before trying again.",
-  skip: () => process.env["NODE_ENV"] === "test",
-});
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -68,7 +58,7 @@ async function countRecentOtpRequests(identifier: { email?: string; phone?: stri
 // Send password-reset OTP via email. Always returns the same success message
 // regardless of whether the email is registered (prevents user enumeration).
 
-router.post("/auth/password/forgot", forgotRateLimiter, async (req, res) => {
+router.post("/auth/password/forgot", forgotPasswordRateLimiter, async (req, res) => {
   try {
     const { email: rawEmail } = req.body as { email?: string };
     const ip = getClientIp(req);
@@ -134,7 +124,7 @@ router.post("/auth/password/forgot", forgotRateLimiter, async (req, res) => {
 // ── POST /auth/password/forgot-via-phone ──────────────────────────────────────
 // Send password-reset OTP via SMS (for phone-verified users).
 
-router.post("/auth/password/forgot-via-phone", forgotRateLimiter, async (req, res) => {
+router.post("/auth/password/forgot-via-phone", forgotPasswordRateLimiter, async (req, res) => {
   try {
     const { phone: rawPhone } = req.body as { phone?: string };
     const ip = getClientIp(req);

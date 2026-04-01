@@ -5,12 +5,40 @@ import bcrypt from "bcryptjs";
 const JWT_SECRET = process.env["JWT_SECRET"];
 if (!JWT_SECRET) throw new Error("JWT_SECRET environment variable is required");
 
+const JWT_REFRESH_SECRET = process.env["JWT_REFRESH_SECRET"];
+if (!JWT_REFRESH_SECRET) throw new Error("JWT_REFRESH_SECRET environment variable is required");
+if (JWT_REFRESH_SECRET === JWT_SECRET) throw new Error("JWT_REFRESH_SECRET must be different from JWT_SECRET");
+
+function envInt(key: string, fallback: number, min: number, max: number): number {
+  const raw = process.env[key];
+  if (!raw) {
+    console.warn(`[startup] ${key} is not set; using default: ${fallback} (valid range ${min}–${max}). Set it explicitly in production.`);
+    return fallback;
+  }
+  const n = parseInt(raw, 10);
+  if (!Number.isFinite(n) || n < min || n > max) {
+    throw new Error(`[startup] ${key} must be an integer between ${min} and ${max}, got: "${raw}"`);
+  }
+  return n;
+}
+
+export const BCRYPT_SALT_ROUNDS = envInt("BCRYPT_SALT_ROUNDS", 12, 8, 20);
+export const OTP_EXPIRY_MINUTES = envInt("OTP_EXPIRY_MINUTES", 10, 1, 60);
+export const OTP_MAX_ATTEMPTS = envInt("OTP_MAX_ATTEMPTS", 5, 1, 20);
+
+const SESSION_CLEANUP_CRON_RAW = process.env["SESSION_CLEANUP_CRON"];
+if (!SESSION_CLEANUP_CRON_RAW) {
+  console.warn("[startup] SESSION_CLEANUP_CRON is not set; defaulting to '0 2 * * *'. Set it explicitly in production.");
+}
+export const SESSION_CLEANUP_CRON = SESSION_CLEANUP_CRON_RAW ?? "0 2 * * *";
+
 export const ACCESS_TOKEN_EXPIRES_IN = "15m";
 export const REFRESH_TOKEN_EXPIRES_IN_MS = 30 * 24 * 60 * 60 * 1000;
 
 export interface JwtPayload {
   sub: string;
   userId: number;
+  sesUid?: string;
   type: "access";
   role: "user" | "admin" | "owner";
   jti: string;
@@ -90,11 +118,63 @@ export async function verifyOtpBcrypt(code: string, storedHash: string): Promise
 }
 
 export function otpExpiresAt(): Date {
-  return new Date(Date.now() + 5 * 60 * 1000);
+  return new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
 }
 
 export function generateRefreshToken(): string {
   return crypto.randomBytes(64).toString("hex");
+}
+
+export function signRefreshToken(sesUid: string, userId: number): string {
+  return jwt.sign(
+    { sesUid, userId, type: "refresh", jti: crypto.randomUUID() },
+    JWT_REFRESH_SECRET!,
+    { expiresIn: "30d" } as jwt.SignOptions,
+  );
+}
+
+export function verifyRefreshToken(token: string): { sesUid: string; userId: number } | null {
+  try {
+    const p = jwt.verify(token, JWT_REFRESH_SECRET!) as Record<string, unknown>;
+    if (p["type"] !== "refresh") return null;
+    return { sesUid: p["sesUid"] as string, userId: p["userId"] as number };
+  } catch {
+    return null;
+  }
+}
+
+export interface SuspiciousTokenPayload {
+  userId: number;
+  deviceInfo?: string;
+  ipAddress?: string;
+  appVersion?: string;
+  locationCountry?: string;
+  locationCity?: string;
+}
+
+export function signSuspiciousToken(userId: number, options: Omit<SuspiciousTokenPayload, "userId">): string {
+  return jwt.sign(
+    { userId, type: "suspicious_pending", ...options },
+    JWT_SECRET!,
+    { expiresIn: "10m" } as jwt.SignOptions,
+  );
+}
+
+export function verifySuspiciousToken(token: string): SuspiciousTokenPayload | null {
+  try {
+    const p = jwt.verify(token, JWT_SECRET!) as Record<string, unknown>;
+    if (p["type"] !== "suspicious_pending") return null;
+    return {
+      userId: p["userId"] as number,
+      deviceInfo: p["deviceInfo"] as string | undefined,
+      ipAddress: p["ipAddress"] as string | undefined,
+      appVersion: p["appVersion"] as string | undefined,
+      locationCountry: p["locationCountry"] as string | undefined,
+      locationCity: p["locationCity"] as string | undefined,
+    };
+  } catch {
+    return null;
+  }
 }
 
 export function hashRefreshToken(token: string): string {

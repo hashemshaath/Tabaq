@@ -11,6 +11,7 @@ declare global {
       auth?: {
         userId: number;
         userUid?: string;
+        sesUid?: string;
         phone?: string | null;
         email?: string | null;
         isAdmin?: boolean;
@@ -42,6 +43,7 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
   req.auth = {
     userId: payload.userId,
     userUid: payload.sub,
+    sesUid: payload.sesUid,
     phone: payload.phone,
     email: payload.email,
     isAdmin: payload.isAdmin ?? payload.role === "admin",
