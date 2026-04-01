@@ -85,7 +85,7 @@ router.post("/redeem", requireAuth, async (req, res) => {
 });
 
 // GET /redemptions — list redemptions for merchant's restaurant
-router.get("/", requireAuth, async (req, res) => {
+router.get("/redemptions", requireAuth, async (req, res) => {
   try {
     const userId = req.auth!.userId;
     // Find restaurant owned by user

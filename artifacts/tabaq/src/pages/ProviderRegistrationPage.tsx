@@ -79,6 +79,7 @@ export function ProviderRegistrationPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [refCode, setRefCode] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     businessType: '' as BusinessType | '',
@@ -121,6 +122,7 @@ export function ProviderRegistrationPage() {
 
   const handleSubmit = async () => {
     setSubmitting(true);
+    setSubmitError(null);
     try {
       const res = await fetch(`${API_BASE}/api/partner-applications`, {
         method: 'POST',
@@ -133,10 +135,10 @@ export function ProviderRegistrationPage() {
         setSubmitted(true);
       } else {
         const err = await res.json();
-        alert(err.message || 'Submission failed. Please try again.');
+        setSubmitError(err.message || t('Submission failed. Please try again.', 'فشل الإرسال. يرجى المحاولة مرة أخرى.'));
       }
     } catch {
-      alert('Network error. Please check your connection and try again.');
+      setSubmitError(t('Network error. Please check your connection and try again.', 'خطأ في الشبكة. يرجى التحقق من اتصالك والمحاولة مرة أخرى.'));
     } finally {
       setSubmitting(false);
     }
@@ -452,23 +454,30 @@ export function ProviderRegistrationPage() {
               <ArrowRight className="w-4 h-4" />
             </button>
           ) : (
-            <button
-              onClick={handleSubmit}
-              disabled={!canProceed() || submitting}
-              className="flex items-center gap-1.5 bg-primary text-white text-sm font-bold px-8 py-2.5 rounded-xl hover:bg-primary/90 disabled:opacity-40 transition-all shadow-sm"
-            >
-              {submitting ? (
-                <span className="flex items-center gap-2">
-                  <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-                  {t('Submitting...', 'جارٍ الإرسال...')}
-                </span>
-              ) : (
-                <>
-                  {t('Submit Application', 'إرسال الطلب')}
-                  <CheckCircle2 className="w-4 h-4" />
-                </>
+            <div className="flex flex-col items-end gap-2">
+              {submitError && (
+                <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5 max-w-xs text-start">
+                  {submitError}
+                </p>
               )}
-            </button>
+              <button
+                onClick={handleSubmit}
+                disabled={!canProceed() || submitting}
+                className="flex items-center gap-1.5 bg-primary text-white text-sm font-bold px-8 py-2.5 rounded-xl hover:bg-primary/90 disabled:opacity-40 transition-all shadow-sm"
+              >
+                {submitting ? (
+                  <span className="flex items-center gap-2">
+                    <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                    {t('Submitting...', 'جارٍ الإرسال...')}
+                  </span>
+                ) : (
+                  <>
+                    {t('Submit Application', 'إرسال الطلب')}
+                    <CheckCircle2 className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+            </div>
           )}
         </div>
       </div>

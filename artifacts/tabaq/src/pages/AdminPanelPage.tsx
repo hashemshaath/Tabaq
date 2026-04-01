@@ -11,7 +11,7 @@ import {
   MapPin, Clock, LogOut, Database, Activity, FileSignature,
   DollarSign, Receipt, Send, Percent, BadgeCheck, Ban, RefreshCw,
   CheckSquare, X, Hash, ChefHat, Sparkles, Film, ThumbsUp, ThumbsDown, PlayCircle,
-  ShieldCheck, User, ExternalLink, Loader2
+  ShieldCheck, User, ExternalLink, Loader2, Phone
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StarRating } from '@/components/StarRating';
@@ -1572,6 +1572,8 @@ export function AdminPanelPage() {
 
   const [msgForm, setMsgForm] = useState({ restaurantId: '', subject: '', body: '', type: 'general' });
   const [showMsgForm, setShowMsgForm] = useState(false);
+  const [showPromoForm, setShowPromoForm] = useState(false);
+  const [promoForm, setPromoForm] = useState({ code: '', discountType: 'percentage', discountValue: '', usageLimit: '100', minOrderAmount: '' });
 
   const sendMessage = useMutation({
     mutationFn: async (body: any) => {
@@ -2105,7 +2107,20 @@ export function AdminPanelPage() {
               <div className="flex items-center justify-between">
                 <p className="text-muted-foreground text-sm">{pendingApplications.length} applications awaiting review</p>
                 <div className="flex gap-2">
-                  <button className="text-xs bg-green-100 text-green-700 px-3 py-1.5 rounded-lg font-semibold">Approve All</button>
+                  <button
+                    disabled={pendingApplications.length === 0}
+                    onClick={async () => {
+                      for (const r of pendingApplications) {
+                        await fetch(`${API_BASE}/api/admin/registrations/${r.id}`, {
+                          method: 'PATCH',
+                          headers: getAuthHeaders(),
+                          body: JSON.stringify({ status: 'approved' }),
+                        });
+                      }
+                      refetchRegistrations();
+                    }}
+                    className="text-xs bg-green-100 text-green-700 px-3 py-1.5 rounded-lg font-semibold hover:bg-green-200 transition-colors disabled:opacity-40"
+                  >Approve All ({pendingApplications.length})</button>
                 </div>
               </div>
               <div className="space-y-4">
@@ -2161,9 +2176,21 @@ export function AdminPanelPage() {
                       {r.refCode && (
                         <span className="flex items-center gap-1 text-xs text-muted-foreground bg-secondary px-3 py-2 rounded-xl font-mono">{r.refCode}</span>
                       )}
-                      <button className="flex items-center gap-1.5 bg-blue-100 text-blue-700 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-blue-200 transition-colors ms-auto">
-                        <MessageSquare className="w-4 h-4" /> Contact Owner
-                      </button>
+                      {r.phone ? (
+                        <a
+                          href={`tel:${r.phone}`}
+                          className="flex items-center gap-1.5 bg-blue-100 text-blue-700 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-blue-200 transition-colors ms-auto"
+                        >
+                          <Phone className="w-4 h-4" /> Call Owner
+                        </a>
+                      ) : r.email ? (
+                        <a
+                          href={`mailto:${r.email}`}
+                          className="flex items-center gap-1.5 bg-blue-100 text-blue-700 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-blue-200 transition-colors ms-auto"
+                        >
+                          <MessageSquare className="w-4 h-4" /> Email Owner
+                        </a>
+                      ) : null}
                     </div>
                   </div>
                   );
@@ -3362,19 +3389,110 @@ export function AdminPanelPage() {
           {/* ── PROMO CODES ── */}
           {activeTab === 'promo-codes' && (
             <div className="space-y-6">
+              {showPromoForm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                  <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md p-6">
+                    <div className="flex items-center justify-between mb-5">
+                      <h3 className="font-bold text-foreground flex items-center gap-2"><Tag className="w-4 h-4 text-primary" /> Create Promo Code</h3>
+                      <button onClick={() => { setShowPromoForm(false); setPromoForm({ code: '', discountType: 'percentage', discountValue: '', usageLimit: '100', minOrderAmount: '' }); }} className="p-1.5 rounded-lg hover:bg-secondary text-muted-foreground"><X className="w-4 h-4" /></button>
+                    </div>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-xs font-semibold text-muted-foreground block mb-1.5">Code *</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. SAVE20"
+                          value={promoForm.code}
+                          onChange={e => setPromoForm(f => ({ ...f, code: e.target.value.toUpperCase().replace(/\s/g, '') }))}
+                          className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm font-mono uppercase focus:outline-none focus:ring-2 focus:ring-primary/20"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs font-semibold text-muted-foreground block mb-1.5">Discount Type *</label>
+                          <select
+                            value={promoForm.discountType}
+                            onChange={e => setPromoForm(f => ({ ...f, discountType: e.target.value }))}
+                            className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                          >
+                            <option value="percentage">Percentage (%)</option>
+                            <option value="fixed_amount">Fixed Amount (SAR)</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-muted-foreground block mb-1.5">
+                            {promoForm.discountType === 'percentage' ? 'Discount %' : 'Amount (SAR)'} *
+                          </label>
+                          <input
+                            type="number"
+                            min="1"
+                            max={promoForm.discountType === 'percentage' ? '100' : undefined}
+                            placeholder={promoForm.discountType === 'percentage' ? 'e.g. 20' : 'e.g. 50'}
+                            value={promoForm.discountValue}
+                            onChange={e => setPromoForm(f => ({ ...f, discountValue: e.target.value }))}
+                            className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs font-semibold text-muted-foreground block mb-1.5">Usage Limit</label>
+                          <input
+                            type="number"
+                            min="1"
+                            placeholder="100"
+                            value={promoForm.usageLimit}
+                            onChange={e => setPromoForm(f => ({ ...f, usageLimit: e.target.value }))}
+                            className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-muted-foreground block mb-1.5">Min Order (SAR)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            placeholder="Optional"
+                            value={promoForm.minOrderAmount}
+                            onChange={e => setPromoForm(f => ({ ...f, minOrderAmount: e.target.value }))}
+                            className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 mt-5">
+                      <button
+                        onClick={() => { setShowPromoForm(false); setPromoForm({ code: '', discountType: 'percentage', discountValue: '', usageLimit: '100', minOrderAmount: '' }); }}
+                        className="flex-1 px-4 py-2.5 rounded-xl border border-border text-sm font-semibold text-muted-foreground hover:bg-secondary"
+                      >Cancel</button>
+                      <button
+                        disabled={!promoForm.code || !promoForm.discountValue}
+                        onClick={() => {
+                          const payload: any = {
+                            code: promoForm.code,
+                            discountType: promoForm.discountType,
+                            discountValue: parseFloat(promoForm.discountValue),
+                            isActive: true,
+                            usageLimit: promoForm.usageLimit ? parseInt(promoForm.usageLimit) : 100,
+                            timesUsed: 0,
+                          };
+                          if (promoForm.minOrderAmount) payload.minOrderAmount = parseFloat(promoForm.minOrderAmount);
+                          fetch(`${API_BASE}/api/promo-codes`, {
+                            method: 'POST',
+                            headers: getAuthHeaders(),
+                            body: JSON.stringify(payload),
+                          }).then(() => { refetchPromoCodes(); setShowPromoForm(false); setPromoForm({ code: '', discountType: 'percentage', discountValue: '', usageLimit: '100', minOrderAmount: '' }); });
+                        }}
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 disabled:opacity-50"
+                      >
+                        <Plus className="w-4 h-4" /> Create Code
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-bold">Promo Codes</h2>
-                <Button onClick={() => {
-                  const code = prompt('Enter promo code (e.g. SAVE20):');
-                  if (!code) return;
-                  const discountType = prompt('Discount type (percentage / fixed_amount):') ?? 'percentage';
-                  const discountValue = prompt('Discount value (e.g. 20 for 20%):') ?? '20';
-                  fetch(`${API_BASE}/api/promo-codes`, {
-                    method: 'POST',
-                    headers: getAuthHeaders(),
-                    body: JSON.stringify({ code: code.toUpperCase(), discountType, discountValue: parseFloat(discountValue), isActive: true, usageLimit: 100, timesUsed: 0 })
-                  }).then(() => refetchPromoCodes());
-                }}><Plus className="w-4 h-4 me-2" /> Create Promo Code</Button>
+                <Button onClick={() => setShowPromoForm(true)}><Plus className="w-4 h-4 me-2" /> Create Promo Code</Button>
               </div>
               <div className="bg-card border border-border rounded-2xl overflow-hidden">
                 <table className="w-full text-sm text-start">
@@ -4109,7 +4227,7 @@ export function AdminPanelPage() {
                     <p className="text-xs text-muted-foreground mt-0.5">When active, the platform shows a demo banner and uses seeded data</p>
                   </div>
                   <button
-                    onClick={toggleDemoMode}
+                    onClick={() => toggleDemoMode(!isDemoMode)}
                     className={`relative rounded-full transition-all duration-300 ${isDemoMode ? 'bg-primary' : 'bg-muted'}`}
                     style={{ width: 44, height: 24 }}
                   >

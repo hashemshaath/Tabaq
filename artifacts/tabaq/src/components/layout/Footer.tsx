@@ -139,17 +139,23 @@ export function Footer() {
         {/* App store badges */}
         <div className="py-6 border-b border-white/10">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-            <span className="text-sm text-white/50">{t('Download the App:', 'حمّل التطبيق:')}</span>
+            <div>
+              <span className="text-sm text-white/50">{t('Download the App:', 'حمّل التطبيق:')}</span>
+              <span className="ms-2 text-[10px] text-white/30 font-medium uppercase tracking-wide">{t('Coming Soon', 'قريباً')}</span>
+            </div>
             <div className="flex gap-3">
-              {['App Store', 'Google Play'].map(store => (
-                <a
+              {[
+                { store: 'App Store', icon: '🍎', label: t('App Store', 'آب ستور') },
+                { store: 'Google Play', icon: '▶', label: t('Google Play', 'جوجل بلاي') },
+              ].map(({ store, icon, label }) => (
+                <span
                   key={store}
-                  href="#"
-                  className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/15 border border-white/15 rounded-lg text-xs font-medium text-white/80 transition-colors"
+                  title={t('Coming soon to ' + store, 'قريباً على ' + store)}
+                  className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-xs font-medium text-white/40 cursor-not-allowed select-none"
                 >
-                  <span>{store === 'App Store' ? '🍎' : '▶'}</span>
-                  {store}
-                </a>
+                  <span>{icon}</span>
+                  {label}
+                </span>
               ))}
             </div>
           </div>

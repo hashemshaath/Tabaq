@@ -1,5 +1,43 @@
 # Tabaq | طبق — Workspace
 
+## Platform Polish — Session 8 (April 2026)
+
+### Completed Fixes
+
+**ProviderRegistrationPage — Error Display**
+- Added inline error box above the Submit button, shown when submission fails
+- Shows red bordered alert with error message from the API
+
+**Footer — App Store Links**
+- Replaced clickable `href="#"` anchors with non-interactive `<span>` elements
+- Added "Coming Soon" label next to the download prompt
+- Buttons now visually dimmed (`text-white/40`) with `cursor-not-allowed`
+
+**API: Redemptions Route Fix**
+- `GET /api/redemptions` was returning 404 because the route was registered at `"/"` instead of `"/redemptions"`
+- Fixed path in `redemptions.ts` — Business Console CRM Scanner tab now works correctly
+
+**Unused Page Cleanup**
+- Deleted `EditProfilePage.tsx` (405 lines) — superseded by `AccountPage.tsx`
+- Deleted `AccountSettingsPage.tsx` (582 lines) — superseded by `AccountPage.tsx`
+- `/edit-profile` was already correctly routed to `AccountPage`
+
+**Admin Panel: Promo Codes Modal**
+- Replaced raw `prompt()` calls with a proper inline modal form
+- Form has fields: Code, Discount Type (% / fixed), Discount Value, Usage Limit, Min Order Amount
+- Code auto-uppercases and strips spaces; form resets after successful creation
+
+**Admin Panel: Registrations Tab**
+- "Approve All" button now loops through pending applications and patches each to `approved`
+- Displays count `Approve All (N)` and is disabled when no pending applications exist
+- "Contact Owner" button replaced: uses `tel:phone` or `mailto:email` based on applicant data
+
+**Admin Panel: Demo Mode Toggle TS Fix**
+- `onClick={toggleDemoMode}` was passing a `MouseEvent` to a function expecting `boolean`
+- Fixed to `onClick={() => toggleDemoMode(!isDemoMode)}`
+
+---
+
 ## Platform Hardening — Session 7 (April 2026)
 
 ### Authentication System Rebuild (/signin)

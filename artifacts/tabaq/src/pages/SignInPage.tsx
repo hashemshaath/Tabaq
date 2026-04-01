@@ -870,9 +870,9 @@ export function SignInPage() {
         <div className="px-6 py-4 border-t border-slate-100 text-center">
           <p className="text-xs text-slate-400">
             {t('By signing in you agree to the', 'بتسجيل الدخول فإنك توافق على')}{' '}
-            <a href="#" className="text-primary hover:underline">{t('Terms of Service', 'شروط الخدمة')}</a>
+            <a href="/terms" className="text-primary hover:underline">{t('Terms of Service', 'شروط الخدمة')}</a>
             {' '}{t('and', 'و')}{' '}
-            <a href="#" className="text-primary hover:underline">{t('Privacy Policy', 'سياسة الخصوصية')}</a>
+            <a href="/privacy" className="text-primary hover:underline">{t('Privacy Policy', 'سياسة الخصوصية')}</a>
           </p>
         </div>
       </div>

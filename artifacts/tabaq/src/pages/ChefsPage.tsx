@@ -324,9 +324,9 @@ export function ChefsPage() {
         {filtered.length === 0 ? (
           <div className="text-center py-24">
             <ChefHat className="w-16 h-16 text-muted-foreground/20 mx-auto mb-5" />
-            <h3 className="text-xl font-bold text-foreground mb-2">{t('Chef Directory Coming Soon', 'دليل الطهاة قريباً')}</h3>
+            <h3 className="text-xl font-bold text-foreground mb-2">{t('No chefs match your filter', 'لا يوجد طهاة يطابقون الفلتر')}</h3>
             <p className="text-muted-foreground text-sm max-w-sm mx-auto">
-              {t('We\'re building a directory of the best chefs across Saudi Arabia. Check back soon.', 'نحن نبني دليل أفضل الطهاة في المملكة العربية السعودية. تحقق مجدداً قريباً.')}
+              {t('Try a different filter or check back as we add more chefs to our directory.', 'جرّب فلتراً مختلفاً أو تحقق لاحقاً عندما نضيف المزيد من الطهاة.')}
             </p>
           </div>
         ) : (
