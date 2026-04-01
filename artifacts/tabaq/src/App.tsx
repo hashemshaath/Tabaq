@@ -5,6 +5,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import { LocalizationProvider } from "@/context/LocalizationContext";
 import { CityProvider } from "@/context/CityContext";
 import { SettingsProvider } from "@/context/SettingsContext";
+import { DemoModeProvider } from "@/context/DemoModeContext";
 import { CartProvider } from "@/context/CartContext";
 import { AnalyticsInjector } from "@/components/AnalyticsInjector";
 
@@ -174,6 +175,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <LocalizationProvider>
         <SettingsProvider>
+          <DemoModeProvider>
           <CartProvider>
             <CityProvider>
               <AuthProvider>
@@ -184,6 +186,7 @@ function App() {
               </AuthProvider>
             </CityProvider>
           </CartProvider>
+          </DemoModeProvider>
         </SettingsProvider>
       </LocalizationProvider>
     </QueryClientProvider>

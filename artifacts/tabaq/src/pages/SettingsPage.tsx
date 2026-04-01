@@ -96,8 +96,8 @@ export function SettingsPage() {
   const [saved, setSaved] = useState(false);
   const [activeSection, setActiveSection] = useState('analytics');
 
-  const handleSave = () => {
-    saveAll();
+  const handleSave = async () => {
+    await saveAll();
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
   };

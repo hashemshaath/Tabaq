@@ -21,3 +21,5 @@ export * from "./orders";
 export * from "./disputes";
 export * from "./tax";
 export * from "./memberships";
+export * from "./conversations";
+export * from "./messages";

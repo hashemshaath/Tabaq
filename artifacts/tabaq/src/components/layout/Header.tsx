@@ -14,29 +14,12 @@ import { CartDrawer } from "@/components/CartDrawer";
 import { useListCitiesByCountry, useListCountries, type City } from "@workspace/api-client-react";
 import { useLocalization } from "@/context/LocalizationContext";
 import { cn } from "@/lib/utils";
+import { useNotificationsStream } from "@/hooks/use-notifications-stream";
 
-// ─── Unread count hook ────────────────────────────────────────────────────────
-function useUnreadCount(token: string | null, user: unknown) {
-  const [count, setCount] = useState(0);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const apiBase = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
-
-  useEffect(() => {
-    if (!user || !token) { setCount(0); return; }
-    const fetch_ = async () => {
-      try {
-        const res = await fetch(`${apiBase}/api/notifications/unread-count`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) { const d = await res.json(); setCount(d.count ?? 0); }
-      } catch { setCount(0); }
-    };
-    fetch_();
-    intervalRef.current = setInterval(fetch_, 60_000);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [user, token, apiBase]);
-
-  return count;
+// ─── Unread count hook (SSE-powered with polling fallback) ────────────────────
+function useUnreadCount(_token: string | null, user: unknown) {
+  const { unreadCount } = useNotificationsStream(!!user);
+  return unreadCount;
 }
 
 // ─── City selector dropdown ───────────────────────────────────────────────────

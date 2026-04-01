@@ -1,0 +1,156 @@
+You are a senior full-stack engineer and system architect.
+
+Your task is to FIX and COMPLETE the current system safely and professionally WITHOUT rebuilding it and WITHOUT removing demo data.
+
+CRITICAL RULES:
+- DO NOT rebuild the system
+- DO NOT remove demo/mock data
+- DO NOT break existing features
+- Keep demo data for testing and preview
+- BUT ensure the system is fully connected to real backend and database
+- The system must support BOTH:
+  1. Demo mode (mock data)
+  2. Production mode (real data)
+
+---
+
+PHASE 1: DEMO MODE vs REAL MODE (IMPORTANT)
+
+Implement a dual-mode system:
+
+1. Add a configuration flag:
+   - demo_mode = true/false
+
+2. Behavior:
+   - If demo_mode = true → use mock/demo data
+   - If demo_mode = false → use real database + APIs
+
+3. Ensure:
+   - Switching modes does NOT break UI
+   - No code duplication
+   - Use a clean abstraction layer (data provider/service layer)
+
+---
+
+PHASE 2: SETTINGS FIX
+
+Problem:
+Settings are stored in localStorage (not production-ready)
+
+Tasks:
+- Move all settings (Analytics IDs, SMTP, Firebase, etc.) to database
+- Keep localStorage ONLY for temporary UI preferences if needed
+- Load settings from backend
+- Allow admin to update settings dynamically
+- Ensure secure handling of sensitive keys
+
+---
+
+PHASE 3: ORDERS PAGE FIX
+
+Problem:
+Orders page uses mock data only
+
+Tasks:
+- Connect Orders page to real API
+- Keep demo data as fallback in demo_mode
+- Ensure:
+  - Real orders load correctly
+  - Filters and pagination work
+  - Order details page works
+- Add:
+  - Loading state
+  - Empty state
+  - Error handling
+
+---
+
+PHASE 4: EXPERIENCES ADMIN (IN PROGRESS)
+
+Tasks:
+- Complete Experiences Admin module:
+  - CRUD operations
+  - Approval workflow
+  - Media upload
+  - Availability management
+- Ensure:
+  - Works with real DB
+  - Demo mode still works
+- Remove "IN PROGRESS" status
+
+---
+
+PHASE 5: AI FEATURES (PENDING)
+
+Tasks:
+- Complete AI features:
+  - Recommendations (enhance existing)
+  - Content generation
+  - SEO suggestions
+- Ensure:
+  - AI runs async
+  - Does not block UI
+  - Works in both demo and production modes
+
+---
+
+PHASE 6: REAL-TIME NOTIFICATIONS
+
+Problem:
+Stored in DB but no real-time system
+
+Tasks:
+- Implement WebSocket or SSE
+- Push notifications in real-time
+- Support:
+  - Orders updates
+  - Booking updates
+  - Messages
+- Add fallback:
+  - If real-time fails → polling
+
+---
+
+PHASE 7: DATA INTEGRITY
+
+Tasks:
+- Ensure ALL pages can use real database
+- Keep demo data ONLY as fallback (NOT primary)
+- Remove hardcoded data from core logic
+- Use structured data layer:
+  - DataService → decides demo vs real
+
+---
+
+PHASE 8: CODE CLEANUP
+
+Tasks:
+- Remove duplicated logic
+- Standardize services
+- Ensure modular architecture
+- Each module should be independently maintainable
+
+---
+
+PHASE 9: FINAL QA
+
+Verify:
+- Demo mode works correctly
+- Production mode works correctly
+- No broken links
+- No missing pages
+- No duplicated code
+- Real-time works
+- AI features working
+- Orders fully functional
+
+---
+
+FINAL OUTPUT:
+
+Provide a report including:
+1. What was fixed
+2. What was completed
+3. How demo mode works
+4. What is now connected to real database
+5. What remains to improve

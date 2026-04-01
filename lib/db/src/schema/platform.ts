@@ -67,3 +67,23 @@ export const cronLogsTable = pgTable("cron_logs", {
 });
 
 export type CronLog = typeof cronLogsTable.$inferSelect;
+
+// ─── Platform Settings ────────────────────────────────────────────────────────
+// Generic key/value store for platform-wide configuration (analytics IDs,
+// SMTP config, Firebase keys, SEO defaults, etc.).  Replaces localStorage.
+
+export const platformSettingsTable = pgTable("platform_settings", {
+  id: serial("id").primaryKey(),
+  key: text("key").notNull().unique(),
+  value: text("value").notNull().default(""),
+  category: text("category").notNull().default("general"),
+  isSecret: boolean("is_secret").notNull().default(false),
+  updatedBy: integer("updated_by"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertPlatformSettingSchema = createInsertSchema(platformSettingsTable).omit({ id: true, createdAt: true });
+
+export type PlatformSetting = typeof platformSettingsTable.$inferSelect;
+export type InsertPlatformSetting = z.infer<typeof insertPlatformSettingSchema>;

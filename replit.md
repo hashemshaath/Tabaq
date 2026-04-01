@@ -123,6 +123,37 @@ Standardized format `TBQ-{TYPE}-{YEAR}-{PADDED_ID}` across all entities. New typ
 - **Spacing**: 8px grid system, `.section-gap` (48px), `.section-gap-sm` (32px)
 - **Card hover**: `.card-hover` class with translateY(-1px) + shadow transition
 
+## System Upgrade — 9-Phase Completion (April 2026)
+
+### Phase 1 — Demo Mode System
+- `demo_mode` key stored in `platform_settings` DB table (key/value)
+- `DemoModeContext.tsx` — reads `demo_mode` from `/api/platform-settings/public` on mount; localStorage cache for offline fallback
+- `useDemoMode()` hook exposes `{ isDemoMode, isLoading, toggleDemoMode(enabled) }`
+- **Admin Panel → Modules tab**: Demo Mode toggle card (amber when active, shows production vs demo data status)
+- `toggleDemoMode()` PUTs to `/api/admin/platform-settings` to persist across sessions
+
+### Phase 2 — Platform Settings DB Migration
+- `platformSettingsTable` (key/value) added to `lib/db/src/schema/platform.ts`, exported from schema index
+- `artifacts/api-server/src/routes/admin-settings.ts`:
+  - `GET /api/admin/platform-settings` — returns all settings (secrets masked unless `?reveal=1`)
+  - `PUT /api/admin/platform-settings` — batch upsert key/value pairs
+  - `GET /api/platform-settings/public` — unauthenticated endpoint returning safe public keys
+- `SettingsContext.tsx` fully migrated from localStorage to DB API: loads on mount, saves via PUT, keeps localStorage as stale cache while loading
+
+### Phase 5 — AI Content Generation (Admin)
+- `artifacts/api-server/src/routes/ai-admin.ts`:
+  - `POST /api/admin/ai/generate-content` — GPT-4o-mini content generation (name, bio, description, post, hashtags, menu, email, review response)
+  - `POST /api/admin/ai/seo-suggestions` — AI-powered SEO title, description, keywords, slug suggestions
+- Registered in `routes/index.ts`; uses Replit AI integration (no API key needed)
+
+### Phase 6 — Real-Time SSE Notifications
+- `GET /api/notifications/stream` — Server-Sent Events endpoint in `notifications.ts`; sends `unread_count` events every 30s; heartbeat every 25s; auto-cleanup on disconnect
+- `useNotificationsStream(enabled)` hook (`artifacts/tabaq/src/hooks/use-notifications-stream.ts`):
+  - Opens EventSource to SSE stream when user is logged in
+  - Falls back to 30s polling if SSE unavailable or errors
+  - Returns `{ unreadCount, isConnected, refresh }`
+- `Header.tsx` notification bell now uses SSE hook instead of 60s polling interval
+
 ## Platform Settings (`/settings`)
 
 New settings page with 6 sections (sidebar navigation + mobile tab scrollbar):
@@ -133,7 +164,7 @@ New settings page with 6 sections (sidebar navigation + mobile tab scrollbar):
 - **Google Maps**: API key with required APIs list
 - **Firebase**: All 6 config fields for push notifications
 
-Settings are persisted in `localStorage` key `tabaq_platform_settings` via `SettingsContext.tsx`.
+Settings are persisted in **PostgreSQL DB** via `/api/admin/platform-settings` (migrated from localStorage). `SettingsContext.tsx` loads from API on mount; `saveAll()` is now `async` (returns `Promise<void>`).
 
 ## Analytics Infrastructure
 

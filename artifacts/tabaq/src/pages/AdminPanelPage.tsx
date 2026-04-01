@@ -16,6 +16,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { StarRating } from '@/components/StarRating';
 import { getAuthHeaders } from '@/lib/api';
+import { useDemoMode } from '@/context/DemoModeContext';
 
 // ─── Verifications Admin Tab ──────────────────────────────────────
 function VerificationsAdminTab({ t }: { t: (en: string, ar: string) => string }) {
@@ -1293,6 +1294,7 @@ type AdminTab = 'overview' | 'offers' | 'contracts' | 'finance' | 'messages' | '
 // ─── Component ──────────────────────────────────────────────────
 export function AdminPanelPage() {
   const { t, lang } = useLanguage();
+  const { isDemoMode, toggleDemoMode } = useDemoMode();
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
   const [modules, setModules] = useState<Module[]>(INITIAL_MODULES);
   const [searchQuery, setSearchQuery] = useState('');
@@ -3162,6 +3164,31 @@ export function AdminPanelPage() {
           {/* ── MODULES ── */}
           {activeTab === 'modules' && (
             <div className="space-y-5">
+              {/* Demo Mode Toggle */}
+              <div className={`rounded-2xl border-2 px-5 py-4 flex items-center justify-between gap-4 transition-colors ${isDemoMode ? 'bg-amber-50 border-amber-300' : 'bg-card border-border'}`}>
+                <div className="flex items-start gap-3">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isDemoMode ? 'bg-amber-100' : 'bg-secondary'}`}>
+                    <Database className={`w-5 h-5 ${isDemoMode ? 'text-amber-600' : 'text-muted-foreground'}`} />
+                  </div>
+                  <div>
+                    <p className={`font-bold text-sm ${isDemoMode ? 'text-amber-900' : 'text-foreground'}`}>
+                      Demo Mode {isDemoMode ? '(Active)' : '(Inactive)'}
+                    </p>
+                    <p className={`text-xs mt-0.5 ${isDemoMode ? 'text-amber-700' : 'text-muted-foreground'}`}>
+                      {isDemoMode
+                        ? 'Platform is using seed/demo data. Toggle off to switch to live production data.'
+                        : 'Platform is connected to live production data. Toggle on to use demo data for testing.'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => toggleDemoMode(!isDemoMode)}
+                  className={`relative w-14 h-7 rounded-full transition-all duration-300 shrink-0 ${isDemoMode ? 'bg-amber-500' : 'bg-muted'}`}
+                >
+                  <span className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow-sm transition-all duration-300 ${isDemoMode ? 'start-[34px]' : 'start-1'}`} />
+                </button>
+              </div>
+
               <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 flex items-start gap-3">
                 <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                 <div>

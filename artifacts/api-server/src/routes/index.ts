@@ -36,6 +36,8 @@ import ordersRouter from "./orders.js";
 import disputesRouter from "./disputes.js";
 import membershipsRouter from "./memberships.js";
 import returnsRouter from "./returns.js";
+import adminSettingsRouter from "./admin-settings.js";
+import aiRouter from "./ai-admin.js";
 
 const router: IRouter = Router();
 
@@ -76,5 +78,7 @@ router.use(ordersRouter);
 router.use(disputesRouter);
 router.use(membershipsRouter);
 router.use(returnsRouter);
+router.use(adminSettingsRouter);
+router.use(aiRouter);
 
 export default router;

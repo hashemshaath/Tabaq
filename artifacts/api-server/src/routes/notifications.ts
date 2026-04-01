@@ -481,4 +481,82 @@ router.get("/notifications", requireAuth, async (req, res) => {
   }
 });
 
+// ─── SSE NOTIFICATIONS STREAM ─────────────────────────────────────────────────
+// GET /api/notifications/stream — Server-Sent Events for real-time push.
+// Sends an initial snapshot of unread count, then pushes updates every 30s.
+// Clients can also trigger a refresh by sending a GET with ?refresh=1.
+
+const sseClients = new Map<number, Set<import("express").Response>>();
+
+export function broadcastNotification(userId: number, payload: object): void {
+  const clients = sseClients.get(userId);
+  if (!clients) return;
+  const data = JSON.stringify(payload);
+  for (const res of clients) {
+    try { res.write(`data: ${data}\n\n`); } catch {}
+  }
+}
+
+router.get("/notifications/stream", requireAuth, async (req, res) => {
+  const userId = req.auth!.userId;
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+  res.flushHeaders();
+
+  if (!sseClients.has(userId)) sseClients.set(userId, new Set());
+  sseClients.get(userId)!.add(res);
+
+  const sendHeartbeat = () => {
+    try { res.write(": heartbeat\n\n"); } catch {}
+  };
+
+  // Send initial unread count immediately
+  const sendCount = async () => {
+    try {
+      const recentBookings = await db
+        .select({ id: bookingsTable.id })
+        .from(bookingsTable)
+        .where(eq(bookingsTable.userId, userId))
+        .orderBy(desc(bookingsTable.createdAt))
+        .limit(5);
+
+      const [latestOffer] = await db
+        .select({ id: offersTable.id })
+        .from(offersTable)
+        .where(and(eq(offersTable.isActive, true), eq(offersTable.approvalStatus, "approved")))
+        .limit(1);
+
+      const recentPoints = await db
+        .select({ id: pointsTransactionsTable.id })
+        .from(pointsTransactionsTable)
+        .where(eq(pointsTransactionsTable.userId, userId))
+        .limit(3);
+
+      const count = Math.min(recentBookings.length + (latestOffer ? 1 : 0) + recentPoints.length, 9);
+      try {
+        res.write(`data: ${JSON.stringify({ type: "unread_count", count })}\n\n`);
+      } catch {}
+    } catch {}
+  };
+
+  await sendCount();
+
+  const heartbeatInterval = setInterval(sendHeartbeat, 25_000);
+  const refreshInterval = setInterval(sendCount, 30_000);
+
+  const cleanup = () => {
+    clearInterval(heartbeatInterval);
+    clearInterval(refreshInterval);
+    sseClients.get(userId)?.delete(res);
+    if (sseClients.get(userId)?.size === 0) sseClients.delete(userId);
+  };
+
+  req.on("close", cleanup);
+  req.on("error", cleanup);
+  res.on("finish", cleanup);
+});
+
 export default router;
