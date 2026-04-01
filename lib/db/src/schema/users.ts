@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, boolean, timestamp, uniqueIndex, numeric, jsonb, smallint, varchar } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, boolean, timestamp, uniqueIndex, numeric, jsonb, smallint, varchar, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { citiesTable } from "./countries";
@@ -87,6 +87,8 @@ export const usersTable = pgTable("users", {
   googleId: text("google_id").unique(),
   appleId: text("apple_id").unique(),
   oauthProvider: text("oauth_provider"),          // 'google' | 'apple' | null
+  profilePictureUrl: text("profile_picture_url"),
+  authProviders: jsonb("auth_providers").$type<string[]>().default([]),
   // Admin TOTP 2FA
   totpSecret: text("totp_secret"),
   totpEnabledAt: timestamp("totp_enabled_at"),

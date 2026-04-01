@@ -25,6 +25,8 @@ import { sendOtp, isSmsDevMode } from "../services/smsService.js";
 import { awardPoints, POINTS } from "../lib/points.js";
 import { createSession } from "../lib/session.js";
 import crypto from "crypto";
+import { OAuth2Client } from "google-auth-library";
+import appleSignin from "apple-signin-auth";
 
 const router: IRouter = Router();
 
@@ -851,6 +853,239 @@ router.post("/auth/logout", async (req, res) => {
   }
   res.clearCookie("tabaq_token");
   res.json({ message: "Logged out" });
+});
+
+// ── GOOGLE OAUTH ─────────────────────────────────────────────────────────────
+
+router.post("/auth/oauth/google", authRateLimiter, async (req, res) => {
+  try {
+    const { id_token: idToken } = req.body as { id_token?: string };
+    if (!idToken) {
+      res.status(400).json({ error: "bad_request", message: "id_token is required" });
+      return;
+    }
+
+    const clientId = process.env["GOOGLE_CLIENT_ID"];
+    if (!clientId) {
+      res.status(500).json({ error: "configuration_error", message: "Google OAuth is not configured" });
+      return;
+    }
+
+    const client = new OAuth2Client(clientId);
+    let ticket;
+    try {
+      ticket = await client.verifyIdToken({ idToken, audience: clientId });
+    } catch {
+      res.status(401).json({ error: "invalid_token", message: "Google ID token verification failed" });
+      return;
+    }
+
+    const payload = ticket.getPayload();
+    if (!payload) {
+      res.status(401).json({ error: "invalid_token", message: "Empty token payload" });
+      return;
+    }
+
+    const googleId = payload["sub"];
+    if (!googleId) {
+      res.status(401).json({ error: "invalid_token", message: "Missing sub claim in Google token" });
+      return;
+    }
+    const email = payload["email"]?.trim().toLowerCase() ?? null;
+    const emailVerified = payload["email_verified"] === true;
+    const name = payload["name"] ?? null;
+    const picture = payload["picture"] ?? null;
+
+    // Lookup: by google_id first, then by verified email only
+    let existingUser: typeof usersTable.$inferSelect | null = await db.select().from(usersTable)
+      .where(eq(usersTable.googleId, googleId))
+      .limit(1)
+      .then((r: (typeof usersTable.$inferSelect)[]) => r[0] ?? null);
+
+    // Email-based linking is only safe when Google has verified the email address
+    if (!existingUser && email && emailVerified) {
+      existingUser = await db.select().from(usersTable)
+        .where(eq(usersTable.email, email))
+        .limit(1)
+        .then((r: (typeof usersTable.$inferSelect)[]) => r[0] ?? null);
+    }
+
+    const ip = getClientIp(req);
+    const deviceInfo = typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined;
+
+    let user: typeof usersTable.$inferSelect;
+    let isNewUser = false;
+
+    if (existingUser) {
+      // Link Google provider if not already linked
+      const providers: string[] = (existingUser.authProviders as string[] | null) ?? [];
+      const updatedProviders = providers.includes("google") ? providers : [...providers, "google"];
+      const [updated] = await db.update(usersTable).set({
+        googleId,
+        authProviders: updatedProviders,
+        profilePictureUrl: existingUser.profilePictureUrl ?? picture ?? null,
+        updatedAt: new Date(),
+      }).where(eq(usersTable.id, existingUser.id)).returning();
+      user = updated!;
+      await recordLoginSuccess(user.id, ip);
+    } else {
+      // Create new user
+      const levelInfo = calcLevel(0);
+      const [created] = await db.insert(usersTable).values({
+        email: email ?? null,
+        googleId,
+        displayName: name ?? null,
+        profilePictureUrl: picture ?? null,
+        authProviders: ["google"],
+        isEmailVerified: true,
+        level: levelInfo.level,
+        levelTitle: levelInfo.levelTitle,
+      }).returning();
+      user = created!;
+      const uid = generateUserUid(user.id);
+      await db.update(usersTable).set({ userUid: uid }).where(eq(usersTable.id, user.id));
+      user = { ...user, userUid: uid };
+      isNewUser = true;
+    }
+
+    const { accessToken, refreshToken } = await buildTokens(user, deviceInfo, ip);
+
+    res.json({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      user_uid: user.userUid,
+      is_new_user: isNewUser,
+    });
+  } catch (err) {
+    req.log.error({ err }, "Google OAuth failed");
+    res.status(500).json({ error: "internal_error", message: "Google OAuth authentication failed" });
+  }
+});
+
+// ── APPLE SIGN-IN ─────────────────────────────────────────────────────────────
+
+router.post("/auth/oauth/apple", authRateLimiter, async (req, res) => {
+  try {
+    // user_name and user_email are first-login metadata sent by Apple on device
+    // user_email is accepted for completeness but is NOT used for identity lookups —
+    // only the cryptographically verified token claim is trusted for account matching
+    const { identity_token: identityToken, user_name: userName, user_email: _userEmail } = req.body as {
+      identity_token?: string;
+      user_name?: string;
+      user_email?: string;
+    };
+
+    if (!identityToken) {
+      res.status(400).json({ error: "bad_request", message: "identity_token is required" });
+      return;
+    }
+
+    const clientId = process.env["APPLE_CLIENT_ID"];
+    const teamId = process.env["APPLE_TEAM_ID"];
+    const keyId = process.env["APPLE_KEY_ID"];
+    const privateKey = process.env["APPLE_PRIVATE_KEY"];
+
+    if (!clientId) {
+      res.status(500).json({ error: "configuration_error", message: "Apple Sign-In is not configured" });
+      return;
+    }
+
+    // For the mobile-first pattern, APPLE_CLIENT_ID is the only required config:
+    // apple-signin-auth fetches Apple's public JWKS and verifies the token signature.
+    // APPLE_TEAM_ID, APPLE_KEY_ID, and APPLE_PRIVATE_KEY enable server-to-server calls
+    // (e.g. token revocation, transfer), but are not required for ID token verification.
+    // They are included in .env.example for completeness and production hardening.
+    const verifyOptions: Record<string, unknown> = {
+      audience: clientId,
+      ignoreExpiration: false,
+    };
+    if (teamId && keyId && privateKey) {
+      verifyOptions["teamId"] = teamId;
+      verifyOptions["keyId"] = keyId;
+      verifyOptions["privateKey"] = privateKey.replace(/\\n/g, "\n");
+    }
+
+    let applePayload: { sub: string; email?: string };
+    try {
+      applePayload = await appleSignin.verifyIdToken(identityToken, verifyOptions) as { sub: string; email?: string };
+    } catch {
+      res.status(401).json({ error: "invalid_token", message: "Apple identity token verification failed" });
+      return;
+    }
+
+    const appleId = applePayload.sub;
+    if (!appleId) {
+      res.status(401).json({ error: "invalid_token", message: "Missing sub claim in Apple token" });
+      return;
+    }
+    // Only trust the email claim from the cryptographically verified token.
+    // Apple only sends it on the very first login; subsequent logins omit it.
+    const tokenEmail = applePayload.email ? applePayload.email.trim().toLowerCase() : null;
+
+    // Lookup by apple_id (primary) then by token-verified email (secondary, only when present)
+    let existingUser: typeof usersTable.$inferSelect | null = await db.select().from(usersTable)
+      .where(eq(usersTable.appleId, appleId))
+      .limit(1)
+      .then((r: (typeof usersTable.$inferSelect)[]) => r[0] ?? null);
+
+    if (!existingUser && tokenEmail) {
+      existingUser = await db.select().from(usersTable)
+        .where(eq(usersTable.email, tokenEmail))
+        .limit(1)
+        .then((r: (typeof usersTable.$inferSelect)[]) => r[0] ?? null);
+    }
+
+    const ip = getClientIp(req);
+    const deviceInfo = typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined;
+
+    let user: typeof usersTable.$inferSelect;
+    let isNewUser = false;
+
+    if (existingUser) {
+      // Link Apple provider if not already linked
+      const providers: string[] = (existingUser.authProviders as string[] | null) ?? [];
+      const updatedProviders = providers.includes("apple") ? providers : [...providers, "apple"];
+      const [updated] = await db.update(usersTable).set({
+        appleId,
+        authProviders: updatedProviders,
+        // Persist email from verified token if the account has none yet
+        email: existingUser.email ?? tokenEmail,
+        updatedAt: new Date(),
+      }).where(eq(usersTable.id, existingUser.id)).returning();
+      user = updated!;
+      await recordLoginSuccess(user.id, ip);
+    } else {
+      // Create new user — display name from body is metadata only, not identity
+      const levelInfo = calcLevel(0);
+      const displayName = userName?.trim() ?? null;
+      const [created] = await db.insert(usersTable).values({
+        email: tokenEmail,
+        appleId,
+        displayName,
+        authProviders: ["apple"],
+        isEmailVerified: true,
+        level: levelInfo.level,
+        levelTitle: levelInfo.levelTitle,
+      }).returning();
+      user = created!;
+      const uid = generateUserUid(user.id);
+      await db.update(usersTable).set({ userUid: uid }).where(eq(usersTable.id, user.id));
+      user = { ...user, userUid: uid };
+      isNewUser = true;
+    }
+
+    const { accessToken, refreshToken } = await buildTokens(user, deviceInfo, ip);
+
+    res.json({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      user_uid: user.userUid,
+      is_new_user: isNewUser,
+    });
+  } catch (err) {
+    req.log.error({ err }, "Apple Sign-In failed");
+    res.status(500).json({ error: "internal_error", message: "Apple Sign-In authentication failed" });
+  }
 });
 
 // ── MEMBERSHIP ────────────────────────────────────────────────────────────────
