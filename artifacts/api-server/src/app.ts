@@ -83,6 +83,7 @@ const uploadsDir = path.resolve(process.env["STORAGE_LOCAL_DIR"] ?? "./uploads")
 app.use("/uploads", express.static(uploadsDir, { maxAge: "1y" }));
 
 app.use("/api", router);
+app.use("/api/v1", router);
 
 // Global error handler — catches unhandled route errors
 // eslint-disable-next-line @typescript-eslint/no-unused-vars

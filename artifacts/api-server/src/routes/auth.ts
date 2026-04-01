@@ -7,7 +7,8 @@ import {
   signToken,
   signTempToken,
   generateOtp,
-  hashOtp,
+  hashOtpBcrypt,
+  verifyOtpBcrypt,
   otpExpiresAt,
   generateRefreshToken,
   hashRefreshToken,
@@ -41,8 +42,9 @@ function calcLevel(points: number): { level: number; levelTitle: string } {
 
 function generateUserUid(id: number): string {
   const year = new Date().getFullYear();
+  const timestamp = Date.now();
   const suffix = crypto.randomBytes(4).toString("hex").toUpperCase();
-  return `USR-${year}-${String(id).padStart(8, "0")}-${suffix}`;
+  return `USR-${year}-${timestamp}-${suffix}`;
 }
 
 async function buildTokens(user: typeof usersTable.$inferSelect, deviceInfo?: string, ipAddress?: string) {
@@ -105,6 +107,54 @@ function getClientIp(req: import("express").Request): string {
 
 // ── PHONE + OTP ───────────────────────────────────────────────────────────────
 
+// Spec-aligned alias: POST /auth/register/phone → send OTP, returns { otp_sent: true }
+router.post("/auth/register/phone", authRateLimiter, async (req, res) => {
+  try {
+    const { phone: rawPhone } = req.body as { phone?: string };
+    if (!rawPhone) {
+      res.status(400).json({ error: "bad_request", message: "phone is required" });
+      return;
+    }
+
+    const phone = normalizePhone(rawPhone);
+    if (!phone) {
+      res.status(400).json({
+        error: "invalid_phone",
+        message: "Invalid phone number. Use E.164 format e.g. +966501234567",
+      });
+      return;
+    }
+
+    const windowStart60s = new Date(Date.now() - 60 * 1000);
+    const recent = await db.select({ id: otpRequestsTable.id }).from(otpRequestsTable).where(
+      and(eq(otpRequestsTable.phone, phone), gte(otpRequestsTable.createdAt, windowStart60s))
+    );
+    if (recent.length >= 1) {
+      res.status(429).json({
+        error: "rate_limited",
+        message: "Please wait 60 seconds before requesting a new code.",
+      });
+      return;
+    }
+
+    const code = generateOtp();
+    const otpHash = await hashOtpBcrypt(code);
+    const expiresAt = otpExpiresAt();
+
+    await db.insert(otpRequestsTable).values({ phone, code: "HASHED", otpHash, expiresAt });
+
+    const smsResult = await sendOtp(phone, code);
+    if (!smsResult.success) {
+      req.log.warn({ phone, error: smsResult.error }, "SMS send failed — OTP still stored in DB");
+    }
+
+    res.json({ otp_sent: true, ...(IS_DEV || isSmsDevMode() ? { devCode: code } : {}) });
+  } catch (err) {
+    req.log.error({ err }, "Failed to send registration OTP");
+    res.status(500).json({ error: "internal_error", message: "Failed to send OTP" });
+  }
+});
+
 router.post("/auth/request-otp", authRateLimiter, async (req, res) => {
   try {
     const { phone: rawPhone, email: rawEmail } = req.body as { phone?: string; email?: string };
@@ -150,7 +200,7 @@ router.post("/auth/request-otp", authRateLimiter, async (req, res) => {
     }
 
     const code = generateOtp();
-    const otpHash = hashOtp(code);
+    const otpHash = await hashOtpBcrypt(code);
     const expiresAt = otpExpiresAt();
 
     await db.insert(otpRequestsTable).values({
@@ -258,7 +308,6 @@ router.post("/auth/verify-otp", authRateLimiter, async (req, res) => {
     }
 
     const now = new Date();
-    const submittedHash = hashOtp(code);
 
     // Find the most recent valid (unexpired, unused) OTP
     const [otp] = await db.select().from(otpRequestsTable).where(
@@ -275,9 +324,16 @@ router.post("/auth/verify-otp", authRateLimiter, async (req, res) => {
       return;
     }
 
-    // Compare hash
+    // Compare — bcrypt hash (new) or fall back to SHA-256 hash for legacy OTPs
     const storedHash = otp.otpHash ?? "";
-    const hashMatch = storedHash !== "LEGACY" && storedHash === submittedHash;
+    let hashMatch = false;
+    if (storedHash && storedHash !== "LEGACY") {
+      if (storedHash.startsWith("$2")) {
+        hashMatch = await verifyOtpBcrypt(code, storedHash);
+      } else {
+        hashMatch = storedHash === crypto.createHash("sha256").update(code).digest("hex");
+      }
+    }
 
     if (!hashMatch) {
       // Increment attempts on this specific OTP row
@@ -287,7 +343,7 @@ router.post("/auth/verify-otp", authRateLimiter, async (req, res) => {
         await db.update(otpRequestsTable).set({ usedAt: now }).where(eq(otpRequestsTable.id, otp.id));
         if (existingUser) await recordLoginFailure(existingUser.id);
         res.status(401).json({
-          error: "otp_voided",
+          error: "OTP_VOID",
           message: "Too many failed attempts. Please request a new code.",
         });
       } else {
@@ -352,7 +408,7 @@ router.post("/auth/verify-otp", authRateLimiter, async (req, res) => {
       maxAge: 15 * 60 * 1000,
     });
 
-    res.json({ token: accessToken, accessToken, refreshToken, user });
+    res.json({ token: accessToken, access_token: accessToken, refresh_token: refreshToken, user_uid: user.userUid, accessToken, refreshToken, user });
   } catch (err) {
     req.log.error({ err }, "Failed to verify OTP");
     res.status(500).json({ error: "internal_error", message: "Failed to verify OTP" });
@@ -448,7 +504,7 @@ router.post("/auth/register", authRateLimiter, async (req, res) => {
 
     // Generate email verification OTP
     const code = generateOtp();
-    const otpHash = hashOtp(code);
+    const otpHash = await hashOtpBcrypt(code);
     await db.insert(otpRequestsTable).values({
       email,
       code: "HASHED",
@@ -633,20 +689,30 @@ router.post("/auth/refresh", async (req, res) => {
     const tokenHash = hashRefreshToken(token);
     const now = new Date();
 
+    // First look up the token regardless of revocation state — detect reuse attacks
     const [record] = await db
       .select()
       .from(refreshTokensTable)
       .where(
         and(
           eq(refreshTokensTable.tokenHash, tokenHash),
-          eq(refreshTokensTable.isRevoked, false),
           gt(refreshTokensTable.expiresAt, now),
         )
       )
       .limit(1);
 
     if (!record) {
-      res.status(401).json({ error: "invalid_refresh_token", message: "Refresh token is invalid, expired, or already used" });
+      res.status(401).json({ error: "invalid_refresh_token", message: "Refresh token is invalid or expired" });
+      return;
+    }
+
+    // If this token was already used/revoked, it's a reuse attack — revoke all sessions
+    if (record.isRevoked) {
+      await db
+        .update(refreshTokensTable)
+        .set({ isRevoked: true })
+        .where(eq(refreshTokensTable.userId, record.userId));
+      res.status(401).json({ error: "TOKEN_REUSED", message: "Refresh token has already been used. All sessions have been revoked for security." });
       return;
     }
 

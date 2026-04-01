@@ -1,15 +1,16 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { db } from "@workspace/db";
 import { usersTable, refreshTokensTable, otpRequestsTable, userDevicesTable } from "@workspace/db/schema";
 import { eq, and, isNull, gt, desc, sql } from "drizzle-orm";
 import { requireAuth } from "../middleware/requireAuth.js";
+import crypto from "crypto";
 import {
   signToken,
   generateRefreshToken,
   hashRefreshToken,
-  hashOtp,
+  verifyOtpBcrypt,
   REFRESH_TOKEN_EXPIRES_IN_MS,
 } from "../lib/auth.js";
 
@@ -26,8 +27,12 @@ const passcodeLoginLimiter = rateLimit({
   max: 10,
   keyGenerator: (req) => {
     const body = req.body as Record<string, string>;
-    return `passcode:${body.user_uid ?? req.ip ?? "unknown"}`;
+    const uid = body.user_uid;
+    if (uid) return `passcode:${uid}`;
+    const ip = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() ?? req.ip ?? "unknown";
+    return ipKeyGenerator(ip);
   },
+  validate: { xForwardedForHeader: false },
   standardHeaders: true,
   legacyHeaders: false,
   message: "Too many passcode attempts. Please wait a moment and try again.",
@@ -42,18 +47,18 @@ function getClientIp(req: import("express").Request): string {
   return req.ip ?? "unknown";
 }
 
-function validatePasscode(passcode: string): { valid: boolean; reason?: string } {
+function validatePasscode(passcode: string): { valid: boolean; reason?: string; code?: string } {
   if (!/^\d{6}$/.test(passcode)) {
-    return { valid: false, reason: "Passcode must be exactly 6 digits" };
+    return { valid: false, reason: "Passcode must be exactly 6 digits", code: "INVALID_PASSCODE" };
   }
   if (/^(\d)\1{5}$/.test(passcode)) {
-    return { valid: false, reason: "Passcode cannot be all the same digit (e.g. 111111)" };
+    return { valid: false, reason: "Passcode cannot be all the same digit (e.g. 111111)", code: "PASSCODE_TOO_SIMPLE" };
   }
   const digits = passcode.split("").map(Number);
   const strictAsc = digits.every((d, i) => i === 0 || d === digits[i - 1]! + 1);
   const strictDesc = digits.every((d, i) => i === 0 || d === digits[i - 1]! - 1);
   if (strictAsc || strictDesc) {
-    return { valid: false, reason: "Passcode cannot be sequential digits (e.g. 123456)" };
+    return { valid: false, reason: "Passcode cannot be sequential digits (e.g. 123456, 654321)", code: "PASSCODE_TOO_SIMPLE" };
   }
   return { valid: true };
 }
@@ -116,7 +121,7 @@ router.post("/auth/passcode/set", requireAuth, async (req, res) => {
 
     const pv = validatePasscode(passcode);
     if (!pv.valid) {
-      res.status(400).json({ error: "INVALID_PASSCODE", message: pv.reason });
+      res.status(400).json({ error: pv.code ?? "INVALID_PASSCODE", message: pv.reason });
       return;
     }
 
@@ -261,7 +266,7 @@ router.post("/auth/passcode/login", passcodeLoginLimiter, async (req, res) => {
     if (!knownDevice) {
       await bcrypt.compare(passcode, dummyHash);
       res.status(403).json({
-        error: "UNKNOWN_DEVICE",
+        error: "DEVICE_NOT_RECOGNIZED",
         message: "This device is not recognized. Please log in with your phone to register this device first.",
       });
       return;
@@ -323,7 +328,7 @@ router.post("/auth/passcode/login", passcodeLoginLimiter, async (req, res) => {
       maxAge: 15 * 60 * 1000,
     });
 
-    res.json({ token: accessToken, accessToken, refreshToken, user });
+    res.json({ token: accessToken, access_token: accessToken, refresh_token: refreshToken, user_uid: user.userUid, accessToken, refreshToken, user });
   } catch (err) {
     req.log.error({ err }, "Failed passcode login");
     res.status(500).json({ error: "internal_error", message: "Failed passcode login" });
@@ -351,7 +356,7 @@ router.post("/auth/passcode/reset", async (req, res) => {
 
     const pv = validatePasscode(new_passcode);
     if (!pv.valid) {
-      res.status(400).json({ error: "INVALID_PASSCODE", message: pv.reason });
+      res.status(400).json({ error: pv.code ?? "INVALID_PASSCODE", message: pv.reason });
       return;
     }
 
@@ -377,7 +382,6 @@ router.post("/auth/passcode/reset", async (req, res) => {
 
     // Verify the OTP for this phone number
     const now = new Date();
-    const submittedHash = hashOtp(otp);
 
     const [otpRow] = await db
       .select()
@@ -398,12 +402,18 @@ router.post("/auth/passcode/reset", async (req, res) => {
     }
 
     const storedHash = otpRow.otpHash ?? "";
-    if (storedHash === "LEGACY" || storedHash !== submittedHash) {
+    let otpMatches = false;
+    if (storedHash && storedHash !== "LEGACY") {
+      otpMatches = storedHash.startsWith("$2")
+        ? await verifyOtpBcrypt(otp, storedHash)
+        : storedHash === crypto.createHash("sha256").update(otp).digest("hex");
+    }
+    if (!otpMatches) {
       const newAttempts = (otpRow.attempts ?? 0) + 1;
       if (newAttempts >= 3) {
         await db.update(otpRequestsTable).set({ usedAt: now }).where(eq(otpRequestsTable.id, otpRow.id));
         res.status(401).json({
-          error: "otp_voided",
+          error: "OTP_VOID",
           message: "Too many failed attempts. Please request a new code.",
         });
       } else {

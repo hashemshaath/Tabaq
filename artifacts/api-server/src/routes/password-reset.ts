@@ -1,5 +1,6 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import rateLimit from "express-rate-limit";
 import { db } from "@workspace/db";
 import { usersTable, otpRequestsTable, refreshTokensTable } from "@workspace/db/schema";
@@ -7,7 +8,8 @@ import { eq, and, isNull, gt, gte, desc, lt } from "drizzle-orm";
 import { requireAuth } from "../middleware/requireAuth.js";
 import {
   generateOtp,
-  hashOtp,
+  hashOtpBcrypt,
+  verifyOtpBcrypt,
   normalizePhone,
   validateEmail,
   validatePasswordStrength,
@@ -100,7 +102,7 @@ router.post("/auth/password/forgot", forgotRateLimiter, async (req, res) => {
 
     // Generate and store OTP
     const code = generateOtp();
-    const otpHash = hashOtp(code);
+    const otpHash = await hashOtpBcrypt(code);
     const expiresAt = new Date(Date.now() + OTP_EXPIRY_MS);
 
     await db.insert(otpRequestsTable).values({ email, code: "HASHED", otpHash, expiresAt });
@@ -122,10 +124,7 @@ router.post("/auth/password/forgot", forgotRateLimiter, async (req, res) => {
       meta: { method: "email", email },
     });
 
-    res.json({
-      ...SAFE_RESPONSE,
-      ...(process.env["NODE_ENV"] === "development" ? { devCode: code } : {}),
-    });
+    res.json(SAFE_RESPONSE);
   } catch (err) {
     req.log.error({ err }, "Failed to process forgot-password");
     res.status(500).json({ error: "internal_error", message: "Failed to process request" });
@@ -172,7 +171,7 @@ router.post("/auth/password/forgot-via-phone", forgotRateLimiter, async (req, re
     }
 
     const code = generateOtp();
-    const otpHash = hashOtp(code);
+    const otpHash = await hashOtpBcrypt(code);
     const expiresAt = new Date(Date.now() + OTP_EXPIRY_MS);
 
     await db.insert(otpRequestsTable).values({ phone, code: "HASHED", otpHash, expiresAt });
@@ -191,10 +190,7 @@ router.post("/auth/password/forgot-via-phone", forgotRateLimiter, async (req, re
       meta: { method: "phone", phone },
     });
 
-    res.json({
-      ...SAFE_RESPONSE,
-      ...(process.env["NODE_ENV"] === "development" ? { devCode: code } : {}),
-    });
+    res.json(SAFE_RESPONSE);
   } catch (err) {
     req.log.error({ err }, "Failed to process forgot-password via phone");
     res.status(500).json({ error: "internal_error", message: "Failed to process request" });
@@ -253,7 +249,6 @@ router.post("/auth/password/verify-otp", async (req, res) => {
 
     // Find the most recent valid OTP
     const now = new Date();
-    const submittedHash = hashOtp(otp);
 
     const [otpRow] = await db
       .select()
@@ -274,12 +269,18 @@ router.post("/auth/password/verify-otp", async (req, res) => {
     }
 
     const storedHash = otpRow.otpHash ?? "";
-    if (storedHash === "LEGACY" || storedHash !== submittedHash) {
+    let otpMatches = false;
+    if (storedHash && storedHash !== "LEGACY") {
+      otpMatches = storedHash.startsWith("$2")
+        ? await verifyOtpBcrypt(otp, storedHash)
+        : storedHash === crypto.createHash("sha256").update(otp).digest("hex");
+    }
+    if (!otpMatches) {
       const newAttempts = (otpRow.attempts ?? 0) + 1;
       if (newAttempts >= 3) {
         await db.update(otpRequestsTable).set({ usedAt: now }).where(eq(otpRequestsTable.id, otpRow.id));
         res.status(401).json({
-          error: "otp_voided",
+          error: "OTP_VOID",
           message: "Too many failed attempts. Please request a new code.",
         });
       } else {

@@ -21,14 +21,21 @@ function env(key: string, fallback: number): number {
 /** Standard error response for rate-limited requests */
 function rateLimitHandler(
   _req: unknown,
-  res: { status: (c: number) => { json: (b: unknown) => void } },
+  res: {
+    status: (c: number) => { json: (b: unknown) => void };
+    setHeader: (name: string, value: string | number) => void;
+    getHeader: (name: string) => string | number | string[] | undefined;
+  },
   _next: unknown,
-  options: { message: string },
+  options: { message: string; windowMs: number },
 ) {
+  // Set Retry-After in seconds (derived from windowMs) so clients know when to retry
+  const retryAfterSec = Math.ceil(options.windowMs / 1000);
+  res.setHeader("Retry-After", retryAfterSec);
   res.status(429).json({
     error: "rate_limited",
     message: options.message,
-    retryAfter: "Please wait before making another request.",
+    retry_after: retryAfterSec,
   });
 }
 

@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
+import bcrypt from "bcryptjs";
 
 const JWT_SECRET = process.env["JWT_SECRET"];
 if (!JWT_SECRET) throw new Error("JWT_SECRET environment variable is required");
@@ -55,8 +56,19 @@ export function generateOtp(): string {
   return String(crypto.randomInt(100000, 999999));
 }
 
+/** Legacy SHA-256 hash — used for internal comparison only when otpHash is already SHA-256 */
 export function hashOtp(code: string): string {
   return crypto.createHash("sha256").update(code).digest("hex");
+}
+
+/** Bcrypt-hash an OTP for secure storage (spec-compliant). Use 6 rounds — OTPs are short-lived. */
+export async function hashOtpBcrypt(code: string): Promise<string> {
+  return bcrypt.hash(code, 6);
+}
+
+/** Verify a plain OTP against a stored bcrypt hash */
+export async function verifyOtpBcrypt(code: string, storedHash: string): Promise<boolean> {
+  return bcrypt.compare(code, storedHash);
 }
 
 export function otpExpiresAt(): Date {
