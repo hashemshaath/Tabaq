@@ -3,8 +3,10 @@ import { db } from "@workspace/db";
 import {
   contractsTable, transactionsTable, invoicesTable, adminMessagesTable,
   restaurantsTable, usersTable, offersTable,
+  customerInvoicesTable, ordersTable,
 } from "@workspace/db/schema";
-import { eq, desc, and, gte, lte, sql, count, sum } from "drizzle-orm";
+import { calculateTax } from "../lib/tax.js";
+import { eq, desc, and, gte, lte, sql, count, sum, isNull } from "drizzle-orm";
 import { generateRefCode } from "../lib/refcode.js";
 import { requireAdmin } from "../middleware/requireAuth.js";
 
@@ -546,6 +548,82 @@ router.patch("/admin/messages/:id/read", async (req, res) => {
     res.json({ message: updated });
   } catch (err) {
     res.status(500).json({ error: "internal_error", message: "Failed to mark message as read" });
+  }
+});
+
+// ─── TAX BACKFILL ─────────────────────────────────────────────────────────────
+
+/**
+ * POST /admin/invoices/backfill-tax
+ *
+ * Idempotent one-shot job: finds customer invoices that were created before the
+ * tax layer was implemented (tax_amount = 0 / null while source = 'order'),
+ * recalculates the applicable VAT from the order's country_code, and fills in
+ * the tax breakdown fields (taxRate, taxName, taxAmount).
+ *
+ * NOTE: The charged `total` is intentionally NOT changed — customers were billed
+ * that amount and the record must remain accurate for audit.  The backfill only
+ * populates the informational tax-breakdown columns.
+ *
+ * Returns a summary: { processed, skipped, errors }.
+ */
+router.post("/admin/invoices/backfill-tax", async (_req, res) => {
+  try {
+    // Find order invoices with no tax breakdown (taxAmount is null or '0')
+    const untaxed = await db
+      .select({
+        invoiceId:  customerInvoicesTable.id,
+        orderId:    customerInvoicesTable.orderId,
+        subtotal:   customerInvoicesTable.subtotal,
+        taxAmount:  customerInvoicesTable.taxAmount,
+      })
+      .from(customerInvoicesTable)
+      .where(
+        and(
+          eq(customerInvoicesTable.source, "order"),
+          sql`COALESCE(${customerInvoicesTable.taxAmount}::numeric, 0) = 0`,
+        ),
+      );
+
+    let processed = 0;
+    let skipped   = 0;
+    const errors: Array<{ invoiceId: number; error: string }> = [];
+
+    for (const inv of untaxed) {
+      try {
+        // Resolve the order's country — fall back to "SA" if unrecorded
+        const countryCode = inv.orderId
+          ? (await db
+              .select({ countryCode: ordersTable.countryCode })
+              .from(ordersTable)
+              .where(eq(ordersTable.id, inv.orderId))
+              .limit(1)
+              .then(rows => rows[0]?.countryCode ?? "SA"))
+          : "SA";
+
+        const subtotal = Number(inv.subtotal ?? 0);
+        if (subtotal <= 0) { skipped++; continue; }
+
+        const { taxRate, taxAmount, taxName } = await calculateTax(countryCode, subtotal);
+
+        await db
+          .update(customerInvoicesTable)
+          .set({
+            taxRate:   String(taxRate),
+            taxName,
+            taxAmount: String(taxAmount),
+          })
+          .where(eq(customerInvoicesTable.id, inv.invoiceId));
+
+        processed++;
+      } catch (err: any) {
+        errors.push({ invoiceId: inv.invoiceId, error: err?.message ?? "unknown" });
+      }
+    }
+
+    res.json({ processed, skipped, errors, total: untaxed.length });
+  } catch (err) {
+    res.status(500).json({ error: "internal_error", message: "Tax backfill failed" });
   }
 });
 

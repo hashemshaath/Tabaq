@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import {
   ordersTable, restaurantsTable, promoCodesTable, promoCodeRedemptionsTable, usersTable,
+  countriesTable,
 } from "@workspace/db/schema";
 import { requireAuth, optionalAuth } from "../middleware/requireAuth.js";
 import { eq, desc, sql } from "drizzle-orm";
@@ -65,8 +66,26 @@ router.post("/orders", optionalAuth, async (req, res) => {
       }
     }
 
-    // FIX 11: Calculate VAT based on country (default SA = 15%)
-    const effectiveCountry = countryCode ?? "SA";
+    // Resolve country for tax calculation.
+    // Priority: (1) body-supplied countryCode → (2) restaurant's registered country
+    //           → (3) hard default "SA" (primary market, 15% VAT).
+    let effectiveCountry: string = countryCode ?? "";
+
+    if (!effectiveCountry) {
+      const rid = restaurantId ?? items[0]?.restaurantId ?? null;
+      if (rid) {
+        const [restaurantCountry] = await db
+          .select({ code: countriesTable.code })
+          .from(restaurantsTable)
+          .innerJoin(countriesTable, eq(restaurantsTable.countryId, countriesTable.id))
+          .where(eq(restaurantsTable.id, rid))
+          .limit(1);
+        effectiveCountry = restaurantCountry?.code ?? "";
+      }
+    }
+
+    if (!effectiveCountry) effectiveCountry = "SA";
+
     const baseSubtotal = Number(subtotal);
     const baseDiscount = Number(discountAmount ?? 0);
     const baseFee = Number(deliveryFee ?? 0);

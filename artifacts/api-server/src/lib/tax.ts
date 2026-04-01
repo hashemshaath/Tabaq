@@ -48,7 +48,23 @@ async function ensureSeeded(): Promise<void> {
   }
 }
 
-export async function calculateTax(countryCode: string, subtotal: number): Promise<TaxResult> {
+/**
+ * Per-item tax descriptor — reserved for future item-level tax exemption logic.
+ * Currently all items are treated as fully taxable; this parameter is accepted
+ * but not yet used so callers can start passing it without code changes later.
+ */
+export interface TaxableItem {
+  taxable?: boolean;  // false = exempt from tax (e.g. medicines, children's clothing)
+  price?: number;
+  qty?: number;
+}
+
+export async function calculateTax(
+  countryCode: string,
+  subtotal: number,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _items?: TaxableItem[],  // reserved — per-item exemptions not yet implemented
+): Promise<TaxResult> {
   await ensureSeeded();
 
   try {
