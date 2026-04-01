@@ -183,6 +183,57 @@ Standardized format `TBQ-{TYPE}-{YEAR}-{PADDED_ID}` across all entities. New typ
 - Stored lowercase; lookup is case-insensitive
 - Single source of truth: `validateUsername()` exported from `lib/auth.ts`; `routes/username.ts` imports it
 
+## Passcode (PIN) System (April 2026)
+
+A 6-digit passcode system for mobile users, enabling fast re-login without OTP after first login.
+
+### How It Works
+1. User logs in normally (phone OTP or email+password).
+2. App prompts user to set a 6-digit passcode via `POST /auth/passcode/set`.
+3. On subsequent opens: user enters passcode — `POST /auth/passcode/login` issues full JWT.
+4. "Forgot passcode" → request phone OTP, call `POST /auth/passcode/reset`.
+
+### Passcode Validation Rules
+- Exactly 6 digits (`/^\d{6}$/`)
+- Not all-same (e.g. `111111`)
+- Not strictly sequential ascending or descending (e.g. `123456`, `987654`)
+- Hashed with bcrypt cost-10 (lighter than password cost-12 — PIN is short-lived by design)
+
+### Constraints for Passcode Login
+1. User must have a verified phone number
+2. Passcode must have been set within the last 90 days (prompted to re-setup after expiry)
+3. `device_fingerprint` must match a previously registered device for this user (new devices require full phone OTP first)
+
+### Lockout
+- 5 wrong attempts → 10-minute lock (`passcode_locked_until`)
+- Correct passcode resets counter to 0
+
+### Rate Limiting
+- `POST /auth/passcode/login`: 10 requests per minute per `user_uid` (in-memory, keyed on `user_uid`)
+
+### Endpoints
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `POST` | `/api/auth/passcode/set` | JWT required | Set/replace passcode; registers device |
+| `POST` | `/api/auth/passcode/login` | Public | Login by user_uid + passcode + device_fingerprint |
+| `POST` | `/api/auth/passcode/reset` | Public | Forgot-passcode: verify phone OTP, then set new passcode |
+| `DELETE` | `/api/auth/passcode` | JWT required | Disable passcode login |
+
+### New DB Columns (users table)
+- `passcode_hash varchar(100)` — bcrypt hash
+- `passcode_set_at timestamp`
+- `passcode_failed_attempts smallint DEFAULT 0`
+- `passcode_locked_until timestamp`
+
+### New DB Table: `user_devices`
+Tracks known devices per user. Required for passcode login device-fingerprint validation.
+- `user_id`, `device_fingerprint` (unique pair), `device_info`, `first_seen_at`, `last_seen_at`
+
+### New Files
+- `artifacts/api-server/src/routes/passcode.ts` — all 4 passcode endpoints
+
+---
+
 ### New Endpoint: `POST /auth/check-username`
 Returns `{ available: boolean, reason: string | null }` — validates format, checks reserved words, then queries DB
 

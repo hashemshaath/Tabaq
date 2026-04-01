@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, boolean, timestamp, uniqueIndex, numeric, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, boolean, timestamp, uniqueIndex, numeric, jsonb, smallint, varchar } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { citiesTable } from "./countries";
@@ -79,6 +79,10 @@ export const usersTable = pgTable("users", {
   lockedUntil: timestamp("locked_until"),
   lastLoginAt: timestamp("last_login_at"),
   lastLoginIp: text("last_login_ip"),
+  passcodeHash: varchar("passcode_hash", { length: 100 }),
+  passcodeSetAt: timestamp("passcode_set_at"),
+  passcodeFailedAttempts: smallint("passcode_failed_attempts").default(0).notNull(),
+  passcodeLockedUntil: timestamp("passcode_locked_until"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -165,6 +169,17 @@ export const userMutesTable = pgTable("user_mutes", {
   uniqueIndex("user_mutes_unique").on(t.userId, t.entityType, t.entityId),
 ]);
 
+export const userDevicesTable = pgTable("user_devices", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  deviceFingerprint: text("device_fingerprint").notNull(),
+  deviceInfo: text("device_info"),
+  firstSeenAt: timestamp("first_seen_at").defaultNow().notNull(),
+  lastSeenAt: timestamp("last_seen_at").defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("user_devices_unique").on(t.userId, t.deviceFingerprint),
+]);
+
 export const insertUserSchema = createInsertSchema(usersTable).omit({ id: true, userUid: true, refCode: true, createdAt: true, updatedAt: true });
 export const insertUserFollowSchema = createInsertSchema(userFollowsTable).omit({ id: true, createdAt: true });
 export const insertUserBlockSchema = createInsertSchema(userBlocksTable).omit({ id: true, createdAt: true });
@@ -180,3 +195,4 @@ export type RefreshToken = typeof refreshTokensTable.$inferSelect;
 export type UserNotificationPref = typeof userNotificationPrefsTable.$inferSelect;
 export type UserInterest = typeof userInterestsTable.$inferSelect;
 export type UserMute = typeof userMutesTable.$inferSelect;
+export type UserDevice = typeof userDevicesTable.$inferSelect;
