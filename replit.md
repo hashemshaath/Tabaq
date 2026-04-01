@@ -1,5 +1,40 @@
 # Tabaq | طبق — Workspace
 
+## Restaurant Data Enrichment — Session 6 (April 2026)
+
+### Logo URLs for All Restaurants
+- All 12 restaurants now have `logo_url` set via initials-based branded logos (ui-avatars.com)
+- Each restaurant gets a unique background colour matching their cuisine/brand identity
+
+### Nakheel Palace Menu Seeded (was 0 dishes → 8)
+- Starters: Wagyu Carpaccio (⭐), Lobster Bisque, Foie Gras Torchon (chef's choice)
+- Main Course: Wagyu Tomahawk 1kg (⭐ SAR 650), Whole Grilled Turbot, Lamb Rack Provençale
+- Desserts: Valrhona Chocolate Soufflé (⭐, chef's choice), Arabic Mille-Feuille
+- All 8 dishes have Unsplash images → photos tab jumps from 1 → 9
+
+### Dish Images Filled In
+- 25 dishes across all restaurants that had null `image_url` now have Unsplash food photography URLs
+- Every single dish across all 12 restaurants now has an image (100% coverage)
+
+### More Dishes for Under-Stocked Restaurants
+Added 34 new dishes across 6 restaurants, bringing all to 7-10 dishes:
+- Maestro Italian: 3 → 9 (Burrata, Carbonara ⭐, Risotto Tartufo ⭐, Tiramisu ⭐, Panna Cotta)
+- Al Baik Express: 2 → 7 (Crispy Shrimp ⭐, Chicken Tenders, Broasted Meal ⭐, Family Bucket ⭐)
+- Kana Sushi: 2 → 8 (Gyoza, Salmon Tartar ⭐, Dragon Roll ⭐, Salmon Sashimi ⭐, Rainbow Roll, Matcha Cake ⭐)
+- Casa Levant: 3 → 8 (Mezze Platter ⭐, Fatayer Trio, Lamb Ouzi ⭐, Musakhan, Knafeh ⭐)
+- Bahar Seafood: 3 → 8 (Shrimp Cocktail, Calamari, Hammour ⭐, Crab Biryani ⭐, Umm Ali)
+- Spice Route India: 3 → 10 (Seekh Kebab ⭐, Papdi Chaat, Butter Chicken ⭐, Dal Makhani, Rogan Josh ⭐, Gulab Jamun ⭐, Kulfi Falooda)
+
+### Photo Gallery Counts (all from cover + dish images)
+- Spice Route India: 11 photos | Maestro Italian: 10 photos | Bahar/Nakheel/Kana/Casa: 9 each
+- Al Baik: 8 | Sushi Hana: 7 | Najd Village: 6 | Café Bateel/Green Bowl/Grill House: 5
+
+### Homepage Tabaq Stars Section
+- New dishes with `is_tabaq_star = true` now appear in the homepage "نجوم طبق" section
+- Nakheel Palace dishes (Wagyu Tomahawk, Soufflé) show alongside existing restaurants' stars
+
+---
+
 ## Platform Enrichment & Gaps — Session 5 (April 2026)
 
 ### Feed Page — Public Access Fixed
