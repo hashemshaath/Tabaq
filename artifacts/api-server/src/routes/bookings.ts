@@ -5,6 +5,8 @@ import { eq, and, sql, gte, lte, type SQL, count } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { awardAndLog, POINTS } from "../lib/points.js";
+import { invoiceService } from "../services/invoiceService.js";
+import { notifyAsync } from "../lib/notify.js";
 
 const router: IRouter = Router();
 
@@ -50,6 +52,7 @@ router.get("/bookings", requireAuth, async (req, res) => {
       occasionId: bookingsTable.occasionId,
       specialRequests: bookingsTable.specialRequests,
       referenceCode: bookingsTable.referenceCode,
+      invoiceRef: bookingsTable.invoiceRef,
       createdAt: bookingsTable.createdAt,
       restaurantNameEn: restaurantsTable.nameEn,
       restaurantNameAr: restaurantsTable.nameAr,
@@ -193,17 +196,52 @@ router.post("/bookings", requireAuth, async (req, res) => {
     await awardAndLog(userId, POINTS.BOOKING_MADE, "booking_made", booking.id, "booking",
       `Earned ${POINTS.BOOKING_MADE} pts for booking at restaurant #${restaurantId}`);
 
-    // Notification stubs: in production these trigger push/SMS/email events
-    req.log.info({ bookingId: booking.id, userId, referenceCode }, "NOTIFY: booking confirmation — send to user");
-    req.log.info({ bookingId: booking.id, restaurantId }, "NOTIFY: new reservation alert — send to restaurant");
+    // FIX 1: Generate customer invoice for this booking (bookings are free table reservations)
+    let invoiceRef: string | null = null;
+    try {
+      const invoiceResult = await invoiceService.processBooking({
+        bookingId: booking.id,
+        userId,
+        restaurantId,
+        restaurantNameEn: restaurant?.nameEn ?? "",
+        restaurantNameAr: restaurant?.nameAr ?? "",
+        partySize,
+        date,
+        time,
+        total: 0,
+        currency: "SAR",
+        paymentMethod: "free",
+      });
+      invoiceRef = invoiceResult.invoiceRef;
+
+      // Store invoiceRef on the booking record
+      if (invoiceRef) {
+        await db.update(bookingsTable)
+          .set({ invoiceRef })
+          .where(eq(bookingsTable.id, booking.id));
+      }
+    } catch (invoiceErr) {
+      req.log.warn({ invoiceErr }, "Booking invoice creation failed (non-critical)");
+    }
+
+    // FIX 5: Fire notification (non-blocking)
+    notifyAsync({
+      userId,
+      type: "booking_confirmed",
+      titleEn: "Booking Confirmed",
+      titleAr: "تم تأكيد الحجز",
+      bodyEn: `Your table at ${restaurant?.nameEn ?? "the restaurant"} for ${partySize} guests on ${date} at ${time} is confirmed. Reference: ${referenceCode}.`,
+      bodyAr: `تم تأكيد طاولتك في ${restaurant?.nameAr ?? "المطعم"} لـ ${partySize} أشخاص في ${date} الساعة ${time}. المرجع: ${referenceCode}.`,
+      refId: booking.id,
+      refType: "booking",
+    });
 
     // qrPayload is the canonical machine-readable content for the booking QR code.
-    // Clients use this string to render QR codes (e.g. via qrcode npm).
-    // Format: TABAQ:BOOKING:<id>:<referenceCode> — stable, scannable by restaurant POS.
     const qrPayload = `TABAQ:BOOKING:${booking.id}:${referenceCode}`;
 
     res.status(201).json({
       ...booking,
+      invoiceRef,
       restaurantNameEn: restaurant?.nameEn ?? "",
       restaurantNameAr: restaurant?.nameAr ?? "",
       restaurantCoverImageUrl: restaurant?.coverImageUrl ?? null,
@@ -232,6 +270,7 @@ router.get("/bookings/:bookingId", requireAuth, async (req, res) => {
       occasionId: bookingsTable.occasionId,
       specialRequests: bookingsTable.specialRequests,
       referenceCode: bookingsTable.referenceCode,
+      invoiceRef: bookingsTable.invoiceRef,
       createdAt: bookingsTable.createdAt,
       restaurantNameEn: restaurantsTable.nameEn,
       restaurantNameAr: restaurantsTable.nameAr,
@@ -307,11 +346,29 @@ router.patch("/bookings/:bookingId", requireAuth, async (req, res) => {
       .where(eq(bookingsTable.id, bookingId))
       .returning();
 
-    // Notification stubs
-    if (status === "confirmed") {
-      req.log.info({ bookingId, userId: existing.userId }, "NOTIFY: booking confirmed — send confirmation to user");
-    } else if (status === "cancelled") {
-      req.log.info({ bookingId, userId: existing.userId }, "NOTIFY: booking cancelled — send cancellation notice to user");
+    // FIX 5: Fire notifications (non-blocking)
+    if (status === "confirmed" && existing.userId) {
+      notifyAsync({
+        userId: existing.userId,
+        type: "booking_confirmed",
+        titleEn: "Booking Confirmed",
+        titleAr: "تم تأكيد الحجز",
+        bodyEn: "Your booking has been confirmed by the restaurant.",
+        bodyAr: "تم تأكيد حجزك من قِبل المطعم.",
+        refId: bookingId,
+        refType: "booking",
+      });
+    } else if (status === "cancelled" && existing.userId) {
+      notifyAsync({
+        userId: existing.userId,
+        type: "booking_cancelled",
+        titleEn: "Booking Cancelled",
+        titleAr: "تم إلغاء الحجز",
+        bodyEn: "Your booking has been cancelled.",
+        bodyAr: "تم إلغاء حجزك.",
+        refId: bookingId,
+        refType: "booking",
+      });
     }
 
     const [bookingRestaurant] = await db.select().from(restaurantsTable)
@@ -414,7 +471,6 @@ router.get("/restaurants/:restaurantId/suggested-times", async (req, res) => {
         const remaining = SEAT_CAPACITY - seated;
         const fillPct = seated / SEAT_CAPACITY;
         const available = remaining >= reqPartySize;
-        // Score: lower fill = better score; add bonus for "ideal dining hours" (19:00-21:00)
         const [h] = slot.split(":").map(Number);
         const idealBonus = (h ?? 0) >= 19 && (h ?? 0) <= 21 ? 20 : 0;
         const score = available ? Math.round((1 - fillPct) * 80 + idealBonus) : 0;

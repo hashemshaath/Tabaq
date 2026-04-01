@@ -1,12 +1,12 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { redemptionsTable, vouchersTable, restaurantsTable } from "@workspace/db/schema";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { requireAuth } from "../middleware/requireAuth.js";
 
 const router: IRouter = Router();
 
-// POST /redemptions/redeem — redeem a voucher by code
+// POST /redeem — redeem a voucher by code (FIX 3: partial balance handled correctly)
 router.post("/redeem", requireAuth, async (req, res) => {
   try {
     const { code, amount } = req.body;
@@ -29,27 +29,41 @@ router.post("/redeem", requireAuth, async (req, res) => {
       return;
     }
 
+    // FIX 3: Correct partial redemption arithmetic
+    const voucherBalance = parseFloat(String(voucher.value));
+    const requested = amount ? Math.abs(parseFloat(String(amount))) : voucherBalance;
+    const redeemAmount = Math.min(requested, voucherBalance);
+    const remainingBalance = Math.max(0, Math.round((voucherBalance - redeemAmount) * 100) / 100);
+    const isFullyRedeemed = remainingBalance === 0;
+
     const [redemption] = await db.transaction(async (tx) => {
-      const redeemAmount = amount || voucher.value;
-      
       const [r] = await tx.insert(redemptionsTable).values({
         voucherId: voucher.id,
         restaurantId: voucher.restaurantId,
         staffUserId: userId,
         method: "on_site",
-        amountRedeemed: redeemAmount,
+        amountRedeemed: String(redeemAmount.toFixed(2)),
         createdAt: new Date(),
       }).returning();
 
+      // FIX 3: Update voucher with remaining balance and correct status
       await tx.update(vouchersTable).set({
-        status: "redeemed", // Simplified for now, could be partially_redeemed
-        redeemedAt: new Date(),
+        // Track cumulative redeemed amount
+        redeemedAmount: sql`COALESCE(${vouchersTable.redeemedAmount}, 0) + ${redeemAmount.toFixed(2)}`,
+        remainingBalance: String(remainingBalance.toFixed(2)),
+        status: isFullyRedeemed ? "redeemed" : "partially_redeemed",
+        redeemedAt: isFullyRedeemed ? new Date() : null,
       }).where(eq(vouchersTable.id, voucher.id));
 
       return [r];
     });
 
-    res.status(201).json(redemption);
+    res.status(201).json({
+      ...redemption,
+      amountRedeemed: redeemAmount.toFixed(2),
+      remainingBalance: remainingBalance.toFixed(2),
+      voucherStatus: isFullyRedeemed ? "redeemed" : "partially_redeemed",
+    });
   } catch (err) {
     req.log.error({ err }, "Failed to redeem voucher");
     res.status(500).json({ error: "internal_error" });

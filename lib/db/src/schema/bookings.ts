@@ -30,6 +30,7 @@ export const bookingsTable = pgTable("bookings", {
   specialRequests: text("special_requests"),
   preOrderItems: jsonb("pre_order_items").$type<Array<{ dishId: number; name: string; quantity: number; price: number }>>().default([]),
   referenceCode: text("reference_code").notNull().unique(),
+  invoiceRef: text("invoice_ref"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

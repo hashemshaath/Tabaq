@@ -5,7 +5,8 @@ import { usersTable } from "./users";
 import { restaurantsTable } from "./restaurants";
 
 export const orderStatusEnum = pgEnum("order_status", [
-  "placed", "confirmed", "preparing", "out_for_delivery", "ready_for_pickup", "delivered", "cancelled",
+  "placed", "confirmed", "preparing", "out_for_delivery", "ready_for_pickup",
+  "delivered", "cancelled", "completed", "disputed",
 ]);
 
 export const orderModeEnum = pgEnum("order_mode", [
@@ -13,7 +14,7 @@ export const orderModeEnum = pgEnum("order_mode", [
 ]);
 
 export const orderPaymentEnum = pgEnum("order_payment", [
-  "card", "apple_pay", "stc_pay", "cash",
+  "card", "apple_pay", "stc_pay", "cash", "points", "hybrid",
 ]);
 
 export const ordersTable = pgTable("orders", {
@@ -37,6 +38,12 @@ export const ordersTable = pgTable("orders", {
   subtotal: numeric("subtotal", { precision: 10, scale: 2 }).notNull(),
   discountAmount: numeric("discount_amount", { precision: 10, scale: 2 }).default("0"),
   deliveryFee: numeric("delivery_fee", { precision: 10, scale: 2 }).default("0"),
+  taxAmount: numeric("tax_amount", { precision: 10, scale: 2 }).default("0"),
+  taxRate: numeric("tax_rate", { precision: 6, scale: 4 }).default("0"),
+  taxName: text("tax_name").default("VAT"),
+  countryCode: text("country_code").default("SA"),
+  pointsUsed: integer("points_used").default(0),
+  pointsMonetaryValue: numeric("points_monetary_value", { precision: 10, scale: 2 }).default("0"),
   total: numeric("total", { precision: 10, scale: 2 }).notNull(),
   currency: text("currency").default("SAR").notNull(),
   status: orderStatusEnum("status").default("placed").notNull(),

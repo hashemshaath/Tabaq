@@ -1,0 +1,346 @@
+# Tabaq — Targeted Fix Prompts (Based on Audit Report)
+# Priority order: fix correctness holes first, then stubs, then missing logic.
+# Each prompt = one focused change. Do not combine them.
+
+---
+
+## FIX 1 — Wire Booking Invoice Creation
+
+```
+In the existing codebase, find where a booking or order is confirmed/completed.
+
+There is already an invoice creation function — it exists but is never called from the booking flow.
+
+Task:
+1. Find the booking confirmation handler (look for status changes to 'confirmed', 'completed', or equivalent).
+2. Find the existing invoice creation function/service.
+3. Call the invoice creation function immediately after a booking is confirmed, passing the correct order data.
+4. Store the returned invoice_uid back on the booking/order record.
+5. Emit whatever event or trigger already exists for "invoice issued" so downstream systems (points, commissions) fire correctly.
+
+Do not rewrite the invoice function. Only wire the call into the booking flow.
+Do not change any other files.
+```
+
+---
+
+## FIX 2 — Persist Promo/Coupon Redemption
+
+```
+In the existing codebase, find where a promo code or coupon is validated during checkout.
+
+The validation logic works, but the redemption is never written to the database after a successful order.
+
+Task:
+1. Find the coupon/promo validation call in the order or checkout flow.
+2. Find the existing coupon_redemptions table or redemption insert function.
+3. After a successful payment or order confirmation, insert the redemption record:
+   - coupon_uid, user_uid, order_uid, discount_applied, redeemed_at = NOW()
+4. Increment the coupon's usage_count atomically using a single UPDATE with WHERE clause (no separate SELECT + UPDATE).
+5. If the redemption insert fails, do not block the order — log the error and continue.
+
+Only modify the files involved in checkout/order confirmation.
+Do not touch the coupon validation logic.
+```
+
+---
+
+## FIX 3 — Fix Partial Voucher / Wallet Balance
+
+```
+In the existing codebase, find the wallet or voucher balance deduction logic.
+
+The current implementation deducts the full voucher value even when the order total is less than the voucher balance, leaving no remainder for future use.
+
+Task:
+1. Find where voucher/wallet balance is deducted during payment.
+2. Fix the deduction to use: amount_to_deduct = MIN(voucher_balance, order_total)
+3. The remaining balance = voucher_balance - amount_to_deduct
+4. Update the voucher/wallet record with the remaining balance (not zero).
+5. On the payment/invoice record, store: voucher_amount_used and voucher_remaining_after.
+6. If remaining balance = 0, mark the voucher as fully_used. Otherwise keep it active.
+
+This is a single arithmetic fix. Change only the deduction logic.
+Do not change how vouchers are created or validated.
+```
+
+---
+
+## FIX 4 — Connect Payment Gateway (Replace Stub)
+
+```
+In the existing codebase, find the payment gateway integration file.
+
+It currently has a stub/mock that always returns success without calling a real gateway.
+
+Task:
+1. Find the stub payment function (likely returns { success: true } or similar without an HTTP call).
+2. Keep the exact same function signature so nothing else needs to change.
+3. Replace the stub body with a real implementation using the gateway credentials from environment variables.
+4. Support at minimum: initiate payment, verify payment status, and process refund.
+5. If PAYMENT_GATEWAY env var = 'hyperpay': implement HyperPay checkout API.
+   If PAYMENT_GATEWAY env var = 'stripe': implement Stripe PaymentIntents API.
+   If PAYMENT_GATEWAY env var = 'mock' or is not set: keep the mock behavior for dev/test.
+6. All gateway responses must be normalized to the existing internal response format before returning.
+7. Store the raw gateway response in the existing gateway_response JSONB field.
+
+Do not change any callers of the payment function. Only replace the stub internals.
+```
+
+---
+
+## FIX 5 — Activate Notification Triggers
+
+```
+In the existing codebase, find the notification service or notification sending function.
+
+It is designed but never called — the trigger points exist but the notification calls are commented out or missing.
+
+Task:
+Find each of these trigger points and add the notification call if it is missing:
+1. Order confirmed → notify customer (order confirmation + invoice_uid)
+2. Payment successful → notify customer (receipt)
+3. Payment failed → notify customer (retry prompt)
+4. Membership renewed → notify customer (renewal confirmation)
+5. Membership payment failed → notify customer (update payment method)
+6. Membership about to expire (3 days before) → notify customer
+7. Points about to expire (30 days before) → notify customer
+8. Return approved → notify customer
+9. Return rejected → notify customer with reason
+10. Refund processed → notify customer with amount
+
+For each trigger, call the existing notification function with the correct parameters.
+Use the existing notification channel (email, push, or SMS — whichever is already configured).
+If the notification function is async, call it with await or .catch() — never let it block or crash the main flow.
+
+Do not build a new notification system. Only wire the existing one.
+```
+
+---
+
+## FIX 6 — Activate Cron Jobs
+
+```
+In the existing codebase, find all cron job definitions or scheduled task files.
+
+The jobs are defined but not registered or started.
+
+Task:
+1. Find the cron scheduler setup (node-cron, bull, agenda, or similar).
+2. Find all job handler functions that are defined but not scheduled.
+3. Register each job with the correct schedule:
+   - Points expiry check: daily at 02:00 AM UTC
+   - Membership auto-renewal: daily at 03:00 AM UTC
+   - Membership expiry warning (3 days): daily at 04:00 AM UTC
+   - Commission batch calculation: 1st of every month at 05:00 AM UTC
+   - Abandoned order cleanup: every 6 hours
+   - Failed payment retry: every 4 hours (max 3 retries per payment)
+4. Each job must:
+   - Log start time and end time
+   - Log count of records processed
+   - Catch all errors and log them without crashing the process
+   - Write a record to an existing job_runs or cron_logs table (create a simple one if absent)
+5. Ensure jobs do not run in parallel if the previous run is still active (use a Redis lock with TTL = job timeout).
+
+Only wire the existing job functions to the scheduler. Do not rewrite job logic.
+```
+
+---
+
+## FIX 7 — Points Redemption as Payment Currency
+
+```
+In the existing codebase, find the checkout/payment flow.
+
+Points can currently be earned but cannot be used as a payment method at checkout.
+
+Task:
+1. Find the order total calculation and payment initiation logic.
+2. Add points as a valid payment method option alongside existing methods.
+3. When payment_method includes points:
+   a. Validate user has sufficient redeemable points balance (not pending).
+   b. Calculate monetary value: points_to_redeem / redemption_rate (get rate from config or existing points config).
+   c. Deduct points_to_redeem from balance atomically — use a transaction lock.
+   d. Reduce the order amount payable by the monetary value of the points.
+   e. If points cover the full order: set payment status = COMPLETED, skip gateway call.
+   f. If points are partial: charge the remainder via the normal payment gateway.
+4. On the invoice, record: points_used, points_monetary_value, remaining_amount_charged.
+5. If the order is later cancelled or returned: refund the points back to the account.
+
+Use the existing points service/model for all balance operations. Do not duplicate balance logic.
+```
+
+---
+
+## FIX 8 — Membership Lifecycle State Machine
+
+```
+In the existing codebase, find the membership status management code.
+
+Membership status transitions are likely ad hoc — status is set directly without validation.
+
+Task:
+1. Find where membership status is updated across the codebase.
+2. Create a single function: transitionMembershipStatus(membership_uid, new_status, reason?, actor_uid?)
+3. Enforce these allowed transitions only:
+   PENDING    → ACTIVE (payment succeeded)
+   PENDING    → CANCELLED (user cancelled before first payment)
+   ACTIVE     → SUSPENDED (payment failed after retries)
+   ACTIVE     → CANCELLED (user requested cancellation)
+   ACTIVE     → EXPIRED (end_date passed, no renewal)
+   SUSPENDED  → ACTIVE (payment recovered)
+   SUSPENDED  → CANCELLED (user cancelled while suspended)
+   SUSPENDED  → EXPIRED (end_date passed while suspended)
+   Any other transition → throw an error with clear message
+
+4. Replace all direct status assignments in the codebase with calls to this function.
+5. Every transition must write an entry to the audit_log (or equivalent existing log table):
+   entity_type=MEMBERSHIP, entity_uid, old_status, new_status, reason, actor_uid, timestamp.
+
+This is a refactor of existing code, not new functionality.
+```
+
+---
+
+## FIX 9 — Order Status Management
+
+```
+In the existing codebase, find all places where order status is changed.
+
+Order status is likely updated in multiple places without a central state machine, causing potential inconsistencies.
+
+Task:
+1. Map all current order status values used in the codebase.
+2. Create a single function: transitionOrderStatus(order_uid, new_status, metadata?)
+3. Define and enforce the allowed state machine:
+   PENDING     → CONFIRMED (payment received)
+   PENDING     → CANCELLED (payment failed or user cancelled)
+   CONFIRMED   → PREPARING (restaurant/supplier accepted)
+   CONFIRMED   → CANCELLED (supplier rejected — triggers full refund)
+   PREPARING   → READY / DISPATCHED (depending on order type)
+   READY       → COMPLETED (customer received)
+   DISPATCHED  → COMPLETED (delivery confirmed)
+   COMPLETED   → DISPUTED (customer raised dispute)
+   Any cancelled or completed order → no further transitions allowed
+
+4. On CONFIRMED: trigger invoice creation (Fix 1) if not already done.
+5. On COMPLETED: move pending points to redeemable balance.
+6. On CANCELLED (after payment): trigger refund flow automatically.
+7. Replace all direct order status updates across the codebase with this function.
+8. Log every transition to audit_log.
+
+Do not change the order data model. Only centralize the transition logic.
+```
+
+---
+
+## FIX 10 — Dispute Workflow
+
+```
+In the existing codebase, find any existing dispute or complaint handling code.
+
+If a disputes table or model exists, extend it. If not, create the minimum needed.
+
+Task:
+1. Ensure a disputes table exists with at minimum:
+   dispute_uid, order_uid, customer_uid, supplier_uid, reason, status
+   (OPEN | UNDER_REVIEW | RESOLVED_REFUND | RESOLVED_NO_REFUND | ESCALATED),
+   evidence JSONB, resolution_notes, created_at, resolved_at, resolved_by
+
+2. When an order transitions to DISPUTED status (Fix 9):
+   Automatically create a dispute record linked to the order.
+
+3. Add these endpoints if they do not exist:
+   POST /api/v1/disputes — open a dispute (customer)
+   GET  /api/v1/disputes/:dispute_uid — dispute details
+   PUT  /api/v1/disputes/:dispute_uid/review — mark as under review (staff)
+   PUT  /api/v1/disputes/:dispute_uid/resolve — resolve with decision (staff)
+     Body: { decision: 'REFUND' | 'NO_REFUND' | 'PARTIAL_REFUND', amount?, notes }
+   
+4. On resolution:
+   If REFUND or PARTIAL_REFUND: call existing refund flow with the resolved amount.
+   If NO_REFUND: notify customer with resolution reason.
+   Either way: transition order status out of DISPUTED to a terminal state.
+
+5. Notify relevant parties at each status change using existing notification system (Fix 5).
+```
+
+---
+
+## FIX 11 — VAT Calculation & Storage
+
+```
+In the existing codebase, find where order totals and invoice amounts are calculated.
+
+VAT/tax is likely either missing, hardcoded, or stored only as a flat number.
+
+Task:
+1. Find the existing tax_configurations table or tax rate settings.
+   If it does not exist, create a minimal version:
+   country_code VARCHAR(2), tax_name VARCHAR(20), tax_rate DECIMAL(6,4), is_active BOOLEAN
+   Seed with: SA=0.15, AE=0.05, EG=0.14, KW=0.00, QA=0.00, BH=0.10, OM=0.05
+
+2. Create or update a calculateTax(country_code, subtotal, items?) function:
+   - Looks up rate from tax_configurations for the country_code
+   - Returns { tax_name, rate, taxable_amount, tax_amount, total_with_tax }
+   - Defaults to 0% if country not found
+
+3. In the order total calculation:
+   - Determine country_code from customer profile or supplier location
+   - Call calculateTax() and store the result
+   - Ensure invoice shows: subtotal, tax_amount, tax_rate, tax_name, and total separately
+
+4. In the invoice model/table:
+   Ensure these fields exist (add via migration if absent):
+   tax_rate DECIMAL(6,4), tax_name VARCHAR(20), tax_amount DECIMAL(12,2)
+   Update any invoices that have total_amount but no tax breakdown to recalculate and backfill.
+
+5. In the PDF invoice (if it exists): display tax as a separate line item.
+
+Do not change pricing logic. Only add tax on top of existing subtotal calculations.
+```
+
+---
+
+## FINAL PROMPT — Verify All Fixes
+
+```
+All targeted fixes have been applied. Now verify the system is coherent.
+
+Run these checks and report results:
+
+1. Place a test order end-to-end:
+   - Create order → confirm → pay → verify invoice is auto-created with correct UID
+   - Check invoice has tax breakdown, barcode, QR code
+   - Check coupon redemption was persisted in coupon_redemptions table
+   - Check points were credited as pending
+
+2. Complete the order:
+   - Transition to COMPLETED via the state machine
+   - Verify pending points moved to redeemable balance
+   - Verify notification was sent
+
+3. Test partial voucher:
+   - Apply a voucher worth more than the order total
+   - Verify remaining balance is preserved on the voucher record
+
+4. Test return flow:
+   - Request return on the completed order
+   - Approve and process it
+   - Verify credit note invoice was created
+   - Verify points were deducted proportionally
+   - Verify notification was sent
+
+5. Test fraud protection:
+   - Submit the same payment twice with the same idempotency key
+   - Verify second attempt returns cached result without a second charge
+
+6. Check all cron jobs are registered and will fire on schedule.
+
+7. Check membership transitions:
+   - Attempt an invalid transition (e.g. EXPIRED → ACTIVE directly)
+   - Verify it throws an error and does not update the record
+
+Report: what passed, what failed, and what still needs attention.
+Do not make changes in this prompt. Report only.
+```

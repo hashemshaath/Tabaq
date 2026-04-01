@@ -18,3 +18,6 @@ export * from "./profile";
 export * from "./blog";
 export * from "./seo";
 export * from "./orders";
+export * from "./disputes";
+export * from "./tax";
+export * from "./memberships";

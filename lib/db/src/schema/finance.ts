@@ -21,7 +21,7 @@ export const paymentModelEnum = pgEnum("payment_model", [
 
 export const transactionTypeEnum = pgEnum("transaction_type", [
   "voucher_sale", "voucher_refund", "commission_charge",
-  "settlement_payout", "adjustment", "platform_fee"
+  "settlement_payout", "adjustment", "platform_fee", "order",
 ]);
 
 export const transactionStatusEnum = pgEnum("transaction_status", [
@@ -168,6 +168,9 @@ export const customerInvoicesTable = pgTable("customer_invoices", {
   subtotal: numeric("subtotal", { precision: 12, scale: 2 }).notNull(),
   discountAmount: numeric("discount_amount", { precision: 12, scale: 2 }).default("0").notNull(),
   deliveryFee: numeric("delivery_fee", { precision: 12, scale: 2 }).default("0").notNull(),
+  taxAmount: numeric("tax_amount", { precision: 12, scale: 2 }).default("0"),
+  taxRate: numeric("tax_rate", { precision: 6, scale: 4 }).default("0"),
+  taxName: text("tax_name").default("VAT"),
   total: numeric("total", { precision: 12, scale: 2 }).notNull(),
   currency: text("currency").default("SAR").notNull(),
 

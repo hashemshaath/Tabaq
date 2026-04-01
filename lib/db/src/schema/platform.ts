@@ -1,4 +1,4 @@
-import { pgTable, serial, text, boolean, timestamp, integer, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, boolean, timestamp, integer, jsonb, numeric } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -51,3 +51,19 @@ export const insertPartnerApplicationSchema = createInsertSchema(partnerApplicat
 
 export type PartnerApplication = typeof partnerApplicationsTable.$inferSelect;
 export type InsertPartnerApplication = z.infer<typeof insertPartnerApplicationSchema>;
+
+// ─── Cron Job Execution Log ────────────────────────────────────────────────────
+// Records every cron job run for monitoring and debugging.
+
+export const cronLogsTable = pgTable("cron_logs", {
+  id: serial("id").primaryKey(),
+  jobName: text("job_name").notNull(),
+  status: text("status").default("running").notNull(), // running | completed | failed
+  recordsProcessed: integer("records_processed").default(0),
+  errorMessage: text("error_message"),
+  startedAt: timestamp("started_at").defaultNow().notNull(),
+  finishedAt: timestamp("finished_at"),
+  durationMs: integer("duration_ms"),
+});
+
+export type CronLog = typeof cronLogsTable.$inferSelect;

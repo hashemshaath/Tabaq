@@ -33,6 +33,8 @@ import profileRouter from "./profile.js";
 import blogRouter from "./blog.js";
 import seoRouter from "./seo.js";
 import ordersRouter from "./orders.js";
+import disputesRouter from "./disputes.js";
+import membershipsRouter from "./memberships.js";
 
 const router: IRouter = Router();
 
@@ -70,5 +72,7 @@ router.use(profileRouter);
 router.use(blogRouter);
 router.use(seoRouter);
 router.use(ordersRouter);
+router.use(disputesRouter);
+router.use(membershipsRouter);
 
 export default router;

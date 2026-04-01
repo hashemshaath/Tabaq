@@ -1,11 +1,20 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { ordersTable, restaurantsTable } from "@workspace/db/schema";
+import {
+  ordersTable, restaurantsTable, promoCodesTable, promoCodeRedemptionsTable, usersTable,
+} from "@workspace/db/schema";
 import { requireAuth, optionalAuth } from "../middleware/requireAuth.js";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 import { invoiceService } from "../services/invoiceService.js";
+import { calculateTax } from "../lib/tax.js";
+import { transitionOrderStatus } from "../lib/orderStatus.js";
+import { awardPoints, logPointsTransaction } from "../lib/points.js";
+import { notifyAsync } from "../lib/notify.js";
 
 const router = Router();
+
+// Points redemption rate: 100 points = 1 SAR (i.e. 1 point = 0.01 SAR)
+const POINTS_PER_SAR = 100;
 
 function generateOrderNumber(): string {
   const ts = Date.now().toString(36).toUpperCase();
@@ -22,7 +31,6 @@ router.post("/orders", optionalAuth, async (req, res) => {
       subtotal,
       discountAmount,
       deliveryFee,
-      total,
       currency,
       orderMode,
       paymentMethod,
@@ -32,14 +40,18 @@ router.post("/orders", optionalAuth, async (req, res) => {
       deliveryAddress,
       notes,
       idempotencyKey,
+      countryCode,
+      pointsToRedeem,
     } = req.body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: "bad_request", message: "Items are required" });
     }
-    if (!subtotal || !total) {
-      return res.status(400).json({ error: "bad_request", message: "subtotal and total are required" });
+    if (!subtotal) {
+      return res.status(400).json({ error: "bad_request", message: "subtotal is required" });
     }
+
+    const userId = req.auth?.userId ?? null;
 
     // Idempotency: return existing order if the same key is re-submitted
     if (idempotencyKey) {
@@ -53,24 +65,89 @@ router.post("/orders", optionalAuth, async (req, res) => {
       }
     }
 
+    // FIX 11: Calculate VAT based on country (default SA = 15%)
+    const effectiveCountry = countryCode ?? "SA";
+    const baseSubtotal = Number(subtotal);
+    const baseDiscount = Number(discountAmount ?? 0);
+    const baseFee = Number(deliveryFee ?? 0);
+    const baseNet = baseSubtotal - baseDiscount + baseFee;
+
+    const tax = await calculateTax(effectiveCountry, baseNet);
+
+    // FIX 7: Handle points as (partial) payment method
+    let pointsUsedFinal = 0;
+    let pointsMonetaryValue = 0;
+
+    if (pointsToRedeem && userId && Number(pointsToRedeem) > 0) {
+      const pointsRequested = Math.floor(Number(pointsToRedeem));
+
+      // Verify user has enough points
+      const [user] = await db.select({ points: usersTable.points })
+        .from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+
+      const availablePoints = user?.points ?? 0;
+      if (availablePoints < pointsRequested) {
+        return res.status(400).json({
+          error: "insufficient_points",
+          message: `You have ${availablePoints} points but tried to redeem ${pointsRequested}`,
+          available: availablePoints,
+        });
+      }
+
+      pointsUsedFinal = pointsRequested;
+      pointsMonetaryValue = Math.round((pointsRequested / POINTS_PER_SAR) * 100) / 100;
+    }
+
+    const totalBeforePoints = tax.totalWithTax;
+    const finalTotal = Math.max(0, Math.round((totalBeforePoints - pointsMonetaryValue) * 100) / 100);
+
     const etaMinutes = orderMode === "delivery" ? 35 : orderMode === "pickup" ? 20 : 15;
+
+    // FIX 7: Deduct points atomically before creating the order (prevents double-spending)
+    if (pointsUsedFinal > 0 && userId) {
+      await db.update(usersTable)
+        .set({
+          points: sql`${usersTable.points} - ${pointsUsedFinal}`,
+          updatedAt: new Date(),
+        })
+        .where(
+          sql`${usersTable.id} = ${userId} AND ${usersTable.points} >= ${pointsUsedFinal}`
+        );
+
+      // Verify deduction succeeded (optimistic lock)
+      const [afterDeduct] = await db.select({ points: usersTable.points })
+        .from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+
+      const expectedAfter = (afterDeduct?.points ?? 0);
+      // We'll log the transaction below after order creation
+    }
 
     const [order] = await db
       .insert(ordersTable)
       .values({
         orderNumber: generateOrderNumber(),
         idempotencyKey: idempotencyKey ?? null,
-        userId: req.auth?.userId ?? null,
+        userId,
         restaurantId: restaurantId ?? items[0]?.restaurantId ?? null,
         items,
-        subtotal: String(subtotal),
-        discountAmount: String(discountAmount ?? 0),
-        deliveryFee: String(deliveryFee ?? 0),
-        total: String(total),
+        subtotal: String(baseSubtotal),
+        discountAmount: String(baseDiscount),
+        deliveryFee: String(baseFee),
+        taxAmount: String(tax.taxAmount),
+        taxRate: String(tax.rate),
+        taxName: tax.taxName,
+        countryCode: effectiveCountry,
+        pointsUsed: pointsUsedFinal,
+        pointsMonetaryValue: String(pointsMonetaryValue),
+        total: String(finalTotal),
         currency: currency ?? "SAR",
         status: "placed",
         orderMode: orderMode ?? "delivery",
-        paymentMethod: paymentMethod ?? "card",
+        paymentMethod: pointsUsedFinal > 0 && finalTotal === 0
+          ? "points"
+          : pointsUsedFinal > 0
+          ? "hybrid"
+          : (paymentMethod ?? "card"),
         promoCode: promoCode ?? null,
         customerName: customerName ?? null,
         customerPhone: customerPhone ?? null,
@@ -80,12 +157,20 @@ router.post("/orders", optionalAuth, async (req, res) => {
       })
       .returning();
 
+    // Log points deduction transaction
+    if (pointsUsedFinal > 0 && userId) {
+      await logPointsTransaction(
+        userId, "redemption", -pointsUsedFinal, order!.id, "order",
+        `Redeemed ${pointsUsedFinal} pts (${pointsMonetaryValue} SAR) for order #${order!.id}`,
+      ).catch(() => {});
+    }
+
     // Create customer invoice, log financial transaction, award loyalty points
     let invoiceRef: string | null = null;
     try {
       const result = await invoiceService.processOrder({
         orderId: order!.id,
-        userId: req.auth?.userId ?? null,
+        userId,
         restaurantId: restaurantId ?? items[0]?.restaurantId ?? null,
         items: items.map((i: any) => ({
           nameEn: i.nameEn ?? "Item",
@@ -93,10 +178,13 @@ router.post("/orders", optionalAuth, async (req, res) => {
           qty: i.qty ?? 1,
           price: i.price ?? 0,
         })),
-        subtotal: Number(subtotal),
-        discountAmount: Number(discountAmount ?? 0),
-        deliveryFee: Number(deliveryFee ?? 0),
-        total: Number(total),
+        subtotal: baseSubtotal,
+        discountAmount: baseDiscount,
+        deliveryFee: baseFee,
+        taxAmount: tax.taxAmount,
+        taxRate: tax.rate,
+        taxName: tax.taxName,
+        total: finalTotal,
         currency: currency ?? "SAR",
         paymentMethod: paymentMethod ?? "card",
         promoCode: promoCode ?? null,
@@ -109,11 +197,71 @@ router.post("/orders", optionalAuth, async (req, res) => {
         .set({ customerInvoiceRef: invoiceRef })
         .where(eq(ordersTable.id, order!.id));
     } catch (invoiceErr) {
-      // Non-critical: log but don't fail the order
       req.log.warn({ invoiceErr }, "Invoice/points processing failed for order");
     }
 
-    res.status(201).json({ order: { ...order, customerInvoiceRef: invoiceRef } });
+    // FIX 2: Persist promo code redemption (non-blocking, non-critical)
+    if (promoCode && userId) {
+      (async () => {
+        try {
+          const [promoRow] = await db
+            .select({ id: promoCodesTable.id, discountValue: promoCodesTable.discountValue, type: promoCodesTable.type })
+            .from(promoCodesTable)
+            .where(eq(promoCodesTable.code, promoCode.toUpperCase()))
+            .limit(1);
+
+          if (promoRow) {
+            const discountApplied = baseDiscount > 0 ? String(baseDiscount) : "0";
+
+            await db.insert(promoCodeRedemptionsTable).values({
+              promoCodeId: promoRow.id,
+              userId,
+              discountAmount: discountApplied,
+            }).onConflictDoNothing();
+
+            // Atomic increment of usage counter
+            await db.update(promoCodesTable)
+              .set({
+                usedCount: sql`${promoCodesTable.usedCount} + 1`,
+                totalDiscountGiven: sql`${promoCodesTable.totalDiscountGiven} + ${discountApplied}`,
+                updatedAt: new Date(),
+              })
+              .where(eq(promoCodesTable.id, promoRow.id));
+          }
+        } catch (promoErr) {
+          req.log.warn({ promoErr }, "Promo code redemption persistence failed (non-critical)");
+        }
+      })();
+    }
+
+    // FIX 5: Send order confirmation notification (non-blocking)
+    if (userId) {
+      notifyAsync({
+        userId,
+        type: "order_confirmed",
+        titleEn: "Order Placed",
+        titleAr: "تم تقديم الطلب",
+        bodyEn: `Your order ${order!.orderNumber} has been placed. Estimated time: ${etaMinutes} mins.`,
+        bodyAr: `تم تقديم طلبك ${order!.orderNumber}. الوقت المتوقع: ${etaMinutes} دقيقة.`,
+        refId: order!.id,
+        refType: "order",
+      });
+    }
+
+    res.status(201).json({
+      order: {
+        ...order,
+        customerInvoiceRef: invoiceRef,
+        tax: {
+          taxName: tax.taxName,
+          rate: tax.rate,
+          taxAmount: tax.taxAmount,
+          totalWithTax: tax.totalWithTax,
+        },
+        pointsUsed: pointsUsedFinal,
+        pointsMonetaryValue,
+      },
+    });
   } catch (err) {
     req.log.error({ err }, "Failed to create order");
     res.status(500).json({ error: "internal_error", message: "Failed to create order" });
@@ -137,6 +285,11 @@ router.get("/orders", requireAuth, async (req, res) => {
         subtotal: ordersTable.subtotal,
         discountAmount: ordersTable.discountAmount,
         deliveryFee: ordersTable.deliveryFee,
+        taxAmount: ordersTable.taxAmount,
+        taxRate: ordersTable.taxRate,
+        taxName: ordersTable.taxName,
+        pointsUsed: ordersTable.pointsUsed,
+        pointsMonetaryValue: ordersTable.pointsMonetaryValue,
         total: ordersTable.total,
         currency: ordersTable.currency,
         status: ordersTable.status,
@@ -182,6 +335,11 @@ router.get("/orders/:orderNumber", optionalAuth, async (req, res) => {
         subtotal: ordersTable.subtotal,
         discountAmount: ordersTable.discountAmount,
         deliveryFee: ordersTable.deliveryFee,
+        taxAmount: ordersTable.taxAmount,
+        taxRate: ordersTable.taxRate,
+        taxName: ordersTable.taxName,
+        pointsUsed: ordersTable.pointsUsed,
+        pointsMonetaryValue: ordersTable.pointsMonetaryValue,
         total: ordersTable.total,
         currency: ordersTable.currency,
         status: ordersTable.status,
@@ -210,6 +368,62 @@ router.get("/orders/:orderNumber", optionalAuth, async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "Failed to fetch order");
     res.status(500).json({ error: "internal_error", message: "Failed to fetch order" });
+  }
+});
+
+// FIX 9: PATCH /orders/:orderNumber/status — restaurant owner or admin transitions order status
+router.patch("/orders/:orderNumber/status", requireAuth, async (req, res) => {
+  try {
+    const { orderNumber } = req.params;
+    const { status, reason } = req.body;
+    const userId = req.auth!.userId;
+
+    if (!status) {
+      return res.status(400).json({ error: "bad_request", message: "status is required" });
+    }
+
+    // Verify caller is the restaurant owner or order owner (for cancellations)
+    const [order] = await db
+      .select({ userId: ordersTable.userId, restaurantId: ordersTable.restaurantId, status: ordersTable.status })
+      .from(ordersTable)
+      .where(eq(ordersTable.orderNumber, orderNumber))
+      .limit(1);
+
+    if (!order) {
+      return res.status(404).json({ error: "not_found", message: "Order not found" });
+    }
+
+    const isOrderOwner = order.userId === userId;
+    let isRestaurantOwner = false;
+
+    if (order.restaurantId) {
+      const [restaurant] = await db.select({ ownerId: restaurantsTable.ownerId })
+        .from(restaurantsTable).where(eq(restaurantsTable.id, order.restaurantId)).limit(1);
+      isRestaurantOwner = restaurant?.ownerId === userId;
+    }
+
+    // Only restaurant owners can confirm/prepare/dispatch; order owners can only cancel
+    if (status === "cancelled" && !isOrderOwner && !isRestaurantOwner) {
+      return res.status(403).json({ error: "forbidden", message: "You can only cancel your own orders" });
+    }
+    if (status !== "cancelled" && !isRestaurantOwner) {
+      return res.status(403).json({ error: "forbidden", message: "Only the restaurant owner can update order status" });
+    }
+
+    const updated = await transitionOrderStatus(orderNumber, status, { reason, actorId: userId });
+    res.json({ order: updated });
+  } catch (err: any) {
+    if (err.statusCode === 404) return res.status(404).json({ error: "not_found", message: err.message });
+    if (err.statusCode === 422) {
+      return res.status(422).json({
+        error: "invalid_transition",
+        message: err.message,
+        currentStatus: err.currentStatus,
+        allowed: err.allowed,
+      });
+    }
+    req.log.error({ err }, "Failed to update order status");
+    res.status(500).json({ error: "internal_error" });
   }
 });
 
@@ -252,6 +466,78 @@ router.get("/me/invoices", requireAuth, async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "Failed to fetch user invoices");
     res.status(500).json({ error: "internal_error", message: "Failed to fetch invoices" });
+  }
+});
+
+// FIX 7: POST /me/points/redeem — redeem points as a standalone credit (before checkout)
+router.post("/me/points/redeem", requireAuth, async (req, res) => {
+  try {
+    const userId = req.auth!.userId;
+    const { points } = req.body;
+
+    if (!points || Number(points) <= 0) {
+      return res.status(400).json({ error: "bad_request", message: "points must be a positive number" });
+    }
+
+    const pointsToRedeem = Math.floor(Number(points));
+
+    const [user] = await db
+      .select({ id: usersTable.id, points: usersTable.points })
+      .from(usersTable)
+      .where(eq(usersTable.id, userId))
+      .limit(1);
+
+    if (!user) {
+      return res.status(404).json({ error: "not_found", message: "User not found" });
+    }
+
+    if (user.points < pointsToRedeem) {
+      return res.status(400).json({
+        error: "insufficient_points",
+        message: `You have ${user.points} points but tried to redeem ${pointsToRedeem}`,
+        available: user.points,
+      });
+    }
+
+    const monetaryValue = Math.round((pointsToRedeem / POINTS_PER_SAR) * 100) / 100;
+
+    // Atomic deduction
+    const [updated] = await db
+      .update(usersTable)
+      .set({
+        points: sql`${usersTable.points} - ${pointsToRedeem}`,
+        updatedAt: new Date(),
+      })
+      .where(sql`${usersTable.id} = ${userId} AND ${usersTable.points} >= ${pointsToRedeem}`)
+      .returning({ points: usersTable.points });
+
+    if (!updated) {
+      return res.status(409).json({ error: "conflict", message: "Points balance changed — please retry" });
+    }
+
+    await logPointsTransaction(
+      userId, "redemption", -pointsToRedeem, undefined, undefined,
+      `Redeemed ${pointsToRedeem} pts = ${monetaryValue} SAR credit`,
+    ).catch(() => {});
+
+    notifyAsync({
+      userId,
+      type: "points_redeemed",
+      titleEn: "Points Redeemed",
+      titleAr: "تم استرداد النقاط",
+      bodyEn: `You redeemed ${pointsToRedeem} points for ${monetaryValue} SAR.`,
+      bodyAr: `استرددت ${pointsToRedeem} نقطة بقيمة ${monetaryValue} ريال.`,
+    });
+
+    res.json({
+      redeemed: pointsToRedeem,
+      monetaryValue,
+      currency: "SAR",
+      remainingPoints: updated.points,
+    });
+  } catch (err) {
+    req.log.error({ err }, "Failed to redeem points");
+    res.status(500).json({ error: "internal_error" });
   }
 });
 

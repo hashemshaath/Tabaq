@@ -1,5 +1,52 @@
 # Tabaq | طبق — Workspace
 
+## Audit Fixes (All 11 Implemented — April 2026)
+
+### FIX 1: Invoice Wiring
+`invoiceService.processBooking()` is now called from `POST /bookings`, generating a `TBQ-CINV-*` receipt and storing `invoiceRef` on the booking row. Schema: `bookings.invoice_ref` added.
+
+### FIX 2: Promo Code Redemption Persistence
+`POST /orders` now inserts a row into `promo_code_redemptions` and atomically increments `promo_codes.used_count` + `total_discount_given` after a promo is applied.
+
+### FIX 3: Partial Voucher Balance
+`POST /redemptions/redeem` now computes `remainingBalance = voucherBalance - requested`, updates `vouchers.remaining_balance`, and sets status to `partially_redeemed` or `redeemed` accordingly. (Schema columns `redeemed_amount` + `remaining_balance` already existed.)
+
+### FIX 4: Payment Gateway
+`lib/paymentGateway.ts` — abstraction over HyperPay / Stripe / mock. Switch with `PAYMENT_GATEWAY=hyperpay|stripe|mock` env var (default: `mock`).
+
+### FIX 5: Notification System
+`lib/notify.ts` — DB-backed notification helper writing to `notifications` table with `notifyAsync()` for fire-and-forget. Wired into bookings (create/update) and orders (create/status-update) flows.
+
+### FIX 6: Cron Jobs (5 scheduled)
+`lib/cron.ts` + `startCronJobs()` called from `index.ts`:
+- `points_expiry_check` — daily 02:00
+- `membership_auto_renewal` — daily 03:00
+- `membership_expiry_warning` — daily 04:00
+- `commission_batch_calculation` — 1st of month 05:00
+- `abandoned_order_cleanup` — every 6 hours
+Each run is logged to `cron_logs` table.
+
+### FIX 7: Points Redemption
+- `POST /orders` accepts `pointsToRedeem` to apply points as payment (100 pts = 1 SAR). Atomically deducted before order insert; logged to `points_transactions` with `action=redemption`.
+- New endpoint: `POST /me/points/redeem` — standalone redemption with optimistic lock and notification.
+
+### FIX 8: Membership Lifecycle
+`lib/membership.ts` — state machine with allowed transitions. Routes: `GET /me/membership`, `POST /memberships`, `POST /memberships/:id/cancel`, `PATCH /memberships/:id/status` (admin), `GET /memberships/:id/audit` (admin). Schema: `memberships` + `membership_audit_log` tables.
+
+### FIX 9: Order Status State Machine
+`lib/orderStatus.ts` — enforces valid status transitions. New route: `PATCH /orders/:orderNumber/status` — restaurant owner can advance status; customer can cancel. Returns 422 with allowed transitions on invalid state.
+
+### FIX 10: Dispute Workflow
+`routes/disputes.ts` — full flow: `POST /disputes` (open), `PATCH /disputes/:id/review` (admin), `PATCH /disputes/:id/resolve` (admin, with REFUND/NO_REFUND/PARTIAL_REFUND decision + refund gateway call). Schema: `disputes` table.
+
+### FIX 11: VAT
+`lib/tax.ts` — `calculateTax(countryCode, subtotal)` returns `{ rate, taxAmount, taxName, totalWithTax }`. Saudi Arabia = 15%. Called in `POST /orders` and wired into customer invoice. Schema: `orders.tax_amount/tax_rate/tax_name/country_code` added.
+
+### BONUS: RefCode regex fix
+`lib/refcode.ts` — regex updated from `/[A-Z]{3}/` to `/[A-Z]{3,4}/` so `TBQ-CINV-*` refs parse correctly.
+
+---
+
 ## Financial Architecture (Centralized Invoice System)
 
 ### Central Invoice Service (`artifacts/api-server/src/services/invoiceService.ts`)

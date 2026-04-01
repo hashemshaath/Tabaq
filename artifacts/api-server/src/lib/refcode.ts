@@ -12,8 +12,12 @@
  *   TBQ-CTR-2026-000001   (Contract)
  *   TBQ-TXN-2026-000099   (Transaction)
  *   TBQ-INV-2026-000007   (Invoice)
+ *   TBQ-CINV-2026-000001  (Customer Invoice / Receipt — 4-char type)
  *   TBQ-MSG-2026-000015   (Admin Message)
  *   TBQ-BKG-2026-000256   (Booking)
+ *   TBQ-ORD-2026-000001   (Order)
+ *   TBQ-DSP-2026-000001   (Dispute)
+ *   TBQ-MBR-2026-000001   (Membership)
  */
 
 export type RefCodeType =
@@ -24,10 +28,12 @@ export type RefCodeType =
   | "CTR"  // Contract
   | "TXN"  // Transaction
   | "INV"  // B2B Settlement Invoice
-  | "CINV" // Customer Invoice / Receipt
+  | "CINV" // Customer Invoice / Receipt (4 chars)
   | "ORD"  // Order
   | "MSG"  // Admin Message
-  | "BKG"; // Booking
+  | "BKG"  // Booking
+  | "DSP"  // Dispute
+  | "MBR"; // Membership
 
 /**
  * Generate a reference code from a type prefix and a sequential database ID.
@@ -41,10 +47,11 @@ export function generateRefCode(type: RefCodeType, id: number): string {
 
 /**
  * Parse a reference code back into its components.
+ * Supports both 3-char types (TBQ-TXN-...) and 4-char types (TBQ-CINV-...).
  * Returns null if the code format is invalid.
  */
 export function parseRefCode(code: string): { prefix: string; type: string; year: number; id: number } | null {
-  const match = code.match(/^TBQ-([A-Z]{3})-(\d{4})-(\d{6})$/);
+  const match = code.match(/^TBQ-([A-Z]{3,4})-(\d{4})-(\d{6})$/);
   if (!match) return null;
   return {
     prefix: "TBQ",

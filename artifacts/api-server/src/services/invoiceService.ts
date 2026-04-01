@@ -15,7 +15,7 @@ import {
   transactionsTable,
   contractsTable,
 } from "@workspace/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { generateRefCode } from "../lib/refcode.js";
 import { awardPoints, POINTS, logPointsTransaction } from "../lib/points.js";
 
@@ -34,6 +34,9 @@ export interface OrderInvoiceParams {
   subtotal: number;
   discountAmount: number;
   deliveryFee: number;
+  taxAmount?: number;
+  taxRate?: number;
+  taxName?: string;
   total: number;
   currency: string;
   paymentMethod: string;
@@ -64,8 +67,9 @@ class InvoiceService {
   async processOrder(params: OrderInvoiceParams): Promise<{ invoiceRef: string }> {
     const {
       orderId, userId, restaurantId, items,
-      subtotal, discountAmount, deliveryFee, total,
-      currency, paymentMethod, promoCode,
+      subtotal, discountAmount, deliveryFee,
+      taxAmount = 0, taxRate = 0, taxName = "VAT",
+      total, currency, paymentMethod, promoCode,
     } = params;
 
     const lineItems = items.map(item => ({
@@ -89,6 +93,9 @@ class InvoiceService {
         subtotal: String(subtotal),
         discountAmount: String(discountAmount),
         deliveryFee: String(deliveryFee),
+        taxAmount: String(taxAmount),
+        taxRate: String(taxRate),
+        taxName,
         total: String(total),
         currency,
         paymentMethod,
@@ -103,13 +110,18 @@ class InvoiceService {
       .set({ refCode: invoiceRef })
       .where(eq(customerInvoicesTable.id, inv!.id));
 
-    // 2. Log financial transaction (ledger)
+    // 2. Log financial transaction (ledger) — only for orders with active contract
     if (restaurantId) {
       try {
         const [contract] = await db
           .select({ id: contractsTable.id, commissionPercent: contractsTable.commissionPercent })
           .from(contractsTable)
-          .where(eq(contractsTable.restaurantId, restaurantId))
+          .where(
+            and(
+              eq(contractsTable.restaurantId, restaurantId),
+              eq(contractsTable.status, "active"),
+            ),
+          )
           .limit(1);
 
         const commissionPct = Number(contract?.commissionPercent ?? 15);
@@ -120,7 +132,7 @@ class InvoiceService {
           .insert(transactionsTable)
           .values({
             refCode: "PENDING",
-            type: "voucher_sale",
+            type: "order",
             status: "completed",
             grossAmount: String(total),
             commissionPercent: String(commissionPct),
@@ -191,9 +203,12 @@ class InvoiceService {
         subtotal: String(total),
         discountAmount: "0",
         deliveryFee: "0",
+        taxAmount: "0",
+        taxRate: "0",
+        taxName: "VAT",
         total: String(total),
         currency,
-        paymentMethod: paymentMethod ?? "card",
+        paymentMethod: paymentMethod ?? "free",
         status: "paid",
       })
       .returning();
