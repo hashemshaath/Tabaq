@@ -1,5 +1,38 @@
 # Tabaq | طبق — Workspace
 
+## Platform Enrichment — Session 3 (April 2026)
+
+### Review Coverage Completed
+- Added 8 authentic bilingual reviews for all 5 restaurants with zero coverage: Al Baik Express (2), Kana Sushi (2), Green Bowl (1), Bahar Seafood (2), Spice Route India (1)
+- All 12 active restaurants now have at least 1 review; most have 2
+
+### Blog Page — Dynamic Categories
+- Replaced hardcoded `SAMPLE_CATEGORIES` (wrong IDs/slugs) with a live fetch from `/api/blog/categories`
+- Category pills now reflect the actual DB categories: Dining Guides, Chef Stories, Food Trends, Restaurant News, Recipes
+- Category filter → server-side `categoryId` param → correct posts returned per tab
+
+### Auth Header Cleanup (continued)
+- All remaining manual `Authorization: Bearer` strings replaced with `getAuthHeaders()`
+- Removed `tokenRef` / cookie-reading from `SettingsContext`; now uses `getAuthHeaders()` throughout
+- Removed redundant `credentials: 'include'` from JWT-authenticated API calls
+- `menus.ts` duplicate catering routes (`/catering/packages`, `/catering/inquiries`) removed
+
+### Blog Content Expanded
+- 3 existing posts enriched to 1500+ characters with full HTML content, cover images, excerpts
+- 3 new posts added (Chef Stories, Restaurant News, Recipes) — total 6 published posts
+- All 5 blog categories now have at least one post
+
+### Promo Codes
+- 6 real codes seeded: TABAQ10 (10%), WELCOME20 (20%), EID25 (25%), SAVE50 (50 SAR fixed), RAMADAN15 (15%), VIPFOOD (30%)
+- Fixed `OffersPage` bug: was checking `discountPercent` but API returns `discountAmount`
+
+### FeedPage — People You May Know
+- `/api/users/suggested` now returns `reviewCount` via subquery
+- Added `username IS NOT NULL` filter so only complete profiles appear
+- FeedPage card shows "· N reviews" social proof
+
+---
+
 ## Codebase Cleanup & Refactor (April 2026)
 
 ### API_BASE Centralization

@@ -5,16 +5,7 @@ import { useLanguage } from '@/hooks/use-language';
 import { API_BASE } from '@/lib/api';
 import { Search, Clock, User, Tag, TrendingUp, BookOpen, ChevronRight, Flame, Star, ArrowRight } from 'lucide-react';
 
-const SAMPLE_CATEGORIES = [
-  { id: 0, slug: 'all', nameEn: 'All', nameAr: 'الكل' },
-  { id: 1, slug: 'restaurant-guides', nameEn: 'Restaurant Guides', nameAr: 'أدلة المطاعم' },
-  { id: 2, slug: 'food-culture', nameEn: 'Food & Culture', nameAr: 'الطعام والثقافة' },
-  { id: 3, slug: 'chef-stories', nameEn: 'Chef Stories', nameAr: 'قصص الشيف' },
-  { id: 4, slug: 'new-openings', nameEn: 'New Openings', nameAr: 'افتتاحيات جديدة' },
-  { id: 5, slug: 'food-trends', nameEn: 'Food Trends', nameAr: 'ترندات الطعام' },
-  { id: 6, slug: 'travel-eat', nameEn: 'Travel & Eat', nameAr: 'سافر وكُل' },
-];
-
+const ALL_CATEGORY = { id: 0, slug: 'all', nameEn: 'All', nameAr: 'الكل' };
 
 function formatDate(dateStr: string, lang: string) {
   const date = new Date(dateStr);
@@ -27,7 +18,18 @@ export function BlogPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const selectedCategoryId = SAMPLE_CATEGORIES.find(c => c.slug === selectedCategory)?.id ?? 0;
+  const { data: dbCategories = [] } = useQuery<{ id: number; nameEn: string; nameAr: string; slug: string }[]>({
+    queryKey: ['blog-categories'],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/api/blog/categories`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const categories = [ALL_CATEGORY, ...dbCategories.map(c => ({ id: c.id, slug: c.slug, nameEn: c.nameEn, nameAr: c.nameAr }))];
+  const selectedCategoryId = categories.find(c => c.slug === selectedCategory)?.id ?? 0;
 
   const { data: apiPosts } = useQuery({
     queryKey: ['blog-posts', selectedCategoryId],
@@ -109,7 +111,7 @@ export function BlogPage() {
       <div className="max-w-5xl mx-auto px-4 py-10">
         {/* Category Pills */}
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide mb-8 -mx-4 px-4">
-          {SAMPLE_CATEGORIES.map(cat => (
+          {categories.map(cat => (
             <button
               key={cat.slug}
               onClick={() => setSelectedCategory(cat.slug)}
@@ -186,7 +188,7 @@ export function BlogPage() {
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-xl font-black text-foreground">
                 {selectedCategory !== 'all'
-                  ? t(SAMPLE_CATEGORIES.find(c => c.slug === selectedCategory)?.nameEn ?? '', SAMPLE_CATEGORIES.find(c => c.slug === selectedCategory)?.nameAr ?? '')
+                  ? t(categories.find(c => c.slug === selectedCategory)?.nameEn ?? '', categories.find(c => c.slug === selectedCategory)?.nameAr ?? '')
                   : searchQuery
                     ? t('Search Results', 'نتائج البحث')
                     : t('Latest Articles', 'أحدث المقالات')
@@ -313,7 +315,7 @@ export function BlogPage() {
                 <h3 className="font-bold text-foreground">{t('Categories', 'الفئات')}</h3>
               </div>
               <div className="space-y-2">
-                {SAMPLE_CATEGORIES.filter(c => c.id > 0).map(cat => {
+                {categories.filter(c => c.id > 0).map(cat => {
                   const count = posts.filter((p: any) => p.categorySlug === cat.slug).length;
                   return (
                     <button

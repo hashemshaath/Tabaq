@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useLanguage } from '@/hooks/use-language';
 import { usePageMeta } from '@/hooks/use-page-meta';
+import { getAuthHeaders } from '@/lib/api';
 import { useListOffers, usePurchaseVoucher, useGiftVoucher, type Offer } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -326,14 +327,13 @@ function DealDetailPage({ offer, onBack }: { offer: ExtendedOffer; onBack: () =>
     try {
       const res = await fetch('/api/promo-codes/apply', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers: getAuthHeaders(),
         body: JSON.stringify({ code, orderValue: subtotal }),
       });
       const data = await res.json();
-      if (res.ok && data.discountPercent) {
+      if (res.ok && data.discountAmount !== undefined) {
         setAppliedPromo(code);
-        setPromoDiscountAmt(Math.round(subtotal * Number(data.discountPercent) / 100));
+        setPromoDiscountAmt(Math.round(Number(data.discountAmount)));
         setPromoError(null);
       } else {
         setPromoError(t('Invalid or expired promo code.', 'رمز ترويجي غير صالح أو منتهي الصلاحية.'));
