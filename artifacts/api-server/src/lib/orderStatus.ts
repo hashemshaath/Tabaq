@@ -28,13 +28,14 @@
 
 import { db } from "@workspace/db";
 import {
-  ordersTable, orderStatusLogTable, customerInvoicesTable,
+  ordersTable, orderStatusLogTable, customerInvoicesTable, disputesTable,
 } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
 import { notifyAsync } from "./notify.js";
 import { logger } from "./logger.js";
 import { awardPoints, logPointsTransaction } from "./points.js";
 import { processRefund } from "./paymentGateway.js";
+import { generateRefCode } from "./refcode.js";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -52,7 +53,10 @@ const ALLOWED_TRANSITIONS: Record<string, OrderStatus[]> = {
   delivered:        ["completed", "disputed"],
   completed:        ["disputed"],
   cancelled:        [],
-  disputed:         [],
+  // disputed exits to "completed" once the dispute is resolved — the resolve
+  // endpoint sets the final dispute record status (resolved_refund / resolved_no_refund)
+  // and then calls transitionOrderStatus to record the outcome on the order.
+  disputed:         ["completed"],
 };
 
 export interface TransitionMeta {
@@ -129,7 +133,7 @@ export async function transitionOrderStatus(
   );
 
   // 5. Non-blocking side effects
-  sideEffects(order, updated!, newStatus, meta).catch(err =>
+  sideEffects(order, updated!, currentStatus, newStatus, meta).catch(err =>
     logger.error({ err, orderNumber, newStatus }, "Order transition side-effect error"),
   );
 
@@ -141,10 +145,11 @@ export async function transitionOrderStatus(
 // up to the caller — the transition has already succeeded.
 
 async function sideEffects(
-  order:     typeof ordersTable.$inferSelect,
-  updated:   typeof ordersTable.$inferSelect,
-  newStatus: OrderStatus,
-  meta?:     TransitionMeta,
+  order:         typeof ordersTable.$inferSelect,
+  updated:       typeof ordersTable.$inferSelect,
+  currentStatus: OrderStatus,   // status BEFORE the transition
+  newStatus:     OrderStatus,
+  meta?:         TransitionMeta,
 ): Promise<void> {
 
   const userId      = order.userId;
@@ -216,12 +221,56 @@ async function sideEffects(
     }
   }
 
+  // ── DISPUTED: auto-create dispute record if one does not exist yet ────────
+  // Normally, POST /disputes creates the record before calling this function.
+  // But if an admin or staff directly transitions an order to "disputed" via
+  // PATCH /orders/:number/status, no dispute record would exist. This safety
+  // net ensures a record is always created so the dispute workflow can proceed.
+
+  if (newStatus === "disputed") {
+    try {
+      const [existing] = await db
+        .select({ id: disputesTable.id })
+        .from(disputesTable)
+        .where(eq(disputesTable.orderId, order.id))
+        .limit(1);
+
+      if (!existing) {
+        const [created] = await db
+          .insert(disputesTable)
+          .values({
+            orderId:    order.id,
+            orderNumber,
+            customerId: userId ?? null,
+            supplierId: order.restaurantId ?? null,
+            reason:     meta?.reason ?? "Dispute opened by staff",
+            status:     "open",
+            evidence:   [],
+          })
+          .returning();
+
+        if (created) {
+          const refCode = generateRefCode("DSP", created.id);
+          await db.update(disputesTable)
+            .set({ refCode })
+            .where(eq(disputesTable.id, created.id));
+          logger.info({ orderId: order.id, disputeId: created.id, refCode }, "Auto-created dispute record on DISPUTED transition");
+        }
+      }
+    } catch (err) {
+      logger.warn({ err, orderId: order.id }, "Auto-create dispute record failed on DISPUTED transition");
+    }
+  }
+
   // ── COMPLETED: award loyalty points ───────────────────────────────────────
   // Points are earned when the order is completed (received by the customer),
   // not when it is placed — this prevents earning points on orders that are
   // later cancelled. Rate: 10 pts per 100 SAR spent.
+  //
+  // Skip when transitioning from "disputed" — the order was already completed
+  // before the dispute was raised, meaning points were already awarded.
 
-  if (newStatus === "completed" && userId) {
+  if (newStatus === "completed" && userId && currentStatus !== "disputed") {
     const orderTotal  = parseFloat(order.total);
     const pointsEarned = Math.max(1, Math.floor(orderTotal / POINTS_EARN_RATE));
     try {
