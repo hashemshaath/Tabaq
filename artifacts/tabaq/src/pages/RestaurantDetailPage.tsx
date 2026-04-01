@@ -718,7 +718,7 @@ export function RestaurantDetailPage() {
     return <div className="p-20 text-center text-xl">{t('Restaurant not found', 'المطعم غير موجود')}</div>;
   }
 
-  const { restaurant, categories, occasions, openingHours, recentReviews, ratingBreakdown, activeOffers } = data;
+  const { restaurant, categories, occasions, tags = [], openingHours, recentReviews, ratingBreakdown, activeOffers } = data;
   const name = lang === 'ar' ? restaurant.nameAr : restaurant.nameEn;
   const description = lang === 'ar' ? restaurant.descriptionAr : restaurant.descriptionEn;
   const today = new Date().getDay();
@@ -1049,6 +1049,11 @@ export function RestaurantDetailPage() {
                       {occasions.map(occ => (
                         <span key={occ.id} className="px-3 py-1 rounded-full bg-gray-100 text-gray-700 text-xs font-medium">
                           {occ.icon} {lang === 'ar' ? occ.nameAr : occ.nameEn}
+                        </span>
+                      ))}
+                      {(tags as any[]).map(tag => (
+                        <span key={tag.id} className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
+                          {lang === 'ar' ? tag.nameAr : tag.nameEn}
                         </span>
                       ))}
                     </div>

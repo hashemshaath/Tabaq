@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useLanguage } from '@/hooks/use-language';
 import { usePageMeta } from '@/hooks/use-page-meta';
 import {
@@ -7,6 +8,7 @@ import {
   useListOccasions,
   useListCitiesByCountry,
 } from '@workspace/api-client-react';
+import { API_BASE } from '@/lib/api';
 import { RestaurantCard } from '@/components/RestaurantCard';
 import { Link, useLocation } from 'wouter';
 import {
@@ -22,6 +24,7 @@ type ViewMode = 'grid' | 'list';
 interface Filters {
   categoryId?: number;
   occasionId?: number;
+  tagId?: number;
   priceTier: PriceTier;
   minRating?: number;
   cityId?: number;
@@ -155,9 +158,19 @@ export function DiscoveryPage() {
   const { data: categoriesData } = useListCategories();
   const { data: occasionsData } = useListOccasions();
   const { data: citiesData } = useListCitiesByCountry(SAUDI_COUNTRY_ID);
+  const { data: tagsData } = useQuery<{ id: number; nameEn: string; nameAr: string; slug: string }[]>({
+    queryKey: ['tags'],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/api/tags`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+    staleTime: 300_000,
+  });
   const categories = categoriesData ?? [];
   const occasions = occasionsData ?? [];
   const cities = citiesData ?? [];
+  const tags = tagsData ?? [];
 
   const sortKeyMap: Record<string, string> = {
     'top-rated': 'topRated',
@@ -173,6 +186,7 @@ export function DiscoveryPage() {
   };
   if (filters.categoryId) apiFilters.categoryId = filters.categoryId;
   if (filters.occasionId) apiFilters.occasionId = filters.occasionId;
+  if (filters.tagId) apiFilters.tagId = filters.tagId;
   if (filters.priceTier) apiFilters.priceTier = filters.priceTier;
   if (filters.minRating) apiFilters.minRating = filters.minRating;
   if (filters.cityId) apiFilters.cityId = filters.cityId;
@@ -202,6 +216,7 @@ export function DiscoveryPage() {
   const activeFilterCount = [
     filters.categoryId,
     filters.occasionId,
+    filters.tagId,
     filters.priceTier,
     filters.minRating,
     filters.cityId,
@@ -216,12 +231,15 @@ export function DiscoveryPage() {
   const selectedCity = cities.find(c => c.id === filters.cityId);
   const selectedCategory = categories.find(c => c.id === filters.categoryId);
 
+  const selectedTag = tags.find(tg => tg.id === filters.tagId);
+
   // Active filter chips for display
   const activeChips = [
     filters.openNow && { key: 'openNow', label: t('Open Now', 'مفتوح الآن'), clear: () => update({ openNow: undefined }) },
     filters.priceTier && { key: 'price', label: PRICE_TIERS.find(p => p.value === filters.priceTier)?.[lang === 'ar' ? 'labelAr' : 'labelEn'] ?? '', clear: () => update({ priceTier: '' }) },
     filters.minRating && { key: 'rating', label: `${filters.minRating}+ ★`, clear: () => update({ minRating: undefined }) },
     filters.categoryId && selectedCategory && { key: 'cat', label: lang === 'ar' ? selectedCategory.nameAr : selectedCategory.nameEn, clear: () => update({ categoryId: undefined }) },
+    filters.tagId && selectedTag && { key: 'tag', label: lang === 'ar' ? selectedTag.nameAr : selectedTag.nameEn, clear: () => update({ tagId: undefined }) },
     filters.cityId && selectedCity && { key: 'city', label: lang === 'ar' ? selectedCity.nameAr : selectedCity.nameEn, clear: () => update({ cityId: undefined }) },
     filters.hasParking && { key: 'parking', label: t('Parking', 'مواقف'), clear: () => update({ hasParking: undefined }) },
     filters.hasOutdoorSeating && { key: 'outdoor', label: t('Outdoor', 'خارجي'), clear: () => update({ hasOutdoorSeating: undefined }) },
@@ -460,6 +478,30 @@ export function DiscoveryPage() {
                 >
                   {occ.icon && <span>{occ.icon}</span>}
                   {lang === 'ar' ? occ.nameAr : occ.nameEn}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── TAGS QUICK FILTER ── */}
+      {tags.length > 0 && (
+        <div className="bg-gray-50 border-b border-gray-100">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
+            <div className="flex items-center gap-2 overflow-x-auto pb-0.5 hide-scrollbar">
+              <span className="text-xs text-gray-400 font-medium shrink-0">{t('Features', 'المميزات')}:</span>
+              {tags.map(tag => (
+                <button
+                  key={tag.id}
+                  onClick={() => update({ tagId: filters.tagId === tag.id ? undefined : tag.id })}
+                  className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap border transition-all shrink-0 ${
+                    filters.tagId === tag.id
+                      ? 'bg-primary/10 text-primary border-primary/40'
+                      : 'border-gray-200 text-gray-500 hover:border-primary/30 hover:text-primary bg-white'
+                  }`}
+                >
+                  {lang === 'ar' ? tag.nameAr : tag.nameEn}
                 </button>
               ))}
             </div>

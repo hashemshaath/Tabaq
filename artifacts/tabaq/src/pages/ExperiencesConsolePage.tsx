@@ -654,7 +654,7 @@ export function ExperiencesConsolePage() {
           <p className="text-muted-foreground text-sm mb-4">
             {t("Apply to become an experience provider to start hosting food experiences.", "قدّم طلباً لتصبح مزود تجارب وابدأ باستضافة تجارب الطعام.")}
           </p>
-          <Link href="/providers/register" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors">
+          <Link href="/partners/register" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors">
             {t("Apply as Provider", "التقديم كمزود")}
           </Link>
         </div>

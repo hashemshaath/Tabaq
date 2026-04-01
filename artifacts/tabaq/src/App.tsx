@@ -93,9 +93,7 @@ function Router() {
               <Route path="/vouchers">
                 <ProtectedRoute><VouchersPage /></ProtectedRoute>
               </Route>
-              <Route path="/feed">
-                <ProtectedRoute><FeedPage /></ProtectedRoute>
-              </Route>
+              <Route path="/feed" component={FeedPage} />
               <Route path="/collections/:id" component={CollectionsPage} />
               <Route path="/collections" component={CollectionsPage} />
               <Route path="/console">

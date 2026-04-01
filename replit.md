@@ -1,5 +1,45 @@
 # Tabaq | طبق — Workspace
 
+## Platform Enrichment & Gaps — Session 5 (April 2026)
+
+### Feed Page — Public Access Fixed
+- Removed `ProtectedRoute` wrapper from `/feed` route — community tab now accessible without login
+- Community tab uses `useListReviews` (public); Following tab uses `useGetFeed` (requires auth with sign-in prompt)
+- Story bar fetches from `/api/stories/recent` — 6 approved restaurant stories showing
+
+### Reviews API — Sort by Rating
+- Added `sort=rating` query param support to `GET /api/reviews` — orders by `ratingOverall DESC`
+- TabaqGoldPage testimonials now correctly fetch the top 3 five-star reviews
+
+### Tags System — End-to-End Complete
+- `/api/tags` endpoint added to the API server (returns all 12 active tags)
+- `tagId` filtering added to `GET /api/restaurants` list endpoint (joins `restaurant_tags` table)
+- Tags displayed in RestaurantDetailPage "About" section as `bg-primary/10` chips
+- Tags filter row added to DiscoveryPage below occasion chips — "المميزات" label + 12 tag chips
+- Active tag chip appears in the filter chips row with a dismiss button
+- `tagId` included in `activeFilterCount` for the filter badge
+
+### Broken Link Fixed
+- `ExperiencesConsolePage.tsx` line 657: `/providers/register` → `/partners/register`
+
+### User Verification
+- 4 top users marked `is_verified = true` (Khalid, Noura, Sara, Faisal)
+- Credibility scores recomputed with +0.2 verified bonus; top score 0.92
+
+### Featured Restaurants
+- All 12 restaurants with `avg_rating >= 4.7 AND review_count >= 5` marked `is_featured = true`
+
+### API Verification Summary
+- `/api/catering/packages` → 10 packages (SAR 70–145/person, 30–800 guests) ✅
+- `/api/experiences` → 5 published experiences ✅
+- `/api/offers` → 5 active restaurant offers ✅
+- `/api/blog/posts` → dynamic blog posts ✅
+- `/api/stories/recent` → 6 approved stories for story bar ✅
+- `/api/users/suggested` → 6 real user profiles with avatars ✅
+- `/api/tags` → 12 active feature tags ✅
+
+---
+
 ## Platform Audit & Completion — Session 4 (April 2026)
 
 ### T001: Duplicate ProviderRegisterPage

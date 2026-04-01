@@ -4,7 +4,7 @@ import {
   restaurantsTable, restaurantCategoriesTable, restaurantOccasionsTable,
   restaurantFollowsTable, openingHoursTable, categoriesTable, occasionsTable,
   reviewsTable, offersTable, citiesTable, bookingsTable, userSavedRestaurantsTable,
-  usersTable,
+  usersTable, tagsTable, restaurantTagsTable,
 } from "@workspace/db/schema";
 import { eq, and, gte, sql, inArray, count, asc, desc, type SQL } from "drizzle-orm";
 import { nanoid } from "nanoid";
@@ -92,6 +92,19 @@ router.get("/restaurants", async (req, res) => {
       }
     }
 
+    const { tagId } = req.query;
+    if (tagId) {
+      const tagRestaurantIds = await db
+        .select({ restaurantId: restaurantTagsTable.restaurantId })
+        .from(restaurantTagsTable)
+        .where(eq(restaurantTagsTable.tagId, parseInt(tagId as string)));
+      if (tagRestaurantIds.length) {
+        conditions.push(inArray(restaurantsTable.id, tagRestaurantIds.map(r => r.restaurantId)));
+      } else {
+        conditions.push(sql`1 = 0`);
+      }
+    }
+
     const orderExpr = sortBy === "newest"
       ? desc(restaurantsTable.createdAt)
       : sortBy === "topRated" || sortBy === "top-rated"
@@ -161,6 +174,16 @@ router.get("/restaurants", async (req, res) => {
   }
 });
 
+// All tags (for filters)
+router.get("/tags", async (req, res) => {
+  try {
+    const allTags = await db.select().from(tagsTable).where(eq(tagsTable.isActive, true));
+    res.json(allTags);
+  } catch {
+    res.status(500).json({ error: "internal_error", message: "Failed to fetch tags" });
+  }
+});
+
 // Featured restaurants
 router.get("/restaurants/featured", async (req, res) => {
   try {
@@ -219,7 +242,7 @@ router.get("/restaurants/:restaurantId", async (req, res) => {
       return;
     }
 
-    const [categories, occasions, openingHours, recentReviews, activeOffers] = await Promise.all([
+    const [categories, occasions, openingHours, recentReviews, activeOffers, tags] = await Promise.all([
       db.select({ id: categoriesTable.id, nameEn: categoriesTable.nameEn, nameAr: categoriesTable.nameAr, icon: categoriesTable.icon, slug: categoriesTable.slug })
         .from(restaurantCategoriesTable)
         .innerJoin(categoriesTable, eq(restaurantCategoriesTable.categoryId, categoriesTable.id))
@@ -247,6 +270,10 @@ router.get("/restaurants/:restaurantId", async (req, res) => {
       db.select().from(offersTable)
         .where(and(eq(offersTable.restaurantId, restaurantId), eq(offersTable.isActive, true)))
         .limit(3),
+      db.select({ id: tagsTable.id, nameEn: tagsTable.nameEn, nameAr: tagsTable.nameAr, slug: tagsTable.slug })
+        .from(restaurantTagsTable)
+        .innerJoin(tagsTable, eq(restaurantTagsTable.tagId, tagsTable.id))
+        .where(eq(restaurantTagsTable.restaurantId, restaurantId)),
     ]);
 
     // Compute real sub-rating averages from the fetched reviews
@@ -267,6 +294,7 @@ router.get("/restaurants/:restaurantId", async (req, res) => {
       restaurant,
       categories,
       occasions,
+      tags,
       openingHours,
       recentReviews: recentReviews.map(r => ({
         ...r.review,

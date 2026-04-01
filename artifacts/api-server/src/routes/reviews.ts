@@ -83,17 +83,21 @@ async function enrichReview(review: ReviewRow, viewerUserId: number | null) {
 // List reviews
 router.get("/reviews", optionalAuth, async (req, res) => {
   try {
-    const { restaurantId, dishId, userId, limit = "20", offset = "0" } = req.query;
+    const { restaurantId, dishId, userId, limit = "20", offset = "0", sort } = req.query;
     const conditions: SQL[] = [];
     if (restaurantId) conditions.push(eq(reviewsTable.restaurantId, parseInt(restaurantId as string)));
     if (dishId) conditions.push(eq(reviewsTable.dishId, parseInt(dishId as string)));
     if (userId) conditions.push(eq(reviewsTable.userId, parseInt(userId as string)));
 
+    const orderClause = sort === "rating"
+      ? desc(reviewsTable.ratingOverall)
+      : desc(reviewsTable.createdAt);
+
     const reviews = await db.select().from(reviewsTable)
       .where(conditions.length ? and(...conditions) : undefined)
       .limit(parseInt(limit as string))
       .offset(parseInt(offset as string))
-      .orderBy(desc(reviewsTable.createdAt));
+      .orderBy(orderClause);
 
     const total = await db.select({ count: sql<number>`count(*)` })
       .from(reviewsTable)
