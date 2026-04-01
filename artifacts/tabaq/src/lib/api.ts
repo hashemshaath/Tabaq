@@ -1,5 +1,7 @@
 const TOKEN_KEY = "tabaq_token";
 
+export const API_BASE = (import.meta.env?.BASE_URL ?? '').replace(/\/$/, '');
+
 export function getToken(): string | null {
   try { return localStorage.getItem(TOKEN_KEY); } catch { return null; }
 }

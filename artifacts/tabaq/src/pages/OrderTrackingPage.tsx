@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useRoute, Link } from 'wouter';
 import { useLanguage } from '@/hooks/use-language';
 import { useQuery } from '@tanstack/react-query';
-import { getAuthHeaders } from '@/lib/api';
+import { getAuthHeaders, API_BASE } from '@/lib/api';
 import {
   ArrowRight, ArrowLeft, Phone, MessageCircle, ChevronDown, ChevronUp,
   Star, MapPin, Clock, CheckCircle2, ChefHat, Package, Bike, Home,
@@ -10,7 +10,6 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-const API_BASE = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
 
 type Stage = 'confirmed' | 'preparing' | 'out_for_delivery' | 'delivered';
 

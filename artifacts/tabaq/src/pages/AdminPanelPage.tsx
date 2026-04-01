@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StarRating } from '@/components/StarRating';
-import { getAuthHeaders } from '@/lib/api';
+import { getAuthHeaders, API_BASE } from '@/lib/api';
 import { useDemoMode } from '@/context/DemoModeContext';
 
 // ─── Verifications Admin Tab ──────────────────────────────────────
@@ -661,7 +661,6 @@ function AdminSeoTab({ t }: { t: (en: string, ar: string) => string }) {
 // ─── Blog Management Tab ────────────────────────────────────────
 function BlogManagementTab({ t }: { t: (en: string, ar: string) => string }) {
   const qc = useQueryClient();
-  const apiBase = import.meta.env.BASE_URL?.replace(/\/$/, '') || '';
   const [filter, setFilter] = useState<'all' | 'published' | 'draft' | 'scheduled'>('all');
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ titleEn: '', titleAr: '', status: 'draft', categoryId: '' });
@@ -671,7 +670,7 @@ function BlogManagementTab({ t }: { t: (en: string, ar: string) => string }) {
   const { data: categories = [] } = useQuery({
     queryKey: ['admin-blog-categories'],
     queryFn: async () => {
-      const r = await fetch(`${apiBase}/api/blog/categories`, { credentials: 'include' });
+      const r = await fetch(`${API_BASE}/api/blog/categories`, { credentials: 'include' });
       return r.ok ? r.json() : [];
     },
   });
@@ -679,7 +678,7 @@ function BlogManagementTab({ t }: { t: (en: string, ar: string) => string }) {
   const { data: allPosts = [], isLoading } = useQuery({
     queryKey: ['admin-blog-posts'],
     queryFn: async () => {
-      const r = await fetch(`${apiBase}/api/admin/blog/posts?limit=100`, { credentials: 'include', headers: getAuthHeaders() });
+      const r = await fetch(`${API_BASE}/api/admin/blog/posts?limit=100`, { credentials: 'include', headers: getAuthHeaders() });
       return r.ok ? r.json() : [];
     },
   });
@@ -687,7 +686,7 @@ function BlogManagementTab({ t }: { t: (en: string, ar: string) => string }) {
 
   const deleteMut = useMutation({
     mutationFn: async (id: number) => {
-      const r = await fetch(`${apiBase}/api/blog/posts/${id}`, { method: 'DELETE', headers: getAuthHeaders(), credentials: 'include' });
+      const r = await fetch(`${API_BASE}/api/blog/posts/${id}`, { method: 'DELETE', headers: getAuthHeaders(), credentials: 'include' });
       if (!r.ok) throw new Error('Delete failed');
     },
     onSuccess: () => {
@@ -701,7 +700,7 @@ function BlogManagementTab({ t }: { t: (en: string, ar: string) => string }) {
     setSubmitting(true);
     const slug = form.titleEn.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     try {
-      await fetch(`${apiBase}/api/blog/posts`, {
+      await fetch(`${API_BASE}/api/blog/posts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         credentials: 'include',
@@ -1299,12 +1298,10 @@ export function AdminPanelPage() {
   const [modules, setModules] = useState<Module[]>(INITIAL_MODULES);
   const [searchQuery, setSearchQuery] = useState('');
   const [restaurantStatusFilter, setRestaurantStatusFilter] = useState('all');
-  const apiBase = import.meta.env.BASE_URL?.replace(/\/$/, '') || '';
-
   const { data: realStats } = useQuery({
     queryKey: ['admin-stats'],
     queryFn: async () => {
-      const res = await fetch(`${apiBase.replace('/','')}/api/admin/stats`.replace(/^\//, '/'), { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/api/admin/stats`, { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -1315,7 +1312,7 @@ export function AdminPanelPage() {
   const { data: realModules } = useQuery({
     queryKey: ['admin-modules'],
     queryFn: async () => {
-      const res = await fetch(`${apiBase.replace('/','')}/api/admin/modules`.replace(/^\//, '/'), { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/api/admin/modules`, { headers: getAuthHeaders() });
       if (!res.ok) return null;
       const data = await res.json();
       return data?.modules ?? null;
@@ -1328,7 +1325,7 @@ export function AdminPanelPage() {
 
   const toggleModuleApi = useMutation({
     mutationFn: async ({ moduleId, isEnabled }: { moduleId: string; isEnabled: boolean }) => {
-      const res = await fetch(`${apiBase.replace('/','')}/api/admin/modules/${moduleId}`.replace(/^\//, '/'), {
+      const res = await fetch(`${API_BASE}/api/admin/modules/${moduleId}`, {
         method: 'PATCH',
         headers: getAuthHeaders(),
         body: JSON.stringify({ isEnabled })

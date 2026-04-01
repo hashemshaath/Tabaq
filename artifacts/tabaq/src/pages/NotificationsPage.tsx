@@ -9,7 +9,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLanguage } from '@/hooks/use-language';
 import { useAuth } from '@/context/AuthContext';
 import { Link } from 'wouter';
-import { getAuthHeaders } from '@/lib/api';
+import { getAuthHeaders, API_BASE } from '@/lib/api';
 import { toast } from 'sonner';
 
 type NotifType = 'booking' | 'review_response' | 'new_follower' | 'offer' | 'points' | 'reminder' | 'achievement' | 'system';
@@ -102,8 +102,8 @@ function NotificationPrefsPanel({
   const { data: prefsData, isLoading } = useQuery({
     queryKey: ['notification-prefs', token],
     queryFn: async () => {
-      const apiBase = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
-      const res = await fetch(`${apiBase}/api/notifications/preferences`, {
+
+      const res = await fetch(`${API_BASE}/api/notifications/preferences`, {
         headers: getAuthHeaders(),
       });
       if (!res.ok) return null;
@@ -117,8 +117,8 @@ function NotificationPrefsPanel({
 
   const updateMutation = useMutation({
     mutationFn: async (updates: { notifType: string; enabled?: boolean; channels?: string[] }[]) => {
-      const apiBase = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
-      const res = await fetch(`${apiBase}/api/notifications/preferences`, {
+
+      const res = await fetch(`${API_BASE}/api/notifications/preferences`, {
         method: 'PATCH',
         headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ updates }),
@@ -297,8 +297,8 @@ function InterestsPanel({ open, onClose, token }: { open: boolean; onClose: () =
   const { data } = useQuery({
     queryKey: ['user-interests', token],
     queryFn: async () => {
-      const apiBase = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
-      const res = await fetch(`${apiBase}/api/me/interests`, { headers: getAuthHeaders() });
+
+      const res = await fetch(`${API_BASE}/api/me/interests`, { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json() as Promise<{ interests: Record<string, string[]> }>;
     },
@@ -315,8 +315,8 @@ function InterestsPanel({ open, onClose, token }: { open: boolean; onClose: () =
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const apiBase = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
-      const res = await fetch(`${apiBase}/api/me/interests`, {
+
+      const res = await fetch(`${API_BASE}/api/me/interests`, {
         method: 'PUT',
         headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ interests: selected }),
@@ -415,12 +415,10 @@ export default function NotificationsPage() {
   const [showPrefs, setShowPrefs] = useState(false);
   const [showInterests, setShowInterests] = useState(false);
 
-  const apiBase = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
-
   const { data: liveData, isLoading: notifLoading } = useQuery({
     queryKey: ['notifications', token],
     queryFn: async () => {
-      const res = await fetch(`${apiBase}/api/notifications`, {
+      const res = await fetch(`${API_BASE}/api/notifications`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!res.ok) return null;

@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/hooks/use-language";
 import { usePageMeta } from "@/hooks/use-page-meta";
-import { getAuthHeaders } from "@/lib/api";
+import { getAuthHeaders, API_BASE } from "@/lib/api";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   User, Lock, Bell, Shield, Globe, Eye, EyeOff, Check, ChevronRight,
@@ -18,7 +18,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/utils";
 
-const API_BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
 
 type Section =
   | "personal"

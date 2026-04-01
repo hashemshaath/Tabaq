@@ -31,7 +31,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
-import { getAuthHeaders } from '@/lib/api';
+import { getAuthHeaders, API_BASE } from '@/lib/api';
 import { ShareModal } from '@/components/ShareModal';
 
 // ── Day labels ──────────────────────────────────────────────────────
@@ -613,8 +613,7 @@ export function RestaurantDetailPage() {
     if (!user) return;
     setFollowType(type);
     setShowFollowMenu(false);
-    const apiBase = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
-    await fetch(`${apiBase}/api/restaurants/${numericId}/follow`, {
+    await fetch(`${API_BASE}/api/restaurants/${numericId}/follow`, {
       method: 'PATCH',
       headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ followType: type }),

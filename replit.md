@@ -1,14 +1,25 @@
 # Tabaq | طبق — Workspace
 
-## Platform Audit & Completion (April 2026)
+## Codebase Cleanup & Refactor (April 2026)
 
-### Completed Items
+### API_BASE Centralization
+- Exported `API_BASE` from `artifacts/tabaq/src/lib/api.ts` as single source of truth
+- Removed 25+ inline `const API_BASE = import.meta.env.BASE_URL...` definitions across 22 files
+- All files now import from `@/lib/api` — no more scattered per-file constants
+
+### Auth Pattern Fixes
+- `FeedPage.tsx`: replaced wrong `localStorage.getItem('auth_token')` with `getAuthHeaders()` in 2 places
+- `AccountSettingsPage.tsx`: removed redundant `'Content-Type': 'application/json'` duplication (headers: getAuthHeaders() is sufficient)
+- `AdminPanelPage.tsx`: fixed convoluted `${apiBase.replace('/','')}/api/admin/stats`.replace(/^\//, '/')` → `${API_BASE}/api/admin/stats`
+
+### Platform Audit & Completion
 - **Duplicate route removed**: Deleted `ProviderRegisterPage.tsx`; `/partners/register` and `/providers/register` both serve `ProviderRegistrationPage`
-- **Catering packages seeded**: 10 packages across 6 menus (Najd Village, Nakheel Palace, Grill House, Casa Levant, Maestro Italian, Spice Route India); `GET /api/catering/packages` returns 10 real records
-- **Contact form wired**: `POST /api/contact` validates input, logs enquiry, returns ref code (`CNT-xxxxx`); `ContactPage` uses real API with loading/error states
-- **StaticPage team expanded**: 8 team members with real Unsplash face photos (CEO, CPO, CTO, Partnerships, Culinary, Growth, Restaurant Relations, Design Lead)
-- **TabaqGoldPage testimonials**: Replaced pravatar.cc placeholders with real Unsplash portrait URLs
-- **Settlement batch implemented**: `POST /api/admin/settlement/create-batch` — queries redeemed vouchers in period, looks up active contract for commission rate (defaults 15%), inserts pending `transactionsTable` record per restaurant, returns full batch summary with gross/commission/net totals
+- **Catering packages seeded**: 13 packages across 6 menus; `GET /api/catering/packages` returns real records; `POST /api/catering/inquiries` returns `CAT-` ref codes
+- **Contact form wired**: `POST /api/contact` validates input, logs enquiry, returns ref code (`CNT-xxxxx`)
+- **Suggested users fixed**: `/api/users/suggested` filters out null-name users; `FeedPage` "People You May Know" uses correct auth token
+- **TabaqGoldPage testimonials**: Dynamic — queries top 5-star reviews from `/api/reviews?limit=3&sort=rating` with loading state; falls back to curated static testimonials if fewer than 3 five-star reviews exist
+- **StaticPage team**: 8 team members with professional bios in English and Arabic; role text highlighted in primary color
+- **Settlement batch implemented**: `POST /api/admin/settlement/create-batch` — full commission calculation per restaurant
 
 ---
 

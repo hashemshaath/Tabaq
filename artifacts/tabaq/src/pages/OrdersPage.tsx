@@ -4,7 +4,7 @@ import { useLanguage } from '@/hooks/use-language';
 import { usePageMeta } from '@/hooks/use-page-meta';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
-import { getAuthHeaders } from '@/lib/api';
+import { getAuthHeaders, API_BASE } from '@/lib/api';
 import { useQuery } from '@tanstack/react-query';
 import { formatPrice } from '@/lib/utils';
 import {
@@ -13,7 +13,6 @@ import {
   XCircle, Loader2, CalendarDays, Users, AlertCircle, Lock,
 } from 'lucide-react';
 
-const API_BASE = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
 
 type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'no_show';
 type OrderStatus = 'placed' | 'preparing' | 'out_for_delivery' | 'delivered' | 'cancelled';

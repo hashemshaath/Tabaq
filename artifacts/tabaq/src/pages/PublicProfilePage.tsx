@@ -3,7 +3,7 @@ import { useParams, Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/hooks/use-language";
-import { getAuthHeaders } from "@/lib/api";
+import { getAuthHeaders, API_BASE } from "@/lib/api";
 import { toast } from "sonner";
 import {
   User, ShieldCheck, MapPin, Calendar, Star, Users, Globe,
@@ -151,12 +151,11 @@ function UserStoriesBar({ userId, username, isOwn, lang }: { userId: number; use
   const t = (en: string, ar: string) => lang === 'ar' ? ar : en;
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerStart, setViewerStart] = useState(0);
-  const apiBase = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
 
   const { data } = useQuery({
     queryKey: ['user-stories', userId],
     queryFn: async () => {
-      const res = await fetch(`${apiBase}/api/users/${userId}/stories?limit=20`);
+      const res = await fetch(`${API_BASE}/api/users/${userId}/stories?limit=20`);
       if (!res.ok) return { stories: [] };
       return res.json();
     },

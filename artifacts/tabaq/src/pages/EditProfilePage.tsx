@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/hooks/use-language";
-import { getAuthHeaders } from "@/lib/api";
+import { getAuthHeaders, API_BASE } from "@/lib/api";
 import {
   Camera, Save, X, User, MapPin, Globe, Instagram, ChefHat,
   BadgeCheck, Zap, CheckCircle2, AlertCircle, ArrowLeft, Eye, EyeOff,
@@ -10,7 +10,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const API_BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
 
 type AccountType = "basic" | "professional" | "chef";
 

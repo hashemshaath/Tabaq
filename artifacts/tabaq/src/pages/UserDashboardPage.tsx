@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getAuthHeaders } from '@/lib/api';
+import { getAuthHeaders, API_BASE } from '@/lib/api';
 import { useLanguage } from '@/hooks/use-language';
 import { Link } from 'wouter';
 import { useAuth } from '@/context/AuthContext';
@@ -230,7 +230,7 @@ function PersonalInfoForm() {
   const { t } = useLanguage();
   const { user, token } = useAuth();
   const queryClient = useQueryClient();
-  const apiBase = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
+
 
   const [nameEn, setNameEn] = useState((user as any)?.nameEn ?? '');
   const [nameAr, setNameAr] = useState((user as any)?.nameAr ?? '');
@@ -243,7 +243,7 @@ function PersonalInfoForm() {
     setSaveStatus('saving');
     setSaveError('');
     try {
-      const res = await fetch(`${apiBase}/api/me/profile`, {
+      const res = await fetch(`${API_BASE}/api/me/profile`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ nameEn: nameEn.trim(), nameAr: nameAr.trim(), email: email.trim(), bio: bio.trim() }),
@@ -402,35 +402,35 @@ export function UserDashboardPage() {
   const [activeTab, setActiveTab] = useState<DashTab>('overview');
 
   const userId = (user as any)?.id as number | undefined;
-  const apiBase = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
+
 
   const { data: userData } = useQuery({
     queryKey: ['user-profile', userId],
-    queryFn: () => fetch(`${apiBase}/api/users/${userId}`).then(r => r.ok ? r.json() : null),
+    queryFn: () => fetch(`${API_BASE}/api/users/${userId}`).then(r => r.ok ? r.json() : null),
     enabled: !!userId,
     retry: false,
   });
   const { data: bookingsData } = useQuery({
     queryKey: ['user-bookings', userId],
-    queryFn: () => fetch(`${apiBase}/api/users/${userId}/bookings`).then(r => r.ok ? r.json() : null),
+    queryFn: () => fetch(`${API_BASE}/api/users/${userId}/bookings`).then(r => r.ok ? r.json() : null),
     enabled: !!userId,
     retry: false,
   });
   const { data: reviewsData } = useQuery({
     queryKey: ['user-reviews', userId],
-    queryFn: () => fetch(`${apiBase}/api/users/${userId}/reviews`).then(r => r.ok ? r.json() : null),
+    queryFn: () => fetch(`${API_BASE}/api/users/${userId}/reviews`).then(r => r.ok ? r.json() : null),
     enabled: !!userId,
     retry: false,
   });
   const { data: vouchersData } = useQuery({
     queryKey: ['vouchers'],
-    queryFn: () => fetch(`${apiBase}/api/vouchers`, { headers: getAuthHeaders() }).then(r => r.ok ? r.json() : null),
+    queryFn: () => fetch(`${API_BASE}/api/vouchers`, { headers: getAuthHeaders() }).then(r => r.ok ? r.json() : null),
     enabled: !!user,
     retry: false,
   });
   const { data: savedData, isLoading: savedLoading, refetch: refetchSaved } = useQuery({
     queryKey: ['saved-restaurants'],
-    queryFn: () => fetch(`${apiBase}/api/me/saved-restaurants`, { headers: getAuthHeaders() }).then(r => r.ok ? r.json() : { saved: [] }),
+    queryFn: () => fetch(`${API_BASE}/api/me/saved-restaurants`, { headers: getAuthHeaders() }).then(r => r.ok ? r.json() : { saved: [] }),
     retry: false,
     enabled: !!user,
   });

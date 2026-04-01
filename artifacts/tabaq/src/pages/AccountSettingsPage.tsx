@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/hooks/use-language";
-import { getAuthHeaders } from "@/lib/api";
+import { getAuthHeaders, API_BASE } from "@/lib/api";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   User, Lock, Bell, Shield, Globe, Eye, EyeOff, Check, ChevronRight,
@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const API_BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
 
 type VisibilityLevel = 'public' | 'followers' | 'only_me';
 type ProfileVisibility = 'public' | 'followers' | 'private';
@@ -161,7 +160,7 @@ export function AccountSettingsPage() {
     try {
       const res = await fetch(`${API_BASE}/api/me/password`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ currentPassword: pwForm.current, newPassword: pwForm.newPw, confirmPassword: pwForm.confirm }),
       });
       const data = await res.json();
@@ -216,7 +215,7 @@ export function AccountSettingsPage() {
     mutationFn: async () => {
       const r = await fetch(`${API_BASE}/api/me/privacy-settings`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ privacySettings: privacy, notificationPrefs: notifs }),
       });
       if (!r.ok) throw new Error('Failed to save');

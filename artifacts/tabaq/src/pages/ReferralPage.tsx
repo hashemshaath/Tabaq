@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useLanguage } from '@/hooks/use-language';
 import { useAuth } from '@/context/AuthContext';
-import { getAuthHeaders } from '@/lib/api';
+import { getAuthHeaders, API_BASE } from '@/lib/api';
 import { Link } from 'wouter';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -78,12 +78,11 @@ export function ReferralPage() {
   const [promoStatus, setPromoStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [promoError, setPromoError] = useState('');
 
-  const apiBase = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
 
   const { data: referralData, isLoading: referralLoading } = useQuery({
     queryKey: ['me-referral', token],
     queryFn: async () => {
-      const res = await fetch(`${apiBase}/api/me/referral`, { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/api/me/referral`, { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -95,7 +94,7 @@ export function ReferralPage() {
   const { data: pointsData, isLoading: pointsLoading } = useQuery({
     queryKey: ['me-points-history', token],
     queryFn: async () => {
-      const res = await fetch(`${apiBase}/api/me/points/history?limit=30`, { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/api/me/points/history?limit=30`, { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -107,7 +106,7 @@ export function ReferralPage() {
   const applyReferralCode = useMutation({
     mutationFn: async (code: string) => {
       if (!user) throw new Error('not_auth');
-      const res = await fetch(`${apiBase}/api/referrals/use`, {
+      const res = await fetch(`${API_BASE}/api/referrals/use`, {
         method: 'POST',
         headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ referralCode: code, newUserId: user.id }),

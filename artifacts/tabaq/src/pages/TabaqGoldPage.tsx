@@ -4,7 +4,7 @@ import { useLanguage } from '@/hooks/use-language';
 import { usePageMeta } from '@/hooks/use-page-meta';
 import { Link, useLocation } from 'wouter';
 import { useAuth } from '@/context/AuthContext';
-import { getAuthHeaders } from '@/lib/api';
+import { getAuthHeaders, API_BASE } from '@/lib/api';
 import {
   Crown, Star, Check, Zap, Shield, Gift, ChefHat, CalendarDays,
   Tag, Users, Award, ChevronDown, ChevronRight, Sparkles, X,
@@ -12,7 +12,6 @@ import {
   Loader2,
 } from 'lucide-react';
 
-const API_BASE = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
 
 type PlanId = 'explorer' | 'gourmet' | 'elite';
 type BillingCycle = 'monthly' | 'annual';
@@ -149,6 +148,18 @@ export function TabaqGoldPage() {
   const [upgraded, setUpgraded] = useState(false);
   const [upgradeError, setUpgradeError] = useState<string | null>(null);
   const [billing, setBilling] = useState<BillingCycle>('annual');
+
+  const { data: topReviews, isLoading: reviewsLoading } = useQuery({
+    queryKey: ['top-reviews-gold'],
+    queryFn: async () => {
+      const r = await fetch(`${API_BASE}/api/reviews?limit=3&sort=rating`);
+      if (!r.ok) return null;
+      const data = await r.json();
+      const five = (data.reviews ?? []).filter((rv: any) => parseFloat(rv.ratingOverall) >= 5 && rv.textEn);
+      return five.length >= 3 ? five.slice(0, 3) : null;
+    },
+    staleTime: 300_000,
+  });
 
   const { data: membershipData, refetch: refetchMembership } = useQuery({
     queryKey: ['me-membership'],
@@ -428,30 +439,51 @@ export function TabaqGoldPage() {
             </div>
             <h2 className="text-2xl font-black text-foreground">{t('What Our Members Say', 'ما يقوله أعضاؤنا')}</h2>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {TESTIMONIALS.map(tm => (
-              <div key={tm.name} className="bg-card rounded-2xl border border-border p-5 shadow-sm">
-                <div className="flex items-center gap-3 mb-4">
-                  <img src={tm.avatar} alt={tm.name} className="w-10 h-10 rounded-full object-cover" />
-                  <div>
-                    <p className="font-bold text-sm text-foreground">{lang === 'ar' ? tm.nameAr : tm.name}</p>
-                    <div className="flex items-center gap-1">
-                      <Crown className="w-3 h-3 text-amber-500" />
-                      <span className="text-[10px] text-amber-600 font-semibold">{tm.plan}</span>
+          {reviewsLoading ? (
+            <div className="flex justify-center py-10">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              {(topReviews ?? TESTIMONIALS.map(tm => ({
+                id: tm.name,
+                userAvatarUrl: tm.avatar,
+                userNameEn: tm.name,
+                userNameAr: tm.nameAr,
+                userLevelTitle: tm.plan,
+                ratingOverall: String(tm.rating),
+                textEn: tm.textEn,
+                textAr: tm.textAr,
+                restaurantNameEn: null as string | null,
+              }))).map((rv: any) => (
+                <div key={rv.id ?? rv.userNameEn} className="bg-card rounded-2xl border border-border p-5 shadow-sm">
+                  <div className="flex items-center gap-3 mb-4">
+                    <img src={rv.userAvatarUrl} alt={lang === 'ar' ? rv.userNameAr : rv.userNameEn} className="w-10 h-10 rounded-full object-cover" />
+                    <div>
+                      <p className="font-bold text-sm text-foreground">{lang === 'ar' ? rv.userNameAr : rv.userNameEn}</p>
+                      <div className="flex items-center gap-1">
+                        <Crown className="w-3 h-3 text-amber-500" />
+                        <span className="text-[10px] text-amber-600 font-semibold">{rv.userLevelTitle}</span>
+                      </div>
+                    </div>
+                    <div className="ms-auto flex gap-0.5">
+                      {Array.from({ length: Math.round(parseFloat(rv.ratingOverall)) }).map((_, i) => (
+                        <Star key={i} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                      ))}
                     </div>
                   </div>
-                  <div className="ms-auto flex gap-0.5">
-                    {Array.from({ length: tm.rating }).map((_, i) => (
-                      <Star key={i} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                    ))}
-                  </div>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    "{lang === 'ar' ? rv.textAr : rv.textEn}"
+                  </p>
+                  {rv.restaurantNameEn && (
+                    <p className="text-[10px] text-muted-foreground/60 mt-2 font-medium">
+                      {lang === 'ar' ? rv.restaurantNameAr : rv.restaurantNameEn}
+                    </p>
+                  )}
                 </div>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  "{lang === 'ar' ? tm.textAr : tm.textEn}"
-                </p>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

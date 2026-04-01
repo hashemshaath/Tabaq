@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { useLanguage } from '@/hooks/use-language';
+import { API_BASE } from '@/lib/api';
 import { Search, Clock, User, Tag, TrendingUp, BookOpen, ChevronRight, Flame, Star, ArrowRight } from 'lucide-react';
 
 const SAMPLE_CATEGORIES = [
@@ -26,7 +27,6 @@ export function BlogPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const apiBase = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
   const selectedCategoryId = SAMPLE_CATEGORIES.find(c => c.slug === selectedCategory)?.id ?? 0;
 
   const { data: apiPosts } = useQuery({
@@ -34,7 +34,7 @@ export function BlogPage() {
     queryFn: async () => {
       const params = new URLSearchParams({ limit: '20' });
       if (selectedCategoryId > 0) params.set('categoryId', String(selectedCategoryId));
-      const res = await fetch(`${apiBase}/api/blog/posts?${params}`);
+      const res = await fetch(`${API_BASE}/api/blog/posts?${params}`);
       if (!res.ok) return null;
       return res.json();
     },

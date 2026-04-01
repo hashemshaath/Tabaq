@@ -3,7 +3,7 @@ import { useLanguage } from '@/hooks/use-language';
 import { useAuth } from '@/context/AuthContext';
 import { useListBookings, useUpdateBookingStatus } from '@workspace/api-client-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { getAuthHeaders } from '@/lib/api';
+import { getAuthHeaders, API_BASE } from '@/lib/api';
 import {
   CalendarDays, Clock, Users, CheckCircle2, XCircle, AlertCircle,
   QrCode, ChevronDown, ChevronUp, MapPin, Sparkles, Utensils, Edit2, X,
@@ -437,7 +437,6 @@ function QuickBookPanel({
   onClose: () => void;
   onBooked: () => void;
 }) {
-  const apiBase = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [restaurantId, setRestaurantId] = useState('');
   const [partySize, setPartySize] = useState(2);
@@ -459,7 +458,7 @@ function QuickBookPanel({
     queryKey: ['crowd', restaurantId, dateKey],
     queryFn: async () => {
       if (!restaurantId) return null;
-      const r = await fetch(`${apiBase}/api/restaurants/${restaurantId}/crowd-prediction?date=${dateKey}`, { headers: getAuthHeaders() });
+      const r = await fetch(`${API_BASE}/api/restaurants/${restaurantId}/crowd-prediction?date=${dateKey}`, { headers: getAuthHeaders() });
       return r.ok ? r.json() : null;
     },
     enabled: !!restaurantId && !!dateKey,
@@ -470,7 +469,7 @@ function QuickBookPanel({
     queryKey: ['suggested-times', restaurantId, dateKey, partySize],
     queryFn: async () => {
       if (!restaurantId) return null;
-      const r = await fetch(`${apiBase}/api/restaurants/${restaurantId}/suggested-times?date=${dateKey}&partySize=${partySize}`, { headers: getAuthHeaders() });
+      const r = await fetch(`${API_BASE}/api/restaurants/${restaurantId}/suggested-times?date=${dateKey}&partySize=${partySize}`, { headers: getAuthHeaders() });
       return r.ok ? r.json() : null;
     },
     enabled: !!restaurantId && !!dateKey,
@@ -485,7 +484,7 @@ function QuickBookPanel({
     queryKey: ['restaurant-menus-preorder', restaurantId],
     queryFn: async () => {
       if (!restaurantId) return null;
-      const r = await fetch(`${apiBase}/api/restaurants/${restaurantId}/menus`);
+      const r = await fetch(`${API_BASE}/api/restaurants/${restaurantId}/menus`);
       return r.ok ? r.json() : null;
     },
     enabled: !!restaurantId,
@@ -528,7 +527,7 @@ function QuickBookPanel({
       .filter(d => (preOrderQty[d.id] ?? 0) > 0)
       .map(d => ({ dishId: d.id, name: d.nameEn, quantity: preOrderQty[d.id], price: Number(d.price ?? 0) }));
     try {
-      const r = await fetch(`${apiBase}/api/bookings`, {
+      const r = await fetch(`${API_BASE}/api/bookings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({
@@ -549,7 +548,7 @@ function QuickBookPanel({
 
   const handleWaitlist = async () => {
     if (!restaurantId || !time) return;
-    await fetch(`${apiBase}/api/waitlist`, {
+    await fetch(`${API_BASE}/api/waitlist`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify({ restaurantId: Number(restaurantId), date: dateKey, time, partySize }),
@@ -850,12 +849,11 @@ export function BookingsPage() {
   const [mainTab, setMainTab] = useState<'restaurants' | 'experiences'>('restaurants');
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
   const [showQuickBook, setShowQuickBook] = useState(false);
-  const apiBase = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
 
   const { data: restaurantsData } = useQuery({
     queryKey: ['all-restaurants-for-booking'],
     queryFn: async () => {
-      const r = await fetch(`${apiBase}/api/restaurants?limit=50`);
+      const r = await fetch(`${API_BASE}/api/restaurants?limit=50`);
       return r.ok ? r.json() : { restaurants: [] };
     },
     staleTime: 120000,
@@ -868,7 +866,7 @@ export function BookingsPage() {
   const { data: expData, isLoading: expLoading } = useQuery({
     queryKey: ['me-experience-bookings'],
     queryFn: async () => {
-      const res = await fetch(`${apiBase}/api/me/experience-bookings`, { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/api/me/experience-bookings`, { headers: getAuthHeaders() });
       if (!res.ok) return { bookings: [] };
       return res.json() as Promise<{ bookings: ExperienceBooking[] }>;
     },
@@ -888,7 +886,7 @@ export function BookingsPage() {
 
   const handleModify = async (bookingId: number, data: { date: string; time: string }) => {
     const headers = getAuthHeaders();
-    await fetch(`${apiBase}/api/bookings/${bookingId}`, {
+    await fetch(`${API_BASE}/api/bookings/${bookingId}`, {
       method: 'PATCH',
       headers: { ...headers, 'Content-Type': 'application/json' },
       body: JSON.stringify(data),

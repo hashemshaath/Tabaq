@@ -11,6 +11,7 @@ import { ReviewCard } from '@/components/ReviewCard';
 import { StarRating } from '@/components/StarRating';
 import { useLanguage } from '@/hooks/use-language';
 import { useAuth } from '@/context/AuthContext';
+import { getAuthHeaders } from '@/lib/api';
 import { Link } from 'wouter';
 import { Button } from '@/components/ui/button';
 
@@ -428,10 +429,7 @@ function PeopleYouMayKnowCard({ t, lang }: { t: (en: string, ar: string) => stri
   const { data: suggested, isLoading } = useQuery({
     queryKey: ['suggested-users'],
     queryFn: async () => {
-      const headers: Record<string, string> = {};
-      const token = localStorage.getItem('auth_token');
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-      const res = await fetch('/api/users/suggested?limit=5', { headers });
+      const res = await fetch('/api/users/suggested?limit=5', { headers: getAuthHeaders() });
       if (!res.ok) return [] as any[];
       return res.json() as Promise<any[]>;
     },
@@ -442,12 +440,9 @@ function PeopleYouMayKnowCard({ t, lang }: { t: (en: string, ar: string) => stri
     if (!user) return;
     setLoading(prev => ({ ...prev, [userId]: true }));
     try {
-      const token = localStorage.getItem('auth_token');
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
       await fetch(`/api/users/${userId}/follow`, {
         method: currentlyFollowing ? 'DELETE' : 'POST',
-        headers,
+        headers: getAuthHeaders(),
       });
       setFollowing(prev => ({ ...prev, [userId]: !currentlyFollowing }));
     } finally {
@@ -720,12 +715,11 @@ export default function FeedPage() {
   const [seenGroupIds, setSeenGroupIds] = useState<Set<number>>(new Set());
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerStartIndex, setViewerStartIndex] = useState(0);
-  const apiBase = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
 
   const { data: storiesData } = useQuery({
     queryKey: ['stories-recent'],
     queryFn: async () => {
-      const res = await fetch(`${apiBase}/api/stories/recent?limit=30`);
+      const res = await fetch(`${API_BASE}/api/stories/recent?limit=30`);
       if (!res.ok) return { stories: [] };
       return res.json();
     },

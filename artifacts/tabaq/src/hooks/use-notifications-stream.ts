@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-
-const API_BASE = (import.meta.env?.BASE_URL ?? '').replace(/\/$/, '');
+import { API_BASE, getToken } from '@/lib/api';
 
 interface NotificationsStreamState {
   unreadCount: number;

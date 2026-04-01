@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
+import { API_BASE } from '@/lib/api';
 
 export interface AnalyticsSettings {
   googleAnalyticsId: string;
@@ -91,7 +92,6 @@ const DEFAULT_SETTINGS: PlatformSettings = {
 };
 
 const STORAGE_KEY = 'tabaq_platform_settings_cache';
-const API_BASE = (import.meta.env?.BASE_URL ?? '').replace(/\/$/, '');
 
 function loadFromCache(): PlatformSettings {
   try {

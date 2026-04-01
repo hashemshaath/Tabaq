@@ -4,13 +4,12 @@ import { useCart } from '@/context/CartContext';
 import { useLanguage } from '@/hooks/use-language';
 import { usePageMeta } from '@/hooks/use-page-meta';
 import { formatPrice } from '@/lib/utils';
-import { getAuthHeaders } from '@/lib/api';
+import { getAuthHeaders, API_BASE } from '@/lib/api';
 import {
   ChevronLeft, MapPin, Clock, CreditCard, CheckCircle2, ShoppingBag,
   Utensils, Package, Phone, User, ChevronRight, Loader2, Star,
 } from 'lucide-react';
 
-const API_BASE = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
 
 type OrderMode = 'dine_in' | 'pickup' | 'delivery';
 type PaymentMethod = 'card' | 'apple_pay' | 'stc_pay' | 'cash';

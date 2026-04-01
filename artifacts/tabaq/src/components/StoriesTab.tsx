@@ -5,9 +5,7 @@ import { useLanguage } from '@/hooks/use-language';
 import { useAuth } from '@/context/AuthContext';
 import { Link } from 'wouter';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getAuthHeaders } from '@/lib/api';
-
-const API_BASE = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
+import { getAuthHeaders, API_BASE } from '@/lib/api';
 
 type Story = {
   id: number;

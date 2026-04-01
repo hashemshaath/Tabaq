@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-
-const API_BASE = (import.meta.env?.BASE_URL ?? '').replace(/\/$/, '');
+import { API_BASE } from '@/lib/api';
 const CACHE_KEY = 'tabaq_demo_mode';
 
 interface DemoModeContextValue {

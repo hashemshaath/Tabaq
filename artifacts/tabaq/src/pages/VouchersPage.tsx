@@ -3,7 +3,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { useLanguage } from '@/hooks/use-language';
 import { useAuth } from '@/context/AuthContext';
 import { useListVouchers, type Voucher } from '@workspace/api-client-react';
-import { getAuthHeaders } from '@/lib/api';
+import { getAuthHeaders, API_BASE } from '@/lib/api';
 import {
   Tag, Clock, CheckCircle2, XCircle, Gift, Copy, Check, ScanLine,
   ChevronDown, ChevronUp, QrCode, RotateCcw, ExternalLink, AlertTriangle,
@@ -104,7 +104,6 @@ function RefundModal({ voucher, onClose, lang, t }: {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const apiBase = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
 
   const REASONS = [
     { en: 'Changed my mind', ar: 'غيّرت رأيي' },
@@ -120,7 +119,7 @@ function RefundModal({ voucher, onClose, lang, t }: {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(`${apiBase}/api/vouchers/${voucher.id}/refund-request`, {
+      const res = await fetch(`${API_BASE}/api/vouchers/${voucher.id}/refund-request`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({ reason, details }),
