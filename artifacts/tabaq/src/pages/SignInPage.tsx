@@ -150,7 +150,11 @@ export function SignInPage() {
     document.head.appendChild(script);
   }, []);
 
-  if (user) { setLocation('/'); return null; }
+  // Redirect authenticated users — must be in useEffect to avoid render-time setState
+  useEffect(() => {
+    if (user) setLocation('/');
+  }, [user, setLocation]);
+  if (user) return null;
 
   // ─────────────────────────────────────────────────────────────────────────
   // Helpers

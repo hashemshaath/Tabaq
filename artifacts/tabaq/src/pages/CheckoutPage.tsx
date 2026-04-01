@@ -465,7 +465,7 @@ export function CheckoutPage() {
 
                 <button
                   onClick={handlePlaceOrder}
-                  disabled={placing}
+                  disabled={placing || (paymentMethod === 'card' && (cardNumber.replace(/[\s-]/g, '').length < 16 || cardExpiry.length < 5 || cardCvv.length < 3))}
                   className="w-full flex items-center justify-center gap-2 bg-primary text-white font-bold px-5 py-4 rounded-xl hover:bg-primary/90 disabled:opacity-70 transition-colors text-base"
                 >
                   {placing ? (

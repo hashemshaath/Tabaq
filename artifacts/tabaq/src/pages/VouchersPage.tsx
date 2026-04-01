@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import { useLanguage } from '@/hooks/use-language';
 import { useAuth } from '@/context/AuthContext';
 import { useListVouchers, type Voucher } from '@workspace/api-client-react';
@@ -53,33 +54,11 @@ const STATUS_STYLE: Record<string, { color: string; icon: React.ElementType }> =
 };
 
 function QRCodeDisplay({ code }: { code: string }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  useEffect(() => {
-    const c = canvasRef.current;
-    if (!c) return;
-    const ctx = c.getContext('2d');
-    if (!ctx) return;
-    const size = 160; c.width = size; c.height = size;
-    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, size, size);
-    const seed = code.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
-    const cells = 21; const cellSize = size / cells;
-    for (let r = 0; r < cells; r++) {
-      for (let col = 0; col < cells; col++) {
-        const isCorner = (r < 7 && col < 7) || (r < 7 && col >= cells - 7) || (r >= cells - 7 && col < 7);
-        if (isCorner) {
-          const inInner2 = (r >= 2 && r <= 4 && col >= 2 && col <= 4) || (r >= 2 && r <= 4 && col >= cells - 5 && col <= cells - 3) || (r >= cells - 5 && r <= cells - 3 && col >= 2 && col <= 4);
-          const inInner = (r >= 1 && r <= 5 && col >= 1 && col <= 5) || (r >= 1 && r <= 5 && col >= cells - 6 && col <= cells - 2) || (r >= cells - 6 && r <= cells - 2 && col >= 1 && col <= 5);
-          ctx.fillStyle = inInner2 ? '#111' : inInner ? '#fff' : '#111';
-          ctx.fillRect(col * cellSize, r * cellSize, cellSize, cellSize);
-        } else {
-          ctx.fillStyle = '#111';
-          const hash = (seed * (r * cells + col + 1) * 2654435761) >>> 0;
-          if (hash % 2 === 0) ctx.fillRect(col * cellSize, r * cellSize, cellSize, cellSize);
-        }
-      }
-    }
-  }, [code]);
-  return <canvas ref={canvasRef} className="rounded-lg" style={{ width: 160, height: 160 }} />;
+  return (
+    <div className="bg-white p-3 rounded-xl inline-block shadow-sm">
+      <QRCodeSVG value={code} size={140} includeMargin={false} />
+    </div>
+  );
 }
 
 function ValidityBar({ validUntil, purchasedAt }: { validUntil: string | null; purchasedAt?: string | null }) {

@@ -92,4 +92,59 @@ router.patch("/admin/registrations/:id", async (req, res) => {
   }
 });
 
+// POST /api/provider-applications — experience provider registration
+router.post("/provider-applications", async (req, res) => {
+  try {
+    const {
+      businessType, businessNameEn, businessNameAr, contactEmail, contactPhone,
+      city, description, sampleTitleEn, sampleTitleAr, sampleCategory,
+      priceRangeMin, priceRangeMax, typicalSlotTimes, website, instagram,
+      agreedToTerms, ...rest
+    } = req.body;
+
+    if (!businessNameEn || !contactEmail || !city) {
+      res.status(400).json({ error: "validation_error", message: "Required fields missing: businessNameEn, contactEmail, city" });
+      return;
+    }
+
+    const refCode = genRefCode();
+
+    const [application] = await db.insert(partnerApplicationsTable).values({
+      refCode,
+      businessType: businessType ?? "experience_provider",
+      nameEn: businessNameEn,
+      nameAr: businessNameAr ?? businessNameEn,
+      city,
+      description,
+      email: contactEmail,
+      phone: contactPhone ?? "",
+      ownerName: businessNameEn,
+      ownerEmail: contactEmail,
+      website: website ?? null,
+      cuisines: sampleCategory ? [sampleCategory] : [],
+      extraData: {
+        sampleTitleEn,
+        sampleTitleAr,
+        priceRangeMin,
+        priceRangeMax,
+        typicalSlotTimes,
+        instagram,
+        agreedToTerms,
+        ...rest,
+      },
+      status: "pending",
+    }).returning();
+
+    res.status(201).json({
+      success: true,
+      refCode: application.refCode,
+      applicationId: application.id,
+      message: "Provider application submitted successfully. Our team will review it within 2-3 business days.",
+    });
+  } catch (err) {
+    req.log.error({ err }, "Failed to submit provider application");
+    res.status(500).json({ error: "internal_error", message: "Failed to submit application" });
+  }
+});
+
 export default router;

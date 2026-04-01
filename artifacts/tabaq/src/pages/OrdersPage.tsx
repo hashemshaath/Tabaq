@@ -149,7 +149,7 @@ function ReservationCard({ booking, lang, t }: { booking: Booking; lang: string;
       </div>
       <div className="border-t border-gray-100 px-4 sm:px-5 py-3 bg-gray-50 flex items-center gap-2 flex-wrap">
         {(booking.status === 'completed') && (
-          <Link href={`/restaurants/${booking.restaurantId}`}>
+          <Link href={`/restaurants/${booking.restaurantId}#reviews`}>
             <button className="flex items-center gap-1.5 px-4 py-2 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl text-sm font-semibold hover:bg-amber-100 transition-colors">
               <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
               {t('Rate Your Visit', 'قيّم زيارتك')}
@@ -262,7 +262,7 @@ function OrderCard({ order, lang, t, onReorder, reordering }: {
       </div>
       <div className="border-t border-gray-100 px-4 sm:px-5 py-3 bg-gray-50 flex items-center gap-2 flex-wrap">
         {order.status === 'delivered' && !order.rated && (
-          <Link href={`/restaurants/${order.restaurantId}`}>
+          <Link href={`/restaurants/${order.restaurantId}#reviews`}>
             <button className="flex items-center gap-1.5 px-4 py-2 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl text-sm font-semibold hover:bg-amber-100 transition-colors">
               <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
               {t('Rate Your Experience', 'قيّم تجربتك')}

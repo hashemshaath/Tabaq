@@ -31,6 +31,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const addItem = useCallback((incoming: Omit<CartItem, 'qty'>) => {
     setItems(prev => {
+      // If the cart already has items from a different restaurant, clear it first
+      const existingRestaurantId = prev[0]?.restaurantId;
+      if (existingRestaurantId && existingRestaurantId !== incoming.restaurantId) {
+        // Clear the cart and start fresh with the new restaurant's item
+        return [{ ...incoming, qty: 1 }];
+      }
       const idx = prev.findIndex(i => i.dishId === incoming.dishId);
       if (idx >= 0) {
         const updated = [...prev];
