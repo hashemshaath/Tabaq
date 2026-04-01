@@ -304,6 +304,10 @@ router.patch("/bookings/:bookingId", requireAuth, async (req, res) => {
     const [existing] = await db.select({
       userId: bookingsTable.userId,
       restaurantId: bookingsTable.restaurantId,
+      invoiceRef: bookingsTable.invoiceRef,
+      date: bookingsTable.date,
+      time: bookingsTable.time,
+      partySize: bookingsTable.partySize,
     }).from(bookingsTable).where(eq(bookingsTable.id, bookingId));
     if (!existing) {
       res.status(404).json({ error: "not_found", message: "Booking not found" });
@@ -373,8 +377,56 @@ router.patch("/bookings/:bookingId", requireAuth, async (req, res) => {
 
     const [bookingRestaurant] = await db.select().from(restaurantsTable)
       .where(eq(restaurantsTable.id, booking.restaurantId));
+
+    // Wire invoice creation for status transitions to "confirmed" or "completed".
+    // Only fires when no invoice has been issued yet (idempotency guard on existing.invoiceRef).
+    let issuedInvoiceRef: string | null = booking.invoiceRef ?? null;
+    if (
+      (status === "confirmed" || status === "completed") &&
+      !existing.invoiceRef &&
+      booking.userId
+    ) {
+      try {
+        const invoiceResult = await invoiceService.processBooking({
+          bookingId: booking.id,
+          userId: booking.userId,
+          restaurantId: booking.restaurantId,
+          restaurantNameEn: bookingRestaurant?.nameEn ?? "",
+          restaurantNameAr: bookingRestaurant?.nameAr ?? "",
+          partySize: booking.partySize,
+          date: booking.date,
+          time: booking.time,
+          total: 0,
+          currency: "SAR",
+          paymentMethod: "free",
+        });
+
+        issuedInvoiceRef = invoiceResult.invoiceRef;
+
+        // Store the returned invoice ref on the booking record
+        await db.update(bookingsTable)
+          .set({ invoiceRef: issuedInvoiceRef })
+          .where(eq(bookingsTable.id, bookingId));
+
+        // Emit "invoice issued" — downstream systems (points, commissions) listen for this notification type
+        notifyAsync({
+          userId: booking.userId,
+          type: "booking_confirmed",
+          titleEn: "Invoice Issued",
+          titleAr: "تم إصدار الفاتورة",
+          bodyEn: `Invoice ${issuedInvoiceRef} has been issued for your booking.`,
+          bodyAr: `تم إصدار الفاتورة ${issuedInvoiceRef} لحجزك.`,
+          refId: bookingId,
+          refType: "booking",
+        });
+      } catch (invoiceErr) {
+        req.log.warn({ invoiceErr, bookingId, status }, "Invoice creation failed on booking status update (non-critical)");
+      }
+    }
+
     res.json({
       ...booking,
+      invoiceRef: issuedInvoiceRef,
       restaurantNameEn: bookingRestaurant?.nameEn ?? "",
       restaurantNameAr: bookingRestaurant?.nameAr ?? "",
       restaurantCoverImageUrl: bookingRestaurant?.coverImageUrl ?? null,
