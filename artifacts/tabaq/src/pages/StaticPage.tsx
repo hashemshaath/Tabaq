@@ -93,6 +93,10 @@ const TEAM = [
   { nameEn: 'Nora Al-Rashid', nameAr: 'نورة الراشد', roleEn: 'Chief Product Officer', roleAr: 'رئيسة قسم المنتج', img: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&h=200&fit=crop&crop=face' },
   { nameEn: 'Ahmad Khalil', nameAr: 'أحمد خليل', roleEn: 'Head of Partnerships', roleAr: 'رئيس الشراكات', img: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&h=200&fit=crop&crop=face' },
   { nameEn: 'Layla Bin Saeed', nameAr: 'ليلى بن سعيد', roleEn: 'Head of Culinary Curation', roleAr: 'رئيسة الاختيار الطهوي', img: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop&crop=face' },
+  { nameEn: 'Omar Al-Ghamdi', nameAr: 'عمر الغامدي', roleEn: 'CTO', roleAr: 'المدير التقني', img: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=200&h=200&fit=crop&crop=face' },
+  { nameEn: 'Sara Al-Mousa', nameAr: 'سارة الموسى', roleEn: 'Head of Growth', roleAr: 'رئيسة النمو', img: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=200&h=200&fit=crop&crop=face' },
+  { nameEn: 'Khalid Al-Shehri', nameAr: 'خالد الشهري', roleEn: 'Head of Restaurant Relations', roleAr: 'رئيس علاقات المطاعم', img: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200&h=200&fit=crop&crop=face' },
+  { nameEn: 'Reem Al-Harbi', nameAr: 'ريم الحربي', roleEn: 'Design Lead', roleAr: 'قائدة التصميم', img: 'https://images.unsplash.com/photo-1614644147798-f8c0fc9da7f6?w=200&h=200&fit=crop&crop=face' },
 ];
 
 const STATS = [
@@ -246,16 +250,16 @@ export function AboutPage() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
         <h2 className="text-3xl font-extrabold text-foreground mb-2">{t('The Team', 'الفريق')}</h2>
         <p className="text-muted-foreground mb-12">{t('Food lovers, technologists, and storytellers.', 'عشاق طعام وتقنيون وحكّاؤون.')}</p>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
           {TEAM.map(member => (
             <div key={member.nameEn} className="text-center">
               <img
                 src={member.img}
                 alt={lang === 'ar' ? member.nameAr : member.nameEn}
-                className="w-24 h-24 rounded-full object-cover mx-auto mb-4 ring-4 ring-border"
+                className="w-20 h-20 rounded-full object-cover mx-auto mb-3 ring-4 ring-border"
               />
-              <p className="font-bold text-foreground">{lang === 'ar' ? member.nameAr : member.nameEn}</p>
-              <p className="text-sm text-muted-foreground mt-1">{t(member.roleEn, member.roleAr)}</p>
+              <p className="font-bold text-foreground text-sm">{lang === 'ar' ? member.nameAr : member.nameEn}</p>
+              <p className="text-xs text-muted-foreground mt-1">{t(member.roleEn, member.roleAr)}</p>
             </div>
           ))}
         </div>
@@ -393,10 +397,31 @@ export function ContactPage() {
   const { t, lang } = useLanguage();
   const [form, setForm] = useState({ name: '', email: '', subject: '', message: '' });
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const apiBase = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
+    setSubmitting(true);
+    setSubmitError('');
+    try {
+      const res = await fetch(`${apiBase}/api/contact`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || t('Failed to send message', 'فشل إرسال الرسالة'));
+      }
+      setSubmitted(true);
+    } catch (err: any) {
+      setSubmitError(err?.message ?? t('Something went wrong. Please try again.', 'حدث خطأ. يرجى المحاولة مجدداً.'));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -532,9 +557,12 @@ export function ContactPage() {
                   />
                 </div>
 
-                <Button type="submit" className="w-full font-bold gap-2">
+                {submitError && (
+                  <p className="text-sm text-destructive">{submitError}</p>
+                )}
+                <Button type="submit" className="w-full font-bold gap-2" disabled={submitting}>
                   <Send className="w-4 h-4" />
-                  {t('Send Message', 'إرسال الرسالة')}
+                  {submitting ? t('Sending…', 'جاري الإرسال…') : t('Send Message', 'إرسال الرسالة')}
                 </Button>
                 <p className="text-xs text-muted-foreground text-center">
                   {t('By submitting this form, you agree to our Privacy Policy.', 'بإرسال هذا النموذج، توافق على سياسة الخصوصية.')}

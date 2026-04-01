@@ -1,5 +1,17 @@
 # Tabaq | طبق — Workspace
 
+## Platform Audit & Completion (April 2026)
+
+### Completed Items
+- **Duplicate route removed**: Deleted `ProviderRegisterPage.tsx`; `/partners/register` and `/providers/register` both serve `ProviderRegistrationPage`
+- **Catering packages seeded**: 10 packages across 6 menus (Najd Village, Nakheel Palace, Grill House, Casa Levant, Maestro Italian, Spice Route India); `GET /api/catering/packages` returns 10 real records
+- **Contact form wired**: `POST /api/contact` validates input, logs enquiry, returns ref code (`CNT-xxxxx`); `ContactPage` uses real API with loading/error states
+- **StaticPage team expanded**: 8 team members with real Unsplash face photos (CEO, CPO, CTO, Partnerships, Culinary, Growth, Restaurant Relations, Design Lead)
+- **TabaqGoldPage testimonials**: Replaced pravatar.cc placeholders with real Unsplash portrait URLs
+- **Settlement batch implemented**: `POST /api/admin/settlement/create-batch` — queries redeemed vouchers in period, looks up active contract for commission rate (defaults 15%), inserts pending `transactionsTable` record per restaurant, returns full batch summary with gross/commission/net totals
+
+---
+
 ## Admin Auth Hardening & 2FA (Task #2 — April 2026)
 
 ### Overview

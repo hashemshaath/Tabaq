@@ -102,9 +102,9 @@ const PERKS = [
 ];
 
 const TESTIMONIALS = [
-  { name: 'Noura Al-Rashid', nameAr: 'نورة الراشد', plan: 'Elite', avatar: 'https://i.pravatar.cc/80?img=47', rating: 5, textEn: 'Tabaq Elite completely changed how I dine out. The concierge got me a table at Nobu on a Saturday night — impossible otherwise!', textAr: 'غيّر طبق النخبة طريقة تناولي للطعام خارجاً. الكونسيرج حجز لي طاولة في نوبو ليلة السبت — مستحيل بدونه!' },
-  { name: 'Faisal Al-Otaibi', nameAr: 'فيصل العتيبي', plan: 'Gourmet', avatar: 'https://i.pravatar.cc/80?img=33', rating: 5, textEn: 'The 2× points and SAR 50 monthly credit easily covers half my dining costs. Worth every riyal.', textAr: 'النقاط المضاعفة ورصيد 50 ريال شهري يغطيان نصف تكاليف طعامي. تستحق كل ريال.' },
-  { name: 'Lama Al-Zahrani', nameAr: 'لمى الزهراني', plan: 'Elite', avatar: 'https://i.pravatar.cc/80?img=5', rating: 5, textEn: 'Michelin restaurant access alone is worth the subscription. I\'ve discovered dining experiences I never knew existed in Riyadh.', textAr: 'الوصول لمطاعم ميشلان وحده يستحق الاشتراك. اكتشفت تجارب طعام لم أكن أعلم بوجودها في الرياض.' },
+  { name: 'Noura Al-Rashid', nameAr: 'نورة الراشد', plan: 'Elite', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80&h=80&fit=crop&crop=face', rating: 5, textEn: 'Tabaq Elite completely changed how I dine out. The concierge got me a table at Nobu on a Saturday night — impossible otherwise!', textAr: 'غيّر طبق النخبة طريقة تناولي للطعام خارجاً. الكونسيرج حجز لي طاولة في نوبو ليلة السبت — مستحيل بدونه!' },
+  { name: 'Faisal Al-Otaibi', nameAr: 'فيصل العتيبي', plan: 'Gourmet', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop&crop=face', rating: 5, textEn: 'The 2× points and SAR 50 monthly credit easily covers half my dining costs. Worth every riyal.', textAr: 'النقاط المضاعفة ورصيد 50 ريال شهري يغطيان نصف تكاليف طعامي. تستحق كل ريال.' },
+  { name: 'Lama Al-Zahrani', nameAr: 'لمى الزهراني', plan: 'Elite', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=80&h=80&fit=crop&crop=face', rating: 5, textEn: 'Michelin restaurant access alone is worth the subscription. I\'ve discovered dining experiences I never knew existed in Riyadh.', textAr: 'الوصول لمطاعم ميشلان وحده يستحق الاشتراك. اكتشفت تجارب طعام لم أكن أعلم بوجودها في الرياض.' },
 ];
 
 const FAQS = [

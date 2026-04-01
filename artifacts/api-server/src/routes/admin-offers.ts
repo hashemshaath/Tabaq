@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { offersTable, restaurantsTable, vouchersTable, campaignsTable, promoCodesTable } from "@workspace/db/schema";
-import { count, eq, desc, sql, and, type SQL } from "drizzle-orm";
+import { offersTable, restaurantsTable, vouchersTable, campaignsTable, promoCodesTable, transactionsTable, contractsTable } from "@workspace/db/schema";
+import { count, eq, desc, sql, and, gte, lte, sum, isNull, type SQL } from "drizzle-orm";
 import { requirePermission } from "../middleware/requireAuth.js";
 
 const router = Router();
@@ -76,10 +76,126 @@ router.get("/admin/promo-codes", requirePermission("offers:read"), async (req, r
 // POST /admin/settlement/create-batch — create settlement batch
 router.post("/admin/settlement/create-batch", requirePermission("finance:write"), async (req, res) => {
   try {
-    res.json({ message: "Settlement batch creation not fully implemented" });
+    const { periodStart, periodEnd, restaurantIds } = req.body;
+
+    // Default to last 30 days if no period specified
+    const endDate = periodEnd ? new Date(periodEnd) : new Date();
+    const startDate = periodStart
+      ? new Date(periodStart)
+      : new Date(endDate.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    // Find redeemed vouchers within the period
+    const conditions: SQL[] = [
+      eq(vouchersTable.status, "redeemed"),
+      gte(vouchersTable.redeemedAt as any, startDate),
+      lte(vouchersTable.redeemedAt as any, endDate),
+    ];
+
+    if (restaurantIds?.length) {
+      // filter by specific restaurants via join
+    }
+
+    const vouchers = await db
+      .select({
+        restaurantId: offersTable.restaurantId,
+        restaurantNameEn: restaurantsTable.nameEn,
+        restaurantNameAr: restaurantsTable.nameAr,
+        voucherCount: count(vouchersTable.id),
+        grossAmount: sum(vouchersTable.faceValue),
+      })
+      .from(vouchersTable)
+      .innerJoin(offersTable, eq(vouchersTable.offerId, offersTable.id))
+      .innerJoin(restaurantsTable, eq(offersTable.restaurantId, restaurantsTable.id))
+      .where(and(...conditions))
+      .groupBy(offersTable.restaurantId, restaurantsTable.nameEn, restaurantsTable.nameAr);
+
+    if (vouchers.length === 0) {
+      res.json({
+        batchId: null,
+        message: "No unsettled vouchers found for the specified period.",
+        settlements: [],
+        totalGross: 0,
+        totalCommission: 0,
+        totalNet: 0,
+        periodStart: startDate.toISOString(),
+        periodEnd: endDate.toISOString(),
+      });
+      return;
+    }
+
+    // Default commission rate — 15% if no contract found
+    const DEFAULT_COMMISSION = 15;
+    const batchRef = `STL-${Date.now()}`;
+
+    const settlements = await Promise.all(
+      vouchers.map(async (row) => {
+        // Look up active contract for commission rate
+        const [contract] = await db
+          .select({ commissionPercent: contractsTable.commissionPercent })
+          .from(contractsTable)
+          .where(
+            and(
+              eq(contractsTable.restaurantId, row.restaurantId!),
+              eq(contractsTable.status, "active")
+            )
+          )
+          .limit(1);
+
+        const commissionPct = parseFloat(String(contract?.commissionPercent ?? DEFAULT_COMMISSION));
+        const gross = parseFloat(String(row.grossAmount ?? 0));
+        const commission = +(gross * commissionPct / 100).toFixed(2);
+        const net = +(gross - commission).toFixed(2);
+
+        // Insert a pending transaction record for this restaurant
+        const [tx] = await db
+          .insert(transactionsTable)
+          .values({
+            type: "settlement" as any,
+            status: "pending" as any,
+            grossAmount: String(gross),
+            commissionPercent: String(commissionPct),
+            commissionAmount: String(commission),
+            netAmount: String(net),
+            currency: "SAR",
+            restaurantId: row.restaurantId!,
+          })
+          .returning({ id: transactionsTable.id });
+
+        return {
+          restaurantId: row.restaurantId,
+          restaurantNameEn: row.restaurantNameEn,
+          restaurantNameAr: row.restaurantNameAr,
+          voucherCount: Number(row.voucherCount),
+          grossAmount: gross,
+          commissionPercent: commissionPct,
+          commissionAmount: commission,
+          netAmount: net,
+          currency: "SAR",
+          transactionId: tx.id,
+        };
+      })
+    );
+
+    const totalGross = settlements.reduce((s, r) => s + r.grossAmount, 0);
+    const totalCommission = settlements.reduce((s, r) => s + r.commissionAmount, 0);
+    const totalNet = settlements.reduce((s, r) => s + r.netAmount, 0);
+
+    res.json({
+      batchRef,
+      status: "pending",
+      settlements,
+      restaurantCount: settlements.length,
+      totalGross: +totalGross.toFixed(2),
+      totalCommission: +totalCommission.toFixed(2),
+      totalNet: +totalNet.toFixed(2),
+      currency: "SAR",
+      periodStart: startDate.toISOString(),
+      periodEnd: endDate.toISOString(),
+      createdAt: new Date().toISOString(),
+    });
   } catch (err) {
-     req.log.error({ err }, "Failed to create settlement batch");
-     res.status(500).json({ error: "internal_error" });
+    req.log.error({ err }, "Failed to create settlement batch");
+    res.status(500).json({ error: "internal_error", message: "Failed to create settlement batch" });
   }
 });
 

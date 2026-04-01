@@ -47,6 +47,7 @@ import { totpRouter } from "./totp.js";
 import uidLookupRouter from "./uid-lookup.js";
 import adminAuthRouter from "./admin-auth.js";
 import providerAuthRouter from "./provider-auth.js";
+import contactRouter from "./contact.js";
 
 const router: IRouter = Router();
 
@@ -97,6 +98,7 @@ router.use(oauthRouter);
 router.use(totpRouter);
 router.use(uidLookupRouter);
 router.use(adminAuthRouter);
+router.use(contactRouter);
 router.use("/v1", providerAuthRouter);
 
 export default router;

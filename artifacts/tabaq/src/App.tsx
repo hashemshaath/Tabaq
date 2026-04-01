@@ -31,7 +31,6 @@ import { AdminPanelPage } from "@/pages/AdminPanelPage";
 import { UserDashboardPage } from "@/pages/UserDashboardPage";
 import { ReferralPage } from "@/pages/ReferralPage";
 import { ProviderRegistrationPage } from "@/pages/ProviderRegistrationPage";
-import { ProviderRegisterPage } from "@/pages/ProviderRegisterPage";
 import { ExperiencesConsolePage } from "@/pages/ExperiencesConsolePage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { MichelinPage } from "@/pages/MichelinPage";
@@ -107,7 +106,7 @@ function Router() {
               </Route>
               <Route path="/partners" component={PartnerLandingPage} />
               <Route path="/partners/register" component={ProviderRegistrationPage} />
-              <Route path="/providers/register" component={ProviderRegisterPage} />
+              <Route path="/providers/register" component={ProviderRegistrationPage} />
               <Route path="/console/experiences">
                 <ProtectedRoute requireOwner><ExperiencesConsolePage /></ProtectedRoute>
               </Route>
