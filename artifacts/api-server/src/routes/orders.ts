@@ -200,38 +200,50 @@ router.post("/orders", optionalAuth, async (req, res) => {
       req.log.warn({ invoiceErr }, "Invoice/points processing failed for order");
     }
 
-    // FIX 2: Persist promo code redemption (non-blocking, non-critical)
+    // Persist promo code redemption after successful order confirmation.
+    // Non-blocking: runs after response is sent via setImmediate.
+    // Non-critical: any failure is logged but never surfaces to the caller.
+    //
+    // Implementation note:
+    //   Step 1 is a single atomic UPDATE WHERE code = ? that increments usage_count
+    //   in-place (SET used_count = used_count + 1) and returns the row id.
+    //   This avoids the SELECT-then-UPDATE anti-pattern — no stale read possible.
+    //   Step 2 inserts the redemption record using the id returned by Step 1,
+    //   so no separate lookup query is needed.
     if (promoCode && userId) {
-      (async () => {
+      const capturedOrderId = order!.id;
+      const discountApplied = String(baseDiscount > 0 ? baseDiscount : 0);
+
+      setImmediate(async () => {
         try {
-          const [promoRow] = await db
-            .select({ id: promoCodesTable.id, discountValue: promoCodesTable.discountValue, type: promoCodesTable.type })
-            .from(promoCodesTable)
+          // Step 1: single atomic UPDATE — increments usage_count, returns id
+          const [updated] = await db
+            .update(promoCodesTable)
+            .set({
+              usedCount: sql`${promoCodesTable.usedCount} + 1`,
+              totalDiscountGiven: sql`${promoCodesTable.totalDiscountGiven} + ${discountApplied}`,
+              updatedAt: new Date(),
+            })
             .where(eq(promoCodesTable.code, promoCode.toUpperCase()))
-            .limit(1);
+            .returning({ id: promoCodesTable.id });
 
-          if (promoRow) {
-            const discountApplied = baseDiscount > 0 ? String(baseDiscount) : "0";
+          if (!updated) return; // code not found — nothing to record
 
-            await db.insert(promoCodeRedemptionsTable).values({
-              promoCodeId: promoRow.id,
-              userId,
-              discountAmount: discountApplied,
-            }).onConflictDoNothing();
-
-            // Atomic increment of usage counter
-            await db.update(promoCodesTable)
-              .set({
-                usedCount: sql`${promoCodesTable.usedCount} + 1`,
-                totalDiscountGiven: sql`${promoCodesTable.totalDiscountGiven} + ${discountApplied}`,
-                updatedAt: new Date(),
-              })
-              .where(eq(promoCodesTable.id, promoRow.id));
-          }
+          // Step 2: insert redemption record
+          // Fields: coupon_uid (promoCodeId), user_uid (userId),
+          //         discount_applied (discountAmount), redeemed_at = createdAt (defaultNow)
+          await db.insert(promoCodeRedemptionsTable).values({
+            promoCodeId: updated.id,
+            userId,
+            discountAmount: discountApplied,
+          });
         } catch (promoErr) {
-          req.log.warn({ promoErr }, "Promo code redemption persistence failed (non-critical)");
+          req.log.warn(
+            { promoErr, promoCode, orderId: capturedOrderId },
+            "Promo code redemption persistence failed (non-critical)",
+          );
         }
-      })();
+      });
     }
 
     // FIX 5: Send order confirmation notification (non-blocking)
