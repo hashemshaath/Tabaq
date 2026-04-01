@@ -30,6 +30,7 @@
     "nanoid": "^5.1.7",
     "node-cron": "^4.2.1",
     "nodemailer": "^8.0.4",
+    "otpauth": "^9.5.0",
     "otplib": "^13.4.0",
     "pino": "^9",
     "pino-http": "^10",

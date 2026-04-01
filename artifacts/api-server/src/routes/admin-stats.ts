@@ -12,11 +12,9 @@ import {
 } from "@workspace/db/schema";
 import { count, avg, sql, eq, desc, and, like, sum } from "drizzle-orm";
 
-import { requireAdmin } from "../middleware/requireAuth.js";
+import { requirePermission } from "../middleware/requireAuth.js";
 
 const router = Router();
-
-router.use(/^\/admin/, requireAdmin);
 
 const DEFAULT_MODULES = [
   { moduleId: "reservations", nameEn: "Reservations Engine", description: "Table booking, availability management, and confirmation flows", isEnabled: true, version: "2.1.0", dependencies: "[]" },
@@ -39,7 +37,7 @@ async function ensureModulesSeeded() {
   }
 }
 
-router.get("/admin/stats", async (req, res) => {
+router.get("/admin/stats", requirePermission("admin:read"), async (req, res) => {
   try {
     const [[restaurantCount], [userCount], [bookingCount], [reviewStats], [offerCount], [voucherCount], [revenueStats]] = await Promise.all([
       db.select({ count: count() }).from(restaurantsTable),
@@ -90,7 +88,7 @@ router.get("/admin/stats", async (req, res) => {
   }
 });
 
-router.get("/admin/users", async (req, res) => {
+router.get("/admin/users", requirePermission("users:read"), async (req, res) => {
   try {
     const { limit = "50", offset = "0", search = "" } = req.query as Record<string, string>;
     const users = await db
@@ -121,7 +119,7 @@ router.get("/admin/users", async (req, res) => {
   }
 });
 
-router.get("/admin/bookings", async (req, res) => {
+router.get("/admin/bookings", requirePermission("bookings:read"), async (req, res) => {
   try {
     const { limit = "50", offset = "0", status } = req.query as Record<string, string>;
     const conditions = [];
@@ -159,7 +157,7 @@ router.get("/admin/bookings", async (req, res) => {
   }
 });
 
-router.get("/admin/modules", async (req, res) => {
+router.get("/admin/modules", requirePermission("admin:read"), async (req, res) => {
   try {
     await ensureModulesSeeded();
     const modules = await db
@@ -172,7 +170,7 @@ router.get("/admin/modules", async (req, res) => {
   }
 });
 
-router.patch("/admin/modules/:moduleId", async (req, res) => {
+router.patch("/admin/modules/:moduleId", requirePermission("modules:write"), async (req, res) => {
   try {
     const { moduleId } = req.params;
     const { isEnabled } = req.body as { isEnabled: boolean };

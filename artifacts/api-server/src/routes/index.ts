@@ -45,6 +45,7 @@ import sessionsRouter from "./sessions.js";
 import { oauthRouter } from "./oauth.js";
 import { totpRouter } from "./totp.js";
 import uidLookupRouter from "./uid-lookup.js";
+import adminAuthRouter from "./admin-auth.js";
 
 const router: IRouter = Router();
 
@@ -94,5 +95,6 @@ router.use(sessionsRouter);
 router.use(oauthRouter);
 router.use(totpRouter);
 router.use(uidLookupRouter);
+router.use(adminAuthRouter);
 
 export default router;

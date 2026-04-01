@@ -7,12 +7,9 @@ import {
   experienceSettingsTable,
 } from "@workspace/db/schema";
 import { eq, desc, sql, and, gte, lte, type SQL } from "drizzle-orm";
-import { requireAdmin } from "../middleware/requireAuth.js";
+import { requirePermission } from "../middleware/requireAuth.js";
 
 const router = Router();
-
-router.use(/^\/admin\/experience/, requireAdmin);
-router.use(/^\/provider-applications/, requireAdmin);
 
 function genRefCode(prefix: string) {
   const year = new Date().getFullYear();
@@ -23,7 +20,7 @@ function genRefCode(prefix: string) {
 // ─── Provider Applications ───────────────────────────────────────────────────
 
 // GET /provider-applications — list with optional status filter
-router.get("/provider-applications", async (req, res) => {
+router.get("/provider-applications", requirePermission("experiences:read"), async (req, res) => {
   try {
     const { status } = req.query;
     const conditions: SQL[] = [];
@@ -43,7 +40,7 @@ router.get("/provider-applications", async (req, res) => {
 });
 
 // GET /provider-applications/:id
-router.get("/provider-applications/:id", async (req, res) => {
+router.get("/provider-applications/:id", requirePermission("experiences:read"), async (req, res) => {
   try {
     const id = parseInt(req.params["id"] as string, 10);
     const [provider] = await db
@@ -62,11 +59,10 @@ router.get("/provider-applications/:id", async (req, res) => {
 });
 
 // PATCH /provider-applications/:id — approve or reject
-router.patch("/provider-applications/:id", async (req, res) => {
+router.patch("/provider-applications/:id", requirePermission("experiences:write"), async (req, res) => {
   try {
     const id = parseInt(req.params["id"] as string, 10);
     const { status, adminNote } = req.body;
-    const adminUserId = req.auth!.userId;
 
     if (!["approved", "rejected"].includes(status)) {
       res.status(400).json({ error: "bad_request", message: "status must be approved or rejected" });
@@ -78,7 +74,7 @@ router.patch("/provider-applications/:id", async (req, res) => {
       .set({
         status,
         adminNote,
-        reviewedBy: adminUserId,
+        reviewedBy: null,
         reviewedAt: new Date(),
         updatedAt: new Date(),
       })
@@ -99,7 +95,7 @@ router.patch("/provider-applications/:id", async (req, res) => {
 // ─── Experiences Listings ────────────────────────────────────────────────────
 
 // GET /admin/experiences — list with optional status filter
-router.get("/admin/experiences", async (req, res) => {
+router.get("/admin/experiences", requirePermission("experiences:read"), async (req, res) => {
   try {
     const { status } = req.query;
     const conditions: SQL[] = [];
@@ -136,7 +132,7 @@ router.get("/admin/experiences", async (req, res) => {
 });
 
 // GET /admin/experiences/:id
-router.get("/admin/experiences/:id", async (req, res) => {
+router.get("/admin/experiences/:id", requirePermission("experiences:read"), async (req, res) => {
   try {
     const id = parseInt(req.params["id"] as string, 10);
     const [exp] = await db
@@ -155,11 +151,10 @@ router.get("/admin/experiences/:id", async (req, res) => {
 });
 
 // PATCH /admin/experiences/:id/status — approve, suspend, reject
-router.patch("/admin/experiences/:id/status", async (req, res) => {
+router.patch("/admin/experiences/:id/status", requirePermission("experiences:write"), async (req, res) => {
   try {
     const id = parseInt(req.params["id"] as string, 10);
     const { status, adminNote } = req.body;
-    const adminUserId = req.auth!.userId;
 
     const validStatuses = ["active", "suspended", "rejected", "pending_approval"];
     if (!validStatuses.includes(status)) {
@@ -175,7 +170,7 @@ router.patch("/admin/experiences/:id/status", async (req, res) => {
         status,
         adminNote,
         isPublished,
-        reviewedBy: adminUserId,
+        reviewedBy: null,
         reviewedAt: new Date(),
         updatedAt: new Date(),
       })
@@ -196,7 +191,7 @@ router.patch("/admin/experiences/:id/status", async (req, res) => {
 // ─── Experience Bookings ─────────────────────────────────────────────────────
 
 // GET /admin/experience-bookings — all bookings
-router.get("/admin/experience-bookings", async (req, res) => {
+router.get("/admin/experience-bookings", requirePermission("experiences:read"), async (req, res) => {
   try {
     const { status, dateFrom, dateTo } = req.query;
     const conditions: SQL[] = [];
@@ -242,18 +237,17 @@ router.get("/admin/experience-bookings", async (req, res) => {
 });
 
 // PATCH /admin/experience-bookings/:id/cancel
-router.patch("/admin/experience-bookings/:id/cancel", async (req, res) => {
+router.patch("/admin/experience-bookings/:id/cancel", requirePermission("experiences:write"), async (req, res) => {
   try {
     const id = parseInt(req.params["id"] as string, 10);
     const { cancelReason } = req.body;
-    const adminUserId = req.auth!.userId;
 
     const [updated] = await db
       .update(experienceBookingsTable)
       .set({
         status: "cancelled",
         cancelReason,
-        cancelledBy: adminUserId,
+        cancelledBy: null,
         cancelledAt: new Date(),
         updatedAt: new Date(),
       })
@@ -274,7 +268,7 @@ router.patch("/admin/experience-bookings/:id/cancel", async (req, res) => {
 // ─── Experience Settings ─────────────────────────────────────────────────────
 
 // GET /admin/experience-settings
-router.get("/admin/experience-settings", async (req, res) => {
+router.get("/admin/experience-settings", requirePermission("experiences:read"), async (req, res) => {
   try {
     const rows = await db.select().from(experienceSettingsTable).limit(1);
     if (rows.length === 0) {
@@ -290,10 +284,9 @@ router.get("/admin/experience-settings", async (req, res) => {
 });
 
 // PUT /admin/experience-settings
-router.put("/admin/experience-settings", async (req, res) => {
+router.put("/admin/experience-settings", requirePermission("experiences:write"), async (req, res) => {
   try {
     const { moduleEnabled, defaultCommissionPercent, defaultDepositPercent, refundPolicyEn, refundPolicyAr } = req.body;
-    const adminUserId = req.auth!.userId;
 
     const existing = await db.select().from(experienceSettingsTable).limit(1);
 
@@ -306,7 +299,7 @@ router.put("/admin/experience-settings", async (req, res) => {
           defaultDepositPercent,
           refundPolicyEn,
           refundPolicyAr,
-          updatedBy: adminUserId,
+          updatedBy: null,
         })
         .returning();
       res.json(created);
@@ -321,7 +314,7 @@ router.put("/admin/experience-settings", async (req, res) => {
         defaultDepositPercent,
         refundPolicyEn,
         refundPolicyAr,
-        updatedBy: adminUserId,
+        updatedBy: null,
         updatedAt: new Date(),
       })
       .where(eq(experienceSettingsTable.id, existing[0]!.id))

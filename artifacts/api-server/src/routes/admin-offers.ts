@@ -1,15 +1,13 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { offersTable, restaurantsTable, vouchersTable, usersTable, campaignsTable, promoCodesTable } from "@workspace/db/schema";
+import { offersTable, restaurantsTable, vouchersTable, campaignsTable, promoCodesTable } from "@workspace/db/schema";
 import { count, eq, desc, sql, and, type SQL } from "drizzle-orm";
-import { requireAdmin } from "../middleware/requireAuth.js";
+import { requirePermission } from "../middleware/requireAuth.js";
 
 const router = Router();
 
-router.use(/^\/admin/, requireAdmin);
-
-// GET /admin/campaigns — list all with approval status filter (protected by requireAuth)
-router.get("/admin/campaigns", async (req, res) => {
+// GET /admin/campaigns — list all with approval status filter
+router.get("/admin/campaigns", requirePermission("offers:read"), async (req, res) => {
   try {
     const { status } = req.query;
     const conditions: SQL[] = [];
@@ -38,11 +36,10 @@ router.get("/admin/campaigns", async (req, res) => {
 });
 
 // PATCH /admin/campaigns/:id/review — approve/reject/request changes
-router.patch("/admin/campaigns/:id/review", async (req, res) => {
+router.patch("/admin/campaigns/:id/review", requirePermission("offers:approve"), async (req, res) => {
   try {
     const id = parseInt(req.params.id as string);
     const { status, adminNotes, commissionOverridePercent } = req.body;
-    const adminUserId = req.auth!.userId;
 
     if (!["approved", "live", "rejected", "under_review"].includes(status)) {
        res.status(400).json({ error: "bad_request" });
@@ -53,7 +50,7 @@ router.patch("/admin/campaigns/:id/review", async (req, res) => {
       status,
       adminNotes,
       commissionOverridePercent,
-      approvedById: status === "approved" || status === "live" ? adminUserId : undefined,
+      approvedById: null,
       approvedAt: status === "approved" || status === "live" ? new Date() : undefined,
       updatedAt: new Date(),
     }).where(eq(campaignsTable.id, id)).returning();
@@ -66,7 +63,7 @@ router.patch("/admin/campaigns/:id/review", async (req, res) => {
 });
 
 // GET /admin/promo-codes — all promo codes
-router.get("/admin/promo-codes", async (req, res) => {
+router.get("/admin/promo-codes", requirePermission("offers:read"), async (req, res) => {
   try {
     const codes = await db.select().from(promoCodesTable).orderBy(sql`${promoCodesTable.createdAt} desc`);
     res.json(codes);
@@ -77,9 +74,8 @@ router.get("/admin/promo-codes", async (req, res) => {
 });
 
 // POST /admin/settlement/create-batch — create settlement batch
-router.post("/admin/settlement/create-batch", async (req, res) => {
+router.post("/admin/settlement/create-batch", requirePermission("finance:write"), async (req, res) => {
   try {
-    // This is a placeholder for a complex settlement logic
     res.json({ message: "Settlement batch creation not fully implemented" });
   } catch (err) {
      req.log.error({ err }, "Failed to create settlement batch");
@@ -88,7 +84,7 @@ router.post("/admin/settlement/create-batch", async (req, res) => {
 });
 
 // List all offers with approval status and voucher redemption counts
-router.get("/admin/offers", async (req, res) => {
+router.get("/admin/offers", requirePermission("offers:read"), async (req, res) => {
   try {
     const { approvalStatus } = req.query;
 
@@ -138,13 +134,13 @@ router.get("/admin/offers", async (req, res) => {
 
     res.json({ offers: enriched, total: enriched.length });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Server error" });
+    req.log.error({ err }, "Failed to fetch admin offers");
+    res.status(500).json({ error: "internal_error" });
   }
 });
 
 // Create offer on behalf of any restaurant (admin/console)
-router.post("/admin/offers", async (req, res) => {
+router.post("/admin/offers", requirePermission("offers:write"), async (req, res) => {
   try {
     const {
       restaurantId, titleEn, titleAr, descriptionEn, descriptionAr,
@@ -153,13 +149,15 @@ router.post("/admin/offers", async (req, res) => {
     } = req.body;
 
     if (!restaurantId || !titleEn || !titleAr || !originalPrice || !validFrom || !validUntil) {
-      return res.status(400).json({ error: "bad_request", message: "Missing required fields: restaurantId, titleEn, titleAr, originalPrice, validFrom, validUntil" });
+      res.status(400).json({ error: "bad_request", message: "Missing required fields: restaurantId, titleEn, titleAr, originalPrice, validFrom, validUntil" });
+      return;
     }
 
     const [restaurant] = await db.select({ nameEn: restaurantsTable.nameEn })
       .from(restaurantsTable).where(eq(restaurantsTable.id, parseInt(restaurantId)));
     if (!restaurant) {
-      return res.status(404).json({ error: "not_found", message: "Restaurant not found" });
+      res.status(404).json({ error: "not_found", message: "Restaurant not found" });
+      return;
     }
 
     const [offer] = await db.insert(offersTable).values({
@@ -171,8 +169,8 @@ router.post("/admin/offers", async (req, res) => {
       imageUrl: imageUrl || null,
       discountPercent: discountPercent ? String(discountPercent) : null,
       originalPrice: String(originalPrice),
-      discountedPrice: discountedPrice ? String(discountedPrice) : String(Math.round(parseFloat(originalPrice) * (1 - parseFloat(discountPercent || '0') / 100))),
-      currency: currency || 'SAR',
+      discountedPrice: discountedPrice ? String(discountedPrice) : String(Math.round(parseFloat(originalPrice) * (1 - parseFloat(discountPercent || "0") / 100))),
+      currency: currency || "SAR",
       validFrom: new Date(validFrom),
       validUntil: new Date(validUntil),
       totalCapacity: totalCapacity ? parseInt(totalCapacity) : null,
@@ -181,20 +179,20 @@ router.post("/admin/offers", async (req, res) => {
       approvalStatus: "pending",
     }).returning();
 
-    const refCode = `TBQ-OFR-${new Date().getFullYear()}-${offer.id.toString().padStart(6, "0")}`;
-    const [withRef] = await db.update(offersTable).set({ refCode }).where(eq(offersTable.id, offer.id)).returning();
+    const refCode = `TBQ-OFR-${new Date().getFullYear()}-${offer!.id.toString().padStart(6, "0")}`;
+    const [withRef] = await db.update(offersTable).set({ refCode }).where(eq(offersTable.id, offer!.id)).returning();
 
     res.status(201).json({ offer: withRef ?? offer });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Server error" });
+    req.log.error({ err }, "Failed to create admin offer");
+    res.status(500).json({ error: "internal_error" });
   }
 });
 
 // List offers for a specific restaurant (business console)
-router.get("/admin/restaurants/:restaurantId/offers", async (req, res) => {
+router.get("/admin/restaurants/:restaurantId/offers", requirePermission("offers:read"), async (req, res) => {
   try {
-    const restaurantId = parseInt(req.params.restaurantId);
+    const restaurantId = parseInt(req.params.restaurantId as string);
     const offers = await db
       .select({
         id: offersTable.id,
@@ -220,7 +218,7 @@ router.get("/admin/restaurants/:restaurantId/offers", async (req, res) => {
       .orderBy(desc(offersTable.createdAt));
 
     const offerIds = offers.map(o => o.id);
-    let voucherMap = new Map<number, number>();
+    const voucherMap = new Map<number, number>();
     if (offerIds.length > 0) {
       const voucherCounts = await db
         .select({ offerId: vouchersTable.offerId, total: count() })
@@ -236,24 +234,27 @@ router.get("/admin/restaurants/:restaurantId/offers", async (req, res) => {
 
     res.json({ offers: enriched, total: enriched.length });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Server error" });
+    req.log.error({ err }, "Failed to fetch restaurant offers");
+    res.status(500).json({ error: "internal_error" });
   }
 });
 
 // Toggle offer active/inactive (admin only)
-router.patch("/admin/offers/:id/toggle", async (req, res) => {
+router.patch("/admin/offers/:id/toggle", requirePermission("offers:write"), async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string);
     const { isActive } = req.body as { isActive: boolean };
 
-    // Can only activate approved offers
     const [existing] = await db.select({ approvalStatus: offersTable.approvalStatus })
       .from(offersTable).where(eq(offersTable.id, id));
-    if (!existing) return res.status(404).json({ error: "Offer not found" });
+    if (!existing) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
 
     if (isActive && existing.approvalStatus !== "approved") {
-      return res.status(400).json({ error: "bad_request", message: "Only approved offers can be activated" });
+      res.status(400).json({ error: "bad_request", message: "Only approved offers can be activated" });
+      return;
     }
 
     const [updated] = await db
@@ -262,17 +263,21 @@ router.patch("/admin/offers/:id/toggle", async (req, res) => {
       .where(eq(offersTable.id, id))
       .returning();
 
-    if (!updated) return res.status(404).json({ error: "Offer not found" });
+    if (!updated) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
     res.json({ offer: updated });
   } catch (err) {
-    res.status(500).json({ error: "Server error" });
+    req.log.error({ err }, "Failed to toggle offer");
+    res.status(500).json({ error: "internal_error" });
   }
 });
 
 // Approve an offer — sets approvalStatus to approved and makes it active
-router.patch("/admin/offers/:id/approve", async (req, res) => {
+router.patch("/admin/offers/:id/approve", requirePermission("offers:approve"), async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string);
     const { commissionOverridePercent, paymentModel, adminNotes } = req.body;
 
     const [updated] = await db
@@ -281,6 +286,7 @@ router.patch("/admin/offers/:id/approve", async (req, res) => {
         approvalStatus: "approved",
         isActive: true,
         approvedAt: new Date(),
+        approvedById: null,
         ...(adminNotes !== undefined && { adminNotes }),
         ...(commissionOverridePercent !== undefined && {
           commissionOverridePercent: commissionOverridePercent ? String(commissionOverridePercent) : null
@@ -291,17 +297,21 @@ router.patch("/admin/offers/:id/approve", async (req, res) => {
       .where(eq(offersTable.id, id))
       .returning();
 
-    if (!updated) return res.status(404).json({ error: "Offer not found" });
+    if (!updated) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
     res.json({ offer: updated });
   } catch (err) {
-    res.status(500).json({ error: "Server error" });
+    req.log.error({ err }, "Failed to approve offer");
+    res.status(500).json({ error: "internal_error" });
   }
 });
 
 // Reject an offer — sets approvalStatus to rejected with admin notes
-router.patch("/admin/offers/:id/reject", async (req, res) => {
+router.patch("/admin/offers/:id/reject", requirePermission("offers:approve"), async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string);
     const { adminNotes } = req.body;
 
     const [updated] = await db
@@ -315,21 +325,26 @@ router.patch("/admin/offers/:id/reject", async (req, res) => {
       .where(eq(offersTable.id, id))
       .returning();
 
-    if (!updated) return res.status(404).json({ error: "Offer not found" });
+    if (!updated) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
     res.json({ offer: updated });
   } catch (err) {
-    res.status(500).json({ error: "Server error" });
+    req.log.error({ err }, "Failed to reject offer");
+    res.status(500).json({ error: "internal_error" });
   }
 });
 
 // Request revision — admin asks restaurant to modify the offer
-router.patch("/admin/offers/:id/request-revision", async (req, res) => {
+router.patch("/admin/offers/:id/request-revision", requirePermission("offers:approve"), async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string);
     const { adminNotes } = req.body;
 
     if (!adminNotes) {
-      return res.status(400).json({ error: "bad_request", message: "adminNotes (revision instructions) are required" });
+      res.status(400).json({ error: "bad_request", message: "adminNotes (revision instructions) are required" });
+      return;
     }
 
     const [updated] = await db
@@ -343,17 +358,21 @@ router.patch("/admin/offers/:id/request-revision", async (req, res) => {
       .where(eq(offersTable.id, id))
       .returning();
 
-    if (!updated) return res.status(404).json({ error: "Offer not found" });
+    if (!updated) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
     res.json({ offer: updated });
   } catch (err) {
-    res.status(500).json({ error: "Server error" });
+    req.log.error({ err }, "Failed to request revision");
+    res.status(500).json({ error: "internal_error" });
   }
 });
 
 // Edit offer (admin override — change price, commission, dates, etc.)
-router.put("/admin/offers/:id", async (req, res) => {
+router.put("/admin/offers/:id", requirePermission("offers:write"), async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string);
     const {
       titleEn, titleAr, descriptionEn, descriptionAr, imageUrl,
       discountPercent, originalPrice, discountedPrice, currency,
@@ -387,11 +406,14 @@ router.put("/admin/offers/:id", async (req, res) => {
       .where(eq(offersTable.id, id))
       .returning();
 
-    if (!updated) return res.status(404).json({ error: "Offer not found" });
+    if (!updated) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
     res.json({ offer: updated });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Server error" });
+    req.log.error({ err }, "Failed to edit offer");
+    res.status(500).json({ error: "internal_error" });
   }
 });
 

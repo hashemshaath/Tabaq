@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { platformSettingsTable } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
-import { requireAuth } from "../middleware/requireAuth.js";
+import { requirePermission } from "../middleware/requireAuth.js";
 
 const router: IRouter = Router();
 
@@ -51,7 +51,7 @@ function maskSecret(value: string): string {
 // ─── GET /api/admin/platform-settings ─────────────────────────────────────────
 // Returns all platform settings, merging DB values with defaults.
 // Secret values are masked unless ?reveal=1 is passed (admin only).
-router.get("/admin/platform-settings", requireAuth, async (req, res) => {
+router.get("/admin/platform-settings", requirePermission("settings:read"), async (req, res) => {
   try {
     const reveal = req.query.reveal === "1";
     const dbRows = await db.select().from(platformSettingsTable);
@@ -85,9 +85,8 @@ router.get("/admin/platform-settings", requireAuth, async (req, res) => {
 
 // ─── PUT /api/admin/platform-settings ─────────────────────────────────────────
 // Upsert one or more settings.  Body: { settings: { [key]: value } }
-router.put("/admin/platform-settings", requireAuth, async (req, res) => {
+router.put("/admin/platform-settings", requirePermission("settings:write"), async (req, res) => {
   try {
-    const userId = req.auth!.userId;
     const { settings } = req.body as { settings: Record<string, string> };
 
     if (!settings || typeof settings !== "object") {
@@ -115,7 +114,7 @@ router.put("/admin/platform-settings", requireAuth, async (req, res) => {
       if (existing.length > 0) {
         await db
           .update(platformSettingsTable)
-          .set({ value: String(value), updatedBy: userId, updatedAt: new Date() })
+          .set({ value: String(value), updatedBy: null, updatedAt: new Date() })
           .where(eq(platformSettingsTable.key, key));
       } else {
         await db
@@ -125,7 +124,7 @@ router.put("/admin/platform-settings", requireAuth, async (req, res) => {
             value: String(value),
             category: def.category,
             isSecret: def.isSecret,
-            updatedBy: userId,
+            updatedBy: null,
           })
           .onConflictDoNothing();
       }

@@ -1,13 +1,13 @@
 import { Router, type IRouter } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
-import { requireAuth } from "../middleware/requireAuth.js";
+import { requirePermission } from "../middleware/requireAuth.js";
 import { aiRateLimiter } from "../middleware/rateLimiter.js";
 
 const router: IRouter = Router();
 
 // ─── POST /api/admin/ai/generate-content ──────────────────────────────────────
 // Generate copy content for restaurants, experiences, offers, or blog posts.
-router.post("/admin/ai/generate-content", requireAuth, aiRateLimiter, async (req, res) => {
+router.post("/admin/ai/generate-content", requirePermission("ai:use"), aiRateLimiter, async (req, res) => {
   try {
     const { type, context, lang = "both" } = req.body as {
       type: "restaurant_description" | "experience_description" | "offer_copy" | "blog_intro" | "seo_meta";
@@ -92,7 +92,7 @@ Keep title under 60 chars, description under 160 chars.`,
 
 // ─── POST /api/admin/ai/seo-suggestions ───────────────────────────────────────
 // Get AI-powered SEO improvement suggestions for a page.
-router.post("/admin/ai/seo-suggestions", requireAuth, aiRateLimiter, async (req, res) => {
+router.post("/admin/ai/seo-suggestions", requirePermission("ai:use"), aiRateLimiter, async (req, res) => {
   try {
     const { pageType, currentTitle, currentDescription, currentKeywords, url } = req.body as {
       pageType: string;

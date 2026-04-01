@@ -1,5 +1,49 @@
 # Tabaq | طبق — Workspace
 
+## Admin Auth Hardening & 2FA (Task #2 — April 2026)
+
+### Overview
+Fully separate, hardened admin identity system — completely isolated from user accounts.
+
+### New Schema (lib/db/src/schema/admin.ts)
+- `admin_users` table: adm_uid, email, password_hash, role, status, two_factor_enabled, two_factor_secret, backup_codes (hashed), ip_allowlist, failed_login_count, locked_until, session tracking
+- `admin_sessions` table: ses_uid, adm_uid, ip, user_agent, expires_at, revoked_at
+- `audit_log` table: adm_uid, action, entity_type, entity_uid, ip, metadata
+
+### New Admin Auth Library (artifacts/api-server/src/lib/admin-auth.ts)
+- `signAdminToken` / `verifyAdminToken` — 8h JWT with type: "admin", role, permissions[], session_id
+- `signPartialToken` / `verifyPartialToken` — 5min JWT for 2FA pending state
+- `PERMISSION_MATRIX` — maps SUPER_ADMIN/ADMIN/FINANCE/SUPPORT/VIEWER → permission arrays
+- TOTP helpers via `otpauth` package: generateTotpSecret, verifyTotp (±1 window), generateBackupCodes/hashBackupCode
+
+### New Admin Auth Routes (artifacts/api-server/src/routes/admin-auth.ts)
+- `POST /api/v1/admin/auth/setup` — first-admin bootstrap using ADMIN_SETUP_SECRET env; 404 if not set, 403 if admin already exists
+- `POST /api/v1/admin/auth/login` — IP allowlist → status → lockout → bcrypt → 2FA branch; returns partial token or full JWT; generic error for all failures; 5 failed attempts → 30min lockout
+- `POST /api/v1/admin/auth/2fa/verify` — TOTP with ±1 window, backup code support, max 3 attempts; increments partial token attempts
+- `POST /api/v1/admin/auth/2fa/setup` — generates TOTP secret + otpauth URL
+- `POST /api/v1/admin/auth/2fa/confirm-setup` — verifies first TOTP, enables 2FA, returns 10 raw backup codes once (stored hashed)
+- `GET /api/v1/admin/auth/sessions` — list active sessions for current admin
+- `DELETE /api/v1/admin/auth/sessions/:sesUid` — revoke specific session
+- `DELETE /api/v1/admin/auth/sessions/all` — emergency revoke all sessions
+
+### Updated Middleware (artifacts/api-server/src/middleware/requireAuth.ts)
+- `requirePermission(permission)` — new middleware factory: verifies admin JWT, checks session not revoked/expired, enforces permission matrix, writes every request to audit_log, sets req.adminAuth
+
+### Updated Admin Routes (all use requirePermission now)
+- admin-stats: "admin:read"
+- admin-finance: "finance:read"
+- admin-offers: "offers:read"
+- admin-referrals: "referrals:read"
+- admin-experiences: "experiences:read"
+- admin-settings: "settings:read" / "settings:write"
+- ai-admin: "ai:use"
+
+### Environment Variables Required
+- `ADMIN_SETUP_SECRET` — must be set to enable the setup endpoint
+- `JWT_SECRET` — shared with regular auth (admin JWTs use separate type claim)
+
+---
+
 ## Audit Fixes (All 11 Implemented — April 2026)
 
 ### FIX 1: Invoice Wiring

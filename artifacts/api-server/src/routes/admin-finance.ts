@@ -8,17 +8,14 @@ import {
 import { calculateTax } from "../lib/tax.js";
 import { eq, desc, and, gte, lte, sql, count, sum, isNull } from "drizzle-orm";
 import { generateRefCode } from "../lib/refcode.js";
-import { requireAdmin } from "../middleware/requireAuth.js";
+import { requirePermission } from "../middleware/requireAuth.js";
 
 const router = Router();
-
-// Protect all /admin/* routes
-router.use(/^\/admin/, requireAdmin);
 
 // ─── CONTRACTS ────────────────────────────────────────────────────────────────
 
 // List all contracts
-router.get("/admin/contracts", async (req, res) => {
+router.get("/admin/contracts", requirePermission("finance:read"), async (req, res) => {
   try {
     const contracts = await db
       .select({
@@ -52,7 +49,7 @@ router.get("/admin/contracts", async (req, res) => {
 });
 
 // Get a single contract
-router.get("/admin/contracts/:id", async (req, res) => {
+router.get("/admin/contracts/:id", requirePermission("finance:read"), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const [contract] = await db
@@ -69,7 +66,7 @@ router.get("/admin/contracts/:id", async (req, res) => {
 });
 
 // Create a contract for a restaurant
-router.post("/admin/contracts", async (req, res) => {
+router.post("/admin/contracts", requirePermission("finance:write"), async (req, res) => {
   try {
     const {
       restaurantId, paymentModel, commissionPercent, partialCollectionPercent,
@@ -111,7 +108,7 @@ router.post("/admin/contracts", async (req, res) => {
 });
 
 // Update a contract
-router.put("/admin/contracts/:id", async (req, res) => {
+router.put("/admin/contracts/:id", requirePermission("finance:write"), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const {
@@ -144,7 +141,7 @@ router.put("/admin/contracts/:id", async (req, res) => {
 });
 
 // Approve (activate) a contract
-router.patch("/admin/contracts/:id/approve", async (req, res) => {
+router.patch("/admin/contracts/:id/approve", requirePermission("finance:write"), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const [updated] = await db
@@ -161,7 +158,7 @@ router.patch("/admin/contracts/:id/approve", async (req, res) => {
 });
 
 // Suspend / terminate a contract
-router.patch("/admin/contracts/:id/status", async (req, res) => {
+router.patch("/admin/contracts/:id/status", requirePermission("finance:write"), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const { status } = req.body as { status: "suspended" | "terminated" | "active" | "draft" };
@@ -181,7 +178,7 @@ router.patch("/admin/contracts/:id/status", async (req, res) => {
 });
 
 // Get contract for a specific restaurant (admin or owner view)
-router.get("/restaurants/:restaurantId/contract", async (req, res) => {
+router.get("/restaurants/:restaurantId/contract", requirePermission("finance:read"), async (req, res) => {
   try {
     const restaurantId = parseInt(req.params.restaurantId);
     const [contract] = await db
@@ -201,7 +198,7 @@ router.get("/restaurants/:restaurantId/contract", async (req, res) => {
 // ─── TRANSACTIONS ─────────────────────────────────────────────────────────────
 
 // List transactions (financial ledger)
-router.get("/admin/transactions", async (req, res) => {
+router.get("/admin/transactions", requirePermission("finance:read"), async (req, res) => {
   try {
     const {
       restaurantId, type, status, from, to,
@@ -271,7 +268,7 @@ router.get("/admin/transactions", async (req, res) => {
 });
 
 // Create a transaction (internal use — called when vouchers are redeemed/purchased)
-router.post("/admin/transactions", async (req, res) => {
+router.post("/admin/transactions", requirePermission("finance:write"), async (req, res) => {
   try {
     const {
       type, restaurantId, userId, grossAmount, commissionPercent,
@@ -325,7 +322,7 @@ router.post("/admin/transactions", async (req, res) => {
 });
 
 // Mark a transaction as settled
-router.patch("/admin/transactions/:id/settle", async (req, res) => {
+router.patch("/admin/transactions/:id/settle", requirePermission("finance:write"), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const [updated] = await db
@@ -344,7 +341,7 @@ router.patch("/admin/transactions/:id/settle", async (req, res) => {
 // ─── INVOICES ─────────────────────────────────────────────────────────────────
 
 // List invoices
-router.get("/admin/invoices", async (req, res) => {
+router.get("/admin/invoices", requirePermission("finance:read"), async (req, res) => {
   try {
     const { restaurantId, status } = req.query;
 
@@ -384,7 +381,7 @@ router.get("/admin/invoices", async (req, res) => {
 });
 
 // Generate an invoice for a restaurant (for a given period)
-router.post("/admin/invoices/generate", async (req, res) => {
+router.post("/admin/invoices/generate", requirePermission("finance:write"), async (req, res) => {
   try {
     const { restaurantId, periodStart, periodEnd, contractId, dueDate, notes } = req.body;
 
@@ -439,7 +436,7 @@ router.post("/admin/invoices/generate", async (req, res) => {
 });
 
 // Update invoice status
-router.patch("/admin/invoices/:id/status", async (req, res) => {
+router.patch("/admin/invoices/:id/status", requirePermission("finance:write"), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const { status, notes } = req.body;
@@ -466,7 +463,7 @@ router.patch("/admin/invoices/:id/status", async (req, res) => {
 // ─── ADMIN MESSAGES ───────────────────────────────────────────────────────────
 
 // List messages (admin outbox or per-restaurant inbox)
-router.get("/admin/messages", async (req, res) => {
+router.get("/admin/messages", requirePermission("admin:read"), async (req, res) => {
   try {
     const { restaurantId, type } = req.query;
 
@@ -501,7 +498,7 @@ router.get("/admin/messages", async (req, res) => {
 });
 
 // Send a message to a restaurant
-router.post("/admin/messages", async (req, res) => {
+router.post("/admin/messages", requirePermission("admin:write"), async (req, res) => {
   try {
     const { restaurantId, subject, body, type, relatedOfferId, relatedContractId, relatedInvoiceId } = req.body;
 
@@ -535,7 +532,7 @@ router.post("/admin/messages", async (req, res) => {
 });
 
 // Restaurant marks a message as read
-router.patch("/admin/messages/:id/read", async (req, res) => {
+router.patch("/admin/messages/:id/read", requirePermission("admin:write"), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const [updated] = await db
@@ -567,7 +564,7 @@ router.patch("/admin/messages/:id/read", async (req, res) => {
  *
  * Returns a summary: { processed, skipped, errors }.
  */
-router.post("/admin/invoices/backfill-tax", async (_req, res) => {
+router.post("/admin/invoices/backfill-tax", requirePermission("finance:write"), async (_req, res) => {
   try {
     // Find order invoices with no tax breakdown (taxAmount is null or '0')
     const untaxed = await db
