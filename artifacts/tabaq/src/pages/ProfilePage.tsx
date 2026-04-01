@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getAuthHeaders } from "@/lib/api";
+import { getAuthHeaders, API_BASE } from "@/lib/api";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -545,42 +545,42 @@ export function ProfilePage() {
   // Real API queries for profile features
   const { data: checkInsData, refetch: refetchCheckIns } = useQuery({
     queryKey: ["me-checkins"],
-    queryFn: async () => { const r = await fetch("/api/me/checkins", { headers: getAuthHeaders() }); return r.ok ? r.json() : []; },
+    queryFn: async () => { const r = await fetch(`${API_BASE}/api/me/checkins`, { headers: getAuthHeaders() }); return r.ok ? r.json() : []; },
     enabled: !!authUser,
   });
   const { data: plansData, refetch: refetchPlans } = useQuery({
     queryKey: ["me-plans"],
-    queryFn: async () => { const r = await fetch("/api/me/plans", { headers: getAuthHeaders() }); return r.ok ? r.json() : []; },
+    queryFn: async () => { const r = await fetch(`${API_BASE}/api/me/plans`, { headers: getAuthHeaders() }); return r.ok ? r.json() : []; },
     enabled: !!authUser,
   });
   const { data: savedRestaurantsData } = useQuery({
     queryKey: ["me-saved-restaurants"],
-    queryFn: async () => { const r = await fetch("/api/me/saved-restaurants", { headers: getAuthHeaders() }); return r.ok ? r.json() : []; },
+    queryFn: async () => { const r = await fetch(`${API_BASE}/api/me/saved-restaurants`, { headers: getAuthHeaders() }); return r.ok ? r.json() : []; },
     enabled: !!authUser,
   });
   const { data: savedDishesData, refetch: refetchSavedDishes } = useQuery({
     queryKey: ["me-saved-dishes"],
-    queryFn: async () => { const r = await fetch("/api/me/saved-dishes", { headers: getAuthHeaders() }); return r.ok ? r.json() : []; },
+    queryFn: async () => { const r = await fetch(`${API_BASE}/api/me/saved-dishes`, { headers: getAuthHeaders() }); return r.ok ? r.json() : []; },
     enabled: !!authUser,
   });
   const { data: recommendationsData, refetch: refetchRecs } = useQuery({
     queryKey: ["me-recommendations"],
-    queryFn: async () => { const r = await fetch("/api/me/recommendations", { headers: getAuthHeaders() }); return r.ok ? r.json() : []; },
+    queryFn: async () => { const r = await fetch(`${API_BASE}/api/me/recommendations`, { headers: getAuthHeaders() }); return r.ok ? r.json() : []; },
     enabled: !!authUser,
   });
   const { data: reviewsData } = useQuery({
     queryKey: ["user-reviews", userId],
-    queryFn: async () => { const r = await fetch(`/api/users/${userId}/reviews`); return r.ok ? r.json() : []; },
+    queryFn: async () => { const r = await fetch(`${API_BASE}/api/users/${userId}/reviews`); return r.ok ? r.json() : []; },
     enabled: !!authUser && userId > 0,
   });
   const { data: blockedUsersData, refetch: refetchBlocked } = useQuery({
     queryKey: ["me-blocked-users"],
-    queryFn: async () => { const r = await fetch("/api/me/blocked-users", { headers: getAuthHeaders() }); return r.ok ? r.json() : []; },
+    queryFn: async () => { const r = await fetch(`${API_BASE}/api/me/blocked-users`, { headers: getAuthHeaders() }); return r.ok ? r.json() : []; },
     enabled: !!authUser && tab === "settings",
   });
   const { data: contentPrivacyData, refetch: refetchContentPrivacy } = useQuery({
     queryKey: ["me-content-privacy"],
-    queryFn: async () => { const r = await fetch("/api/me/content-privacy", { headers: getAuthHeaders() }); return r.ok ? r.json() : null; },
+    queryFn: async () => { const r = await fetch(`${API_BASE}/api/me/content-privacy`, { headers: getAuthHeaders() }); return r.ok ? r.json() : null; },
     enabled: !!authUser,
   });
 
@@ -589,7 +589,7 @@ export function ProfilePage() {
   const followMutation = useMutation({
     mutationFn: async ({ targetId, action }: { targetId: number; action: "follow" | "unfollow" }) => {
       const method = action === "follow" ? "POST" : "DELETE";
-      await fetch(`/api/users/${targetId}/follow`, { method, headers: getAuthHeaders() });
+      await fetch(`${API_BASE}/api/users/${targetId}/follow`, { method, headers: getAuthHeaders() });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: getGetUserFollowersQueryKey(userId) });
@@ -600,7 +600,7 @@ export function ProfilePage() {
 
   const unblockMutation = useMutation({
     mutationFn: async (targetId: number) => {
-      await fetch(`/api/users/${targetId}/block`, { method: "DELETE", headers: getAuthHeaders() });
+      await fetch(`${API_BASE}/api/users/${targetId}/block`, { method: "DELETE", headers: getAuthHeaders() });
     },
     onSuccess: () => refetchBlocked(),
   });
@@ -608,7 +608,7 @@ export function ProfilePage() {
   const deletePlanMutation = useMutation({
     mutationFn: async (planId: number) => {
       if (authUser) {
-        await fetch(`/api/me/plans/${planId}`, { method: "DELETE", headers: getAuthHeaders() });
+        await fetch(`${API_BASE}/api/me/plans/${planId}`, { method: "DELETE", headers: getAuthHeaders() });
         refetchPlans();
       } else {
         setLocalPlans(prev => prev.filter(p => p.id !== planId));
@@ -619,7 +619,7 @@ export function ProfilePage() {
   const deleteCheckInMutation = useMutation({
     mutationFn: async (checkInId: number) => {
       if (authUser) {
-        await fetch(`/api/me/checkins/${checkInId}`, { method: "DELETE", headers: getAuthHeaders() });
+        await fetch(`${API_BASE}/api/me/checkins/${checkInId}`, { method: "DELETE", headers: getAuthHeaders() });
         refetchCheckIns();
       } else {
         setLocalCheckIns(prev => prev.filter(c => c.id !== checkInId));
@@ -630,7 +630,7 @@ export function ProfilePage() {
   const togglePlanStatus = useMutation({
     mutationFn: async ({ id, status }: { id: number; status: string }) => {
       if (authUser) {
-        await fetch(`/api/me/plans/${id}`, { method: "PATCH", headers: getAuthHeaders(), body: JSON.stringify({ status }) });
+        await fetch(`${API_BASE}/api/me/plans/${id}`, { method: "PATCH", headers: getAuthHeaders(), body: JSON.stringify({ status }) });
         refetchPlans();
       } else {
         setLocalPlans(prev => prev.map(p => p.id === id ? { ...p, status } : p));
@@ -661,7 +661,7 @@ export function ProfilePage() {
     setUsernameStatus("checking"); setUsernameError(null);
     debounceRef.current = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/username/check?username=${encodeURIComponent(val)}`);
+        const res = await fetch(`${API_BASE}/api/username/check?username=${encodeURIComponent(val)}`);
         const json = await res.json();
         setUsernameStatus(json.available ? "available" : "taken");
         if (!json.available) setUsernameError("This username is already taken");
@@ -673,7 +673,7 @@ export function ProfilePage() {
     if (usernameStatus !== "available") return;
     setUsernameSaving(true);
     try {
-      const res = await fetch("/api/me/username", { method: "POST", headers: getAuthHeaders(), body: JSON.stringify({ username: usernameInput.trim().toLowerCase() }) });
+      const res = await fetch(`${API_BASE}/api/me/username`, { method: "POST", headers: getAuthHeaders(), body: JSON.stringify({ username: usernameInput.trim().toLowerCase() }) });
       if (res.ok) { setUsernameSaved(true); setUsernameStatus("idle"); refetchUser(); setTimeout(() => setUsernameSaved(false), 3000); }
       else { const err = await res.json(); setUsernameError(err?.message || "Failed to save username"); }
     } catch { setUsernameError("Network error — please try again"); }
@@ -683,20 +683,20 @@ export function ProfilePage() {
   const handlePrivacyToggle = async () => {
     const next = !isPrivate;
     setIsPrivate(next);
-    if (authUser) await fetch("/api/me/privacy", { method: "PATCH", headers: getAuthHeaders(), body: JSON.stringify({ isPrivate: next }) });
+    if (authUser) await fetch(`${API_BASE}/api/me/privacy`, { method: "PATCH", headers: getAuthHeaders(), body: JSON.stringify({ isPrivate: next }) });
   };
 
   const handleSaveContentPrivacy = async () => {
     setPrivacySaving(true);
     try {
-      if (authUser) await fetch("/api/me/content-privacy", { method: "PUT", headers: getAuthHeaders(), body: JSON.stringify(contentPrivacy) });
+      if (authUser) await fetch(`${API_BASE}/api/me/content-privacy`, { method: "PUT", headers: getAuthHeaders(), body: JSON.stringify(contentPrivacy) });
       setPrivacySaved(true); setTimeout(() => setPrivacySaved(false), 3000);
     } finally { setPrivacySaving(false); }
   };
 
   const handleAddCheckIn = async (data: any) => {
     if (authUser) {
-      await fetch("/api/me/checkins", { method: "POST", headers: getAuthHeaders(), body: JSON.stringify({ restaurantId: data.restaurantId, visitDate: data.visitDate, visitTime: data.visitTime, partySize: data.partySize, notes: data.notes, companionNames: data.companionNames }) });
+      await fetch(`${API_BASE}/api/me/checkins`, { method: "POST", headers: getAuthHeaders(), body: JSON.stringify({ restaurantId: data.restaurantId, visitDate: data.visitDate, visitTime: data.visitTime, partySize: data.partySize, notes: data.notes, companionNames: data.companionNames }) });
       refetchCheckIns();
     } else {
       setLocalCheckIns(prev => [{ id: Date.now(), restaurantId: data.restaurantId, restaurantNameEn: data.restaurantName, restaurantNameAr: data.restaurantName, restaurantCoverImage: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400&h=300&fit=crop", restaurantCuisineEn: "Restaurant", visitDate: data.visitDate, visitTime: data.visitTime, partySize: data.partySize, notes: data.notes, companionNames: data.companionNames }, ...prev]);
@@ -705,7 +705,7 @@ export function ProfilePage() {
 
   const handleAddPlan = async (data: any) => {
     if (authUser) {
-      await fetch("/api/me/plans", { method: "POST", headers: getAuthHeaders(), body: JSON.stringify(data) });
+      await fetch(`${API_BASE}/api/me/plans`, { method: "POST", headers: getAuthHeaders(), body: JSON.stringify(data) });
       refetchPlans();
     } else {
       setLocalPlans(prev => [{ id: Date.now(), restaurantId: data.restaurantId, restaurantNameEn: data.restaurantName, restaurantNameAr: data.restaurantName, restaurantCoverImage: null, title: data.title, plannedDate: data.plannedDate, notes: data.notes, priority: data.priority, status: "active", themeLabel: data.themeLabel || null, reminderEnabled: data.reminderEnabled }, ...prev]);
@@ -800,7 +800,7 @@ export function ProfilePage() {
       {/* Dialogs */}
       {showCheckInDialog && <CheckInDialog onClose={() => setShowCheckInDialog(false)} onSave={handleAddCheckIn} t={t} lang={lang} />}
       {showPlanDialog && <PlanDialog onClose={() => setShowPlanDialog(false)} onSave={handleAddPlan} t={t} lang={lang} />}
-      {showEditProfile && <EditProfileDialog user={user} onClose={() => setShowEditProfile(false)} onSave={async (d) => { if (authUser) { await fetch("/api/me/profile", { method: "PATCH", headers: getAuthHeaders(), body: JSON.stringify(d) }); refetchUser(); } }} t={t} lang={lang} />}
+      {showEditProfile && <EditProfileDialog user={user} onClose={() => setShowEditProfile(false)} onSave={async (d) => { if (authUser) { await fetch(`${API_BASE}/api/me/profile`, { method: "PATCH", headers: getAuthHeaders(), body: JSON.stringify(d) }); refetchUser(); } }} t={t} lang={lang} />}
       {/* Share modal */}
       {showShareModal && currentUsername && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
@@ -1369,7 +1369,7 @@ export function ProfilePage() {
                           </Link>
                           <button
                             onClick={async () => {
-                              if (authUser) { await fetch(`/api/me/saved-restaurants/${r.id ?? r.restaurantId}`, { method: "DELETE", headers: getAuthHeaders() }); queryClient.invalidateQueries({ queryKey: ["me-saved-restaurants"] }); }
+                              if (authUser) { await fetch(`${API_BASE}/api/me/saved-restaurants/${r.id ?? r.restaurantId}`, { method: "DELETE", headers: getAuthHeaders() }); queryClient.invalidateQueries({ queryKey: ["me-saved-restaurants"] }); }
                             }}
                             className="w-8 h-8 rounded-full hover:bg-rose-100 hover:text-rose-600 flex items-center justify-center transition-colors">
                             <Heart className="w-4 h-4 fill-rose-500 text-rose-500" />
@@ -1406,7 +1406,7 @@ export function ProfilePage() {
                         </div>
                         <button
                           onClick={async () => {
-                            if (authUser) { await fetch(`/api/me/saved-dishes/${d.dishId}`, { method: "DELETE", headers: getAuthHeaders() }); refetchSavedDishes(); }
+                            if (authUser) { await fetch(`${API_BASE}/api/me/saved-dishes/${d.dishId}`, { method: "DELETE", headers: getAuthHeaders() }); refetchSavedDishes(); }
                           }}
                           className="shrink-0 w-8 h-8 rounded-full hover:bg-rose-100 hover:text-rose-600 flex items-center justify-center self-start transition-colors">
                           <Heart className="w-4 h-4 fill-rose-500 text-rose-500" />
@@ -1582,7 +1582,7 @@ export function ProfilePage() {
                             </button>
                             <button
                               onClick={async () => {
-                                if (authUser) { await fetch(`/api/me/recommendations/${rec.id}`, { method: "DELETE", headers: getAuthHeaders() }); refetchRecs(); }
+                                if (authUser) { await fetch(`${API_BASE}/api/me/recommendations/${rec.id}`, { method: "DELETE", headers: getAuthHeaders() }); refetchRecs(); }
                               }}
                               className="w-7 h-7 rounded-full hover:bg-destructive/10 hover:text-destructive flex items-center justify-center transition-colors">
                               <Trash2 className="w-3.5 h-3.5" />
@@ -1692,7 +1692,7 @@ export function ProfilePage() {
                           </Button>
                         )}
                         <button
-                          onClick={async () => { if (authUser) { await fetch(`/api/users/${f.id}/block`, { method: "POST", headers: getAuthHeaders() }); queryClient.invalidateQueries({ queryKey: getGetUserFollowersQueryKey(userId) }); } }}
+                          onClick={async () => { if (authUser) { await fetch(`${API_BASE}/api/users/${f.id}/block`, { method: "POST", headers: getAuthHeaders() }); queryClient.invalidateQueries({ queryKey: getGetUserFollowersQueryKey(userId) }); } }}
                           className="w-8 h-8 rounded-full hover:bg-destructive/10 hover:text-destructive flex items-center justify-center text-muted-foreground transition-colors"
                           title={t("Block user", "حظر المستخدم")}>
                           <Ban className="w-3.5 h-3.5" />

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { getAuthHeaders } from '@/lib/api';
+import { getAuthHeaders, API_BASE } from '@/lib/api';
 import { useLanguage } from '@/hooks/use-language';
 import { Link } from 'wouter';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -106,7 +106,7 @@ export function BusinessConsolePage() {
   const { data: myRestaurantData, isLoading: restaurantLoading } = useQuery({
     queryKey: ['me-restaurant'],
     queryFn: async () => {
-      const res = await fetch('/api/me/restaurant', { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/api/me/restaurant`, { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -119,7 +119,7 @@ export function BusinessConsolePage() {
   const { data: campaignsData, refetch: refetchCampaigns } = useQuery({
     queryKey: ['console-campaigns', RESTAURANT_ID],
     queryFn: async () => {
-      const res = await fetch(`/api/campaigns?restaurantId=${RESTAURANT_ID}`, { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/api/campaigns?restaurantId=${RESTAURANT_ID}`, { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -130,7 +130,7 @@ export function BusinessConsolePage() {
   const { data: vouchersData } = useQuery({
     queryKey: ['console-vouchers', RESTAURANT_ID],
     queryFn: async () => {
-      const res = await fetch(`/api/redemptions?restaurantId=${RESTAURANT_ID}`, { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/api/redemptions?restaurantId=${RESTAURANT_ID}`, { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -141,7 +141,7 @@ export function BusinessConsolePage() {
   const { data: statsData } = useQuery({
     queryKey: ['console-stats', RESTAURANT_ID],
     queryFn: async () => {
-      const res = await fetch(`/api/admin/stats`, { headers: getAuthHeaders() }); // In production this would be restaurant specific
+      const res = await fetch(`${API_BASE}/api/admin/stats`, { headers: getAuthHeaders() }); // In production this would be restaurant specific
       if (!res.ok) return null;
       return res.json();
     },
@@ -152,7 +152,7 @@ export function BusinessConsolePage() {
   const { data: crmData, isLoading: crmLoading } = useQuery({
     queryKey: ['crm-overview', RESTAURANT_ID],
     queryFn: async () => {
-      const res = await fetch(`/api/analytics/restaurant/${RESTAURANT_ID}/overview`, { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/api/analytics/restaurant/${RESTAURANT_ID}/overview`, { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -177,7 +177,7 @@ export function BusinessConsolePage() {
   const { data: bookingsData } = useQuery({
     queryKey: ['console-bookings', RESTAURANT_ID],
     queryFn: async () => {
-      const res = await fetch(`/api/restaurants/${RESTAURANT_ID}/bookings?limit=50`, { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/api/restaurants/${RESTAURANT_ID}/bookings?limit=50`, { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -189,7 +189,7 @@ export function BusinessConsolePage() {
   const { data: reviewsData } = useQuery({
     queryKey: ['console-reviews', RESTAURANT_ID],
     queryFn: async () => {
-      const res = await fetch(`/api/reviews?restaurantId=${RESTAURANT_ID}&limit=20`, { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/api/reviews?restaurantId=${RESTAURANT_ID}&limit=20`, { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -201,7 +201,7 @@ export function BusinessConsolePage() {
   const { data: contractData } = useQuery({
     queryKey: ['console-contract', RESTAURANT_ID],
     queryFn: async () => {
-      const res = await fetch(`/api/restaurants/${RESTAURANT_ID}/contract`, { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/api/restaurants/${RESTAURANT_ID}/contract`, { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -248,7 +248,7 @@ export function BusinessConsolePage() {
 
   const createOfferMutation = useMutation({
     mutationFn: async (body: Record<string, any>) => {
-      const res = await fetch('/api/admin/offers', {
+      const res = await fetch(`${API_BASE}/api/admin/offers`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(body)
@@ -2000,7 +2000,7 @@ export function BusinessConsolePage() {
                               <p className="text-xs text-muted-foreground">{t('Redeemed', 'استُخدم')}</p>
                             </div>
                             <button
-                              onClick={() => { fetch(`/api/campaigns/${offer.id}`, { method: 'PATCH', headers: getAuthHeaders(), body: JSON.stringify({ isActive: !offer.isActive }) }).then(() => refetchCampaigns()); }}
+                              onClick={() => { fetch(`${API_BASE}/api/campaigns/${offer.id}`, { method: 'PATCH', headers: getAuthHeaders(), body: JSON.stringify({ isActive: !offer.isActive }) }).then(() => refetchCampaigns()); }}
                               className={`relative w-11 h-6 rounded-full transition-all duration-300 shrink-0 ${offer.isActive ? 'bg-primary' : 'bg-muted'}`}
                             >
                               <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-all duration-300 ${offer.isActive ? 'start-[22px]' : 'start-0.5'}`} />

@@ -309,7 +309,7 @@ function FollowListModal({
   const { data, isLoading, refetch } = useQuery({
     queryKey: [`follow-list`, userId, type],
     queryFn: async () => {
-      const r = await fetch(`/api/users/${userId}/${type}`, { headers: getAuthHeaders() });
+      const r = await fetch(`${API_BASE}/api/users/${userId}/${type}`, { headers: getAuthHeaders() });
       return r.ok ? r.json() : [];
     },
   });
@@ -321,14 +321,14 @@ function FollowListModal({
 
   const removeFollowerMut = useMutation({
     mutationFn: async (followerId: number) => {
-      await fetch(`/api/users/${followerId}/follow`, { method: "DELETE", headers: getAuthHeaders() });
+      await fetch(`${API_BASE}/api/users/${followerId}/follow`, { method: "DELETE", headers: getAuthHeaders() });
     },
     onSuccess: () => { refetch(); qc.invalidateQueries({ queryKey: ["profile"] }); toast.success(t("Follower removed", "تمت إزالة المتابع")); },
   });
 
   const followToggleMut = useMutation({
     mutationFn: async ({ targetId, isFollowing }: { targetId: number; isFollowing: boolean }) => {
-      await fetch(`/api/users/${targetId}/follow`, {
+      await fetch(`${API_BASE}/api/users/${targetId}/follow`, {
         method: isFollowing ? "DELETE" : "POST",
         headers: { "Content-Type": "application/json", ...getAuthHeaders() },
       });
@@ -338,7 +338,7 @@ function FollowListModal({
 
   const blockMut = useMutation({
     mutationFn: async (targetId: number) => {
-      await fetch(`/api/users/${targetId}/block`, { method: "POST", headers: getAuthHeaders() });
+      await fetch(`${API_BASE}/api/users/${targetId}/block`, { method: "POST", headers: getAuthHeaders() });
     },
     onSuccess: () => { refetch(); toast.success(t("User blocked", "تم حظر المستخدم")); },
   });
@@ -442,7 +442,7 @@ function FollowRequestsPanel({ lang, onDone }: { lang: string; onDone: () => voi
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["follow-requests"],
     queryFn: async () => {
-      const r = await fetch("/api/me/follow-requests", { headers: getAuthHeaders() });
+      const r = await fetch(`${API_BASE}/api/me/follow-requests`, { headers: getAuthHeaders() });
       return r.ok ? r.json() : { requests: [] };
     },
   });
@@ -527,7 +527,7 @@ function VerificationModal({ lang, onClose }: { lang: string; onClose: () => voi
   const { data: existingReqData } = useQuery({
     queryKey: ["my-verification-request"],
     queryFn: async () => {
-      const r = await fetch("/api/me/verification-request", { headers: getAuthHeaders() });
+      const r = await fetch(`${API_BASE}/api/me/verification-request`, { headers: getAuthHeaders() });
       return r.ok ? r.json() : null;
     },
   });
@@ -536,7 +536,7 @@ function VerificationModal({ lang, onClose }: { lang: string; onClose: () => voi
 
   const submitMut = useMutation({
     mutationFn: async () => {
-      const r = await fetch("/api/me/verification-request", {
+      const r = await fetch(`${API_BASE}/api/me/verification-request`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...getAuthHeaders() },
         body: JSON.stringify({ method, noteFromUser: note }),
@@ -1009,7 +1009,7 @@ function LogCheckinModal({ lang, onClose, onSave }: {
   const { data: restList } = useQuery({
     queryKey: ["restaurants-mini"],
     queryFn: async () => {
-      const r = await fetch("/api/restaurants?limit=20");
+      const r = await fetch(`${API_BASE}/api/restaurants?limit=20`);
       return r.ok ? r.json() : { restaurants: [] };
     },
     staleTime: 120000,
@@ -1155,7 +1155,7 @@ function CreatePlanModal({ lang, onClose, onSave }: {
   const { data: restList } = useQuery({
     queryKey: ["restaurants-mini"],
     queryFn: async () => {
-      const r = await fetch("/api/restaurants?limit=20");
+      const r = await fetch(`${API_BASE}/api/restaurants?limit=20`);
       return r.ok ? r.json() : { restaurants: [] };
     },
     staleTime: 120000,
@@ -1299,7 +1299,7 @@ function SuggestedUsers({ t, lang }: { t: (en: string, ar: string) => string; la
   const { data } = useQuery({
     queryKey: ["suggested-users"],
     queryFn: async () => {
-      const r = await fetch("/api/users/suggested");
+      const r = await fetch(`${API_BASE}/api/users/suggested`);
       return r.ok ? r.json() : { users: [] };
     },
     staleTime: 60000,
@@ -1367,7 +1367,7 @@ export function PublicProfilePage() {
   const { data: pd, isLoading, error } = useQuery({
     queryKey: ["profile", username],
     queryFn: async () => {
-      const r = await fetch(`/api/users/by-username/${username}`, { headers: getAuthHeaders() });
+      const r = await fetch(`${API_BASE}/api/users/by-username/${username}`, { headers: getAuthHeaders() });
       if (!r.ok) throw new Error("not_found");
       return r.json();
     },
@@ -1398,7 +1398,7 @@ export function PublicProfilePage() {
     mutationFn: async () => {
       if (!user) return;
       const method = followStatus === "following" ? "DELETE" : "POST";
-      const r = await fetch(`/api/users/${user.id}/follow`, {
+      const r = await fetch(`${API_BASE}/api/users/${user.id}/follow`, {
         method,
         headers: { "Content-Type": "application/json", ...getAuthHeaders() },
       });
@@ -1412,7 +1412,7 @@ export function PublicProfilePage() {
   const blockMut = useMutation({
     mutationFn: async () => {
       if (!user) return;
-      const r = await fetch(`/api/users/${user.id}/block`, { method: "POST", headers: getAuthHeaders() });
+      const r = await fetch(`${API_BASE}/api/users/${user.id}/block`, { method: "POST", headers: getAuthHeaders() });
       if (!r.ok) throw new Error("Failed");
       return r.json();
     },
@@ -1427,7 +1427,7 @@ export function PublicProfilePage() {
   const muteMut = useMutation({
     mutationFn: async () => {
       if (!user) return;
-      const r = await fetch(`/api/me/mutes/user/${user.id}`, { method: "POST", headers: getAuthHeaders() });
+      const r = await fetch(`${API_BASE}/api/me/mutes/user/${user.id}`, { method: "POST", headers: getAuthHeaders() });
       if (!r.ok) throw new Error("Failed");
       return r.json();
     },
@@ -1441,7 +1441,7 @@ export function PublicProfilePage() {
   const { data: revData } = useQuery({
     queryKey: ["user-reviews", user?.id],
     queryFn: async () => {
-      const r = await fetch(`/api/users/${user!.id}/reviews`);
+      const r = await fetch(`${API_BASE}/api/users/${user!.id}/reviews`);
       return r.ok ? r.json() : { reviews: [] };
     },
     enabled: !!user?.id && (tab === "reviews" || tab === "overview"),
@@ -1451,7 +1451,7 @@ export function PublicProfilePage() {
   const { data: visitData } = useQuery({
     queryKey: ["user-visits", user?.id],
     queryFn: async () => {
-      const r = await fetch(`/api/bookings?limit=20`, { headers: getAuthHeaders() });
+      const r = await fetch(`${API_BASE}/api/bookings?limit=20`, { headers: getAuthHeaders() });
       return r.ok ? r.json() : { bookings: [] };
     },
     enabled: !!user?.id && isOwn && (tab === "visits" || tab === "activity"),
@@ -1461,7 +1461,7 @@ export function PublicProfilePage() {
   const { data: savedRestData } = useQuery({
     queryKey: ["saved-restaurants"],
     queryFn: async () => {
-      const r = await fetch("/api/me/saved-restaurants", { headers: getAuthHeaders() });
+      const r = await fetch(`${API_BASE}/api/me/saved-restaurants`, { headers: getAuthHeaders() });
       return r.ok ? r.json() : [];
     },
     enabled: isOwn && tab === "favorites",
@@ -1471,7 +1471,7 @@ export function PublicProfilePage() {
   const { data: savedDishData } = useQuery({
     queryKey: ["saved-dishes"],
     queryFn: async () => {
-      const r = await fetch("/api/me/saved-dishes", { headers: getAuthHeaders() });
+      const r = await fetch(`${API_BASE}/api/me/saved-dishes`, { headers: getAuthHeaders() });
       return r.ok ? r.json() : [];
     },
     enabled: isOwn && tab === "favorites",
@@ -1481,7 +1481,7 @@ export function PublicProfilePage() {
   const { data: plansData, refetch: refetchPlans } = useQuery({
     queryKey: ["user-plans", user?.id],
     queryFn: async () => {
-      const r = await fetch("/api/me/plans", { headers: getAuthHeaders() });
+      const r = await fetch(`${API_BASE}/api/me/plans`, { headers: getAuthHeaders() });
       return r.ok ? r.json() : [];
     },
     enabled: isOwn && (tab === "plans" || tab === "overview"),
@@ -1491,7 +1491,7 @@ export function PublicProfilePage() {
   const { data: checkinsData, refetch: refetchCheckins } = useQuery({
     queryKey: ["user-checkins", user?.id],
     queryFn: async () => {
-      const r = await fetch("/api/me/checkins", { headers: getAuthHeaders() });
+      const r = await fetch(`${API_BASE}/api/me/checkins`, { headers: getAuthHeaders() });
       return r.ok ? r.json() : [];
     },
     enabled: isOwn && (tab === "visits" || tab === "activity" || tab === "overview"),
@@ -1501,7 +1501,7 @@ export function PublicProfilePage() {
   const { data: recsData, refetch: refetchRecs } = useQuery({
     queryKey: ["user-recommendations", user?.id],
     queryFn: async () => {
-      const r = await fetch("/api/me/recommendations", { headers: getAuthHeaders() });
+      const r = await fetch(`${API_BASE}/api/me/recommendations`, { headers: getAuthHeaders() });
       return r.ok ? r.json() : [];
     },
     enabled: isOwn && tab === "recommendations",
@@ -1510,7 +1510,7 @@ export function PublicProfilePage() {
   // ── Upgrade mutation ─────────────────────────────────────────────────────────
   const upgradeMut = useMutation({
     mutationFn: async (accountType: AccountType) => {
-      const r = await fetch("/api/me/profile", {
+      const r = await fetch(`${API_BASE}/api/me/profile`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", ...getAuthHeaders() },
         body: JSON.stringify({ accountType }),
@@ -1532,7 +1532,7 @@ export function PublicProfilePage() {
   // ── Check-in mutations ───────────────────────────────────────────────────────
   const createCheckinMut = useMutation({
     mutationFn: async (data: any) => {
-      const r = await fetch("/api/me/checkins", {
+      const r = await fetch(`${API_BASE}/api/me/checkins`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...getAuthHeaders() },
         body: JSON.stringify({ ...data, restaurantId: parseInt(data.restaurantId, 10), partySize: parseInt(data.partySize, 10) || 1 }),
@@ -1545,7 +1545,7 @@ export function PublicProfilePage() {
 
   const deleteCheckinMut = useMutation({
     mutationFn: async (id: number) => {
-      await fetch(`/api/me/checkins/${id}`, { method: "DELETE", headers: getAuthHeaders() });
+      await fetch(`${API_BASE}/api/me/checkins/${id}`, { method: "DELETE", headers: getAuthHeaders() });
     },
     onSuccess: () => refetchCheckins(),
   });
@@ -1556,7 +1556,7 @@ export function PublicProfilePage() {
       const body: any = { ...data };
       if (data.restaurantId) body.restaurantId = parseInt(data.restaurantId, 10);
       else delete body.restaurantId;
-      const r = await fetch("/api/me/plans", {
+      const r = await fetch(`${API_BASE}/api/me/plans`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...getAuthHeaders() },
         body: JSON.stringify(body),
@@ -1569,14 +1569,14 @@ export function PublicProfilePage() {
 
   const deletePlanMut = useMutation({
     mutationFn: async (id: number) => {
-      await fetch(`/api/me/plans/${id}`, { method: "DELETE", headers: getAuthHeaders() });
+      await fetch(`${API_BASE}/api/me/plans/${id}`, { method: "DELETE", headers: getAuthHeaders() });
     },
     onSuccess: () => refetchPlans(),
   });
 
   const markPlanDoneMut = useMutation({
     mutationFn: async (id: number) => {
-      const r = await fetch(`/api/me/plans/${id}`, {
+      const r = await fetch(`${API_BASE}/api/me/plans/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", ...getAuthHeaders() },
         body: JSON.stringify({ status: "done" }),
@@ -1590,7 +1590,7 @@ export function PublicProfilePage() {
   // ── Remove saved restaurant ───────────────────────────────────────────────────
   const removeSavedRestMut = useMutation({
     mutationFn: async (restaurantId: number) => {
-      await fetch(`/api/me/saved-restaurants/${restaurantId}`, { method: "DELETE", headers: getAuthHeaders() });
+      await fetch(`${API_BASE}/api/me/saved-restaurants/${restaurantId}`, { method: "DELETE", headers: getAuthHeaders() });
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["saved-restaurants"] }),
   });
@@ -1598,7 +1598,7 @@ export function PublicProfilePage() {
   // ── Remove saved dish ─────────────────────────────────────────────────────────
   const removeSavedDishMut = useMutation({
     mutationFn: async (dishId: number) => {
-      await fetch(`/api/me/saved-dishes/${dishId}`, { method: "DELETE", headers: getAuthHeaders() });
+      await fetch(`${API_BASE}/api/me/saved-dishes/${dishId}`, { method: "DELETE", headers: getAuthHeaders() });
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["saved-dishes"] }),
   });
@@ -1606,7 +1606,7 @@ export function PublicProfilePage() {
   // ── Delete recommendation ─────────────────────────────────────────────────────
   const deleteRecMut = useMutation({
     mutationFn: async (id: number) => {
-      await fetch(`/api/me/recommendations/${id}`, { method: "DELETE", headers: getAuthHeaders() });
+      await fetch(`${API_BASE}/api/me/recommendations/${id}`, { method: "DELETE", headers: getAuthHeaders() });
     },
     onSuccess: () => refetchRecs(),
   });

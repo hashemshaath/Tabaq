@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/context/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getAuthHeaders } from "@/lib/api";
+import { getAuthHeaders, API_BASE } from "@/lib/api";
 import { Link, useLocation } from "wouter";
 import {
   LayoutDashboard, Plus, Edit2, Trash2, Eye, EyeOff,
@@ -139,7 +139,7 @@ function ExperienceForm({
     queryKey: ["exp-slots", experienceId],
     queryFn: async () => {
       if (!experienceId) return { slots: [] };
-      const res = await fetch(`/api/experiences/${experienceId}/slots`, { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/api/experiences/${experienceId}/slots`, { headers: getAuthHeaders() });
       if (!res.ok) return { slots: [] };
       return res.json();
     },
@@ -186,7 +186,7 @@ function ExperienceForm({
     if (!experienceId || !slotDate || !slotStart || !slotEnd) return;
     setAddingSlot(true);
     try {
-      const res = await fetch(`/api/experiences/${experienceId}/slots`, {
+      const res = await fetch(`${API_BASE}/api/experiences/${experienceId}/slots`, {
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify({ date: slotDate, startTime: slotStart, endTime: slotEnd, capacityOverride: slotCap || null }),
@@ -205,7 +205,7 @@ function ExperienceForm({
   const handleDeleteSlot = async (slotId: number) => {
     if (!experienceId) return;
     try {
-      await fetch(`/api/experiences/${experienceId}/slots/${slotId}`, { method: "DELETE", headers: getAuthHeaders() });
+      await fetch(`${API_BASE}/api/experiences/${experienceId}/slots/${slotId}`, { method: "DELETE", headers: getAuthHeaders() });
       toast.success(t("Slot removed", "تم حذف الموعد"));
       refetchSlots();
     } catch {
@@ -497,7 +497,7 @@ export function ExperiencesConsolePage() {
   const { data: providerData, isLoading: providerLoading } = useQuery({
     queryKey: ["my-provider"],
     queryFn: async () => {
-      const res = await fetch("/api/providers/me", { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/api/providers/me`, { headers: getAuthHeaders() });
       if (!res.ok) return { provider: null, status: null };
       return res.json();
     },
@@ -511,7 +511,7 @@ export function ExperiencesConsolePage() {
   const { data: experiencesData, refetch: refetchExperiences } = useQuery({
     queryKey: ["my-experiences"],
     queryFn: async () => {
-      const res = await fetch("/api/providers/me/experiences", { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/api/providers/me/experiences`, { headers: getAuthHeaders() });
       if (!res.ok) return { experiences: [] };
       return res.json();
     },
@@ -522,7 +522,7 @@ export function ExperiencesConsolePage() {
   const { data: bookingsData } = useQuery({
     queryKey: ["provider-bookings"],
     queryFn: async () => {
-      const res = await fetch("/api/providers/me/bookings", { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/api/providers/me/bookings`, { headers: getAuthHeaders() });
       if (!res.ok) return { bookings: [] };
       return res.json();
     },
@@ -533,7 +533,7 @@ export function ExperiencesConsolePage() {
   const { data: analyticsData } = useQuery({
     queryKey: ["provider-analytics"],
     queryFn: async () => {
-      const res = await fetch("/api/providers/me/analytics", { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/api/providers/me/analytics`, { headers: getAuthHeaders() });
       if (!res.ok) return { analytics: null };
       return res.json();
     },
@@ -544,7 +544,7 @@ export function ExperiencesConsolePage() {
   const { data: reviewsData } = useQuery({
     queryKey: ["provider-reviews"],
     queryFn: async () => {
-      const res = await fetch("/api/providers/me/reviews", { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/api/providers/me/reviews`, { headers: getAuthHeaders() });
       if (!res.ok) return { reviews: [] };
       return res.json();
     },
@@ -554,7 +554,7 @@ export function ExperiencesConsolePage() {
 
   const bookingStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: number; status: string }) => {
-      const res = await fetch(`/api/experience-bookings/${id}/status`, {
+      const res = await fetch(`${API_BASE}/api/experience-bookings/${id}/status`, {
         method: "PATCH",
         headers: getAuthHeaders(),
         body: JSON.stringify({ status }),
@@ -571,7 +571,7 @@ export function ExperiencesConsolePage() {
 
   const deleteExpMutation = useMutation({
     mutationFn: async (id: number) => {
-      const res = await fetch(`/api/experiences/${id}`, { method: "DELETE", headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/api/experiences/${id}`, { method: "DELETE", headers: getAuthHeaders() });
       if (!res.ok) throw new Error();
     },
     onSuccess: () => {
@@ -583,7 +583,7 @@ export function ExperiencesConsolePage() {
 
   const toggleStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: number; status: string }) => {
-      const res = await fetch(`/api/experiences/${id}`, {
+      const res = await fetch(`${API_BASE}/api/experiences/${id}`, {
         method: "PUT",
         headers: getAuthHeaders(),
         body: JSON.stringify({ status }),
@@ -600,7 +600,7 @@ export function ExperiencesConsolePage() {
 
   const respondMutation = useMutation({
     mutationFn: async ({ id, responseEn, responseAr }: { id: number; responseEn: string; responseAr: string }) => {
-      const res = await fetch(`/api/experience-reviews/${id}/respond`, {
+      const res = await fetch(`${API_BASE}/api/experience-reviews/${id}/respond`, {
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify({ responseEn, responseAr }),

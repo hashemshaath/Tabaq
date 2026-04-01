@@ -1,5 +1,52 @@
 # Tabaq | طبق — Workspace
 
+## Platform Audit & Completion — Session 4 (April 2026)
+
+### T001: Duplicate ProviderRegisterPage
+- Confirmed: only ONE file exists (`ProviderRegistrationPage.tsx`); no duplicate. No action needed.
+
+### T002/T003: Catering Packages + API
+- 13 catering packages already active across 6 menus; `GET /api/catering/packages` returns real records
+- `POST /api/catering/inquiries` returns `CAT-` ref codes; all endpoints verified working
+
+### T004: TabaqGoldPage Testimonials
+- Already uses real reviews API — queries 5-star reviews with loading state + curated fallback
+
+### T005: StaticPage Team
+- Already has 8 professional bilingual team members with proper bios
+
+### T006: FeedPage "People You May Know"
+- Admin user (ID 1) given name "Tabaq Admin" + username "tabaq_admin"
+- `/api/users/suggested` returns 8 complete profiles; `FeedPage` properly authenticated
+
+### T007: Experiences Seeded
+- 2 experience providers + 5 active published experiences seeded with bilingual descriptions:
+  - Royal Kabsa Feast at Najd Village (SAR 320/person, Traditional Saudi)
+  - Omakase Sushi Masterclass at Kana Sushi (SAR 480/person, Japanese)
+  - Desert Sunset BBQ Experience (SAR 580/person, Outdoor & BBQ)
+  - Saudi Coffee & Date Heritage Ceremony (SAR 185/person, Cultural & Coffee)
+  - Chef's Table at Nakheel Palace (SAR 750/person, Fine Dining)
+- Each experience has time slots Thu+Fri for 6 weeks; status `active` + `is_published=true`
+
+### API_BASE Centralization (Complete)
+All 18 frontend pages/components now use `${API_BASE}/api/...` for every fetch call.
+Zero bare `/api/` fetch calls remain anywhere in `artifacts/tabaq/src/`.
+Files fixed in this session:
+- `FeedPage.tsx` — 3 bare calls (leaderboard, restaurants, trending dishes)
+- `HomePage.tsx` — 6 bare calls (orders, bookings, leaderboard, tabaq-stars, occasions, categories)
+- `UserDashboardPage.tsx` — 1 bare call (me/username)
+- `OffersPage.tsx` — 1 bare call (promo-codes/apply)
+- `ExperiencesConsolePage.tsx` — double-quote string calls (providers/me, experiences)
+- `ProfilePage.tsx` — double-quote string calls (me/checkins, etc.)
+- `RestaurantDetailPage.tsx` — 2 template-literal calls missing API_BASE prefix
+- `AdminPanelPage.tsx` — 54 template-literal calls + single-quote calls, all fixed
+
+### Navigation Fixes
+- Footer `/settings` → `/account`
+- AccountPage follower/following modals link to `/:username` (not `/user/:username`)
+
+---
+
 ## Platform Enrichment — Session 3 (April 2026)
 
 ### Review Coverage Completed

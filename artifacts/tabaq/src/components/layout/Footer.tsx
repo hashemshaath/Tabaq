@@ -165,7 +165,7 @@ export function Footer() {
             <span className="text-white/20">·</span>
             <Link href="/terms" className="hover:text-white/70 transition-colors">{t('Terms of Service', 'شروط الخدمة')}</Link>
             <span className="text-white/20">·</span>
-            <Link href="/settings" className="hover:text-white/70 transition-colors">{t('Settings', 'الإعدادات')}</Link>
+            <Link href="/account" className="hover:text-white/70 transition-colors">{t('Account', 'حسابي')}</Link>
           </div>
         </div>
       </div>

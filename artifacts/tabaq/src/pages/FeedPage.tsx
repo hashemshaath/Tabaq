@@ -11,7 +11,7 @@ import { ReviewCard } from '@/components/ReviewCard';
 import { StarRating } from '@/components/StarRating';
 import { useLanguage } from '@/hooks/use-language';
 import { useAuth } from '@/context/AuthContext';
-import { getAuthHeaders } from '@/lib/api';
+import { getAuthHeaders, API_BASE } from '@/lib/api';
 import { Link } from 'wouter';
 import { Button } from '@/components/ui/button';
 
@@ -429,7 +429,7 @@ function PeopleYouMayKnowCard({ t, lang }: { t: (en: string, ar: string) => stri
   const { data: suggested, isLoading } = useQuery({
     queryKey: ['suggested-users'],
     queryFn: async () => {
-      const res = await fetch('/api/users/suggested?limit=5', { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/api/users/suggested?limit=5`, { headers: getAuthHeaders() });
       if (!res.ok) return [] as any[];
       return res.json() as Promise<any[]>;
     },
@@ -440,7 +440,7 @@ function PeopleYouMayKnowCard({ t, lang }: { t: (en: string, ar: string) => stri
     if (!user) return;
     setLoading(prev => ({ ...prev, [userId]: true }));
     try {
-      await fetch(`/api/users/${userId}/follow`, {
+      await fetch(`${API_BASE}/api/users/${userId}/follow`, {
         method: currentlyFollowing ? 'DELETE' : 'POST',
         headers: getAuthHeaders(),
       });
@@ -514,7 +514,7 @@ function TrendingCriticsCard({ t, lang }: { t: (en: string, ar: string) => strin
   const { data, isLoading } = useQuery({
     queryKey: ['feed-top-critics'],
     queryFn: async () => {
-      const res = await fetch('/api/leaderboard?limit=4');
+      const res = await fetch(`${API_BASE}/api/leaderboard?limit=4`);
       if (!res.ok) return null;
       return res.json();
     },
@@ -586,7 +586,7 @@ function TrendingRestaurantsCard({ t, lang }: { t: (en: string, ar: string) => s
   const { data } = useQuery({
     queryKey: ['feed-trending-restaurants'],
     queryFn: async () => {
-      const res = await fetch('/api/restaurants?limit=3&sortBy=topRated');
+      const res = await fetch(`${API_BASE}/api/restaurants?limit=3&sortBy=topRated`);
       if (!res.ok) return null;
       return res.json();
     },
@@ -639,7 +639,7 @@ function TrendingDishesCard({ t, lang }: { t: (en: string, ar: string) => string
   const { data } = useQuery({
     queryKey: ['feed-trending-dishes'],
     queryFn: async () => {
-      const res = await fetch('/api/dishes/trending?limit=3');
+      const res = await fetch(`${API_BASE}/api/dishes/trending?limit=3`);
       if (!res.ok) return null;
       return res.json();
     },

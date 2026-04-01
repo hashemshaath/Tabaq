@@ -3,7 +3,7 @@ import { useLanguage } from '@/hooks/use-language';
 import { usePageMeta } from '@/hooks/use-page-meta';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
-import { getAuthHeaders } from '@/lib/api';
+import { getAuthHeaders, API_BASE } from '@/lib/api';
 import {
   Trophy, Medal, Star, Crown, TrendingUp, Zap, Award, Target,
   Flame, Heart, ChefHat, Users, CheckCircle2, UserPlus, UserMinus, Loader2,
@@ -96,7 +96,7 @@ export function LeaderboardPage() {
   const { data: liveData, isLoading } = useQuery({
     queryKey: ['leaderboard', period],
     queryFn: async () => {
-      const res = await fetch(`/api/leaderboard?limit=20&period=${period}`);
+      const res = await fetch(`${API_BASE}/api/leaderboard?limit=20&period=${period}`);
       if (!res.ok) throw new Error('Failed to fetch');
       return res.json();
     },
@@ -106,7 +106,7 @@ export function LeaderboardPage() {
   const followMutation = useMutation({
     mutationFn: async ({ targetId, action }: { targetId: number; action: 'follow' | 'unfollow' }) => {
       const method = action === 'follow' ? 'POST' : 'DELETE';
-      const res = await fetch(`/api/users/${targetId}/follow`, { method, headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/api/users/${targetId}/follow`, { method, headers: getAuthHeaders() });
       if (!res.ok) throw new Error('Failed');
       return { targetId, action };
     },

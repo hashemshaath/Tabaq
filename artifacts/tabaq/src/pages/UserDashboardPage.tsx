@@ -40,7 +40,7 @@ function UsernameSection() {
     const timer = setTimeout(async () => {
       setIsChecking(true);
       try {
-        const res = await fetch(`/api/username/check?username=${encodeURIComponent(trimmed)}`);
+        const res = await fetch(`${API_BASE}/api/username/check?username=${encodeURIComponent(trimmed)}`);
         const data = await res.json();
         setCheckResult(data);
       } catch {
@@ -58,7 +58,7 @@ function UsernameSection() {
     setSaveStatus('saving');
     setSaveError('');
     try {
-      const res = await fetch('/api/me/username', {
+      const res = await fetch(`${API_BASE}/api/me/username`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({ username: trimmed }),
@@ -795,7 +795,7 @@ export function UserDashboardPage() {
                     </Link>
                     <button
                       onClick={async () => {
-                        await fetch(`/api/me/saved-restaurants/${r.id}`, { method: 'DELETE', headers: getAuthHeaders() });
+                        await fetch(`${API_BASE}/api/me/saved-restaurants/${r.id}`, { method: 'DELETE', headers: getAuthHeaders() });
                         refetchSaved();
                       }}
                       className="absolute top-2 start-2 w-7 h-7 bg-black/60 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"

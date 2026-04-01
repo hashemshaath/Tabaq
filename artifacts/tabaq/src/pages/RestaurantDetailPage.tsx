@@ -573,7 +573,7 @@ export function RestaurantDetailPage() {
   // Save state on load
   useEffect(() => {
     if (!user || !idIsValid) return;
-    fetch(`/api/me/saved-restaurants/${numericId}`, { headers: getAuthHeaders() })
+    fetch(`${API_BASE}/api/me/saved-restaurants/${numericId}`, { headers: getAuthHeaders() })
       .then(r => r.json()).then(d => setIsSaved(!!d.saved)).catch(() => {});
   }, [numericId, user, idIsValid]);
 
@@ -631,7 +631,7 @@ export function RestaurantDetailPage() {
   const toggleSave = async () => {
     if (!user) return;
     const method = isSaved ? 'DELETE' : 'POST';
-    const res = await fetch(`/api/me/saved-restaurants/${numericId}`, { method, headers: getAuthHeaders() });
+    const res = await fetch(`${API_BASE}/api/me/saved-restaurants/${numericId}`, { method, headers: getAuthHeaders() });
     if (res.ok) {
       setIsSaved(!isSaved);
       queryClient.invalidateQueries({ queryKey: ['saved-restaurants'] });

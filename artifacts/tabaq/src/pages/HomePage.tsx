@@ -5,7 +5,7 @@ import { usePageMeta, buildWebSiteSchema, buildOrganizationSchema } from '@/hook
 import { useCity } from '@/context/CityContext';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
-import { getAuthHeaders } from '@/lib/api';
+import { getAuthHeaders, API_BASE } from '@/lib/api';
 import { Link, useLocation } from 'wouter';
 import {
   Search, ChevronRight, Star, TrendingUp, Trophy, MapPin,
@@ -113,7 +113,7 @@ function OrderAgainSection() {
   const { data: ordersData } = useQuery({
     queryKey: ['my-orders-reorder'],
     queryFn: async () => {
-      const res = await fetch('/api/orders', { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/api/orders`, { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json() as Promise<{ orders: Array<{ items: ReorderItem[] }> }>;
     },
@@ -238,7 +238,7 @@ function RateLastVisitSection() {
   const { data: liveVisits } = useQuery<any[]>({
     queryKey: ['rate-visits', user?.id],
     queryFn: async () => {
-      const res = await fetch('/api/bookings?status=confirmed&limit=8', { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/api/bookings?status=confirmed&limit=8`, { headers: getAuthHeaders() });
       if (!res.ok) return [];
       const data = await res.json();
       return (data.bookings || data || [])
@@ -435,7 +435,7 @@ function AiRecommendationsSection({ cityId, cityName, cityNameAr }: { cityId?: n
   const qs = cityId ? `?cityId=${cityId}` : '';
   const { data: recsData, isLoading: recsLoading } = useQuery({
     queryKey: ['ai-recommendations', cityId ?? null],
-    queryFn: () => fetch(`/api/recommendations${qs}`).then(r => r.json()),
+    queryFn: () => fetch(`${API_BASE}/api/recommendations${qs}`).then(r => r.json()),
     staleTime: 10 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
     retry: 1,
@@ -549,7 +549,7 @@ function SuggestedPeopleStrip({ t, lang }: { t: (en: string, ar: string) => stri
   const { data, isLoading } = useQuery({
     queryKey: ['home-suggested-people'],
     queryFn: async () => {
-      const res = await fetch('/api/leaderboard?limit=6');
+      const res = await fetch(`${API_BASE}/api/leaderboard?limit=6`);
       if (!res.ok) return [];
       return res.json();
     },
@@ -669,14 +669,14 @@ export function HomePage() {
   const STALE_5M  = 5 * 60 * 1000;
   const STALE_10M = 10 * 60 * 1000;
 
-  const featured   = useQuery<any[]>({ queryKey: ['hp-featured', locKey], queryFn: () => fetch(`/api/restaurants/featured?limit=8${locQuery}`).then(r => r.json()), staleTime: STALE_5M });
-  const trending   = useQuery<any[]>({ queryKey: ['hp-trending', locKey], queryFn: () => fetch(`/api/dishes/trending?limit=6${cityQuery}`).then(r => r.json()), staleTime: STALE_5M });
-  const tabaqStars = useQuery<any[]>({ queryKey: ['hp-tabaq-stars'], queryFn: () => fetch('/api/dishes/tabaq-stars?limit=6').then(r => r.json()), staleTime: STALE_10M });
-  const occasions  = useQuery<any[]>({ queryKey: ['hp-occasions'], queryFn: () => fetch('/api/occasions').then(r => r.json()), staleTime: STALE_10M });
-  const categories = useQuery<any[]>({ queryKey: ['hp-categories'], queryFn: () => fetch('/api/categories').then(r => r.json()), staleTime: STALE_10M });
-  const topRated   = useQuery<{ restaurants: any[] }>({ queryKey: ['hp-top-rated', locKey], queryFn: () => fetch(`/api/restaurants?minRating=4.5&limit=6${locQuery}`).then(r => r.json()), staleTime: STALE_5M });
-  const newest     = useQuery<{ restaurants: any[] }>({ queryKey: ['hp-newest', locKey], queryFn: () => fetch(`/api/restaurants?limit=6&sortBy=newest${locQuery}`).then(r => r.json()), staleTime: STALE_5M });
-  const offersApi  = useQuery<any>({ queryKey: ['hp-offers', locKey], queryFn: () => fetch(`/api/offers?limit=4${cityQuery}`).then(r => r.json()), staleTime: STALE_5M });
+  const featured   = useQuery<any[]>({ queryKey: ['hp-featured', locKey], queryFn: () => fetch(`${API_BASE}/api/restaurants/featured?limit=8${locQuery}`).then(r => r.json()), staleTime: STALE_5M });
+  const trending   = useQuery<any[]>({ queryKey: ['hp-trending', locKey], queryFn: () => fetch(`${API_BASE}/api/dishes/trending?limit=6${cityQuery}`).then(r => r.json()), staleTime: STALE_5M });
+  const tabaqStars = useQuery<any[]>({ queryKey: ['hp-tabaq-stars'], queryFn: () => fetch(`${API_BASE}/api/dishes/tabaq-stars?limit=6`).then(r => r.json()), staleTime: STALE_10M });
+  const occasions  = useQuery<any[]>({ queryKey: ['hp-occasions'], queryFn: () => fetch(`${API_BASE}/api/occasions`).then(r => r.json()), staleTime: STALE_10M });
+  const categories = useQuery<any[]>({ queryKey: ['hp-categories'], queryFn: () => fetch(`${API_BASE}/api/categories`).then(r => r.json()), staleTime: STALE_10M });
+  const topRated   = useQuery<{ restaurants: any[] }>({ queryKey: ['hp-top-rated', locKey], queryFn: () => fetch(`${API_BASE}/api/restaurants?minRating=4.5&limit=6${locQuery}`).then(r => r.json()), staleTime: STALE_5M });
+  const newest     = useQuery<{ restaurants: any[] }>({ queryKey: ['hp-newest', locKey], queryFn: () => fetch(`${API_BASE}/api/restaurants?limit=6&sortBy=newest${locQuery}`).then(r => r.json()), staleTime: STALE_5M });
+  const offersApi  = useQuery<any>({ queryKey: ['hp-offers', locKey], queryFn: () => fetch(`${API_BASE}/api/offers?limit=4${cityQuery}`).then(r => r.json()), staleTime: STALE_5M });
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

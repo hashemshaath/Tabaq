@@ -28,7 +28,7 @@ function VerificationsAdminTab({ t }: { t: (en: string, ar: string) => string })
     queryKey: ['admin-verifications', filter],
     queryFn: async () => {
       const params = filter !== 'all' ? `?status=${filter}` : '';
-      const r = await fetch(`/api/admin/verification-requests${params}`, { headers: getAuthHeaders() });
+      const r = await fetch(`${API_BASE}/api/admin/verification-requests${params}`, { headers: getAuthHeaders() });
       return r.ok ? r.json() : { requests: [] };
     },
   });
@@ -37,7 +37,7 @@ function VerificationsAdminTab({ t }: { t: (en: string, ar: string) => string })
 
   const reviewMut = useMutation({
     mutationFn: async ({ id, status }: { id: number; status: 'approved' | 'rejected' }) => {
-      const r = await fetch(`/api/admin/verification-requests/${id}`, {
+      const r = await fetch(`${API_BASE}/api/admin/verification-requests/${id}`, {
         method: 'PATCH',
         headers: getAuthHeaders(),
         body: JSON.stringify({ status, noteFromAdmin: reviewNote[id] ?? '' }),
@@ -206,7 +206,7 @@ function AdminSeoTab({ t }: { t: (en: string, ar: string) => string }) {
   const { data: overviewData, isLoading: overviewLoading } = useQuery({
     queryKey: ['admin-seo-overview'],
     queryFn: async () => {
-      const r = await fetch('/api/admin/seo/overview', { headers: getAuthHeaders() });
+      const r = await fetch(`${API_BASE}/api/admin/seo/overview`, { headers: getAuthHeaders() });
       return r.ok ? r.json() : null;
     },
   });
@@ -214,7 +214,7 @@ function AdminSeoTab({ t }: { t: (en: string, ar: string) => string }) {
   const { data: settingsData, refetch: refetchSettings } = useQuery({
     queryKey: ['admin-seo-settings'],
     queryFn: async () => {
-      const r = await fetch('/api/admin/seo/settings', { headers: getAuthHeaders() });
+      const r = await fetch(`${API_BASE}/api/admin/seo/settings`, { headers: getAuthHeaders() });
       return r.ok ? r.json() : { settings: [] };
     },
   });
@@ -243,7 +243,7 @@ function AdminSeoTab({ t }: { t: (en: string, ar: string) => string }) {
     if (!editingPage) return;
     setSavingPage(true);
     try {
-      const r = await fetch('/api/admin/seo/settings', {
+      const r = await fetch(`${API_BASE}/api/admin/seo/settings`, {
         method: 'PUT',
         headers: getAuthHeaders(),
         body: JSON.stringify({ path: editingPage, ...pageForm }),
@@ -256,7 +256,7 @@ function AdminSeoTab({ t }: { t: (en: string, ar: string) => string }) {
 
   async function loadRobots() {
     try {
-      const r = await fetch('/api/robots.txt');
+      const r = await fetch(`${API_BASE}/api/robots.txt`);
       const text = await r.text();
       setRobotsTxt(text);
     } catch {}
@@ -875,7 +875,7 @@ function MenuManagementTab({ lang, t }: { lang: string; t: (en: string, ar: stri
   const { data: restData } = useQuery({
     queryKey: ['admin-restaurants-list'],
     queryFn: async () => {
-      const res = await fetch('/api/restaurants?limit=50', { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/api/restaurants?limit=50`, { headers: getAuthHeaders() });
       return res.json();
     },
   });
@@ -883,7 +883,7 @@ function MenuManagementTab({ lang, t }: { lang: string; t: (en: string, ar: stri
   const { data: menuData, isLoading } = useQuery({
     queryKey: ['admin-menus', restaurantId],
     queryFn: async () => {
-      const res = await fetch(`/api/restaurants/${restaurantId}/menus`, { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/api/restaurants/${restaurantId}/menus`, { headers: getAuthHeaders() });
       return res.json();
     },
     enabled: !!restaurantId,
@@ -891,7 +891,7 @@ function MenuManagementTab({ lang, t }: { lang: string; t: (en: string, ar: stri
 
   const createDish = useMutation({
     mutationFn: async ({ sectionId, data }: { sectionId: number; data: object }) => {
-      const res = await fetch(`/api/menu-sections/${sectionId}/dishes`, {
+      const res = await fetch(`${API_BASE}/api/menu-sections/${sectionId}/dishes`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(data),
@@ -903,7 +903,7 @@ function MenuManagementTab({ lang, t }: { lang: string; t: (en: string, ar: stri
 
   const deleteDish = useMutation({
     mutationFn: async (dishId: number) => {
-      await fetch(`/api/dishes/${dishId}`, { method: 'DELETE', headers: getAuthHeaders() });
+      await fetch(`${API_BASE}/api/dishes/${dishId}`, { method: 'DELETE', headers: getAuthHeaders() });
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-menus', restaurantId] }),
   });
@@ -1153,7 +1153,7 @@ function StoriesManagementTab({ t }: { t: (en: string, ar: string) => string }) 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['admin-stories', statusFilter],
     queryFn: async () => {
-      const res = await fetch(`/api/admin/stories?status=${statusFilter}`, { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/api/admin/stories?status=${statusFilter}`, { headers: getAuthHeaders() });
       if (!res.ok) throw new Error('Failed to fetch stories');
       return res.json();
     },
@@ -1163,7 +1163,7 @@ function StoriesManagementTab({ t }: { t: (en: string, ar: string) => string }) 
 
   const moderate = async (storyId: number, action: 'approved' | 'rejected') => {
     try {
-      const res = await fetch(`/api/admin/stories/${storyId}`, {
+      const res = await fetch(`${API_BASE}/api/admin/stories/${storyId}`, {
         method: 'PATCH',
         headers: getAuthHeaders(),
         body: JSON.stringify({ status: action }),
@@ -1348,7 +1348,7 @@ export function AdminPanelPage() {
   const { data: adminRestaurantsData } = useQuery({
     queryKey: ['admin-restaurants'],
     queryFn: async () => {
-      const res = await fetch('/api/restaurants?limit=100', { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/api/restaurants?limit=100`, { headers: getAuthHeaders() });
       if (!res.ok) return null;
       const data = await res.json();
       return data?.restaurants ?? data ?? null;
@@ -1360,7 +1360,7 @@ export function AdminPanelPage() {
   const { data: adminUsersData } = useQuery({
     queryKey: ['admin-users'],
     queryFn: async () => {
-      const res = await fetch('/api/admin/users?limit=100', { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/api/admin/users?limit=100`, { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -1372,7 +1372,7 @@ export function AdminPanelPage() {
   const { data: adminBookingsData } = useQuery({
     queryKey: ['admin-bookings'],
     queryFn: async () => {
-      const res = await fetch('/api/admin/bookings?limit=100', { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/api/admin/bookings?limit=100`, { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -1384,7 +1384,7 @@ export function AdminPanelPage() {
   const { data: adminReviewsData } = useQuery({
     queryKey: ['admin-reviews'],
     queryFn: async () => {
-      const res = await fetch('/api/reviews?limit=50', { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/api/reviews?limit=50`, { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -1401,7 +1401,7 @@ export function AdminPanelPage() {
   const { data: adminOffersData, refetch: refetchOffers } = useQuery({
     queryKey: ['admin-offers'],
     queryFn: async () => {
-      const res = await fetch('/api/admin/offers', { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/api/admin/offers`, { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -1412,7 +1412,7 @@ export function AdminPanelPage() {
   const { data: referralData } = useQuery({
     queryKey: ['admin-referrals'],
     queryFn: async () => {
-      const res = await fetch('/api/admin/referrals', { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/api/admin/referrals`, { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -1434,7 +1434,7 @@ export function AdminPanelPage() {
 
   const toggleOfferActive = useMutation({
     mutationFn: async ({ id, isActive }: { id: number; isActive: boolean }) => {
-      const res = await fetch(`/api/admin/offers/${id}/toggle`, {
+      const res = await fetch(`${API_BASE}/api/admin/offers/${id}/toggle`, {
         method: 'PATCH',
         headers: getAuthHeaders(),
         body: JSON.stringify({ isActive })
@@ -1448,7 +1448,7 @@ export function AdminPanelPage() {
 
   const approveOffer = useMutation({
     mutationFn: async ({ id, commissionOverridePercent, paymentModel, adminNotes }: any) => {
-      const res = await fetch(`/api/admin/offers/${id}/approve`, {
+      const res = await fetch(`${API_BASE}/api/admin/offers/${id}/approve`, {
         method: 'PATCH',
         headers: getAuthHeaders(),
         body: JSON.stringify({ commissionOverridePercent, paymentModel, adminNotes })
@@ -1460,7 +1460,7 @@ export function AdminPanelPage() {
 
   const rejectOffer = useMutation({
     mutationFn: async ({ id, adminNotes }: any) => {
-      const res = await fetch(`/api/admin/offers/${id}/reject`, {
+      const res = await fetch(`${API_BASE}/api/admin/offers/${id}/reject`, {
         method: 'PATCH',
         headers: getAuthHeaders(),
         body: JSON.stringify({ adminNotes })
@@ -1472,7 +1472,7 @@ export function AdminPanelPage() {
 
   const requestRevision = useMutation({
     mutationFn: async ({ id, adminNotes }: any) => {
-      const res = await fetch(`/api/admin/offers/${id}/request-revision`, {
+      const res = await fetch(`${API_BASE}/api/admin/offers/${id}/request-revision`, {
         method: 'PATCH',
         headers: getAuthHeaders(),
         body: JSON.stringify({ adminNotes })
@@ -1485,7 +1485,7 @@ export function AdminPanelPage() {
   const { data: contractsData, refetch: refetchContracts } = useQuery({
     queryKey: ['admin-contracts'],
     queryFn: async () => {
-      const res = await fetch('/api/admin/contracts', { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/api/admin/contracts`, { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -1497,7 +1497,7 @@ export function AdminPanelPage() {
   const { data: transactionsData } = useQuery({
     queryKey: ['admin-transactions'],
     queryFn: async () => {
-      const res = await fetch('/api/admin/transactions', { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/api/admin/transactions`, { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -1509,7 +1509,7 @@ export function AdminPanelPage() {
   const { data: invoicesData } = useQuery({
     queryKey: ['admin-invoices'],
     queryFn: async () => {
-      const res = await fetch('/api/admin/invoices', { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/api/admin/invoices`, { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -1521,7 +1521,7 @@ export function AdminPanelPage() {
   const { data: messagesData, refetch: refetchMessages } = useQuery({
     queryKey: ['admin-messages'],
     queryFn: async () => {
-      const res = await fetch('/api/admin/messages', { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/api/admin/messages`, { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -1533,7 +1533,7 @@ export function AdminPanelPage() {
   const { data: registrationsData, refetch: refetchRegistrations } = useQuery({
     queryKey: ['admin-registrations'],
     queryFn: async () => {
-      const res = await fetch('/api/admin/registrations?status=all', { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/api/admin/registrations?status=all`, { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -1548,7 +1548,7 @@ export function AdminPanelPage() {
 
   const createContract = useMutation({
     mutationFn: async (body: any) => {
-      const res = await fetch('/api/admin/contracts', {
+      const res = await fetch(`${API_BASE}/api/admin/contracts`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(body)
@@ -1560,7 +1560,7 @@ export function AdminPanelPage() {
 
   const updateContractStatus = useMutation({
     mutationFn: async ({ id, status }: { id: number; status: string }) => {
-      const res = await fetch(`/api/admin/contracts/${id}/status`, {
+      const res = await fetch(`${API_BASE}/api/admin/contracts/${id}/status`, {
         method: 'PATCH',
         headers: getAuthHeaders(),
         body: JSON.stringify({ status })
@@ -1575,7 +1575,7 @@ export function AdminPanelPage() {
 
   const sendMessage = useMutation({
     mutationFn: async (body: any) => {
-      const res = await fetch('/api/admin/messages', {
+      const res = await fetch(`${API_BASE}/api/admin/messages`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(body)
@@ -1588,7 +1588,7 @@ export function AdminPanelPage() {
   const { data: campaignsData, refetch: refetchCampaigns } = useQuery({
     queryKey: ['admin-campaigns'],
     queryFn: async () => {
-      const res = await fetch('/api/campaigns?status=submitted&limit=50', { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/api/campaigns?status=submitted&limit=50`, { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -1600,7 +1600,7 @@ export function AdminPanelPage() {
   const { data: promoCodesData, refetch: refetchPromoCodes } = useQuery({
     queryKey: ['admin-promo-codes'],
     queryFn: async () => {
-      const res = await fetch('/api/promo-codes', { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/api/promo-codes`, { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -1612,7 +1612,7 @@ export function AdminPanelPage() {
   const { data: recentReviewsData } = useQuery({
     queryKey: ['admin-recent-reviews-overview'],
     queryFn: async () => {
-      const res = await fetch('/api/reviews?limit=20', { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/api/reviews?limit=20`, { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -1623,7 +1623,7 @@ export function AdminPanelPage() {
   const { data: settlementSummary } = useQuery({
     queryKey: ['admin-settlement-summary'],
     queryFn: async () => {
-      const res = await fetch('/api/admin/transactions?status=pending&limit=200', { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/api/admin/transactions?status=pending&limit=200`, { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -1656,7 +1656,7 @@ export function AdminPanelPage() {
   const { data: expProvidersData, refetch: refetchExpProviders } = useQuery({
     queryKey: ['admin-exp-providers', expProviderFilter],
     queryFn: async () => {
-      const res = await fetch(`/api/provider-applications?status=${expProviderFilter}`, { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/api/provider-applications?status=${expProviderFilter}`, { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -1668,7 +1668,7 @@ export function AdminPanelPage() {
   const { data: expListingsData, refetch: refetchExpListings } = useQuery({
     queryKey: ['admin-exp-listings', expListingFilter],
     queryFn: async () => {
-      const res = await fetch(`/api/admin/experiences?status=${expListingFilter}`, { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/api/admin/experiences?status=${expListingFilter}`, { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -1683,7 +1683,7 @@ export function AdminPanelPage() {
       const params = new URLSearchParams({ status: expBookingFilter });
       if (expDateFrom) params.set('dateFrom', expDateFrom);
       if (expDateTo) params.set('dateTo', expDateTo);
-      const res = await fetch(`/api/admin/experience-bookings?${params.toString()}`, { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/api/admin/experience-bookings?${params.toString()}`, { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -1695,7 +1695,7 @@ export function AdminPanelPage() {
   const { data: expSettingsData, refetch: refetchExpSettings } = useQuery({
     queryKey: ['admin-exp-settings'],
     queryFn: async () => {
-      const res = await fetch('/api/admin/experience-settings', { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/api/admin/experience-settings`, { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -1712,7 +1712,7 @@ export function AdminPanelPage() {
 
   const approveProviderMutation = useMutation({
     mutationFn: async ({ id, status, adminNote }: { id: number; status: string; adminNote?: string }) => {
-      const res = await fetch(`/api/provider-applications/${id}`, {
+      const res = await fetch(`${API_BASE}/api/provider-applications/${id}`, {
         method: 'PATCH',
         headers: getAuthHeaders(),
         body: JSON.stringify({ status, adminNote }),
@@ -1724,7 +1724,7 @@ export function AdminPanelPage() {
 
   const updateExpStatusMutation = useMutation({
     mutationFn: async ({ id, status, adminNote }: { id: number; status: string; adminNote?: string }) => {
-      const res = await fetch(`/api/admin/experiences/${id}/status`, {
+      const res = await fetch(`${API_BASE}/api/admin/experiences/${id}/status`, {
         method: 'PATCH',
         headers: getAuthHeaders(),
         body: JSON.stringify({ status, adminNote }),
@@ -1736,7 +1736,7 @@ export function AdminPanelPage() {
 
   const cancelExpBookingMutation = useMutation({
     mutationFn: async ({ id, cancelReason }: { id: number; cancelReason: string }) => {
-      const res = await fetch(`/api/admin/experience-bookings/${id}/cancel`, {
+      const res = await fetch(`${API_BASE}/api/admin/experience-bookings/${id}/cancel`, {
         method: 'PATCH',
         headers: getAuthHeaders(),
         body: JSON.stringify({ cancelReason }),
@@ -1750,7 +1750,7 @@ export function AdminPanelPage() {
     if (!expSettings) return;
     setExpSettingsSaving(true);
     try {
-      const res = await fetch('/api/admin/experience-settings', {
+      const res = await fetch(`${API_BASE}/api/admin/experience-settings`, {
         method: 'PUT',
         headers: getAuthHeaders(),
         body: JSON.stringify(expSettings),
@@ -2049,7 +2049,7 @@ export function AdminPanelPage() {
                     rejected: 'bg-red-100 text-red-700',
                   };
                   const handleAppAction = async (status: string) => {
-                    await fetch(`/api/admin/registrations/${r.id}`, {
+                    await fetch(`${API_BASE}/api/admin/registrations/${r.id}`, {
                       method: 'PATCH',
                       headers: getAuthHeaders(),
                       body: JSON.stringify({ status }),
@@ -3273,11 +3273,11 @@ export function AdminPanelPage() {
                         <td className="px-5 py-4 text-end">
                           <div className="flex items-center justify-end gap-2">
                             <button
-                              onClick={() => fetch(`/api/campaigns/${campaign.id}/status`, { method: 'PATCH', headers: getAuthHeaders(), body: JSON.stringify({ status: 'live' }) }).then(() => refetchCampaigns())}
+                              onClick={() => fetch(`${API_BASE}/api/campaigns/${campaign.id}/status`, { method: 'PATCH', headers: getAuthHeaders(), body: JSON.stringify({ status: 'live' }) }).then(() => refetchCampaigns())}
                               className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-lg font-semibold hover:bg-green-200 transition-colors"
                             >Approve</button>
                             <button
-                              onClick={() => fetch(`/api/campaigns/${campaign.id}/status`, { method: 'PATCH', headers: getAuthHeaders(), body: JSON.stringify({ status: 'rejected' }) }).then(() => refetchCampaigns())}
+                              onClick={() => fetch(`${API_BASE}/api/campaigns/${campaign.id}/status`, { method: 'PATCH', headers: getAuthHeaders(), body: JSON.stringify({ status: 'rejected' }) }).then(() => refetchCampaigns())}
                               className="text-xs bg-red-100 text-red-700 px-3 py-1 rounded-lg font-semibold hover:bg-red-200 transition-colors"
                             >Reject</button>
                           </div>
@@ -3300,7 +3300,7 @@ export function AdminPanelPage() {
                   if (!code) return;
                   const discountType = prompt('Discount type (percentage / fixed_amount):') ?? 'percentage';
                   const discountValue = prompt('Discount value (e.g. 20 for 20%):') ?? '20';
-                  fetch('/api/promo-codes', {
+                  fetch(`${API_BASE}/api/promo-codes`, {
                     method: 'POST',
                     headers: getAuthHeaders(),
                     body: JSON.stringify({ code: code.toUpperCase(), discountType, discountValue: parseFloat(discountValue), isActive: true, usageLimit: 100, timesUsed: 0 })
@@ -3341,7 +3341,7 @@ export function AdminPanelPage() {
                         </td>
                         <td className="px-5 py-4 text-end">
                           <button
-                            onClick={() => fetch(`/api/promo-codes/${promo.id}`, {
+                            onClick={() => fetch(`${API_BASE}/api/promo-codes/${promo.id}`, {
                               method: 'PATCH',
                               headers: getAuthHeaders(),
                               body: JSON.stringify({ isActive: !promo.isActive })

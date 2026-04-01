@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { API_BASE } from '@/lib/api';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'wouter';
 import { useLanguage } from '@/hooks/use-language';
@@ -67,7 +68,7 @@ function InquiryModal({ pkg, onClose, t, lang }: { pkg: CateringPackage | null; 
     e.preventDefault();
     setSubmitting(true);
     try {
-      const r = await fetch('/api/catering/inquiries', {
+      const r = await fetch(`${API_BASE}/api/catering/inquiries`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ packageId: safePkg.id > 0 ? safePkg.id : null, restaurantId: null, ...form }),
@@ -276,7 +277,7 @@ export function CateringPage() {
       if (selectedCityId) params.set('cityId', String(selectedCityId));
       if (guestCount) params.set('minGuests', guestCount);
       if (maxBudget) params.set('maxBudget', maxBudget);
-      const r = await fetch(`/api/catering/packages?${params}`);
+      const r = await fetch(`${API_BASE}/api/catering/packages?${params}`);
       return r.ok ? r.json() : { packages: [] };
     },
   });

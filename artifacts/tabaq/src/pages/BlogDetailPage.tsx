@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { Link, useRoute } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
+import { API_BASE } from '@/lib/api';
 import { useLanguage } from '@/hooks/use-language';
 import { usePageMeta, buildArticleSchema, buildBreadcrumbSchema } from '@/hooks/use-page-meta';
 import { Clock, User, Tag, ArrowLeft, ArrowRight, ChevronRight, Share2, Bookmark, ThumbsUp, MessageCircle, Facebook, Twitter, Link2, Check, Loader2 } from 'lucide-react';
@@ -50,7 +51,7 @@ export function BlogDetailPage() {
   const { data: rawApiPost, isLoading: postLoading } = useQuery({
     queryKey: ['blog-post', slug],
     queryFn: async () => {
-      const res = await fetch(`/api/blog/posts/${slug}`);
+      const res = await fetch(`${API_BASE}/api/blog/posts/${slug}`);
       if (!res.ok) return null;
       return res.json();
     },

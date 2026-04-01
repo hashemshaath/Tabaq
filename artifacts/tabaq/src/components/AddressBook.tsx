@@ -6,7 +6,7 @@ import {
   Phone, ChevronDown, Check, Loader2, X, Navigation, Globe
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { getAuthHeaders } from '@/lib/api';
+import { getAuthHeaders, API_BASE } from '@/lib/api';
 
 interface UserAddress {
   id: number;
@@ -311,13 +311,13 @@ export function AddressBook() {
 
   const { data: addresses = [], isLoading } = useQuery<UserAddress[]>({
     queryKey: ['addresses'],
-    queryFn: () => fetch('/api/me/addresses', { headers: getAuthHeaders() }).then(r => r.ok ? r.json() : []),
+    queryFn: () => fetch(`${API_BASE}/api/me/addresses`, { headers: getAuthHeaders() }).then(r => r.ok ? r.json() : []),
   });
 
   const saveMutation = useMutation({
     mutationFn: async ({ id, data }: { id?: number; data: AddressFormData }) => {
       const method = id ? 'PUT' : 'POST';
-      const url = id ? `/api/me/addresses/${id}` : '/api/me/addresses';
+      const url = id ? `${API_BASE}/api/me/addresses/${id}` : `${API_BASE}/api/me/addresses`;
       const r = await fetch(url, { method, headers: getAuthHeaders(), body: JSON.stringify(data) });
       if (!r.ok) throw new Error('Failed to save address');
       return r.json();
@@ -327,7 +327,7 @@ export function AddressBook() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      const r = await fetch(`/api/me/addresses/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
+      const r = await fetch(`${API_BASE}/api/me/addresses/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
       if (!r.ok) throw new Error('Failed to delete');
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['addresses'] }),
@@ -335,7 +335,7 @@ export function AddressBook() {
 
   const defaultMutation = useMutation({
     mutationFn: async (id: number) => {
-      const r = await fetch(`/api/me/addresses/${id}/default`, { method: 'PATCH', headers: getAuthHeaders() });
+      const r = await fetch(`${API_BASE}/api/me/addresses/${id}/default`, { method: 'PATCH', headers: getAuthHeaders() });
       if (!r.ok) throw new Error('Failed to set default');
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['addresses'] }),

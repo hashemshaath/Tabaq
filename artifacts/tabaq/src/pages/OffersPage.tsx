@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useLanguage } from '@/hooks/use-language';
 import { usePageMeta } from '@/hooks/use-page-meta';
-import { getAuthHeaders } from '@/lib/api';
+import { getAuthHeaders, API_BASE } from '@/lib/api';
 import { useListOffers, usePurchaseVoucher, useGiftVoucher, type Offer } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -325,7 +325,7 @@ function DealDetailPage({ offer, onBack }: { offer: ExtendedOffer; onBack: () =>
     setPromoError(null);
     const code = promoInput.trim().toUpperCase();
     try {
-      const res = await fetch('/api/promo-codes/apply', {
+      const res = await fetch(`${API_BASE}/api/promo-codes/apply`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({ code, orderValue: subtotal }),

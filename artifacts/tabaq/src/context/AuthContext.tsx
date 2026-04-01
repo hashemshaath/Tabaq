@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
+import { API_BASE } from "@/lib/api";
 import { setAuthTokenGetter } from "@workspace/api-client-react";
 import type { User } from "@workspace/api-client-react";
 
@@ -40,7 +41,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     safeRemove(TOKEN_KEY);
     setToken(null);
     setUser(null);
-    fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+    fetch(`${API_BASE}/api/auth/logout`, { method: "POST" }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -52,7 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false);
       return;
     }
-    fetch("/api/auth/me", {
+    fetch(`${API_BASE}/api/auth/me`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(async (res) => {

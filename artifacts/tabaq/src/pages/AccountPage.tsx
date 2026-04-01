@@ -1405,13 +1405,13 @@ function SocialSection({ userId, lang, t }: { userId: number; lang: string; t: (
     const name = lang === "ar" ? (u.nameAr || u.nameEn) : (u.nameEn || u.nameAr);
     return (
       <div className="flex items-center gap-3 py-3 border-b border-border last:border-0">
-        <Link href={`/user/${u.username ?? u.id}`}>
+        <Link href={`/${u.username ?? u.id}`}>
           <div className="w-10 h-10 rounded-full bg-muted overflow-hidden shrink-0 hover:opacity-90 transition-opacity">
             {u.avatarUrl ? <img src={u.avatarUrl} alt={name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><User className="w-5 h-5 text-muted-foreground" /></div>}
           </div>
         </Link>
         <div className="flex-1 min-w-0">
-          <Link href={`/user/${u.username ?? u.id}`}>
+          <Link href={`/${u.username ?? u.id}`}>
             <p className="text-sm font-semibold text-foreground truncate hover:text-primary transition-colors">{name || t("User", "مستخدم")}</p>
           </Link>
           {u.username && <p className="text-xs text-muted-foreground">@{u.username}</p>}

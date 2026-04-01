@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useLanguage } from '@/hooks/use-language';
 import { usePageMeta } from '@/hooks/use-page-meta';
 import { useAuth } from '@/context/AuthContext';
-import { getAuthHeaders } from '@/lib/api';
+import { getAuthHeaders, API_BASE } from '@/lib/api';
 import {
   Star, MapPin, Clock, Users, ChevronLeft, ChevronRight, X,
   CalendarDays, CheckCircle2, Gift, QrCode, Camera,
@@ -287,7 +287,7 @@ export function ExperienceDetailPage() {
   const { data: myBookingsData } = useQuery({
     queryKey: ['my-experience-bookings', expId],
     queryFn: async () => {
-      const res = await fetch('/api/me/experience-bookings', { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/api/me/experience-bookings`, { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json() as Promise<{ bookings: ExperienceBooking[] }>;
     },

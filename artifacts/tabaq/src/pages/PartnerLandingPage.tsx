@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { API_BASE } from '@/lib/api';
 import { Link } from 'wouter';
 import { useLanguage } from '@/hooks/use-language';
 import { usePageMeta } from '@/hooks/use-page-meta';
@@ -226,7 +227,7 @@ export function PartnerLandingPage() {
     setSubmitting(true);
     setSubmitError('');
     try {
-      const res = await fetch('/api/partner-applications', {
+      const res = await fetch(`${API_BASE}/api/partner-applications`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

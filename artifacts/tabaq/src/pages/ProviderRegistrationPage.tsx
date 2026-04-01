@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_BASE } from '@/lib/api';
 import { useLanguage } from '@/hooks/use-language';
 import { Link } from 'wouter';
 import {
@@ -121,7 +122,7 @@ export function ProviderRegistrationPage() {
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
-      const res = await fetch('/api/partner-applications', {
+      const res = await fetch(`${API_BASE}/api/partner-applications`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
