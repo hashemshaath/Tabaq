@@ -56,6 +56,8 @@ export const ordersTable = pgTable("orders", {
   notes: text("notes"),
   estimatedMinutes: integer("estimated_minutes").default(35),
   customerInvoiceRef: text("customer_invoice_ref"),
+  // Failed payment retry tracking (max 3 retries, attempted by cron every 4 h)
+  paymentRetryCount: integer("payment_retry_count").default(0).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

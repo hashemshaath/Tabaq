@@ -3,10 +3,16 @@
 // All scheduled tasks are registered here and started by calling startCronJobs().
 // Call startCronJobs() once from index.ts after the server starts listening.
 //
+// Overlap protection: an in-process Map tracks actively-running jobs.
+// A job that is still running when the next tick fires is skipped with a warning log.
+// This is reliable for a single-process Node.js server. For multi-instance deployments,
+// replace the in-process lock with a DB advisory lock or distributed mutex.
+//
 // Schedule reference (node-cron):
 //   "0 2 * * *"    -> daily at 02:00 UTC
 //   "0 3 * * *"    -> daily at 03:00 UTC
 //   "0 0 1 * *"    -> 1st of every month at 00:00 UTC
+//   "0 */4 * * *"  -> every 4 hours
 //   "0 */6 * * *"  -> every 6 hours
 
 import cron from "node-cron";
@@ -15,10 +21,17 @@ import {
   usersTable, ordersTable, membershipsTable, cronLogsTable,
   pointsTransactionsTable,
 } from "@workspace/db/schema";
-import { and, eq, lt, sql, lte } from "drizzle-orm";
+import { and, eq, lt, sql, lte, gte, inArray } from "drizzle-orm";
 import { logger } from "./logger.js";
 import { transitionMembershipStatus } from "./membership.js";
 import { notifyAsync } from "./notify.js";
+import { initiatePayment } from "./paymentGateway.js";
+
+// ─── Overlap / Parallel-Run Protection ────────────────────────────────────────
+// Tracks job names that are currently executing. Prevents a slow job from
+// starting a second concurrent instance when the next cron tick fires.
+
+const runningJobs = new Map<string, Date>(); // jobName → startedAt
 
 // ─── Job Runner Wrapper ───────────────────────────────────────────────────────
 
@@ -26,7 +39,19 @@ async function runJob(
   jobName: string,
   fn: () => Promise<number>,
 ): Promise<void> {
+  // Overlap check: skip if a previous run is still active
+  if (runningJobs.has(jobName)) {
+    const since = runningJobs.get(jobName)!;
+    logger.warn(
+      { jobName, runningSince: since.toISOString() },
+      `Cron SKIP: ${jobName} is still running from a previous tick (started ${since.toISOString()}) — skipping this tick`,
+    );
+    return;
+  }
+
   const startedAt = new Date();
+  runningJobs.set(jobName, startedAt);
+
   let logId: number | undefined;
 
   try {
@@ -49,6 +74,9 @@ async function runJob(
   } catch (err) {
     errorMessage = String(err);
     logger.error({ jobName, err }, `Cron ERROR: ${jobName}`);
+  } finally {
+    // Always release the lock — even if the job threw
+    runningJobs.delete(jobName);
   }
 
   const finishedAt = new Date();
@@ -198,6 +226,130 @@ async function jobCommissionBatchCalculation(): Promise<number> {
   return 0;
 }
 
+// ─── New: Failed Payment Retry ─────────────────────────────────────────────────
+// Runs every 4 hours. Finds card-payment orders still in "placed" status (payment
+// not confirmed) with fewer than 3 retry attempts, and re-initiates the payment.
+//
+// Retry cap: after 3 failed attempts the order is cancelled and the customer is
+// notified to re-place with a different payment method.
+//
+// Window: only retries orders created within the last 48 hours that are at least
+// 5 minutes old (to avoid racing with the initial payment flow).
+
+const MAX_PAYMENT_RETRIES = 3;
+const CARD_PAYMENT_METHODS = ["card", "apple_pay", "stc_pay"] as const;
+
+async function jobFailedPaymentRetry(): Promise<number> {
+  const now = new Date();
+  const windowStart = new Date(now.getTime() - 48 * 60 * 60 * 1000); // 48 h ago
+  const windowEnd   = new Date(now.getTime() -  5 * 60 * 1000);       // 5 min ago
+
+  // Find card-payment orders still in "placed" state with retries remaining
+  const candidates = await db
+    .select({
+      id:               ordersTable.id,
+      orderNumber:      ordersTable.orderNumber,
+      userId:           ordersTable.userId,
+      total:            ordersTable.total,
+      currency:         ordersTable.currency,
+      paymentRetryCount: ordersTable.paymentRetryCount,
+    })
+    .from(ordersTable)
+    .where(
+      and(
+        eq(ordersTable.status, "placed"),
+        inArray(ordersTable.paymentMethod, [...CARD_PAYMENT_METHODS]),
+        lt(ordersTable.paymentRetryCount, MAX_PAYMENT_RETRIES),
+        gte(ordersTable.createdAt, windowStart),
+        lte(ordersTable.createdAt, windowEnd),
+      ),
+    )
+    .limit(50);
+
+  let retried = 0;
+
+  for (const order of candidates) {
+    try {
+      const result = await initiatePayment({
+        amount:      parseFloat(order.total),
+        currency:    order.currency,
+        orderId:     String(order.id),
+        description: `Retry #${order.paymentRetryCount + 1} for order ${order.orderNumber}`,
+      });
+
+      const newRetryCount = order.paymentRetryCount + 1;
+
+      if (result.success) {
+        // Payment went through — confirm the order and reset retry counter
+        await db
+          .update(ordersTable)
+          .set({
+            status:            "confirmed",
+            paymentRetryCount: newRetryCount,
+            updatedAt:         now,
+          })
+          .where(eq(ordersTable.id, order.id));
+
+        if (order.userId) {
+          notifyAsync({
+            userId:  order.userId,
+            type:    "payment_success",
+            titleEn: "Payment Successful",
+            titleAr: "تمت عملية الدفع بنجاح",
+            bodyEn:  `Your payment for order ${order.orderNumber} was processed successfully on retry #${newRetryCount}.`,
+            bodyAr:  `تمت معالجة دفعتك للطلب ${order.orderNumber} بنجاح في المحاولة رقم ${newRetryCount}.`,
+            refId:   order.id,
+            refType: "order",
+          });
+        }
+
+        logger.info({ orderId: order.id, attempt: newRetryCount }, "Payment retry succeeded");
+      } else {
+        // Payment failed again — increment counter; cancel if cap reached
+        const isFinal = newRetryCount >= MAX_PAYMENT_RETRIES;
+
+        await db
+          .update(ordersTable)
+          .set({
+            status:            isFinal ? "cancelled" : "placed",
+            paymentRetryCount: newRetryCount,
+            updatedAt:         now,
+          })
+          .where(eq(ordersTable.id, order.id));
+
+        if (order.userId) {
+          notifyAsync({
+            userId:  order.userId,
+            type:    "payment_failed",
+            titleEn: isFinal ? "Order Cancelled — Payment Failed" : "Payment Retry Failed",
+            titleAr: isFinal ? "تم إلغاء الطلب — فشل الدفع" : "فشلت إعادة محاولة الدفع",
+            bodyEn:  isFinal
+              ? `Your order ${order.orderNumber} has been cancelled after ${MAX_PAYMENT_RETRIES} failed payment attempts. Please re-place your order with a different payment method.`
+              : `Payment retry #${newRetryCount} for order ${order.orderNumber} failed. We will try again automatically. Error: ${result.errorCode ?? "unknown"}.`,
+            bodyAr:  isFinal
+              ? `تم إلغاء طلبك ${order.orderNumber} بعد ${MAX_PAYMENT_RETRIES} محاولات دفع فاشلة. يرجى إعادة الطلب بطريقة دفع مختلفة.`
+              : `فشلت إعادة محاولة الدفع #${newRetryCount} للطلب ${order.orderNumber}. سنحاول مرة أخرى تلقائيًا.`,
+            refId:   order.id,
+            refType: "order",
+            metadata: { attempt: newRetryCount, errorCode: result.errorCode },
+          });
+        }
+
+        logger.warn(
+          { orderId: order.id, attempt: newRetryCount, isFinal, errorCode: result.errorCode },
+          isFinal ? "Payment retry cap reached — order cancelled" : "Payment retry failed",
+        );
+      }
+
+      retried++;
+    } catch (err) {
+      logger.error({ err, orderId: order.id }, "Unexpected error during payment retry — skipping order");
+    }
+  }
+
+  return retried;
+}
+
 // ─── Scheduler Registration ───────────────────────────────────────────────────
 
 const JOBS: Array<{ name: string; schedule: string; fn: () => Promise<number> }> = [
@@ -206,6 +358,7 @@ const JOBS: Array<{ name: string; schedule: string; fn: () => Promise<number> }>
   { name: "membership_expiry_warning",    schedule: "0 4 * * *",   fn: jobMembershipExpiryWarning },
   { name: "commission_batch_calculation", schedule: "0 5 1 * *",   fn: jobCommissionBatchCalculation },
   { name: "abandoned_order_cleanup",      schedule: "0 */6 * * *", fn: jobAbandonedOrderCleanup },
+  { name: "failed_payment_retry",         schedule: "0 */4 * * *", fn: jobFailedPaymentRetry },
 ];
 
 let started = false;
