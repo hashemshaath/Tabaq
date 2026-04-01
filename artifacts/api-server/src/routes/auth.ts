@@ -4,6 +4,8 @@ import { usersTable, otpRequestsTable, emailVerificationTokensTable } from "@wor
 import { eq, and, isNull, gt, desc, gte } from "drizzle-orm";
 import { signToken, generateOtp, otpExpiresAt } from "../lib/auth.js";
 import { requireAuth } from "../middleware/requireAuth.js";
+import { authRateLimiter } from "../middleware/rateLimiter.js";
+import { sendOtp, isSmsDevMode } from "../services/smsService.js";
 import { awardPoints, POINTS } from "../lib/points.js";
 import crypto from "crypto";
 
@@ -50,7 +52,7 @@ function clearVerifyAttempts(key: string): void {
   verifyAttempts.delete(key);
 }
 
-router.post("/auth/request-otp", async (req, res) => {
+router.post("/auth/request-otp", authRateLimiter, async (req, res) => {
   try {
     const { phone, email } = req.body as { phone?: string; email?: string };
     if (!phone && !email) {
@@ -64,7 +66,10 @@ router.post("/auth/request-otp", async (req, res) => {
       : and(eq(otpRequestsTable.email, email!), gte(otpRequestsTable.createdAt, windowStart));
     const recent = await db.select({ id: otpRequestsTable.id }).from(otpRequestsTable).where(recentCondition);
     if (recent.length >= OTP_RATE_LIMIT_MAX) {
-      res.status(429).json({ error: "rate_limited", message: "Too many OTP requests. Please wait a minute." });
+      res.status(429).json({
+        error: "rate_limited",
+        message: "Too many OTP requests. Please wait a minute. / تجاوزت الحد المسموح. يرجى الانتظار دقيقة.",
+      });
       return;
     }
 
@@ -78,11 +83,20 @@ router.post("/auth/request-otp", async (req, res) => {
       expiresAt,
     });
 
-    if (IS_DEV) {
-      req.log.info({ code }, "DEV mode: OTP code (not sent via SMS)");
-      res.json({ message: "OTP sent", devCode: code });
+    // Send real SMS when a phone number is provided and SMS provider is configured
+    if (phone) {
+      const smsResult = await sendOtp(phone, code);
+      if (!smsResult.success) {
+        req.log.warn({ phone, error: smsResult.error }, "SMS send failed — OTP still stored in DB");
+      }
+    }
+
+    // In dev/mock mode or email OTP: return the code in the response for testing
+    if (isSmsDevMode() || email) {
+      req.log.info({ code, channel: phone ? "phone" : "email" }, "OTP generated (dev/email mode)");
+      res.json({ message: "OTP sent", devCode: IS_DEV ? code : undefined });
     } else {
-      res.json({ message: "OTP sent" });
+      res.json({ message: "OTP sent / تم إرسال رمز التحقق" });
     }
   } catch (err) {
     req.log.error({ err }, "Failed to request OTP");
@@ -90,7 +104,7 @@ router.post("/auth/request-otp", async (req, res) => {
   }
 });
 
-router.post("/auth/verify-otp", async (req, res) => {
+router.post("/auth/verify-otp", authRateLimiter, async (req, res) => {
   try {
     const { phone, email, code, nameEn, nameAr, preferredLanguage = "en", cityId } = req.body as {
       phone?: string;

@@ -1,3 +1,7 @@
+// Sentry must be imported first for full instrumentation
+import { initSentry } from "./lib/sentry.js";
+initSentry();
+
 import app from "./app";
 import { logger } from "./lib/logger";
 import { startCronJobs } from "./lib/cron";

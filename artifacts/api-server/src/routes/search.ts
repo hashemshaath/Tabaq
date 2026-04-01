@@ -2,10 +2,11 @@ import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { restaurantsTable, dishesTable, citiesTable, venuesTable, categoriesTable, restaurantCategoriesTable, openingHoursTable } from "@workspace/db/schema";
 import { eq, ilike, or, and, inArray, sql, type SQL } from "drizzle-orm";
+import { searchRateLimiter } from "../middleware/rateLimiter.js";
 
 const router: IRouter = Router();
 
-router.get("/search", async (req, res) => {
+router.get("/search", searchRateLimiter, async (req, res) => {
   try {
     const { q, type = "all", cityId, limit = "20" } = req.query;
     if (!q || typeof q !== "string") {
@@ -132,7 +133,7 @@ router.get("/search", async (req, res) => {
   }
 });
 
-router.get("/search/autocomplete", async (req, res) => {
+router.get("/search/autocomplete", searchRateLimiter, async (req, res) => {
   try {
     const { q, cityId } = req.query;
     if (!q || typeof q !== "string") {

@@ -123,6 +123,85 @@ Standardized format `TBQ-{TYPE}-{YEAR}-{PADDED_ID}` across all entities. New typ
 - **Spacing**: 8px grid system, `.section-gap` (48px), `.section-gap-sm` (32px)
 - **Card hover**: `.card-hover` class with translateY(-1px) + shadow transition
 
+## Production Readiness Upgrade — 8 Phases (April 2026)
+
+### Phase 1 — Docker + Production Containerization
+- `Dockerfile.api` — multi-stage build: deps → builder → runner (node:22-alpine, non-root user, HEALTHCHECK)
+- `Dockerfile.web` — multi-stage build: Vite build → nginx:1.27-alpine serving SPA
+- `docker-compose.yml` — local Docker development (postgres:16, redis:7, api, web)
+- `docker-compose.prod.yml` — production deployment with replica scaling, env_file reference
+- `docker/nginx.conf` — nginx SPA proxy: gzip, security headers, `/api/` proxy, SSE support (`proxy_buffering off`), asset caching
+
+### Phase 2 — Environment Variables Documentation
+- `.env.example` — complete audit of every env var grouped by domain (app, database, redis, auth, sms, smtp, storage/S3/R2, Sentry, analytics, firebase, payments, maps, AI, feature flags, CORS, RabbitMQ)
+- All secrets are environment-variable-driven; no hardcoded credentials found
+- `CORS_EXTRA_ORIGINS` support added to `app.ts` for additional production domains
+
+### Phase 3 — Rate Limiting & API Protection
+- `artifacts/api-server/src/middleware/rateLimiter.ts` — 5 configurable limiters:
+  - `authRateLimiter` — 10 req/60s (OTP + verify-otp endpoints)
+  - `paymentRateLimiter` — 20 req/60s (payment-sensitive routes)
+  - `searchRateLimiter` — 60 req/60s (GET /search, /search/autocomplete)
+  - `publicRateLimiter` — 200 req/60s (all routes via app.ts global middleware)
+  - `aiRateLimiter` — 10 req/60s (AI generation + SEO endpoints)
+- All limits configurable via env vars (`RATE_LIMIT_*_MAX`, `RATE_LIMIT_*_WINDOW_MS`)
+- `TRUST_PROXY=true` support for correct IP detection behind nginx/load balancer
+- Applied to: auth/OTP routes, search routes, AI routes, global API
+
+### Phase 4 — Real Image Upload System
+- `artifacts/api-server/src/services/storageService.ts` — storage provider abstraction
+  - `local` provider — saves to filesystem, serves via `express.static` at `/uploads/`
+  - `s3` provider — AWS S3 via `@aws-sdk/client-s3` (lazy-loaded, no cost in dev)
+  - `r2` provider — Cloudflare R2 (S3-compatible), same SDK
+  - Switch via `STORAGE_PROVIDER=local|s3|r2`
+- `POST /api/upload` — authenticated multipart upload (multer), MIME + size validation, returns `{ url, key, size, mimeType }`
+- `DELETE /api/upload?key=...` — admin-only file deletion
+- File validation: JPEG/PNG/WebP/GIF/SVG only, 10MB max (configurable via `UPLOAD_MAX_SIZE_BYTES`)
+
+### Phase 5 — Error Monitoring (Sentry)
+- **Backend**: `artifacts/api-server/src/lib/sentry.ts` — `initSentry()` called as first import in `index.ts`
+  - Disabled when `SENTRY_DSN` not set (dev-safe)
+  - PII scrubbing: strips `password`, `code`, `otp`, `token`, `secret`, `key` from request bodies
+  - Sampling: 10% traces in prod, 5% in staging, 0% in dev
+  - `captureError()` / `captureMessage()` helpers for manual capture
+- **Frontend**: `@sentry/react` integrated in `artifacts/tabaq/src/main.tsx`
+  - Disabled when `VITE_SENTRY_DSN` not set
+  - Browser Tracing + Session Replay (1% sessions, 10% on error)
+  - `ErrorBoundary.componentDidCatch` now reports to Sentry
+- `@sentry/node` + `@opentelemetry/api` added to esbuild externals in `build.mjs`
+
+### Phase 6 — Real SMS OTP Activation
+- `artifacts/api-server/src/services/smsService.ts` — provider abstraction:
+  - `mock` (default) — logs code, never sends real SMS; `devCode` returned in dev mode
+  - `unifonic` — Unifonic REST API (Saudi/MENA); configured via `UNIFONIC_APP_SID` + `UNIFONIC_SENDER_ID`
+  - `twilio` — Twilio Messages API; configured via `TWILIO_ACCOUNT_SID` + `TWILIO_AUTH_TOKEN` + `TWILIO_FROM_NUMBER`
+- `auth.ts` OTP flow updated: `sendOtp(phone, code)` called on every phone OTP request; SMS failure is logged but does not block the response
+- Bilingual OTP message: Arabic + English in same SMS
+- `isSmsDevMode()` used to conditionally expose `devCode` in response
+
+### Phase 7 — Clean Architecture
+- All new systems use centralized service layers (no duplication)
+- `storageService.ts` — single upload abstraction used by upload route
+- `smsService.ts` — single SMS abstraction used by auth route
+- `sentry.ts` — single monitoring init used by index.ts entry point
+- `rateLimiter.ts` — single rate limit config shared across all routes
+- Global error handler added to `app.ts` (catches unhandled Express errors)
+- Express `json()` and `urlencoded()` body size raised to 5MB (from default 100kb) to accommodate image data URLs during migration
+
+### Phase 8 — Validation Results
+- ✅ `/api/health` — 200 with DB ping latency
+- ✅ `/api/healthz` — 200 liveness probe
+- ✅ `/api/platform-settings/public` — 200 with 20 settings
+- ✅ `/api/auth/request-otp` — 400 (body validation) with rate limiter active
+- ✅ `/api/upload` — 401 (auth required)
+- ✅ `/api/admin/ai/generate-content` — 401 (auth required)
+- ✅ `/api/notifications/stream` — 401 (auth required)
+- ✅ Sentry initialized with "SENTRY_DSN not set" log (correct dev behavior)
+- ✅ Both workflows running (API + Frontend)
+- ✅ Replit dev setup completely unchanged
+
+---
+
 ## System Upgrade — 9-Phase Completion (April 2026)
 
 ### Phase 1 — Demo Mode System

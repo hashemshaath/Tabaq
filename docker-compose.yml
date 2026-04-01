@@ -1,0 +1,91 @@
+###############################################################################
+# Tabaq — docker-compose.yml
+# Local development with Docker (NOT used on Replit — Replit uses its own dev server)
+# Usage:
+#   docker compose up -d
+#   docker compose logs -f api
+###############################################################################
+
+version: "3.9"
+
+services:
+  # ── PostgreSQL ─────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: tabaq
+      POSTGRES_USER: tabaq
+      POSTGRES_PASSWORD: tabaq_dev_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tabaq"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis ──────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ── API Server ─────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      PORT: 8080
+      DATABASE_URL: postgresql://tabaq:tabaq_dev_password@postgres:5432/tabaq
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: local_dev_jwt_secret_change_in_production
+      JWT_EXPIRES_IN: 30d
+      OTP_EXPIRY_MINUTES: 10
+      SMS_PROVIDER: mock
+      PAYMENT_GATEWAY: mock
+      STORAGE_PROVIDER: local
+      STORAGE_LOCAL_DIR: /app/uploads
+      STORAGE_PUBLIC_URL: http://localhost:8080/uploads
+      LOG_LEVEL: info
+    volumes:
+      - uploads_data:/app/uploads
+    ports:
+      - "8080:8080"
+
+  # ── Frontend (Vite dev server) ─────────────────────────────────────────────
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+      args:
+        VITE_API_URL: http://localhost:8080/api
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "80:80"
+
+volumes:
+  postgres_data:
+  redis_data:
+  uploads_data:

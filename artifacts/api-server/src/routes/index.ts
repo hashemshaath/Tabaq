@@ -38,6 +38,7 @@ import membershipsRouter from "./memberships.js";
 import returnsRouter from "./returns.js";
 import adminSettingsRouter from "./admin-settings.js";
 import aiRouter from "./ai-admin.js";
+import uploadRouter from "./upload.js";
 
 const router: IRouter = Router();
 
@@ -80,5 +81,6 @@ router.use(membershipsRouter);
 router.use(returnsRouter);
 router.use(adminSettingsRouter);
 router.use(aiRouter);
+router.use(uploadRouter);
 
 export default router;

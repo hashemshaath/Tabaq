@@ -1,0 +1,212 @@
+You are a senior production architect and DevOps engineer.
+
+Your task is to enhance the CURRENT system safely and professionally for production readiness WITHOUT rebuilding it from scratch and WITHOUT breaking the current Replit development setup.
+
+CRITICAL RULES:
+- Do NOT replace the current development flow on Replit
+- Keep the current Replit dev environment working
+- Add production readiness in parallel
+- Do NOT remove demo mode or mock support if already used
+- All changes must be incremental, safe, and backward-compatible
+
+---
+
+PHASE 1: DOCKER + PRODUCTION CONTAINERIZATION
+
+Problem:
+The current setup only works for development on Replit. Production-grade Docker and docker-compose are missing.
+
+Tasks:
+- Add production-ready Dockerfiles for the main services
+- Add a production-ready docker-compose.yml
+- Keep the current Replit dev setup unchanged
+- Ensure services can run locally and in production containers
+- Include:
+  - app/service containers
+  - postgres
+  - redis
+  - rabbitmq if needed
+- Add clear separation between:
+  - development config
+  - production config
+
+Deliverables:
+- Dockerfile(s)
+- docker-compose.yml
+- docker-compose.prod.yml if needed
+- startup instructions
+
+---
+
+PHASE 2: ENVIRONMENT VARIABLES DOCUMENTATION
+
+Problem:
+There is no complete .env.example for all required variables.
+
+Tasks:
+- Audit the entire codebase and identify ALL environment variables in use
+- Create a complete .env.example
+- Group variables clearly by domain:
+  - app
+  - database
+  - redis
+  - rabbitmq
+  - smtp
+  - analytics
+  - firebase
+  - payments
+  - storage
+  - ai
+  - notifications
+  - sms otp
+  - sentry
+- Add comments describing each variable professionally
+- Ensure no secrets are hardcoded in code
+
+Deliverables:
+- Full .env.example
+- cleaned configuration loading
+- report of hardcoded secrets removed if found
+
+---
+
+PHASE 3: RATE LIMITING & API PROTECTION
+
+Problem:
+There is no rate limiting or abuse protection on the API.
+
+Tasks:
+- Add production-ready rate limiting to the API layer
+- Protect:
+  - auth endpoints
+  - OTP endpoints
+  - payment endpoints
+  - search-heavy endpoints
+  - public APIs
+- Add sensible limits per route category
+- Add IP-based and user-based throttling where appropriate
+- Ensure the implementation is configurable
+- Add proper error responses for rate-limited requests
+- Make it safe for future scaling behind reverse proxy / load balancer
+
+Goal:
+Protect against abuse, brute force, and DDoS-style excessive usage
+
+---
+
+PHASE 4: REAL IMAGE UPLOAD SYSTEM
+
+Problem:
+Images currently use data URLs. Production upload system is missing.
+
+Tasks:
+- Keep current behavior working in development if needed
+- Add a real production-grade file upload abstraction
+- Support AWS S3 or Cloudflare R2
+- Use environment-based storage provider selection
+- Refactor upload logic so the app does not depend on base64/data URLs in production
+- Add:
+  - secure upload flow
+  - file validation
+  - size limits
+  - MIME type validation
+  - image path persistence in database
+  - deletion/update support
+- Ensure all image-related sections use the centralized upload service
+
+Deliverables:
+- Storage service abstraction
+- production-ready upload flow
+- migration-safe integration
+
+---
+
+PHASE 5: ERROR MONITORING (SENTRY)
+
+Problem:
+There is no production error monitoring.
+
+Tasks:
+- Integrate Sentry professionally into the current system
+- Add frontend error monitoring
+- Add backend/API error monitoring
+- Capture:
+  - unhandled exceptions
+  - API errors
+  - background job failures
+  - critical business flow failures
+- Include environment awareness:
+  - dev
+  - staging
+  - production
+- Avoid noisy reporting in development unless configured
+- Add release/environment tagging
+
+Deliverables:
+- Sentry integration
+- centralized error logging improvements
+- optional user/context metadata support
+
+---
+
+PHASE 6: REAL SMS OTP ACTIVATION
+
+Problem:
+SMS OTP code exists but is not activated. Real provider integration is missing.
+
+Tasks:
+- Review the current OTP implementation
+- Activate real SMS OTP using provider abstraction
+- Support:
+  - Unifonic
+  - Twilio
+- Ensure provider can be switched by config
+- Implement:
+  - send OTP
+  - verify OTP
+  - expiration
+  - retry limits
+  - resend limits
+  - abuse protection
+- Keep current dev/test mode available for non-production environments
+- Ensure all OTP flows are properly logged and validated
+- Improve UX messages in Arabic and English
+
+Deliverables:
+- working SMS OTP service
+- provider abstraction
+- production-safe OTP flow
+
+---
+
+PHASE 7: CLEAN ARCHITECTURE & NON-DUPLICATION
+
+Tasks:
+- Do not duplicate implementation for Docker, uploads, OTP, settings, or monitoring
+- Use centralized service layers
+- Keep modules independent and microservice-ready
+- Refactor duplicated config, upload, and messaging logic into shared reusable modules
+- Ensure all new systems are scalable and production-ready
+
+---
+
+PHASE 8: FINAL VALIDATION
+
+After implementation, verify:
+- Replit dev mode still works
+- Production configuration is now available
+- No current working feature is broken
+- Rate limiting works correctly
+- Uploads work with real storage
+- Sentry captures errors correctly
+- SMS OTP works with real providers
+- .env.example is complete
+- Docker setup is production-ready
+
+FINAL OUTPUT:
+Provide a structured report including:
+1. What was added
+2. What was refactored
+3. What production gaps were closed
+4. What still needs future improvement
+5. Any migration notes or operational notes
