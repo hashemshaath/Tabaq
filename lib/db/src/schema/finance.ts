@@ -177,6 +177,12 @@ export const customerInvoicesTable = pgTable("customer_invoices", {
   paymentMethod: text("payment_method"),
   promoCode: text("promo_code"),
 
+  // Points redemption breakdown — populated when payment_method is 'points' or 'hybrid'
+  pointsUsed: integer("points_used").default(0),
+  pointsMonetaryValue: numeric("points_monetary_value", { precision: 12, scale: 2 }).default("0"),
+  // Actual amount sent to the payment gateway (total minus points credit; 0 for points-only orders)
+  remainingAmountCharged: numeric("remaining_amount_charged", { precision: 12, scale: 2 }).default("0"),
+
   // Raw response from the payment gateway (HyperPay, Stripe, etc.) at time of charge.
   // Stored verbatim for audit, reconciliation, and dispute evidence.
   gatewayResponse: jsonb("gateway_response").$type<Record<string, unknown>>(),

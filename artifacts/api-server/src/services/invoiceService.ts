@@ -21,6 +21,9 @@ import { awardPoints, POINTS, logPointsTransaction } from "../lib/points.js";
 import { initiatePayment } from "../lib/paymentGateway.js";
 import { notifyAsync } from "../lib/notify.js";
 
+// Must stay in sync with POINTS_PER_SAR in routes/orders.ts
+const POINTS_PER_SAR = 100;
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface OrderInvoiceParams {
@@ -43,6 +46,9 @@ export interface OrderInvoiceParams {
   currency: string;
   paymentMethod: string;
   promoCode?: string | null;
+  // Points breakdown — populated when paymentMethod is 'points' or 'hybrid'
+  pointsUsed?: number;
+  pointsMonetaryValue?: number;
 }
 
 export interface BookingInvoiceParams {
@@ -72,15 +78,38 @@ class InvoiceService {
       subtotal, discountAmount, deliveryFee,
       taxAmount = 0, taxRate = 0, taxName = "VAT",
       total, currency, paymentMethod, promoCode,
+      pointsUsed = 0, pointsMonetaryValue = 0,
     } = params;
 
-    const lineItems = items.map(item => ({
+    const lineItems: Array<{
+      description: string;
+      descriptionAr: string;
+      qty: number;
+      unitPrice: number;
+      total: number;
+    }> = items.map(item => ({
       description: item.nameEn,
       descriptionAr: item.nameAr,
       qty: item.qty,
       unitPrice: item.price,
       total: item.qty * item.price,
     }));
+
+    // Add a credit line for any points redeemed so the invoice breakdown is transparent
+    if (pointsUsed > 0) {
+      lineItems.push({
+        description: `Points Redeemed (${pointsUsed} pts @ ${POINTS_PER_SAR} pts/SAR)`,
+        descriptionAr: `نقاط مستردة (${pointsUsed} نقطة بمعدل ${POINTS_PER_SAR} نقطة/ريال)`,
+        qty: 1,
+        unitPrice: -pointsMonetaryValue,
+        total: -pointsMonetaryValue,
+      });
+    }
+
+    // 'hybrid' orders: points cover part of the total; the remainder is charged to the card.
+    // 'points' orders: fully covered by points; no card charge.
+    // For both cases, `total` already reflects only the amount to be charged to the card.
+    const remainingAmountCharged = total;
 
     // 1. Create customer invoice (receipt)
     const [inv] = await db
@@ -102,6 +131,10 @@ class InvoiceService {
         currency,
         paymentMethod,
         promoCode: promoCode ?? null,
+        // Points breakdown — non-zero only for 'points' and 'hybrid' payment methods
+        pointsUsed,
+        pointsMonetaryValue: String(pointsMonetaryValue),
+        remainingAmountCharged: String(remainingAmountCharged),
         status: "paid",
       })
       .returning();
@@ -115,7 +148,9 @@ class InvoiceService {
     // 2. Initiate payment via the configured gateway and store the raw response.
     //    Only runs for card-based payment methods (not cash, points, free, etc.).
     //    Any gateway failure is non-critical — the invoice already exists.
-    const CARD_METHODS = new Set(["card", "credit_card", "debit_card", "online", "hyperpay", "stripe"]);
+    // 'hybrid' is included: the `total` passed in already has points subtracted,
+    // so only the card-payable remainder is charged — no double-billing risk.
+    const CARD_METHODS = new Set(["card", "credit_card", "debit_card", "online", "hyperpay", "stripe", "hybrid"]);
     if (CARD_METHODS.has(paymentMethod.toLowerCase())) {
       try {
         const gatewayResult = await initiatePayment({

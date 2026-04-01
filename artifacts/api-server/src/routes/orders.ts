@@ -103,23 +103,29 @@ router.post("/orders", optionalAuth, async (req, res) => {
 
     const etaMinutes = orderMode === "delivery" ? 35 : orderMode === "pickup" ? 20 : 15;
 
-    // FIX 7: Deduct points atomically before creating the order (prevents double-spending)
+    // Deduct points atomically before creating the order (prevents double-spending).
+    // The WHERE clause acts as a conditional lock: the UPDATE only runs if the
+    // current balance still covers the request. RETURNING confirms it happened.
+    // If 0 rows are returned, a concurrent request drained the balance — we abort.
     if (pointsUsedFinal > 0 && userId) {
-      await db.update(usersTable)
+      const deducted = await db.update(usersTable)
         .set({
           points: sql`${usersTable.points} - ${pointsUsedFinal}`,
           updatedAt: new Date(),
         })
         .where(
           sql`${usersTable.id} = ${userId} AND ${usersTable.points} >= ${pointsUsedFinal}`
-        );
+        )
+        .returning({ id: usersTable.id });
 
-      // Verify deduction succeeded (optimistic lock)
-      const [afterDeduct] = await db.select({ points: usersTable.points })
-        .from(usersTable).where(eq(usersTable.id, userId)).limit(1);
-
-      const expectedAfter = (afterDeduct?.points ?? 0);
-      // We'll log the transaction below after order creation
+      if (deducted.length === 0) {
+        // The balance was sufficient when we checked, but a concurrent request consumed
+        // it before our UPDATE ran. Return a clear error rather than silently proceeding.
+        return res.status(409).json({
+          error: "insufficient_points",
+          message: "Points balance changed — please retry. Another transaction may have used them concurrently.",
+        });
+      }
     }
 
     const [order] = await db
@@ -186,8 +192,12 @@ router.post("/orders", optionalAuth, async (req, res) => {
         taxName: tax.taxName,
         total: finalTotal,
         currency: currency ?? "SAR",
-        paymentMethod: paymentMethod ?? "card",
+        // Use the computed method ("points" | "hybrid" | "card" | …) not the raw body value.
+        // The invoice service uses this to decide whether to call the payment gateway and how.
+        paymentMethod: order!.paymentMethod ?? "card",
         promoCode: promoCode ?? null,
+        pointsUsed: pointsUsedFinal,
+        pointsMonetaryValue,
       });
       invoiceRef = result.invoiceRef;
 
@@ -395,9 +405,16 @@ router.patch("/orders/:orderNumber/status", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "bad_request", message: "status is required" });
     }
 
-    // Verify caller is the restaurant owner or order owner (for cancellations)
+    // Verify caller is the restaurant owner or order owner (for cancellations).
+    // Also fetch pointsUsed so we can refund them if the order is cancelled.
     const [order] = await db
-      .select({ userId: ordersTable.userId, restaurantId: ordersTable.restaurantId, status: ordersTable.status })
+      .select({
+        id:          ordersTable.id,
+        userId:      ordersTable.userId,
+        restaurantId: ordersTable.restaurantId,
+        status:      ordersTable.status,
+        pointsUsed:  ordersTable.pointsUsed,
+      })
       .from(ordersTable)
       .where(eq(ordersTable.orderNumber, orderNumber))
       .limit(1);
@@ -424,6 +441,30 @@ router.patch("/orders/:orderNumber/status", requireAuth, async (req, res) => {
     }
 
     const updated = await transitionOrderStatus(orderNumber, status, { reason, actorId: userId });
+
+    // Refund any points that were redeemed for this order.
+    // Runs only once per cancellation because a second PATCH to "cancelled" would throw
+    // a 422 invalid-transition before reaching here.
+    if (status === "cancelled" && order.pointsUsed && order.pointsUsed > 0 && order.userId) {
+      const pointsToRefund = order.pointsUsed;
+      const monetary = Math.round((pointsToRefund / POINTS_PER_SAR) * 100) / 100;
+
+      awardPoints(order.userId, pointsToRefund)
+        .then(() =>
+          logPointsTransaction(
+            order.userId!,
+            "admin_grant",
+            pointsToRefund,
+            order.id,
+            "order",
+            `Refund of ${pointsToRefund} pts (${monetary} SAR) for cancelled order ${orderNumber}`,
+          ),
+        )
+        .catch((err) =>
+          req.log.warn({ err, orderId: order.id }, "Points refund failed for cancelled order — manual reconciliation needed"),
+        );
+    }
+
     res.json({ order: updated });
   } catch (err: any) {
     if (err.statusCode === 404) return res.status(404).json({ error: "not_found", message: err.message });
