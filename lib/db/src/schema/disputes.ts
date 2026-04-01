@@ -23,6 +23,8 @@ export const disputesTable = pgTable("disputes", {
     .default([]),
   resolutionNotes: text("resolution_notes"),
   refundAmount: numeric("refund_amount", { precision: 10, scale: 2 }),
+  // Raw response from the payment gateway when a refund is processed.
+  gatewayResponse: jsonb("gateway_response").$type<Record<string, unknown>>(),
   resolvedBy: integer("resolved_by").references(() => usersTable.id),
   resolvedAt: timestamp("resolved_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),

@@ -18,6 +18,7 @@ import {
 import { eq, and, desc } from "drizzle-orm";
 import { generateRefCode } from "../lib/refcode.js";
 import { awardPoints, POINTS, logPointsTransaction } from "../lib/points.js";
+import { initiatePayment } from "../lib/paymentGateway.js";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -110,7 +111,32 @@ class InvoiceService {
       .set({ refCode: invoiceRef })
       .where(eq(customerInvoicesTable.id, inv!.id));
 
-    // 2. Log financial transaction (ledger) — only for orders with active contract
+    // 2. Initiate payment via the configured gateway and store the raw response.
+    //    Only runs for card-based payment methods (not cash, points, free, etc.).
+    //    Any gateway failure is non-critical — the invoice already exists.
+    const CARD_METHODS = new Set(["card", "credit_card", "debit_card", "online", "hyperpay", "stripe"]);
+    if (CARD_METHODS.has(paymentMethod.toLowerCase())) {
+      try {
+        const gatewayResult = await initiatePayment({
+          amount: total,
+          currency,
+          orderId: String(orderId),
+          description: `Order #${orderId}`,
+        });
+
+        // Persist the raw gateway response verbatim — used for audit and dispute evidence.
+        if (gatewayResult.rawResponse) {
+          await db
+            .update(customerInvoicesTable)
+            .set({ gatewayResponse: gatewayResult.rawResponse })
+            .where(eq(customerInvoicesTable.id, inv!.id));
+        }
+      } catch {
+        // Non-critical: gateway call failure should not block order confirmation
+      }
+    }
+
+    // 3. Log financial transaction (ledger) — only for orders with active contract
     if (restaurantId) {
       try {
         const [contract] = await db

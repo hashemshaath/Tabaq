@@ -177,6 +177,10 @@ export const customerInvoicesTable = pgTable("customer_invoices", {
   paymentMethod: text("payment_method"),
   promoCode: text("promo_code"),
 
+  // Raw response from the payment gateway (HyperPay, Stripe, etc.) at time of charge.
+  // Stored verbatim for audit, reconciliation, and dispute evidence.
+  gatewayResponse: jsonb("gateway_response").$type<Record<string, unknown>>(),
+
   status: customerInvoiceStatusEnum("status").default("paid").notNull(),
   paidAt: timestamp("paid_at").defaultNow(),
 

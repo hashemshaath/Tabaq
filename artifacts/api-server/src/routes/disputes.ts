@@ -233,7 +233,9 @@ router.patch("/disputes/:id/resolve", requireAdmin, async (req, res) => {
     const newStatus = decision === "NO_REFUND" ? "resolved_no_refund" : "resolved_refund";
     const now = new Date();
 
-    // Process refund if applicable
+    // Process refund if applicable — capture raw gateway response for audit storage
+    let refundGatewayResponse: Record<string, unknown> | null = null;
+
     if (decision !== "NO_REFUND" && dispute.orderId) {
       try {
         const [order] = await db.select({ total: ordersTable.total }).from(ordersTable).where(eq(ordersTable.id, dispute.orderId)).limit(1);
@@ -245,6 +247,10 @@ router.patch("/disputes/:id/resolve", requireAdmin, async (req, res) => {
             amount: refundAmount,
             reason: notes ?? "Dispute resolved with refund",
           });
+
+          // Store raw gateway response — used for reconciliation and audit trail
+          refundGatewayResponse = refundResult.rawResponse ?? null;
+
           logger.info({ refundResult, disputeId: id }, "Dispute refund processed");
         }
       } catch (refundErr) {
@@ -258,6 +264,8 @@ router.patch("/disputes/:id/resolve", requireAdmin, async (req, res) => {
         status: newStatus as any,
         resolutionNotes: notes ?? null,
         refundAmount: decision !== "NO_REFUND" ? String(amount ?? 0) : null,
+        // Persist the normalized + raw gateway response for audit and reconciliation
+        ...(refundGatewayResponse ? { gatewayResponse: refundGatewayResponse } : {}),
         resolvedBy: req.auth!.userId,
         resolvedAt: now,
         updatedAt: now,
