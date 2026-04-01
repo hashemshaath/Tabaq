@@ -346,6 +346,7 @@ export const redemptionsTable = pgTable("redemptions", {
   method: redemptionMethodEnum("method").default("on_site").notNull(),
 
   amountRedeemed: numeric("amount_redeemed", { precision: 10, scale: 2 }),
+  balanceAfter: numeric("balance_after", { precision: 10, scale: 2 }),
   notes: text("notes"),
   staffBranch: text("staff_branch"),
 

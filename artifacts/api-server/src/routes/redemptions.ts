@@ -29,28 +29,42 @@ router.post("/redeem", requireAuth, async (req, res) => {
       return;
     }
 
-    // FIX 3: Correct partial redemption arithmetic
-    const voucherBalance = parseFloat(String(voucher.value));
-    const requested = amount ? Math.abs(parseFloat(String(amount))) : voucherBalance;
-    const redeemAmount = Math.min(requested, voucherBalance);
-    const remainingBalance = Math.max(0, Math.round((voucherBalance - redeemAmount) * 100) / 100);
+    // Use remainingBalance (current available balance) rather than the original face value.
+    // A voucher with value=100 and remainingBalance=40 has 40 SAR available, not 100.
+    const currentBalance = parseFloat(
+      String(voucher.remainingBalance ?? voucher.value)
+    );
+
+    // amount_to_deduct = MIN(voucher_balance, order_total)
+    // If caller omits `amount`, treat as "use whatever is left" (full current balance).
+    const requested = amount ? Math.abs(parseFloat(String(amount))) : currentBalance;
+    const amountToDeduct = Math.min(requested, currentBalance);
+
+    // remaining_balance = current_balance - amount_to_deduct  (never goes below 0)
+    const remainingBalance = Math.max(
+      0,
+      Math.round((currentBalance - amountToDeduct) * 100) / 100,
+    );
     const isFullyRedeemed = remainingBalance === 0;
 
     const [redemption] = await db.transaction(async (tx) => {
+      // Insert redemption record with both voucher_amount_used and voucher_remaining_after
       const [r] = await tx.insert(redemptionsTable).values({
         voucherId: voucher.id,
         restaurantId: voucher.restaurantId,
         staffUserId: userId,
         method: "on_site",
-        amountRedeemed: String(redeemAmount.toFixed(2)),
+        amountRedeemed: amountToDeduct.toFixed(2),   // voucher_amount_used
+        balanceAfter:   remainingBalance.toFixed(2),  // voucher_remaining_after
         createdAt: new Date(),
       }).returning();
 
-      // FIX 3: Update voucher with remaining balance and correct status
+      // Update voucher: remaining balance and status.
+      // If remaining = 0  → "redeemed" (fully used).
+      // If remaining > 0  → "partially_redeemed" (still active for future use).
       await tx.update(vouchersTable).set({
-        // Track cumulative redeemed amount
-        redeemedAmount: sql`COALESCE(${vouchersTable.redeemedAmount}, 0) + ${redeemAmount.toFixed(2)}`,
-        remainingBalance: String(remainingBalance.toFixed(2)),
+        redeemedAmount: sql`COALESCE(${vouchersTable.redeemedAmount}, 0) + ${amountToDeduct.toFixed(2)}`,
+        remainingBalance: remainingBalance.toFixed(2),
         status: isFullyRedeemed ? "redeemed" : "partially_redeemed",
         redeemedAt: isFullyRedeemed ? new Date() : null,
       }).where(eq(vouchersTable.id, voucher.id));
@@ -60,8 +74,8 @@ router.post("/redeem", requireAuth, async (req, res) => {
 
     res.status(201).json({
       ...redemption,
-      amountRedeemed: redeemAmount.toFixed(2),
-      remainingBalance: remainingBalance.toFixed(2),
+      voucherAmountUsed:      amountToDeduct.toFixed(2),
+      voucherRemainingAfter:  remainingBalance.toFixed(2),
       voucherStatus: isFullyRedeemed ? "redeemed" : "partially_redeemed",
     });
   } catch (err) {
