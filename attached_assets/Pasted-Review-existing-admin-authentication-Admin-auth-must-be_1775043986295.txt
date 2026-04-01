@@ -1,0 +1,83 @@
+Review existing admin authentication.
+
+Admin auth must be the most secure in the system. Build or harden it.
+
+ADMIN USERS TABLE — verify these fields exist, add if missing:
+adm_uid (ADM-...), email, name, password_hash,
+role (SUPER_ADMIN | ADMIN | FINANCE | SUPPORT | MODERATOR | CONTENT),
+status (ACTIVE | INACTIVE | SUSPENDED),
+two_fa_secret (TOTP secret, encrypted at rest),
+two_fa_enabled BOOLEAN DEFAULT FALSE,
+ip_allowlist JSONB,   — array of allowed IPs, empty = all allowed
+failed_login_count, locked_until,
+last_login_at, last_login_ip, last_login_device,
+created_by, created_at, updated_at
+
+ADMIN LOGIN FLOW:
+POST /api/v1/admin/auth/login
+  Body: { email, password }
+  Security checks (in order):
+  1. Check IP allowlist — if set and IP not in list → return IP_NOT_ALLOWED (do not reveal account exists)
+  2. Find admin by email
+  3. Check status — INACTIVE/SUSPENDED → generic error (do not reveal reason)
+  4. Check locked_until
+  5. Verify password (bcrypt)
+  6. If wrong: increment failed_login_count, lock after 5 attempts for 30 minutes
+  7. If correct and two_fa_enabled = true:
+     → return { requires_2fa: true, partial_token } (partial_token: JWT, 5min, scope: "2fa_pending")
+  8. If correct and two_fa_enabled = false:
+     → return full JWT (but flag in JWT that 2FA is not set, for UI warning)
+
+POST /api/v1/admin/auth/2fa/verify
+  Auth: partial_token
+  Body: { totp_code }
+  Action: verify TOTP using 'speakeasy' or 'otplib' package
+  Allow ±1 time window tolerance
+  On success: issue full admin JWT (type: "admin", role, adm_uid)
+  On failure: 3 attempts max → invalidate partial_token, require full re-login
+
+POST /api/v1/admin/auth/2fa/setup
+  Auth: requires admin JWT (for first-time setup)
+  Action: generate TOTP secret, return { qr_code_url, secret }
+  QR code is for Google Authenticator / Authy
+
+POST /api/v1/admin/auth/2fa/confirm-setup
+  Auth: requires admin JWT
+  Body: { totp_code }
+  Action: verify the code to confirm setup, then set two_fa_enabled = true
+  Generate 10 backup codes, return them ONCE (store hashed copies)
+
+ADMIN JWT PAYLOAD:
+{
+  sub: adm_uid,
+  type: "admin",
+  role: "SUPER_ADMIN" | "ADMIN" | ...,
+  permissions: [...],  — explicit permission list
+  session_id: SES-...,
+  iat, exp  — 8 hour expiry for admin tokens
+}
+
+PERMISSION MATRIX — enforce at middleware level:
+SUPER_ADMIN:  all permissions
+ADMIN:        all except: delete_admin, change_super_admin, view_audit_all
+FINANCE:      view_reports, manage_payouts, view_invoices, manage_commissions
+SUPPORT:      view_users, manage_tickets, view_orders, issue_refunds (limited)
+MODERATOR:    manage_providers, manage_content, manage_reviews
+CONTENT:      manage_blog, manage_translations, manage_notifications
+
+MIDDLEWARE — requirePermission(permission):
+Extract role from JWT, check permission matrix, return 403 if not allowed.
+Every admin route must use this middleware.
+Log every admin action to audit_log with: adm_uid, action, entity_uid, ip, timestamp.
+
+SESSION MANAGEMENT:
+- Admin sessions stored in DB: ses_uid, adm_uid, ip, user_agent, created_at, expires_at, is_revoked
+- GET /api/v1/admin/auth/sessions — list active sessions
+- DELETE /api/v1/admin/auth/sessions/:ses_uid — revoke specific session
+- DELETE /api/v1/admin/auth/sessions/all — revoke all sessions (emergency logout)
+
+FIRST ADMIN SETUP:
+If no admin exists in the system:
+Allow one-time creation via: POST /api/v1/admin/auth/setup
+  Body: { setup_secret (from env ADMIN_SETUP_SECRET), email, name, password }
+  Creates SUPER_ADMIN, then disables this endpoint permanently.

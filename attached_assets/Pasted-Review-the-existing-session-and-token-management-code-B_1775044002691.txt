@@ -1,0 +1,64 @@
+Review the existing session and token management code.
+
+Build a complete session management layer and apply security middleware across all auth routes.
+
+SESSIONS TABLE — create if not exists:
+ses_uid VARCHAR(50) PRIMARY KEY,  — SES-...
+user_uid VARCHAR(50) NOT NULL,    — or provider_uid or adm_uid
+user_type VARCHAR(20),            — CUSTOMER | PROVIDER | STAFF | ADMIN
+refresh_token_hash VARCHAR(200),
+device_fingerprint VARCHAR(200),
+device_name VARCHAR(100),         — "iPhone 15 Pro", "Chrome on Windows"
+device_os VARCHAR(50),
+app_version VARCHAR(20),
+ip_address VARCHAR(45),
+location_country VARCHAR(2),
+location_city VARCHAR(100),
+is_revoked BOOLEAN DEFAULT FALSE,
+last_used_at TIMESTAMP,
+created_at TIMESTAMP,
+expires_at TIMESTAMP
+
+REFRESH TOKEN ROTATION:
+On every POST /api/v1/auth/refresh:
+1. Find session by refresh_token_hash
+2. Verify not revoked, not expired
+3. Issue new access_token + new refresh_token
+4. Update session: new refresh_token_hash, last_used_at = NOW()
+5. Old refresh token is immediately invalid (rotation)
+If someone uses an already-rotated token: REVOKE ALL sessions for that user (token theft detected)
+
+SUSPICIOUS LOGIN DETECTION:
+On every login, compare with user's last session:
+- Different country? → send SUSPICIOUS_LOGIN notification + require re-OTP
+- New device? → send NEW_DEVICE_LOGIN notification
+- Login between 2am-5am local time for first time? → flag for review (not blocked)
+
+NEW ENDPOINTS:
+GET  /api/v1/auth/sessions          — list all active sessions (auth required)
+DELETE /api/v1/auth/sessions/:uid   — revoke specific session (logout one device)
+DELETE /api/v1/auth/sessions/all    — revoke all sessions (logout all devices)
+POST /api/v1/auth/refresh           — rotate refresh token, get new access token
+POST /api/v1/auth/logout            — revoke current session
+
+SECURITY MIDDLEWARE (apply to all auth routes):
+1. rateLimitMiddleware — using Redis sliding window:
+   /auth/login: 10 requests per minute per IP
+   /auth/register: 5 requests per minute per IP
+   /auth/*/otp: 3 requests per minute per phone/email
+   /auth/password/forgot: 3 requests per hour per IP
+
+2. requestLogger — log every auth request:
+   method, path, ip, user_agent, status_code, duration_ms, user_uid (if authenticated)
+
+3. inputSanitizer — strip HTML/script tags from all string inputs
+
+4. Apply helmet() headers to all routes if not already applied
+
+ENVIRONMENT VARIABLES — verify these exist in .env:
+JWT_SECRET=                    (min 64 random chars)
+JWT_REFRESH_SECRET=            (different from JWT_SECRET)
+BCRYPT_SALT_ROUNDS=12
+OTP_EXPIRY_MINUTES=5
+OTP_MAX_ATTEMPTS=3
+SESSION_CLEANUP_CRON=0 2 * * * (daily at 2am)

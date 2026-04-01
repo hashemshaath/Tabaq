@@ -1,0 +1,68 @@
+All auth changes have been applied. Verify the complete auth system works correctly.
+
+Run these checks and report results. Fix any failures found.
+
+CUSTOMER AUTH CHECKS:
+1. Register via phone:
+   POST /auth/register/phone { phone: "+966501234567" }
+   → Should send OTP, return { otp_sent: true }
+   Verify: OTP stored as hash in DB, expires in 5 minutes
+
+2. Verify OTP with wrong code 3 times:
+   → 3rd attempt should return OTP_VOID, force resend
+
+3. Verify OTP correctly:
+   → Should return { access_token, refresh_token, user_uid: "USR-..." }
+   Verify: user_uid follows USR-YEAR-TIMESTAMP-8CHARS format
+   Verify: user exists in uid_registry table
+
+4. Set passcode:
+   POST /auth/passcode/set { passcode: "123456" }
+   → Should fail: 123456 is sequential, return PASSCODE_TOO_SIMPLE
+
+   POST /auth/passcode/set { passcode: "847291" }
+   → Should succeed
+
+5. Login via passcode from same device:
+   POST /auth/passcode/login { user_uid, passcode: "847291", device_fingerprint }
+   → Should return new JWT
+
+6. Login via passcode from NEW device:
+   POST /auth/passcode/login { user_uid, passcode: "847291", device_fingerprint: "new_device" }
+   → Should return DEVICE_NOT_RECOGNIZED, require phone OTP first
+
+7. Forgot password via email:
+   POST /auth/password/forgot { email: "test@test.com" }
+   → Should return same message regardless of whether email exists
+
+8. Refresh token rotation:
+   Use refresh_token to get new access_token
+   Try using the SAME refresh_token again
+   → Second use must return TOKEN_REUSED, all sessions revoked
+
+9. Google OAuth:
+   POST /auth/oauth/google { id_token: "invalid_token" }
+   → Must return INVALID_TOKEN (not 500)
+
+10. Rate limiting:
+    POST /auth/login 11 times in 1 minute
+    → 11th attempt must return 429 with Retry-After header
+
+PROVIDER AUTH CHECKS:
+11. Start provider registration → verify PRV-... UID returned
+12. Complete all 4 steps → verify status = PENDING_REVIEW
+13. Provider login with status = PENDING_REVIEW → must return ACCOUNT_PENDING_REVIEW
+14. Provider 2FA: request elevated_token, use it, try to reuse after 30 minutes → must expire
+
+ADMIN AUTH CHECKS:
+15. Admin login without 2FA set up → should warn but allow (with 2FA setup prompt)
+16. Admin login with 2FA → require TOTP code before issuing full JWT
+17. Login from non-allowlisted IP (if allowlist is set) → must return generic error
+18. Admin action without correct permission → must return 403
+
+UID REGISTRY CHECKS:
+19. Every new user, provider, and session created above must appear in uid_registry
+20. Call GET /api/v1/uid/:user_uid → must return { entity_type: "USER", status: "active" }
+
+Report: PASS ✅ or FAIL ❌ for each check, with the actual response received.
+Fix any failures before moving to the next system.
